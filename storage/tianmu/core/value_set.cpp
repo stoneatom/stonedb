@@ -292,7 +292,7 @@ void ValueSet::Prepare(common::ColumnType at, int scale, DTCollation coll) {
       }
       std::swap(values, new_values);
       for (const auto &it : new_values) delete it;
-    } else if (ATI::IsIntegerType(at)) {
+    } else if (ATI::IsIntegerType(at) || ATI::IsBitType(at)) {
       delete min;
       min = new types::TianmuNum();
       delete max;
@@ -300,18 +300,18 @@ void ValueSet::Prepare(common::ColumnType at, int scale, DTCollation coll) {
       for (const auto &it : values) {
         if (types::TianmuNum *tianmu_n = dynamic_cast<types::TianmuNum *>(it)) {
           if (tianmu_n->IsInt() || tianmu_n->IsReal()) {
-            types::TianmuNum *rcn_new = new types::TianmuNum();
+            types::TianmuNum *tianmu_num_new = new types::TianmuNum();
             if (tianmu_n->IsInt())
-              types::TianmuDataType::ToInt(*tianmu_n, *rcn_new);
+              types::TianmuDataType::ToInt(*tianmu_n, *tianmu_num_new);
             else
-              types::TianmuDataType::ToReal(*tianmu_n, *rcn_new);
+              types::TianmuDataType::ToReal(*tianmu_n, *tianmu_num_new);
 
-            if (!(*rcn_new > *min))
-              *min = *rcn_new;
-            if (!(*rcn_new < *max))
-              *max = *rcn_new;
-            if (!new_values.insert(rcn_new).second)
-              delete rcn_new;
+            if (!(*tianmu_num_new > *min))
+              *min = *tianmu_num_new;
+            if (!(*tianmu_num_new < *max))
+              *max = *tianmu_num_new;
+            if (!new_values.insert(tianmu_num_new).second)
+              delete tianmu_num_new;
           }
         } else if (it->Type() == common::ColumnType::STRING) {
           types::TianmuNum *tianmu_n = new types::TianmuNum();
@@ -340,14 +340,14 @@ void ValueSet::Prepare(common::ColumnType at, int scale, DTCollation coll) {
       for (const auto &it : values) {
         if (types::TianmuNum *tianmu_n = dynamic_cast<types::TianmuNum *>(it)) {
           if (tianmu_n->IsDecimal(scale)) {
-            types::TianmuNum *rcn_new = new types::TianmuNum();
-            types::TianmuDataType::ToDecimal(*tianmu_n, scale, *rcn_new);
-            if (!(*rcn_new > *min))
-              *min = *rcn_new;
-            if (!(*rcn_new < *max))
-              *max = *rcn_new;
-            if (!new_values.insert(rcn_new).second)
-              delete rcn_new;
+            types::TianmuNum *tianmu_num_new = new types::TianmuNum();
+            types::TianmuDataType::ToDecimal(*tianmu_n, scale, *tianmu_num_new);
+            if (!(*tianmu_num_new > *min))
+              *min = *tianmu_num_new;
+            if (!(*tianmu_num_new < *max))
+              *max = *tianmu_num_new;
+            if (!new_values.insert(tianmu_num_new).second)
+              delete tianmu_num_new;
           }
         } else if (it->Type() == common::ColumnType::STRING) {
           types::TianmuNum *tianmu_n = new types::TianmuNum();
@@ -386,13 +386,13 @@ void ValueSet::Prepare(common::ColumnType at, int scale, DTCollation coll) {
             if (!new_values.insert(tianmu_n).second)
               delete it;
           } else {
-            types::TianmuNum *rcn_new = new types::TianmuNum(tianmu_n->ToReal());
-            if (!(*rcn_new > *min))
-              *min = (*rcn_new);
+            types::TianmuNum *tianmu_num_new = new types::TianmuNum(tianmu_n->ToReal());
+            if (!(*tianmu_num_new > *min))
+              *min = (*tianmu_num_new);
             if (!(*tianmu_n < *max))
-              *max = (*rcn_new);
-            if (!new_values.insert(rcn_new).second)
-              delete rcn_new;
+              *max = (*tianmu_num_new);
+            if (!new_values.insert(tianmu_num_new).second)
+              delete tianmu_num_new;
             delete it;
           }
         } else if (it->Type() == common::ColumnType::STRING) {

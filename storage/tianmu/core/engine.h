@@ -151,11 +151,11 @@ class Engine final {
   static AttributeTypeInfo GetAttrTypeInfo(const Field &field);
   static common::ColumnType GetCorrespondingType(const enum_field_types &eft);
   static bool IsTianmuTable(TABLE *table);
-  static bool ConvertToField(Field *field, types::TianmuDataType &rcitem, std::vector<uchar> *blob_buf);
-  static int Convert(int &is_null, my_decimal *value, types::TianmuDataType &rcitem, int output_scale = -1);
-  static int Convert(int &is_null, int64_t &value, types::TianmuDataType &rcitem, enum_field_types f_type);
-  static int Convert(int &is_null, double &value, types::TianmuDataType &rcitem);
-  static int Convert(int &is_null, String *value, types::TianmuDataType &rcitem, enum_field_types f_type);
+  static bool ConvertToField(Field *field, types::TianmuDataType &tianmu_item, std::vector<uchar> *blob_buf);
+  static int Convert(int &is_null, my_decimal *value, types::TianmuDataType &tianmu_item, int output_scale = -1);
+  static int Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
+  static int Convert(int &is_null, double &value, types::TianmuDataType &tianmu_item);
+  static int Convert(int &is_null, String *value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
@@ -169,7 +169,7 @@ class Engine final {
   QueryRouteTo Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union = nullptr);
   int SetUpCacheFolder(const std::string &cachefolder_path);
 
-  static bool AreConvertible(types::TianmuDataType &rcitem, enum_field_types my_type, uint length = 0);
+  static bool AreConvertible(types::TianmuDataType &tianmu_item, enum_field_types my_type, uint length = 0);
   static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
                             int &in_case_of_failure_can_go_to_mysql, int with_insert);
   static const char *GetFilename(SELECT_LEX *selects_list, int &is_dumpfile);
@@ -307,12 +307,13 @@ class ResultExportSender final : public ResultSender {
   void Init(TempTable *t) override;
   void SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &record) override;
 
-  exporter::select_tianmu_export *export_res;
-  std::unique_ptr<exporter::DataExporter> rcde;
-  std::shared_ptr<system::LargeBuffer> rcbuffer;
+  exporter::select_tianmu_export *export_res_;
+  std::unique_ptr<exporter::DataExporter> tianmu_data_exp_;
+  std::shared_ptr<system::LargeBuffer> tiammu_buffer_;
 };
 
-enum class tianmu_var_name {
+enum class tianmu_param_name {
+  TIANMU_TIMEOUT = 0,
   TIANMU_DATAFORMAT,
   TIANMU_PIPEMODE,
   TIANMU_NULL,
@@ -331,18 +332,18 @@ static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT",        "T
                                                 "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
                                                 "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
 
-std::string get_parameter_name(enum tianmu_var_name vn);
+std::string get_parameter_name(enum tianmu_param_name vn);
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::string &s_result);
+int get_parameter(THD *thd, enum tianmu_param_name vn, longlong &result, std::string &s_result);
 
 // return 0 on success
 // 1 if parameter was not specified
 // 2 if was specified but with wrong type
-int get_parameter(THD *thd, enum tianmu_var_name vn, double &value);
-int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value);
-int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, double &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, int64_t &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, std::string &value);
 
-bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value);
+bool parameter_equals(THD *thd, enum tianmu_param_name vn, longlong value);
 
 /** The maximum length of an encode table name in bytes.  The max
 +table and database names are NAME_CHAR_LEN (64) characters. After the

@@ -574,7 +574,34 @@ t1	CREATE TABLE `t1` (
   `fld2` datetime DEFAULT '1211-01-01 00:00:00'
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 # error of support type
-create table t_unsupport_type (a2 bit DEFAULT NULL);
-ERROR HY000: Unsupported data type[bit]
 create table t_unsupport_type (a2 json DEFAULT NULL);
 ERROR HY000: Unsupported data type[json]
+drop table if exists bittypes;
+Warnings:
+Note	1051	Unknown table 'test.bittypes'
+create table bittypes (
+id int not null primary key,
+bit1 bit(1),
+bit2 bit(2),
+bit4 bit(4),
+bit8 bit(8),
+bit16 bit(16),
+bit32 bit(32),
+bit63 bit(63)
+) ENGINE=tianmu DEFAULT CHARSET=utf8mb4;
+show create table bittypes;
+Table	Create Table
+bittypes	CREATE TABLE `bittypes` (
+  `id` int(11) NOT NULL,
+  `bit1` bit(1) DEFAULT NULL,
+  `bit2` bit(2) DEFAULT NULL,
+  `bit4` bit(4) DEFAULT NULL,
+  `bit8` bit(8) DEFAULT NULL,
+  `bit16` bit(16) DEFAULT NULL,
+  `bit32` bit(32) DEFAULT NULL,
+  `bit63` bit(63) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4
+drop table bittypes;
+create table tc(a bit(64)) engine=tianmu;
+ERROR HY000: The bit(M) type, M must be less than or equal to 63 in tianmu engine.

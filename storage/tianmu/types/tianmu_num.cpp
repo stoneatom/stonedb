@@ -58,8 +58,9 @@ TianmuNum &TianmuNum::Assign(int64_t value, short scale, bool is_double, common:
   this->is_double_ = is_double;
   this->attr_type_ = attrt;
 
-  if (scale != -1 && !is_double_) {
-    if (scale != 0 || attrt == common::ColumnType::UNK) {
+  if (scale != -1 &&
+      !is_double_) {  // check if construct decimal, the UNK is used on temp_table.cpp: GetValueString(..)
+    if ((scale != 0 && attrt != common::ColumnType::BIT) || attrt == common::ColumnType::UNK) {
       is_dot_ = true;
       this->attr_type_ = common::ColumnType::NUM;
     }
@@ -127,7 +128,7 @@ TianmuNum &TianmuNum::operator=(const TianmuDataType &tianmu_dt) {
 common::ColumnType TianmuNum::Type() const { return attr_type_; }
 
 bool TianmuNum::IsDecimal(ushort scale) const {
-  if (core::ATI::IsIntegerType(this->attr_type_)) {
+  if (core::ATI::IsIntegerType(this->attr_type_) || attr_type_ == common::ColumnType::BIT) {
     return GetDecIntLen() <= (MAX_DEC_PRECISION - scale);
   } else if (attr_type_ == common::ColumnType::NUM) {
     if (this->GetDecFractLen() <= scale)
@@ -254,7 +255,7 @@ BString TianmuNum::ToBString() const {
     } else if (core::ATI::IsIntegerType(attr_type_))
       std::sprintf(buf, "%ld", value_);
     else {
-      return BString(Text(value_, buf, scale_), 0, true);
+      return BString(Text(value_, buf, scale_), 0, true);  // here include num & bit
     }
     return BString(buf, std::strlen(buf), true);
   }

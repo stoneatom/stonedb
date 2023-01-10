@@ -107,15 +107,19 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
   for (auto &p : fs::directory_iterator(tmp_dir / common::COLUMN_DIR)) fs::remove(p);
 
   TABLE_META meta;
-  system::TianmuFile f;
-  f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
-  f.ReadExact(&meta, sizeof(meta));
+  {
+    system::TianmuFile f;
+    f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
+    f.ReadExact(&meta, sizeof(meta));
+  }
   meta.id = ha_tianmu_engine_->GetNextTableId();  // only table id is updated
 
-  system::TianmuFile tempf;
-  tempf.OpenReadWrite(tmp_dir / common::TABLE_DESC_FILE);
-  tempf.WriteExact(&meta, sizeof(meta));
-  tempf.Flush();
+  {
+    system::TianmuFile tempf;
+    tempf.OpenReadWrite(tmp_dir / common::TABLE_DESC_FILE);
+    tempf.WriteExact(&meta, sizeof(meta));
+    tempf.Flush();
+  }
 
   std::vector<common::TX_ID> old_versions(old_cols.size());
   {
@@ -606,7 +610,8 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_SHORT:
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
-    case MYSQL_TYPE_LONGLONG: {
+    case MYSQL_TYPE_LONGLONG:
+    case MYSQL_TYPE_BIT: {
       int64_t value = f->val_int();
       if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
@@ -693,7 +698,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_STRING: {
       String buf;
       f->val_str(&buf);
-      if (m_attrs[col]->Type().IsLookup()) {
+      if (m_attrs[col]->Type().Lookup()) {
         types::BString s(buf.length() == 0 ? "" : buf.ptr(), buf.length());
         int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
         *buf = m_attrs[col]->EncodeValue_T(s, true);
@@ -708,7 +713,6 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_GEOMETRY:
     case MYSQL_TYPE_NULL:
-    case MYSQL_TYPE_BIT:
     default:
       throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
       break;
@@ -733,7 +737,7 @@ int TianmuTable::Insert(TABLE *table) {
 
   std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
   if (tab) {
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     std::vector<uint> cols = tab->KeyCols();
     for (auto &col : cols) {
       fields.emplace_back(vcs[col].GetDataBytesPointer(0), vcs[col].Size(0));
@@ -1016,15 +1020,16 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
         case common::ColumnType::SMALLINT:
         case common::ColumnType::INT:
         case common::ColumnType::MEDIUMINT:
-        case common::ColumnType::BIGINT: {
+        case common::ColumnType::BIGINT:
+        case common::ColumnType::BIT: {
           types::BString s;
           int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64)
             s = types::BString();
           else {
-            types::TianmuNum rcd(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
-                                 m_attrs[att]->TypeName());
-            s = rcd.ToBString();
+            types::TianmuNum tianmu_num(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
+                                        m_attrs[att]->TypeName());
+            s = tianmu_num.ToBString();
           }
           std::memcpy(ptr, s.GetDataBytesPointer(), s.size());
           ptr += s.size();
@@ -1083,7 +1088,7 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             ptr += ENCLOSE.length();
           } else {
             types::BString s;
-            if (m_attrs[att]->Type().IsLookup()) {
+            if (m_attrs[att]->Type().Lookup()) {
               s = m_attrs[att]->DecodeValue_S(*(int64_t *)v);
               v = s.GetDataBytesPointer();
               size = s.size();
@@ -1188,7 +1193,7 @@ class DelayedInsertParser final {
             ptr += len;
           } break;
           case common::PackType::INT: {
-            if (attr->Type().IsLookup()) {
+            if (attr->Type().Lookup()) {
               uint32_t len = *(uint32_t *)ptr;
               ptr += sizeof(uint32_t);
               types::BString s(len == 0 ? "" : ptr, len);
@@ -1237,7 +1242,7 @@ class DelayedInsertParser final {
 
     size_t row_idx = vcs[0].NumOfValues() - 1;
     std::vector<uint> cols = index_table->KeyCols();
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     for (auto &col : cols) {
       fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
     }

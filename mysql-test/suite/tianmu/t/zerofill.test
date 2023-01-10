@@ -1,0 +1,64 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test zerofill
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS zerofill_test;
+--enable_warnings
+
+CREATE DATABASE zerofill_test;
+USE zerofill_test;
+
+CREATE TABLE st1 (x INT(8) ZEROFILL NOT NULL, y INT(8) NOT NULL);
+INSERT INTO st1 VALUES
+(1, 1),
+(12, 12),
+(123, 123),
+(1234567, 1234567),
+(123456789, 123456789);
+select * from st1;
+
+CREATE TABLE st2(id int PRIMARY KEY,val TINYINT(10) ZEROFILL);
+INSERT INTO st2 VALUES(1,12),(2,7),(4,101);
+SELECT * FROM st2;
+#bug1095 SELECT LENGTH(val) FROM st2 WHERE id=2;
+SELECT val+1 FROM st2 WHERE id=2;
+
+create table st3 (id1 int,id2 int(5));
+insert into st3 values (1,1);
+alter table st3 modify id1 int zerofill;
+alter table st3 modify id2 int(5) zerofill;
+insert into st3 values (1,1234567);
+select * from st3;
+
+CREATE TABLE st4(  
+`id` int(11) unsigned zerofill NOT NULL AUTO_INCREMENT,  
+`col2` varchar(20) NOT NULL, 
+`year` year(4) DEFAULT NULL,  
+`month` int(2) unsigned zerofill DEFAULT NULL,  
+`day` int(2) unsigned zerofill DEFAULT NULL,
+ PRIMARY KEY (`id`)
+);
+
+insert into st4 values(1,'test',2021,12,12);
+alter table st4 MODIFY id int;
+select * from st4;
+
+CREATE TABLE st5(
+num1 TINYINT,
+num2 TINYINT UNSIGNED,
+num3 INT,
+num4 INT ZEROFILL,
+num5 INT UNSIGNED ZEROFILL
+);
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT st5(num1,num2) VALUES(-5,-5);
+INSERT st5(num3,num4) VALUES(123,123);
+INSERT st5 VALUES(0,0,0,0,0);
+INSERT st5(num3,num4,num5) VALUES(123,123,123);
+SELECT * FROM st5;
+
+# Clean UP
+DROP DATABASE zerofill_test;

@@ -470,7 +470,7 @@ bool JoinerSortWrapper::PackPossible(vcolumn::VirtualColumn *v, MIIterator &mit)
   // "matched" (the second) virtual column
   if (!watch_matched && v->GetNumOfNulls(mit) == mit.GetPackSizeLeft())
     return false;
-  if (min_traversed == nullptr || v->Type().IsLookup())
+  if (min_traversed == nullptr || v->Type().Lookup())
     return true;
   else if (v->Type().IsString()) {
     types::BString local_stat;

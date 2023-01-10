@@ -218,7 +218,7 @@ void ConditionEncoder::EncodeConditionOnStringColumn() {
 
   if (desc->op == common::Operator::O_IN || desc->op == common::Operator::O_NOT_IN)
     TransformINs();
-  else if (!attr->Type().IsLookup())
+  else if (!attr->Type().Lookup())
     TransformOtherThanINsOnNotLookup();
   else
     TransformOtherThanINsOnNumerics();
@@ -413,7 +413,7 @@ void ConditionEncoder::TransformLIKEsPattern() {
       desc->op = common::Operator::O_FALSE;
     else
       desc->op = common::Operator::O_NOT_NULL;
-  } else if (attr->Type().IsLookup())
+  } else if (attr->Type().Lookup())
     TransformLIKEsIntoINsOnLookup();
   else
     encoding_done = true;
@@ -421,7 +421,7 @@ void ConditionEncoder::TransformLIKEsPattern() {
 
 void ConditionEncoder::TransformLIKEsIntoINsOnLookup() {
   MEASURE_FET("ConditionEncoder::TransformLIKEsIntoINsOnLookup(...)");
-  DEBUG_ASSERT(attr->Type().IsLookup());
+  DEBUG_ASSERT(attr->Type().Lookup());
 
   if (desc->op == common::Operator::O_LIKE)
     desc->op = common::Operator::O_IN;
@@ -460,7 +460,7 @@ void ConditionEncoder::TransformLIKEs() {
   if (!IsTransformationNeeded())
     return;
 
-  if (attr->Type().IsLookup() && (desc->op == common::Operator::O_LIKE || desc->op == common::Operator::O_NOT_LIKE))
+  if (attr->Type().Lookup() && (desc->op == common::Operator::O_LIKE || desc->op == common::Operator::O_NOT_LIKE))
     TransformLIKEsIntoINsOnLookup();
 }
 
@@ -579,7 +579,7 @@ void ConditionEncoder::TextTransformation() {
   }
   if (desc->op == common::Operator::O_LIKE || desc->op == common::Operator::O_NOT_LIKE) {
     TransformLIKEs();
-  } else if (attr->Type().IsLookup()) {  // lookup - transform into IN (numbers)
+  } else if (attr->Type().Lookup()) {  // lookup - transform into IN (numbers)
     if (desc->op == common::Operator::O_IN || desc->op == common::Operator::O_NOT_IN)
       TransformINsOnLookup();
     else
@@ -609,7 +609,7 @@ void ConditionEncoder::TransformINs() {
       desc->op = common::Operator::O_FALSE;
   } else {
     if (no_dis_values == 1 && !mvc.ContainsNull(mit)) {
-      if (attr->GetPackType() == common::PackType::INT && !attr->Type().IsLookup()) {
+      if (attr->GetPackType() == common::PackType::INT && !attr->Type().Lookup()) {
         desc->val2 = CQTerm();
         desc->val2.vc =
             new vcolumn::ConstColumn(ValueOrNull(types::TianmuNum(attr->EncodeValue64(mvc.GetSetMin(mit), sharp),
@@ -638,7 +638,7 @@ void ConditionEncoder::TransformINs() {
       }
     } else if (attr->GetPackType() == common::PackType::INT && !mvc.ContainsNull(mit)) {
       int64_t val_min, val_max;
-      if (attr->Type().IsLookup()) {
+      if (attr->Type().Lookup()) {
         val_min = int64_t((types::TianmuNum &)mvc.GetSetMin(mit));
         val_max = int64_t((types::TianmuNum &)mvc.GetSetMax(mit));
       } else {
@@ -774,8 +774,8 @@ void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, 
     if (vcsc2 == nullptr || vcsc->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE ||
         vcsc2->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE)
       return;
-    if (vcsc->Type().IsString() || vcsc->Type().IsLookup() || vcsc2->Type().IsString() ||
-        vcsc2->Type().IsLookup())  // excluding strings
+    if (vcsc->Type().IsString() || vcsc->Type().Lookup() || vcsc2->Type().IsString() ||
+        vcsc2->Type().Lookup())  // excluding strings
       return;
     bool is_timestamp1 = (vcsc->Type().GetTypeName() == common::ColumnType::TIMESTAMP);
     bool is_timestamp2 = (vcsc2->Type().GetTypeName() == common::ColumnType::TIMESTAMP);

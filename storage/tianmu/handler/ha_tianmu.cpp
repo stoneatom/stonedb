@@ -92,6 +92,7 @@ static core::Value GetValueFromField(Field *f) {
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG:
+    case MYSQL_TYPE_BIT:
       v.SetInt(f->val_int());
       break;
     case MYSQL_TYPE_DECIMAL:
@@ -167,7 +168,6 @@ static core::Value GetValueFromField(Field *f) {
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_GEOMETRY:
     case MYSQL_TYPE_NULL:
-    case MYSQL_TYPE_BIT:
     default:
       throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
       break;
@@ -336,7 +336,7 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
 namespace {
 inline bool has_dup_key(std::shared_ptr<index::TianmuTableIndex> &indextab, TABLE *table, size_t &row) {
   common::ErrorCode ret = common::ErrorCode::SUCCESS;
-  std::vector<std::string_view> records;
+  std::vector<std::string> records;
   KEY *key = table->key_info + table->s->primary_key;
 
   for (uint i = 0; i < key->actual_key_parts; i++) {
@@ -347,7 +347,8 @@ inline bool has_dup_key(std::shared_ptr<index::TianmuTableIndex> &indextab, TABL
       case MYSQL_TYPE_SHORT:
       case MYSQL_TYPE_LONG:
       case MYSQL_TYPE_INT24:
-      case MYSQL_TYPE_LONGLONG: {
+      case MYSQL_TYPE_LONGLONG:
+      case MYSQL_TYPE_BIT: {
         int64_t v = f->val_int();
         records.emplace_back((const char *)&v, sizeof(int64_t));
         break;
@@ -419,7 +420,6 @@ inline bool has_dup_key(std::shared_ptr<index::TianmuTableIndex> &indextab, TABL
       case MYSQL_TYPE_ENUM:
       case MYSQL_TYPE_GEOMETRY:
       case MYSQL_TYPE_NULL:
-      case MYSQL_TYPE_BIT:
       default:
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;
@@ -861,7 +861,7 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
     table->status = STATUS_NOT_FOUND;
     auto index = ha_tianmu_engine_->GetTableIndex(table_name_);
     if (index && (active_index == table_share->primary_key)) {
-      std::vector<std::string_view> keys;
+      std::vector<std::string> keys;
       key_convert(key, key_len, index->KeyCols(), keys);
       // support equality fullkey lookup over primary key, using full tuple
       if (find_flag == HA_READ_KEY_EXACT) {
@@ -1165,7 +1165,7 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
 
   int ret = HA_ERR_END_OF_FILE;
   try {
-    if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES && pos && pos[0] != '\0') {
+    if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES) {
       ret = index_read(buf, pos, ref_length, HA_READ_KEY_EXACT);
     } else {
       uint64_t position = my_get_ptr(pos, ref_length);
@@ -1642,15 +1642,16 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
     }
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
+    my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
+    my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Unable to inplace alter table", MYF(0));
   }
 
+  // if catch exception, remove tmp dir
   fs::path tmp_dir = table_name_ + ".tmp";
   if (fs::exists(tmp_dir))
     fs::remove_all(tmp_dir);
-
-  my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Unable to inplace alter table", MYF(0));
 
   DBUG_RETURN(true);
 }
@@ -1717,12 +1718,10 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
  key: mysql format, may be union key, need changed to kvstore key format
 
  */
-void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
-                            std::vector<std::string_view> &keys) {
+void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string> &keys) {
   key_restore(table->record[0], (uchar *)key, &table->key_info[active_index], key_len);
 
   Field **field = table->field;
-  std::vector<std::string> records;
   for (auto &i : cols) {
     Field *f = field[i];
     size_t length;
@@ -1780,6 +1779,15 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
           v = common::TIANMU_BIGINT_MAX;
         else if (v < common::TIANMU_BIGINT_MIN)
           v = common::TIANMU_BIGINT_MIN;
+        *(int64_t *)ptr = v;
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_BIT: {
+        int64_t v = f->val_int();
+        if (v > common::TIANMU_BIGINT_MAX)  // TODO(fix with prec, like newdecimal)
+          v = common::TIANMU_BIGINT_MAX;
+        else if (v < common::TIANMU_BIGINT_MIN)
+          v = 0;
         *(int64_t *)ptr = v;
         ptr += sizeof(int64_t);
       } break;
@@ -1851,16 +1859,11 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
       case MYSQL_TYPE_ENUM:
       case MYSQL_TYPE_GEOMETRY:
       case MYSQL_TYPE_NULL:
-      case MYSQL_TYPE_BIT:
       default:
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;
     }
-    records.emplace_back((const char *)buf.get(), ptr - buf.get());
-  }
-
-  for (auto &elem : records) {
-    keys.emplace_back(elem.data(), elem.size());
+    keys.emplace_back((const char *)buf.get(), ptr - buf.get());
   }
 }
 

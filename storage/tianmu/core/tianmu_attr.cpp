@@ -174,7 +174,7 @@ void TianmuAttr::LoadVersion(common::TX_ID xid) {
 void TianmuAttr::Truncate() {
   no_change = false;
   hdr = {};
-  if (ct.IsLookup()) {
+  if (ct.Lookup()) {
     hdr.dict_ver = 1;  // starting with 1 because 0 means n/a
     auto dict = std::make_unique<FTree>();
     dict->Init(ct.GetPrecision());
@@ -200,6 +200,9 @@ size_t TianmuAttr::ComputeNaturalSize() {
       break;
     case common::ColumnType::NUM:
       na_size += (Type().GetPrecision() + (Type().GetScale() ? 1 : 0)) * NumOfObj();
+      break;
+    case common::ColumnType::BIT:
+      na_size += Type().GetPrecision() * NumOfObj();  // one bytes one digit
       break;
     case common::ColumnType::BIGINT:
     case common::ColumnType::REAL:
@@ -446,7 +449,7 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
     val_buf[4] = 0;
     return;
   } else if (a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIGINT || ATI::IsRealType(a_type) ||
-             ATI::IsDateTimeType(a_type)) {
+             ATI::IsDateTimeType(a_type) || a_type == common::ColumnType::BIT) {
     size = 8;
     int64_t v = GetValueInt64(obj);
     if (v == common::NULL_VALUE_64)
@@ -487,7 +490,7 @@ types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
       ret = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
     else if (ATI::IsRealType(a_type))
       ret = types::TianmuNum(this->GetNotNullValueInt64(obj), 0, true, a_type);
-    else if (lookup_to_num || a_type == common::ColumnType::NUM)
+    else if (lookup_to_num || a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIT)
       ret = types::TianmuNum((int64_t)GetNotNullValueInt64(obj), Type().GetScale());
   }
   return ret;
@@ -512,7 +515,9 @@ types::TianmuDataType &TianmuAttr::GetValueData(size_t obj, types::TianmuDataTyp
       ((types::TianmuDateTime &)value) = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
     } else if (ATI::IsRealType(a_type))
       ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), 0, true, a_type);
-    else
+    else if (ATI::IsBitType(a_type)) {
+      ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), Type().GetScale(), false, a_type);
+    } else
       ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), Type().GetScale());
   }
   return value;
@@ -528,7 +533,7 @@ int64_t TianmuAttr::GetNumOfNulls(int pack) {
 size_t TianmuAttr::GetActualSize(int pack) {
   if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
     return 0;
-  if (Type().IsLookup() || GetPackType() != common::PackType::STR)
+  if (Type().Lookup() || GetPackType() != common::PackType::STR)
     return Type().GetPrecision();
   return get_dpn(pack).sum_i;
 }
@@ -603,34 +608,34 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
   if (code == common::NULL_VALUE_64) {
     return types::BString();
   }
-  if (Type().IsLookup()) {
+  if (Type().Lookup()) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     return m_dict->GetRealValue((int)code);
   }
   common::ColumnType a_type = TypeName();
   if (ATI::IsIntegerType(a_type)) {
     types::TianmuNum tianmu_n(code, -1, false, a_type);
-    types::BString local_rcb = tianmu_n.ToBString();
-    local_rcb.MakePersistent();
-    return local_rcb;
+    types::BString tianmu_bstring = tianmu_n.ToBString();
+    tianmu_bstring.MakePersistent();
+    return tianmu_bstring;
   } else if (ATI::IsRealType(a_type)) {
     types::TianmuNum tianmu_n(code, -1, true, a_type);
-    types::BString local_rcb = tianmu_n.ToBString();
-    local_rcb.MakePersistent();
-    return local_rcb;
-  } else if (a_type == common::ColumnType::NUM) {
+    types::BString tianmu_bstring = tianmu_n.ToBString();
+    tianmu_bstring.MakePersistent();
+    return tianmu_bstring;
+  } else if (a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIT) {
     types::TianmuNum tianmu_n(code, Type().GetScale(), false, a_type);
-    types::BString local_rcb = tianmu_n.ToBString();
-    local_rcb.MakePersistent();
-    return local_rcb;
+    types::BString tianmu_bstring = tianmu_n.ToBString();
+    tianmu_bstring.MakePersistent();
+    return tianmu_bstring;
   } else if (ATI::IsDateTimeType(a_type)) {
     types::TianmuDateTime tianmu_dt(code, a_type);
     if (a_type == common::ColumnType::TIMESTAMP) {
       types::TianmuDateTime::AdjustTimezone(tianmu_dt);
     }
-    types::BString local_rcb = tianmu_dt.ToBString();
-    local_rcb.MakePersistent();
-    return local_rcb;
+    types::BString tianmu_bstring = tianmu_dt.ToBString();
+    tianmu_bstring.MakePersistent();
+    return tianmu_bstring;
   }
   return types::BString();
 }
@@ -690,7 +695,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   if (!v || v->IsNull())
     return common::NULL_VALUE_64;
 
-  if ((Type().IsLookup() && v->Type() != common::ColumnType::NUM)) {
+  if ((Type().Lookup() && v->Type() != common::ColumnType::NUM && v->Type() != common::ColumnType::BIT)) {
     return EncodeValue_T(v->ToBString(), false, tianmu_err_code);
   } else if (ATI::IsDateTimeType(TypeName()) || ATI::IsDateTimeNType(TypeName())) {
     return ((types::TianmuDateTime *)v)->GetInt64();
@@ -1024,7 +1029,7 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
     ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
   }
 
-  if (ct.IsLookup() && v.HasValue()) {
+  if (ct.Lookup() && v.HasValue()) {
     auto &str = v.GetString();
     int code = m_dict->GetEncodedValue(str.data(), str.size());
     if (code < 0) {
@@ -1385,8 +1390,8 @@ void TianmuAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
   if (GetPackType() == common::PackType::STR) {
     auto &vnew = v.GetString();
     auto vold = GetValueString(row);
-    std::string_view nkey(vnew.data(), vnew.length());
-    std::string_view okey(vold.val_, vold.size());
+    std::string nkey(vnew.data(), vnew.length());
+    std::string okey(vold.val_, vold.size());
     common::ErrorCode returnCode = tab->UpdateIndex(current_txn_, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
@@ -1395,8 +1400,8 @@ void TianmuAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
   } else {  // common::PackType::INT
     int64_t vnew = v.GetInt();
     int64_t vold = GetValueInt64(row);
-    std::string_view nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
-    std::string_view okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
+    std::string nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
+    std::string okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
     common::ErrorCode returnCode = tab->UpdateIndex(current_txn_, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
@@ -1417,7 +1422,7 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
 
   if (GetPackType() == common::PackType::STR) {
     auto currentValue = GetValueString(row);
-    std::string_view currentRowKey(currentValue.val_, currentValue.size());
+    std::string currentRowKey(currentValue.val_, currentValue.size());
     common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %s for primary key", currentValue.GetDataBytesPointer());
@@ -1425,7 +1430,7 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
     }
   } else {  // common::PackType::INT
     auto currentValue = GetValueInt64(row);
-    std::string_view currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
+    std::string currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
     common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %" PRId64 " for primary key", currentValue);

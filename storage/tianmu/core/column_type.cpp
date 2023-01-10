@@ -41,7 +41,7 @@ ColumnType::ColumnType(const DataType &dt) {
 }
 
 bool ColumnType::operator==(const ColumnType &ct2) const {
-  if (type == ct2.type && IsLookup() == ct2.IsLookup() &&
+  if (type == ct2.type && Lookup() == ct2.Lookup() &&
       std::strcmp(collation.collation->csname, ct2.collation.collation->csname) == 0 &&
       (type != common::ColumnType::NUM ||
        (type == common::ColumnType::NUM && precision == ct2.precision && scale == ct2.scale)))
@@ -51,7 +51,7 @@ bool ColumnType::operator==(const ColumnType &ct2) const {
 }
 
 uint ColumnType::InternalSize() {
-  if (IsLookup())
+  if (Lookup())
     return 4;
   else if (ATI::IsStringType(type))
     return precision;

@@ -192,7 +192,7 @@ bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
       (size_t)buffer.ExpectedSize() > attrs_[att]->Type().GetPrecision())
     return false;
 
-  if (attrs_[att]->Type().IsLookup() && !buffer.ExpectedNull()) {
+  if (attrs_[att]->Type().Lookup() && !buffer.ExpectedNull()) {
     types::BString s(ZERO_LENGTH_STRING, 0);
     buffer.Prepare(sizeof(int64_t));
     s.val_ = static_cast<char *>(buffer.PreparedBuffer());
@@ -206,7 +206,7 @@ bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
 
 int LoadParser::ProcessInsertIndex(std::shared_ptr<index::TianmuTableIndex> tab, std::vector<ValueCache> &vcs,
                                    uint no_rows) {
-  std::vector<std::string_view> fields;
+  std::vector<std::string> fields;
   size_t lastrow = vcs[0].NumOfValues();
   ASSERT(lastrow >= 1, "should be 'lastrow >= 1'");
   std::vector<uint> cols = tab->KeyCols();

@@ -48,7 +48,7 @@ description VARCHAR(200) NULL,
 PRIMARY KEY (task_id)
 );
 ALTER TABLE st1 ADD COLUMN test numeric(20,10);
-ERROR HY000: Unable to inplace alter table
+ERROR HY000: Precision must be less than or equal to 18.
 ALTER TABLE st1 ADD COLUMN test1 numeric(8,2);
 SHOW CREATE TABLE st1;
 Table	Create Table
@@ -59,6 +59,26 @@ st1	CREATE TABLE `st1` (
   `end_date` date DEFAULT NULL,
   `description` varchar(200) DEFAULT NULL,
   `test1` decimal(8,2) DEFAULT NULL,
+  PRIMARY KEY (`task_id`)
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+CREATE TABLE st2 (
+task_id INT NOT NULL,
+subject VARCHAR(45) NULL,
+start_date DATE NULL,
+end_date DATE NULL,
+description VARCHAR(200) NULL,
+PRIMARY KEY (task_id)
+);
+ALTER TABLE st2 ADD COLUMN col_name3 int auto_increment;
+ERROR HY000: AUTO_INCREMENT can be only declared on primary key column!
+SHOW CREATE TABLE st2;
+Table	Create Table
+st2	CREATE TABLE `st2` (
+  `task_id` int(11) NOT NULL,
+  `subject` varchar(45) DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `description` varchar(200) DEFAULT NULL,
   PRIMARY KEY (`task_id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 DROP DATABASE alter_colunm;

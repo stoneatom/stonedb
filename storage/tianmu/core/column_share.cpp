@@ -117,7 +117,7 @@ void ColumnShare::read_meta() {
   ct.SetScale(meta.scale);
 
   auto type = ct.GetTypeName();
-  if (ct.IsLookup() || ATI::IsNumericType(type) || ATI::IsDateTimeType(type))
+  if (ct.Lookup() || ATI::IsNumericType(type) || ATI::IsDateTimeType(type))
     pt = common::PackType::INT;
   else
     pt = common::PackType::STR;

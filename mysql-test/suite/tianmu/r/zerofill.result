@@ -1,0 +1,70 @@
+#
+# Test zerofill
+#
+DROP DATABASE IF EXISTS zerofill_test;
+CREATE DATABASE zerofill_test;
+USE zerofill_test;
+CREATE TABLE st1 (x INT(8) ZEROFILL NOT NULL, y INT(8) NOT NULL);
+INSERT INTO st1 VALUES
+(1, 1),
+(12, 12),
+(123, 123),
+(1234567, 1234567),
+(123456789, 123456789);
+select * from st1;
+x	y
+00000001	1
+00000012	12
+00000123	123
+01234567	1234567
+123456789	123456789
+CREATE TABLE st2(id int PRIMARY KEY,val TINYINT(10) ZEROFILL);
+INSERT INTO st2 VALUES(1,12),(2,7),(4,101);
+SELECT * FROM st2;
+id	val
+1	0000000012
+2	0000000007
+4	0000000101
+SELECT val+1 FROM st2 WHERE id=2;
+val+1
+8
+create table st3 (id1 int,id2 int(5));
+insert into st3 values (1,1);
+alter table st3 modify id1 int zerofill;
+alter table st3 modify id2 int(5) zerofill;
+insert into st3 values (1,1234567);
+select * from st3;
+id1	id2
+0000000001	00001
+0000000001	1234567
+CREATE TABLE st4(  
+`id` int(11) unsigned zerofill NOT NULL AUTO_INCREMENT,  
+`col2` varchar(20) NOT NULL, 
+`year` year(4) DEFAULT NULL,  
+`month` int(2) unsigned zerofill DEFAULT NULL,  
+`day` int(2) unsigned zerofill DEFAULT NULL,
+PRIMARY KEY (`id`)
+);
+insert into st4 values(1,'test',2021,12,12);
+alter table st4 MODIFY id int;
+select * from st4;
+id	col2	year	month	day
+1	test	2021	12	12
+CREATE TABLE st5(
+num1 TINYINT,
+num2 TINYINT UNSIGNED,
+num3 INT,
+num4 INT ZEROFILL,
+num5 INT UNSIGNED ZEROFILL
+);
+INSERT st5(num1,num2) VALUES(-5,-5);
+ERROR 22003: Out of range value for column 'num2' at row 1
+INSERT st5(num3,num4) VALUES(123,123);
+INSERT st5 VALUES(0,0,0,0,0);
+INSERT st5(num3,num4,num5) VALUES(123,123,123);
+SELECT * FROM st5;
+num1	num2	num3	num4	num5
+NULL	NULL	123	0000000123	NULL
+0	0	0	0000000000	0000000000
+NULL	NULL	123	0000000123	0000000123
+DROP DATABASE zerofill_test;
