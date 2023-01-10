@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "core/delta_store.h"
+#include "core/delta_table.h"
 #include "common/common_definitions.h"
 #include "core/table_share.h"
 #include "core/tianmu_table.h"
@@ -146,6 +146,7 @@ void DeltaTable::AddUpdateRecord(uint64_t row_id, std::unique_ptr<char[]> buf, u
 
 void DeltaTable::Truncate(Transaction *tx) {
   ASSERT(tx, "No truncate transaction.");
+  // todo(dfx): just use DropColumnFamily() and CreateColumnFamily(), maybe faster
   uchar entry_key[32];
   size_t key_pos = 0;
   index::be_store_index(entry_key + key_pos, delta_tid_);
@@ -169,6 +170,31 @@ void DeltaTable::Truncate(Transaction *tx) {
   return;
 }
 
-
+DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) : table_(table), attrs_(attrs) {
+  auto snapshot = ha_kvstore_->GetRdbSnapshot();
+  rocksdb::ReadOptions read_options(true, snapshot);
+  it_ = std::unique_ptr<rocksdb::Iterator>(ha_kvstore_->GetRdb()->NewIterator(read_options, table_->GetCFHandle()));
+  it_->SeekToFirst();
+  bool first_insert = false;
+  while (it_->Valid()) {
+    const char *ptr = it_->value().data();
+    if (static_cast<RecordType>(ptr[0]) != RecordType::kInsert) {
+      if (!first_insert) {
+        start_position_ = index::be_to_uint64(reinterpret_cast<const uchar *>(it_->key().data()) + sizeof(uint32_t));
+        first_insert = true;
+      }
+      it_->Next();
+    } else {
+      break;
+    }
+  }
+  if (it_->Valid()) {
+    const char *ptr = it_->value().data();
+    ASSERT(static_cast<RecordType>(ptr[0]) == RecordType::kInsert);
+    position_ = index::be_to_uint64(reinterpret_cast<const uchar *>(it_->key().data()) + sizeof(uint32_t));
+  } else {
+    position_ = -1;
+  }
+}
 }  // namespace core
 }  // namespace Tianmu

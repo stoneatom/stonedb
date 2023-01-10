@@ -32,6 +32,7 @@
 #include "core/table_share.h"
 #include "core/temp_table.h"
 #include "core/tianmu_table.h"
+#include "core/combined_iterator.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
 #include "index/tianmu_table_index.h"
@@ -100,8 +101,8 @@ class Engine final {
   std::vector<AttrInfo> GetTableAttributesInfo(const std::string &table_path, TABLE_SHARE *table_share);
   void UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                    CHARSET_INFO *cs);
-  void GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin,
-                        TianmuTable::Iterator &iter_end, std::shared_ptr<TianmuTable> &table, const std::vector<bool> &,
+  void GetTableIterator(const std::string &table_path, CombinedIterator& iterator,
+                        std::shared_ptr<TianmuTable> &table, const std::vector<bool> &,
                         THD *thd);
   common::TianmuError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
   void CommitTx(THD *thd, bool all);
@@ -162,6 +163,7 @@ class Engine final {
   static int Convert(int &is_null, int64_t &value, types::TianmuDataType &rcitem, enum_field_types f_type);
   static int Convert(int &is_null, double &value, types::TianmuDataType &rcitem);
   static int Convert(int &is_null, String *value, types::TianmuDataType &rcitem, enum_field_types f_type);
+  static void DecodeInsertRecord(const char *ptr, size_t size, Field **fields);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,

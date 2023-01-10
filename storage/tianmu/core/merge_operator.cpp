@@ -3,7 +3,7 @@
 //
 
 #include "merge_operator.h"
-#include "delta_store.h"
+#include "delta_table.h"
 #include "util/bitset.h"
 #include "util/mapped_circular_buffer.h"
 

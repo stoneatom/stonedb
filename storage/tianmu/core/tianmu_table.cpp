@@ -137,6 +137,232 @@ static core::Value GetValueFromField(Field *f) {
   return v;
 }
 
+/// record parser utils
+
+class DelayedInsertParser final {
+ public:
+  DelayedInsertParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs, std::vector<std::unique_ptr<char[]>> *vec,
+                      uint packsize, std::shared_ptr<index::TianmuTableIndex> index, core::Transaction *tx)
+      : pack_size(packsize), attrs(attrs), vec(vec), index_table(index), tx(tx) {}
+
+  uint GetRows(uint no_of_rows, std::vector<loader::ValueCache> &value_buffers) {
+    int64_t start_row = attrs[0]->NumOfObj();
+
+    value_buffers.reserve(attrs.size());
+    for (size_t i = 0; i < attrs.size(); i++) {
+      value_buffers.emplace_back(pack_size, pack_size * 128);
+    }
+
+    uint no_of_rows_returned;
+    for (no_of_rows_returned = 0; no_of_rows_returned < no_of_rows; no_of_rows_returned++) {
+      if (processed == vec->size()) {
+        // no more to parse
+        return no_of_rows_returned;
+      }
+      // value_layout:
+      //     (Insert)TypeFlag
+      //     table_id
+      //     table_path
+      //     fields_size
+      //     fields_count
+      //     null_mask
+      //     field_head
+      //     fields...
+      auto ptr = (*vec)[processed].get();
+      ptr += sizeof(RecordType);
+      ptr += sizeof(int32_t);
+      std::string path(ptr);
+      ptr += path.length() + 1;
+      size_t field_count = *(size_t *)ptr;
+      ptr += sizeof(size_t);
+      utils::BitSet null_mask(attrs.size(), ptr);
+      ptr += null_mask.data_size();
+      int64_t *field_head = (int64_t *)ptr;
+      ptr += sizeof(int64_t) * field_count;
+      for (uint i = 0; i < attrs.size(); i++) {
+        auto &vc = value_buffers[i];
+        if (null_mask[i]) {
+          vc.ExpectedNull(true);
+          continue;
+        }
+        auto &attr(attrs[i]);
+        switch (attr->GetPackType()) {
+          case common::PackType::STR: {
+            uint32_t len = *(uint32_t *)ptr;
+            ptr += sizeof(uint32_t);
+            auto buf = vc.Prepare(len);
+            if (buf == nullptr) {
+              throw std::bad_alloc();
+            }
+            std::memcpy(buf, ptr, len);
+            vc.ExpectedSize(len);
+            ptr += len;
+          } break;
+          case common::PackType::INT: {
+            if (attr->Type().IsLookup()) {
+              uint32_t len = *(uint32_t *)ptr;
+              ptr += sizeof(uint32_t);
+              types::BString s(len == 0 ? "" : ptr, len);
+              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
+              *buf = attr->EncodeValue_T(s, true);
+              vc.ExpectedSize(sizeof(int64_t));
+              ptr += len;
+            } else {
+              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
+              *buf = *(int64_t *)ptr;
+
+              if (attr->GetIfAutoInc()) {
+                if (*buf == 0)  // Value of auto inc column was not assigned by user
+                  *buf = attr->AutoIncNext();
+                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
+                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) && attr->GetIfUnsigned()))
+                    attr->SetAutoInc(*buf);
+                }
+              }
+              vc.ExpectedSize(sizeof(int64_t));
+              ptr += sizeof(int64_t);
+            }
+          } break;
+          default:
+            break;
+        }
+      }
+      for (auto &vc : value_buffers) {
+        vc.Commit();
+      }
+
+      processed++;
+      // insert index into kvstore
+      if (InsertIndex(value_buffers, start_row) != common::ErrorCode::SUCCESS) {
+        for (auto &vc : value_buffers) {
+          vc.Rollback();
+        }
+      }
+    }
+    return no_of_rows_returned;
+  }
+
+  common::ErrorCode InsertIndex(std::vector<loader::ValueCache> &vcs, int64_t start_row) {
+    if (!index_table)
+      return common::ErrorCode::SUCCESS;
+
+    size_t row_idx = vcs[0].NumOfValues() - 1;
+    std::vector<uint> cols = index_table->KeyCols();
+    std::vector<std::string> index_fields;
+    for (auto &col : cols) {
+      index_fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
+    }
+
+    if (index_table->InsertIndex(tx, index_fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "Delay insert discard this row for duplicate key");
+      return common::ErrorCode::DUPP_KEY;
+    }
+    return common::ErrorCode::SUCCESS;
+  }
+
+ private:
+  uint processed = 0;
+  uint pack_size;
+  std::vector<std::unique_ptr<TianmuAttr>> &attrs;
+  std::vector<std::unique_ptr<char[]>> *vec;
+  std::shared_ptr<index::TianmuTableIndex> index_table;
+  core::Transaction *tx;
+};
+
+class DelayedUpdateParser final {
+ public:
+  DelayedUpdateParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs,
+                      std::map<uint64_t, std::unique_ptr<char[]>> *update_rows,
+                      std::shared_ptr<index::TianmuTableIndex> index)
+      : attrs(attrs), update_rows(update_rows), index_table(std::move(index)) {}
+
+  uint GetRows(std::vector<std::unordered_map<uint64_t, Value>> &update_cols_buf) {
+    update_cols_buf.reserve(attrs.size());
+    for (int i = 0; i < attrs.size(); i++) {
+      update_cols_buf.emplace_back(std::unordered_map<uint64_t, Value>());
+    }
+    uint update_row_num = update_rows->size();
+    for (auto &[row_id, row] : *update_rows) {
+      // value_layout:
+      //     (Update)TypeFlag
+      //     table_id
+      //     table_path
+      //     fields_count
+      //     update_mask
+      //     null_mask
+      //     field_head
+      //     update_fields...
+      auto row_ptr = row.get();
+      row_ptr += sizeof(RecordType);
+      row_ptr += sizeof(int32_t);
+      std::string path(row_ptr);
+      row_ptr += path.length() + 1;
+      size_t field_count = *(size_t *)row_ptr;
+      row_ptr += sizeof(size_t);
+      utils::BitSet update_mask(attrs.size(), row_ptr);
+      row_ptr += update_mask.data_size();
+      utils::BitSet null_mask(attrs.size(), row_ptr);
+      row_ptr += null_mask.data_size();
+      int64_t *field_head = (int64_t *)row_ptr;
+      row_ptr += sizeof(int64_t) * field_count;
+      for (uint col_id = 0; col_id < attrs.size(); col_id++) {
+        if (!update_mask[col_id]) {
+          continue;
+        }
+        core::Value val;
+        if (null_mask[col_id]) {
+          update_cols_buf[col_id].emplace(row_id, val);
+          continue;
+        }
+        auto &update_row = update_rows[col_id];
+        auto &attr(attrs[col_id]);
+        switch (attr->GetPackType()) {
+          case common::PackType::STR: {
+            uint32_t len = *(uint32_t *)row_ptr;
+            row_ptr += sizeof(uint32_t);
+            val.SetString(row_ptr, len);
+            update_cols_buf[col_id].emplace(row_id, val);
+            row_ptr += len;
+          } break;
+          case common::PackType::INT: {
+            if (attr->Type().IsLookup()) {
+              uint32_t len = *(uint32_t *)row_ptr;
+              row_ptr += sizeof(uint32_t);
+              types::BString s(len == 0 ? "" : row_ptr, len);
+              int64_t int_val = attr->EncodeValue_T(s, true);
+              row_ptr += len;
+            } else {
+              int64_t int_val = *(int64_t *)row_ptr;
+              if (attr->GetIfAutoInc()) {
+                if (int_val == 0)  // Value of auto inc column was not assigned by user
+                  int_val = attr->AutoIncNext();
+                if (static_cast<uint64_t>(int_val) > attr->GetAutoInc())
+                  attr->SetAutoInc(int_val);
+              }
+              val.SetInt(int_val);
+              update_cols_buf[col_id].emplace(row_id, val);
+              row_ptr += sizeof(int64_t);
+            }
+          } break;
+          default:
+            break;
+        }
+      }
+    }
+    return update_row_num;
+  }
+
+  // todo(dfx): update need update primary key;
+  //  common::ErrorCode UpdateIndex();
+
+ private:
+  std::vector<std::unique_ptr<TianmuAttr>> &attrs;
+  std::map<uint64_t, std::unique_ptr<char[]>> *update_rows;
+  std::shared_ptr<index::TianmuTableIndex> index_table;
+};
+
+/// TianmuTable
+
 uint32_t TianmuTable::GetTableId(const fs::path &dir) {
   TABLE_META meta;
   system::TianmuFile f;
@@ -526,98 +752,11 @@ void TianmuTable::DisplayRSI() {
   TIANMU_LOG(LogCtl_Level::DEBUG, "%s", ss.str().c_str());
 }
 
-TianmuTable::Iterator::Iterator(TianmuTable &table, std::shared_ptr<Filter> filter)
-    : table(&table), filter(filter), it(filter.get(), table.Getpackpower()) {}
+int64_t TianmuTable::NumOfObj() const { return m_attrs[0]->NumOfObj(); }
 
-void TianmuTable::Iterator::Initialize(const std::vector<bool> &attrs_) {
-  int attr_id = 0;
-  attrs.clear();
-  record.clear();
-  values_fetchers.clear();
+int64_t TianmuTable::NumOfDeleted() const { return m_attrs[0]->NumOfDeleted(); }
 
-  for (auto const iter : attrs_) {
-    if (iter) {
-      TianmuAttr *attr = table->GetAttr(attr_id);
-      attrs.push_back(attr);
-      record.emplace_back(attr->ValuePrototype(false).Clone());
-      values_fetchers.push_back(
-          std::bind(&TianmuAttr::GetValueData, attr, std::placeholders::_1, std::ref(*record[attr_id]), false));
-    } else {
-      record.emplace_back(table->GetAttr(attr_id)->ValuePrototype(false).Clone());
-    }
-    attr_id++;
-  }
-}
-
-bool TianmuTable::Iterator::operator==(const Iterator &iter) { return position == iter.position; }
-
-void TianmuTable::Iterator::operator++(int) {
-  ++it;
-  int64_t new_pos;
-  if (it.IsValid())
-    new_pos = *it;
-  else
-    new_pos = -1;
-  UnlockPacks(new_pos);
-  position = new_pos;
-  current_record_fetched = false;
-}
-
-void TianmuTable::Iterator::MoveToRow(int64_t row_id) {
-  UnlockPacks(row_id);
-  it.RewindToRow(row_id);
-  if (it.IsValid())
-    position = row_id;
-  else
-    position = -1;
-  current_record_fetched = false;
-}
-
-void TianmuTable::Iterator::FetchValues() {
-  if (!current_record_fetched) {
-    LockPacks();
-    for (auto &func : values_fetchers) {
-      func(position);
-    }
-    current_record_fetched = true;
-  }
-}
-
-void TianmuTable::Iterator::UnlockPacks(int64_t new_row_id) {
-  if (position != -1) {
-    uint32_t power = table->Getpackpower();
-    if (new_row_id == -1 || (position >> power) != (new_row_id >> power))
-      dp_locks.clear();
-  }
-}
-
-void TianmuTable::Iterator::LockPacks() {
-  if (dp_locks.empty() && position != -1) {
-    uint32_t power = table->Getpackpower();
-    for (auto &a : attrs) dp_locks.emplace_back(std::make_unique<DataPackLock>(a, int(position >> power)));
-  }
-}
-
-TianmuTable::Iterator TianmuTable::Iterator::CreateBegin(TianmuTable &table, std::shared_ptr<Filter> filter,
-                                                         const std::vector<bool> &attrs) {
-  TianmuTable::Iterator ret(table, filter);
-  ret.Initialize(attrs);
-  ret.it.Rewind();
-  if (ret.it.IsValid())
-    ret.position = *(ret.it);
-  else
-    ret.position = -1;
-  ret.conn = current_txn_;
-  return ret;
-}
-
-TianmuTable::Iterator TianmuTable::Iterator::CreateEnd() { return TianmuTable::Iterator(); }
-
-int64_t TianmuTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
-
-int64_t TianmuTable::NumOfDeleted() { return m_attrs[0]->NumOfDeleted(); }
-
-int64_t TianmuTable::NumOfValues() { return NumOfObj(); }
+int64_t TianmuTable::NumOfValues() const { return NumOfObj(); }
 
 uint64_t TianmuTable::NextRowId() { return m_delta->next_row_id++; }
 
@@ -1273,228 +1412,6 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
   return 0;
 }
 
-class DelayedInsertParser final {
- public:
-  DelayedInsertParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs, std::vector<std::unique_ptr<char[]>> *vec,
-                      uint packsize, std::shared_ptr<index::TianmuTableIndex> index, core::Transaction *tx)
-      : pack_size(packsize), attrs(attrs), vec(vec), index_table(index), tx(tx) {}
-
-  uint GetRows(uint no_of_rows, std::vector<loader::ValueCache> &value_buffers) {
-    int64_t start_row = attrs[0]->NumOfObj();
-
-    value_buffers.reserve(attrs.size());
-    for (size_t i = 0; i < attrs.size(); i++) {
-      value_buffers.emplace_back(pack_size, pack_size * 128);
-    }
-
-    uint no_of_rows_returned;
-    for (no_of_rows_returned = 0; no_of_rows_returned < no_of_rows; no_of_rows_returned++) {
-      if (processed == vec->size()) {
-        // no more to parse
-        return no_of_rows_returned;
-      }
-      // value_layout:
-      //     (Insert)TypeFlag
-      //     table_id
-      //     table_path
-      //     fields_size
-      //     fields_count
-      //     null_mask
-      //     field_head
-      //     fields...
-      auto ptr = (*vec)[processed].get();
-      ptr += sizeof(RecordType);
-      ptr += sizeof(int32_t);
-      std::string path(ptr);
-      ptr += path.length() + 1;
-      size_t field_count = *(size_t *)ptr;
-      ptr += sizeof(size_t);
-      utils::BitSet null_mask(attrs.size(), ptr);
-      ptr += null_mask.data_size();
-      int64_t *field_head = (int64_t *)ptr;
-      ptr += sizeof(int64_t) * field_count;
-      for (uint i = 0; i < attrs.size(); i++) {
-        auto &vc = value_buffers[i];
-        if (null_mask[i]) {
-          vc.ExpectedNull(true);
-          continue;
-        }
-        auto &attr(attrs[i]);
-        switch (attr->GetPackType()) {
-          case common::PackType::STR: {
-            uint32_t len = *(uint32_t *)ptr;
-            ptr += sizeof(uint32_t);
-            auto buf = vc.Prepare(len);
-            if (buf == nullptr) {
-              throw std::bad_alloc();
-            }
-            std::memcpy(buf, ptr, len);
-            vc.ExpectedSize(len);
-            ptr += len;
-          } break;
-          case common::PackType::INT: {
-            if (attr->Type().IsLookup()) {
-              uint32_t len = *(uint32_t *)ptr;
-              ptr += sizeof(uint32_t);
-              types::BString s(len == 0 ? "" : ptr, len);
-              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
-              *buf = attr->EncodeValue_T(s, true);
-              vc.ExpectedSize(sizeof(int64_t));
-              ptr += len;
-            } else {
-              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
-              *buf = *(int64_t *)ptr;
-
-              if (attr->GetIfAutoInc()) {
-                if (*buf == 0)  // Value of auto inc column was not assigned by user
-                  *buf = attr->AutoIncNext();
-                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
-                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) && attr->GetIfUnsigned()))
-                    attr->SetAutoInc(*buf);
-                }
-              }
-              vc.ExpectedSize(sizeof(int64_t));
-              ptr += sizeof(int64_t);
-            }
-          } break;
-          default:
-            break;
-        }
-      }
-      for (auto &vc : value_buffers) {
-        vc.Commit();
-      }
-
-      processed++;
-      // insert index into kvstore
-      if (InsertIndex(value_buffers, start_row) != common::ErrorCode::SUCCESS) {
-        for (auto &vc : value_buffers) {
-          vc.Rollback();
-        }
-      }
-    }
-    return no_of_rows_returned;
-  }
-
-  common::ErrorCode InsertIndex(std::vector<loader::ValueCache> &vcs, int64_t start_row) {
-    if (!index_table)
-      return common::ErrorCode::SUCCESS;
-
-    size_t row_idx = vcs[0].NumOfValues() - 1;
-    std::vector<uint> cols = index_table->KeyCols();
-    std::vector<std::string> index_fields;
-    for (auto &col : cols) {
-      index_fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
-    }
-
-    if (index_table->InsertIndex(tx, index_fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
-      TIANMU_LOG(LogCtl_Level::DEBUG, "Delay insert discard this row for duplicate key");
-      return common::ErrorCode::DUPP_KEY;
-    }
-    return common::ErrorCode::SUCCESS;
-  }
-
- private:
-  uint processed = 0;
-  uint pack_size;
-  std::vector<std::unique_ptr<TianmuAttr>> &attrs;
-  std::vector<std::unique_ptr<char[]>> *vec;
-  std::shared_ptr<index::TianmuTableIndex> index_table;
-  core::Transaction *tx;
-};
-
-class DelayedUpdateParser final {
- public:
-  DelayedUpdateParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs,
-                      std::map<uint64_t, std::unique_ptr<char[]>> *update_rows,
-                      std::shared_ptr<index::TianmuTableIndex> index)
-      : attrs(attrs), update_rows(update_rows), index_table(std::move(index)) {}
-
-  uint GetRows(std::vector<std::unordered_map<uint64_t, Value>> &update_cols_buf) {
-    update_cols_buf.reserve(attrs.size());
-    for (int i = 0; i < attrs.size(); i++) {
-      update_cols_buf.emplace_back(std::unordered_map<uint64_t, Value>());
-    }
-    uint update_row_num = update_rows->size();
-    for (auto &[row_id, row] : *update_rows) {
-      // value_layout:
-      //     (Update)TypeFlag
-      //     table_id
-      //     table_path
-      //     fields_count
-      //     update_mask
-      //     null_mask
-      //     field_head
-      //     update_fields...
-      auto row_ptr = row.get();
-      row_ptr += sizeof(RecordType);
-      row_ptr += sizeof(int32_t);
-      std::string path(row_ptr);
-      row_ptr += path.length() + 1;
-      size_t field_count = *(size_t *)row_ptr;
-      row_ptr += sizeof(size_t);
-      utils::BitSet update_mask(attrs.size(), row_ptr);
-      row_ptr += update_mask.data_size();
-      utils::BitSet null_mask(attrs.size(), row_ptr);
-      row_ptr += null_mask.data_size();
-      int64_t *field_head = (int64_t *)row_ptr;
-      row_ptr += sizeof(int64_t) * field_count;
-      for (uint col_id = 0; col_id < attrs.size(); col_id++) {
-        if (!update_mask[col_id]) {
-          continue;
-        }
-        core::Value val;
-        if (null_mask[col_id]) {
-          update_cols_buf[col_id].emplace(row_id, val);
-          continue;
-        }
-        auto &update_row = update_rows[col_id];
-        auto &attr(attrs[col_id]);
-        switch (attr->GetPackType()) {
-          case common::PackType::STR: {
-            uint32_t len = *(uint32_t *)row_ptr;
-            row_ptr += sizeof(uint32_t);
-            val.SetString(row_ptr, len);
-            update_cols_buf[col_id].emplace(row_id, val);
-            row_ptr += len;
-          } break;
-          case common::PackType::INT: {
-            if (attr->Type().IsLookup()) {
-              uint32_t len = *(uint32_t *)row_ptr;
-              row_ptr += sizeof(uint32_t);
-              types::BString s(len == 0 ? "" : row_ptr, len);
-              int64_t int_val = attr->EncodeValue_T(s, true);
-              row_ptr += len;
-            } else {
-              int64_t int_val = *(int64_t *)row_ptr;
-              if (attr->GetIfAutoInc()) {
-                if (int_val == 0)  // Value of auto inc column was not assigned by user
-                  int_val = attr->AutoIncNext();
-                if (static_cast<uint64_t>(int_val) > attr->GetAutoInc())
-                  attr->SetAutoInc(int_val);
-              }
-              val.SetInt(int_val);
-              update_cols_buf[col_id].emplace(row_id, val);
-              row_ptr += sizeof(int64_t);
-            }
-          } break;
-          default:
-            break;
-        }
-      }
-    }
-    return update_row_num;
-  }
-
-  // todo(dfx): update need update primary key;
-  //  common::ErrorCode UpdateIndex();
-
- private:
-  std::vector<std::unique_ptr<TianmuAttr>> &attrs;
-  std::map<uint64_t, std::unique_ptr<char[]>> *update_rows;
-  std::shared_ptr<index::TianmuTableIndex> index_table;
-};
-
 uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
   std::string str(basename(const_cast<char *>(iop.Path())));
   auto vec = reinterpret_cast<std::vector<std::unique_ptr<char[]>> *>(std::stol(str));
@@ -1696,6 +1613,101 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
 }
 int TianmuTable::AsyncParseDeleteRecords() {
   // todo(dfx):
+}
+
+/// TianmuIterator
+
+TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter &raw_filter)
+    : table(table), filter(std::make_shared<Filter>(raw_filter)), it(filter.get(), table->Getpackpower()) {
+  Initialize(attrs);
+  it.Rewind();
+  if (it.IsValid())
+    position = *(it);
+  else
+    position = -1;
+  conn = current_txn_;
+}
+
+TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs)
+    : table(table),
+      filter(std::make_shared<Filter>(table->NumOfObj(), table->Getpackpower(), true)),
+      it(filter.get(), table->Getpackpower()) {
+  Initialize(attrs);
+  it.Rewind();
+  if (it.IsValid())
+    position = *(it);
+  else
+    position = -1;
+  conn = current_txn_;
+}
+
+void TianmuIterator::Initialize(const std::vector<bool> &attrs_) {
+  int attr_id = 0;
+  attrs.clear();
+  record.clear();
+  values_fetchers.clear();
+
+  for (auto const iter : attrs_) {
+    if (iter) {
+      TianmuAttr *attr = table->GetAttr(attr_id);
+      attrs.push_back(attr);
+      record.emplace_back(attr->ValuePrototype(false).Clone());
+      values_fetchers.push_back(
+          std::bind(&TianmuAttr::GetValueData, attr, std::placeholders::_1, std::ref(*record[attr_id]), false));
+    } else {
+      record.emplace_back(table->GetAttr(attr_id)->ValuePrototype(false).Clone());
+    }
+    attr_id++;
+  }
+}
+
+bool TianmuIterator::operator==(const TianmuIterator &iter) { return position == iter.position; }
+
+void TianmuIterator::operator++(int) {
+  ++it;
+  int64_t new_pos;
+  if (it.IsValid())
+    new_pos = *it;
+  else
+    new_pos = -1;
+  UnlockPacks(new_pos);
+  position = new_pos;
+  current_record_fetched = false;
+}
+
+void TianmuIterator::MoveTo(int64_t row_id) {
+  UnlockPacks(row_id);
+  it.RewindToRow(row_id);
+  if (it.IsValid())
+    position = row_id;
+  else
+    position = -1;
+  current_record_fetched = false;
+}
+
+void TianmuIterator::FetchValues() {
+  if (!current_record_fetched) {
+    LockPacks();
+    for (auto &func : values_fetchers) {
+      func(position);
+    }
+    current_record_fetched = true;
+  }
+}
+
+void TianmuIterator::UnlockPacks(int64_t new_row_id) {
+  if (position != -1) {
+    uint32_t power = table->Getpackpower();
+    if (new_row_id == -1 || (position >> power) != (new_row_id >> power))
+      dp_locks.clear();
+  }
+}
+
+void TianmuIterator::LockPacks() {
+  if (dp_locks.empty() && position != -1) {
+    uint32_t power = table->Getpackpower();
+    for (auto &a : attrs) dp_locks.emplace_back(std::make_unique<DataPackLock>(a, int(position >> power)));
+  }
 }
 
 }  // namespace core
