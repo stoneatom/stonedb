@@ -96,7 +96,10 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   void Truncate();
   void DeleteData(uint64_t row);
   void DeleteByPrimaryKey(uint64_t row, uint64_t col);
+  void DeleteBatchData(core::Transaction *tx, const std::vector<uint64_t> &rows);
   bool IsDelete(int64_t row);
+
+  void ResetMaxMin(DPN &dpn);
 
   const types::TianmuDataType &ValuePrototype(bool lookup_to_num) const {
     if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName()))

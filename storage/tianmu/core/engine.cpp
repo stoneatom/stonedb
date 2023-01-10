@@ -907,6 +907,22 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
   buf_size = ptr - buf.get();
 }
 
+void Engine::EncodeDeleteRecord(const std::string &table_path, int table_id,std::unique_ptr<char[]> &buf, uint32_t &buf_size){
+  int32_t path_len = table_path.size();
+
+  buf_size = sizeof(RecordType) + sizeof(int32_t) + path_len;
+  buf.reset(new char[buf_size]);
+  char *ptr = buf.get();
+  // RecordType
+  *reinterpret_cast<RecordType *>(ptr) =  RecordType::kDelete;
+  ptr += sizeof(RecordType);
+  // table id
+  *reinterpret_cast<int32_t *>(ptr) = table_id;
+  ptr += sizeof(int32_t);
+  // table path
+  std::memcpy(ptr, table_path.c_str(), path_len);
+}
+
 std::unique_ptr<char[]> Engine::GetRecord(size_t &len) {
   auto rec = insert_buffer.Read();
   len = rec.second;
@@ -1843,6 +1859,15 @@ void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableS
   tm_table->UpdateToDelta(row_id, std::move(buf), buf_sz);
 }
 
+void Engine::DeleteToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, 
+                          TABLE *table, uint64_t row_id){
+  uint32_t buf_sz = 0;
+  std::unique_ptr<char[]> buf;
+  EncodeDeleteRecord(table_path, share->TabID(),buf, buf_sz);
+  auto tm_table = share->GetSnapshot();
+  tm_table->DeleteToDelta(row_id, std::move(buf), buf_sz);              
+}
+
 int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transaction *trans_, TABLE *table,
                       std::shared_ptr<TableShare> &share) {
   int ret = 0;
@@ -1879,19 +1904,25 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
 int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
                       const uchar *old_data, uchar *new_data) {
   int ret = 0;
-  if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
-    if (tianmu_sysvar_enable_rowstore) {
-      UpdateToDelta(table_path, share, table, row_id, old_data, new_data);
-    } else {
-      // todo(dfx): full mem version
-      // UpdateDelayed(table_path, share->TabID(), table);
-    }
+  if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
+    UpdateToDelta(table_path, share, table, row_id, old_data, new_data);
     tianmu_stat.delayinsert++;
   } else {
     auto tm_table = current_txn_->GetTableByPath(table_path);
     ret = tm_table->Update(table, row_id, old_data, new_data);
   }
+  return ret;
+}
 
+int Engine::DeleteRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id) {
+  int ret = 0;
+  if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
+    DeleteToDelta(table_path, share, table, row_id);
+    tianmu_stat.delayinsert++;
+  } else {
+    auto tm_table = current_txn_->GetTableByPath(table_path);
+    ret = tm_table->Delete(table, row_id);
+  }
   return ret;
 }
 

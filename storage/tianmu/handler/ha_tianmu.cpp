@@ -460,14 +460,7 @@ int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
                               [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
 
   try {
-    auto tab = current_txn_->GetTableByPath(table_name_);
-    utils::result_set<void> res;
-    for (uint i = 0; i < table->s->fields; i++) {
-      res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(&core::TianmuTable::DeleteItem, tab.get(),
-                                                                          current_position_, i, current_txn_));
-    }
-    res.get_all_with_except();
-
+    ha_tianmu_engine_->DeleteRow(table_name_, table, share_, current_position_);
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());

@@ -1020,6 +1020,17 @@ int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uc
     }
   }
   res.get_all_with_except();
+  return 0;
+}
+
+int TianmuTable::Delete(TABLE *table, uint64_t row_id){
+  utils::result_set<void> res;
+  for (uint i = 0; i < table->s->fields; i++) {
+    res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(&core::TianmuTable::DeleteItem, this,
+                                                                          row_id, i, current_txn_));
+  }
+  res.get_all_with_except();
+  return 0;
 }
 
 void TianmuTable::UpdateItem(uint64_t row, uint64_t col, Value v, core::Transaction *current_transaction) {
@@ -1458,10 +1469,12 @@ void TianmuTable::InsertToDelta(std::unique_ptr<char[]> buf, uint32_t size) {
 }
 
 void TianmuTable::UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
-  return m_delta->AddUpdateRecord(row_id, std::move(buf), size);
+  return m_delta->AddRecord(current_txn_, row_id, std::move(buf), size);
 }
 
-void TianmuTable::DeleteToDelta() {}
+void TianmuTable::DeleteToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
+  return m_delta->AddRecord(current_txn_, row_id, std::move(buf), size);
+}
 
 uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   ASSERT(m_tx, "Transaction not generated.");
@@ -1472,7 +1485,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   int insert_num = 0;
   std::map<uint64_t, std::unique_ptr<char[]>> update_records;
   int update_num = 0;
-  std::vector<std::unique_ptr<char[]>> delete_records;
+  std::vector<uint64_t> delete_records;
   int delete_num = 0;
   {
     uchar entry_key[32];
@@ -1491,7 +1504,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       auto value = iter->value();
       std::unique_ptr<char[]> buf(new char[value.size()]);
       std::memcpy(buf.get(), value.data(), value.size());
-      auto type = static_cast<RecordType>(buf[0]);
+      auto type = *reinterpret_cast<RecordType *>(buf.get());
       if (type == RecordType::kInsert) {
         insert_records.emplace_back(std::move(buf));
         m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
@@ -1505,7 +1518,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
         m_delta->stat.read_cnt++;
         m_delta->stat.read_bytes += value.size();
       } else if (type == RecordType::kDelete) {
-        delete_records.emplace_back(std::move(buf));
+        delete_records.emplace_back(row_id);
         m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
         m_delta->merge_id++;
         m_delta->stat.read_cnt++;
@@ -1520,7 +1533,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
         update_num += AsyncParseUpdateRecords(&iop, &update_records);
       }
       if (delete_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        //        delete_num += AsyncParseDeleteRecords(&iop, &delete_vec);
+        delete_num += AsyncParseDeleteRecords(delete_records);
       }
       iter->Next();
     }
@@ -1532,7 +1545,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
     update_num += AsyncParseUpdateRecords(&iop, &update_records);
   }
   if (!delete_records.empty()) {
-    //        delete_num += AsyncParseDeleteRecords(&iop, &delete_vec);
+    delete_num += AsyncParseDeleteRecords(delete_records);
   }
   if (t2.tv_sec - t1.tv_sec > 15) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
@@ -1599,7 +1612,7 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
             &TianmuAttr::UpdateBatchData, m_attrs[att].get(), current_txn_, update_cols_buf[att]));
       }
     }
-    res.get_all();
+    res.get_all_with_except();
   }
   clock_gettime(CLOCK_REALTIME, &t2);
 
@@ -1611,8 +1624,16 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
   }
   return returned_row_num;
 }
-int TianmuTable::AsyncParseDeleteRecords() {
-  // todo(dfx):
+int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) {
+  if(delete_records.size() > 0){
+    utils::result_set<void> res;
+    for (uint att = 0; att < m_attrs.size(); ++att) {
+      res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
+          &TianmuAttr::DeleteBatchData, m_attrs[att].get(), current_txn_, delete_records));
+    }
+    res.get_all_with_except();
+  }
+  return delete_records.size();
 }
 
 /// TianmuIterator

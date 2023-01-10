@@ -119,17 +119,20 @@ void DeltaTable::AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, u
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
 
-  kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
+  rocksdb::Status status = kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
+  if (!status.ok()) {
+    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size)+ " date:" + std::string(buf.get()));
+  }
   kv_trans.Commit();
   load_id++;
   stat.write_cnt++;
   stat.write_bytes += size;
 }
 
-void DeltaTable::AddUpdateRecord(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
+void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
   uchar key[32];
   size_t key_pos = 0;
-  index::KVTransaction kv_trans;
+  index::KVTransaction &kv_trans=tx->KVTrans();
   // table id
   index::be_store_index(key + key_pos, delta_tid_);
   key_pos += sizeof(uint32_t);
@@ -137,8 +140,10 @@ void DeltaTable::AddUpdateRecord(uint64_t row_id, std::unique_ptr<char[]> buf, u
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
 
-  kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
-  kv_trans.Commit();
+  rocksdb::Status status = kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
+  if (!status.ok()) {
+    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size)+ " date:" + std::string(buf.get()));
+  }
   load_id++;
   stat.write_cnt++;
   stat.write_bytes += size;
