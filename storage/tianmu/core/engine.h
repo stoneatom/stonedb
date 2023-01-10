@@ -32,6 +32,7 @@
 #include "core/table_share.h"
 #include "core/temp_table.h"
 #include "core/tianmu_table.h"
+#include "core/combined_iterator.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
 #include "index/tianmu_table_index.h"

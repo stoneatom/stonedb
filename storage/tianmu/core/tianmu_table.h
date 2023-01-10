@@ -20,7 +20,6 @@
 
 #include <string>
 
-#include "combined_iterator.h"
 #include "common/common_definitions.h"
 #include "core/delta_table.h"
 #include "core/just_a_table.h"
@@ -100,9 +99,9 @@ class TianmuTable final : public JustATable {
   void PostCommit();
 
   // Data access & information
-  int64_t NumOfDeleted();
-  int64_t NumOfValues();
-  int64_t NumOfObj() override;
+  int64_t NumOfDeleted() const;
+  int64_t NumOfValues() const;
+  int64_t NumOfObj() const override;
   uint64_t NextRowId();
 
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
@@ -170,16 +169,6 @@ class TianmuTable final : public JustATable {
   size_t no_rejected_rows = 0;
   uint64_t no_loaded_rows = 0;
   uint64_t no_dup_rows = 0;
-
-// public:
-//  CombinedIterator Begin(const std::vector<bool> &attrs, const Filter &filter) {
-//    auto filter_sp = std::make_shared<Filter>(filter);
-//    return CombinedIterator::Create(*this, attrs, std::move(filter_sp));
-//  }
-//  CombinedIterator Begin(const std::vector<bool> &attrs) {
-//    auto filter_sp = std::make_shared<Filter>(NumOfObj(), Getpackpower(), true);  // create empty filter
-//    return CombinedIterator::Create(*this, attrs, std::move(filter_sp));
-//  }
 };
 
 class TianmuIterator {
@@ -187,7 +176,35 @@ class TianmuIterator {
 
  public:
   TianmuIterator() = default;
-  TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter& filter);
+  ~TianmuIterator() = default;
+  TianmuIterator(const TianmuIterator &) = delete;
+  TianmuIterator &operator=(const TianmuIterator &) = delete;
+  TianmuIterator(TianmuIterator &&other) noexcept {
+    table = other.table;
+    position = other.position;
+    conn = other.conn;
+    current_record_fetched = other.current_record_fetched;
+    filter = std::move(other.filter);
+    it = std::move(other.it);
+    record = std::move(other.record);
+    values_fetchers = std::move(other.values_fetchers);
+    dp_locks = std::move(other.dp_locks);
+    attrs = std::move(other.attrs);
+  }
+  TianmuIterator &operator=(TianmuIterator &&other) noexcept {
+    table = other.table;
+    position = other.position;
+    conn = other.conn;
+    current_record_fetched = other.current_record_fetched;
+    filter = std::move(other.filter);
+    it = std::move(other.it);
+    record = std::move(other.record);
+    values_fetchers = std::move(other.values_fetchers);
+    dp_locks = std::move(other.dp_locks);
+    attrs = std::move(other.attrs);
+    return *this;
+  };
+  TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter &filter);
   TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs);
   bool operator==(const TianmuIterator &iter);
   bool operator!=(const TianmuIterator &iter) { return !(*this == iter); }
@@ -198,7 +215,7 @@ class TianmuIterator {
     FetchValues();
     return record[col];
   }
-  void MoveToRow(int64_t row_id);
+  void MoveTo(int64_t row_id);
   int64_t Position() const { return position; }
   bool Valid() { return position != -1; }
 
@@ -210,7 +227,7 @@ class TianmuIterator {
 
   TianmuTable *table = nullptr;
   int64_t position = -1;
-  Transaction *conn = nullptr;
+  const Transaction *conn = nullptr;
   bool current_record_fetched = false;
   std::shared_ptr<Filter> filter;
   FilterOnesIterator it;

@@ -17,8 +17,21 @@ class CombinedIterator {
  public:
   CombinedIterator() = default;
   ~CombinedIterator() = default;
-  CombinedIterator(DeltaIterator delta, TianmuIterator base)
+  CombinedIterator(const CombinedIterator &) = delete;
+  CombinedIterator &operator=(const CombinedIterator &) = delete;
+  CombinedIterator(DeltaIterator delta, Tianmu::core::TianmuIterator base)
       : is_delta_(false), delta_iter_(std::move(delta)), base_iter_(std::move(base)){};
+  CombinedIterator(CombinedIterator &&other) {
+    is_delta_ = other.is_delta_;
+    delta_iter_ = std::move(other.delta_iter_);
+    base_iter_ = std::move(other.base_iter_);
+  }
+  CombinedIterator &operator=(CombinedIterator &&other) {
+    is_delta_ = other.is_delta_;
+    delta_iter_ = std::move(other.delta_iter_);
+    base_iter_ = std::move(other.base_iter_);
+    return *this;
+  }
 
   void Inited();
 
@@ -47,10 +60,10 @@ class CombinedIterator {
     std::lock_guard<std::mutex> guard(lock_);
     int64_t delta_start_pos = delta_iter_.StartPosition();
     if (row_id >= delta_start_pos) {  // delta
-      delta_iter_.MoveToRow(row_id);
+      delta_iter_.MoveTo(row_id);
       is_delta_ = true;
     } else {  // base
-      base_iter_.MoveToRow(row_id);
+      base_iter_.MoveTo(row_id);
       is_delta_ = false;
     }
   }
@@ -62,18 +75,18 @@ class CombinedIterator {
   std::mutex lock_;
   bool is_delta_ = true;
   DeltaIterator delta_iter_;
-  TianmuIterator base_iter_;
+  Tianmu::core::TianmuIterator base_iter_;
 
  public:
   static CombinedIterator Create(TianmuTable *table, const std::vector<bool> &attrs, const Filter &filter) {
-    DeltaIterator delta_iter(table->GetDelta(), attrs);
-    TianmuIterator base_iter(table, attrs, filter);
-    CombinedIterator ret(std::move(delta_iter), std::move(base_iter));
+    DeltaIterator delta_iter(table->GetDelta().get(), attrs);
+    Tianmu::core::TianmuIterator base_iter(table, attrs, filter);
+    return {std::move(delta_iter), std::move(base_iter)};
   }
   static CombinedIterator Create(TianmuTable *table, const std::vector<bool> &attrs) {
-    DeltaIterator delta_iter(table->GetDelta(), attrs);
-    TianmuIterator base_iter(table, attrs);
-    CombinedIterator ret(std::move(delta_iter), std::move(base_iter));
+    DeltaIterator delta_iter(table->GetDelta().get(), attrs);
+    Tianmu::core::TianmuIterator base_iter(table, attrs);
+    return {std::move(delta_iter), std::move(base_iter)};
   }
 };
 }  // namespace Tianmu::core

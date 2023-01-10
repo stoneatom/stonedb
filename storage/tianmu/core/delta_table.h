@@ -35,8 +35,6 @@ class Transaction;
 
 enum class RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, RecordType_max };
 
-class DeltaIterator;
-
 class DeltaTable {
  public:
   DeltaTable() = default;
@@ -78,19 +76,40 @@ class DeltaTable {
   //  DeltaIterator End() { return DeltaIterator::CreateEnd(); }
 };
 
-class DeltaIterator final {
+class DeltaIterator {
   friend class DeltaTable;
 
  public:
   DeltaIterator() = default;
   ~DeltaIterator() = default;
-  DeltaIterator(DeltaTable &table, const std::vector<bool> &attrs);
+  DeltaIterator(const DeltaIterator &) = delete;
+  DeltaIterator &operator=(const DeltaIterator &) = delete;
+  DeltaIterator(DeltaIterator &&other) noexcept {
+    table_ = other.table_;
+    position_ = other.position_;
+    start_position_ = other.start_position_;
+    current_record_fetched_ = other.current_record_fetched_;
+    it_ = std::move(other.it_);
+    record_ = std::move(other.record_);
+    attrs_ = std::move(other.attrs_);
+  };
+  DeltaIterator &operator=(DeltaIterator &&other) noexcept {
+    table_ = other.table_;
+    position_ = other.position_;
+    start_position_ = other.start_position_;
+    current_record_fetched_ = other.current_record_fetched_;
+    it_ = std::move(other.it_);
+    record_ = std::move(other.record_);
+    attrs_ = std::move(other.attrs_);
+    return *this;
+  }
+  DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs);
   bool operator==(const DeltaIterator &iter) {
     return table_->GetDeltaTableID() == iter.table_->GetDeltaTableID() && position_ == iter.position_;
   };
   bool operator!=(const DeltaIterator &iter) { return !(*this == iter); }
   void operator++(int) {
-    ++it_;
+    it_->Next();
     int64_t new_pos;
     if (it_->Valid()) {
       // new_pos = it->key(); parse the real row_id
@@ -110,7 +129,7 @@ class DeltaIterator final {
     current_record_fetched_ = true;
     return record_;
   }
-  void MoveToRow(int64_t row_id) {
+  void MoveTo(int64_t row_id) {
     // combined key{delta_id+row_id}
     // it = new iterator().seek(key)
     int64_t new_pos;
@@ -130,10 +149,10 @@ class DeltaIterator final {
  private:
   DeltaTable *table_ = nullptr;
   int64_t position_ = -1;
-  int64_t start_position_ = -1;     // this is dividing point between delta and base
+  int64_t start_position_ = -1;  // this is dividing point between delta and base
   //  Transaction *conn_ = nullptr;
   [[maybe_unused]] bool current_record_fetched_ = false;
-  rocksdb::Iterator *it_ = nullptr;
+  std::unique_ptr<rocksdb::Iterator> it_ = nullptr;
   std::string record_;
   std::vector<bool> attrs_;
 };

@@ -40,7 +40,7 @@ class JustATable : public std::enable_shared_from_this<JustATable> {
   }  // null pack number (interpreted properly)
   virtual void LockPackForUse(unsigned attr, unsigned pack_no) = 0;
   virtual void UnlockPackFromUse(unsigned attr, unsigned pack_no) = 0;
-  virtual int64_t NumOfObj() = 0;
+  virtual int64_t NumOfObj() const = 0;
   virtual uint NumOfAttrs() const = 0;
   virtual uint NumOfDisplaybleAttrs() const = 0;
   virtual TType TableType() const = 0;

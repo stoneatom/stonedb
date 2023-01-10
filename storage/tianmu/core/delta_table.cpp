@@ -170,10 +170,10 @@ void DeltaTable::Truncate(Transaction *tx) {
   return;
 }
 
-DeltaIterator::DeltaIterator(DeltaTable &table, const std::vector<bool> &attrs) : table_(&table), attrs_(attrs) {
+DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) : table_(table), attrs_(attrs) {
   auto snapshot = ha_kvstore_->GetRdbSnapshot();
   rocksdb::ReadOptions read_options(true, snapshot);
-  it_ = ha_kvstore_->GetRdb()->NewIterator(read_options, table_->GetCFHandle());
+  it_ = std::unique_ptr<rocksdb::Iterator>(ha_kvstore_->GetRdb()->NewIterator(read_options, table_->GetCFHandle()));
   it_->SeekToFirst();
   bool first_insert = false;
   while (it_->Valid()) {
@@ -183,7 +183,7 @@ DeltaIterator::DeltaIterator(DeltaTable &table, const std::vector<bool> &attrs) 
         start_position_ = index::be_to_uint64(reinterpret_cast<const uchar *>(it_->key().data()) + sizeof(uint32_t));
         first_insert = true;
       }
-      it_++;
+      it_->Next();
     } else {
       break;
     }
