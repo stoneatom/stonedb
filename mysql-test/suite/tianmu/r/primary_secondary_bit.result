@@ -1,0 +1,71 @@
+include/master-slave.inc
+[connection master]
+#
+# Multiple types
+# 
+# connection master
+CREATE TABLE `bit_test` (
+`bit1` bit(1) DEFAULT NULL,
+`bit2` bit(2) DEFAULT NULL,
+`bit8` bit(8) DEFAULT NULL,
+`bit16` bit(16) DEFAULT NULL,
+`bit32` bit(32) DEFAULT NULL,
+`bit63` bit(63) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+insert into bit_test values(b'1', b'11',b'111',b'1111',b'11',b'111');
+insert into bit_test values(null, b'11',b'111000',b'1111',b'11',null);
+insert into bit_test values(b'0', b'10',b'111',b'1111',b'11',b'0');
+insert into bit_test values(b'1', b'1',b'11111111',b'1111',b'11',b'111');
+insert into bit_test values(b'1', b'1',b'1',b'1111111111111111',b'11',b'111');
+insert into bit_test values(b'1', b'1',b'1',b'1', b'11111111111111111111111111111111',b'111');
+insert into bit_test values(b'1', b'1',b'1', b'1', b'1', b'11111111111111111111111111111111111111111111111111111111111111');
+insert into bit_test values(null, null, null, null, null, null);
+update bit_test set bit8=0x44  where bit8=0x38;
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+1	3	7	15	3	7
+NULL	3	68	15	3	NULL
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+# connection slave
+include/sync_slave_sql_with_master.inc
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+1	3	7	15	3	7
+NULL	3	68	15	3	NULL
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+# connection master
+delete from bit_test where bit8=0x44;
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+1	3	7	15	3	7
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+# connection slave
+include/sync_slave_sql_with_master.inc
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+1	3	7	15	3	7
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+# connection master
+drop table bit_test;
+include/sync_slave_sql_with_master.inc
+stop slave;

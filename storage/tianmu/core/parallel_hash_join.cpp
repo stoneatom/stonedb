@@ -873,8 +873,8 @@ int64_t ParallelHashJoiner::AsyncMatchDim(MatchTaskParams *params) {
 
       for (int index = 0; index < cond_hashed_; ++index) {
         if (column_bin_encoder[index].IsString()) {
-          if (!vc2_[index]->Type().IsLookup()) {  // lookup treated as string, when the
-                                                  // dictionaries aren't convertible
+          if (!vc2_[index]->Type().Lookup()) {  // lookup treated as string, when the
+                                                // dictionaries aren't convertible
             types::BString local_min = vc2_[index]->GetMinString(miter);
             types::BString local_max = vc2_[index]->GetMaxString(miter);
             if (!local_min.IsNull() && !local_max.IsNull() && ImpossibleValues(index, local_min, local_max)) {

@@ -45,6 +45,8 @@ class ValueParserForText {
         return std::bind<common::ErrorCode>(&ParseNumeric, std::placeholders::_1, std::placeholders::_2, at.Type());
       case common::ColumnType::BIGINT:
         return &ParseBigIntAdapter;
+      case common::ColumnType::BIT:
+        return &ParseBitAdapter;
       case common::ColumnType::DATE:
       case common::ColumnType::TIME:
       case common::ColumnType::YEAR:
@@ -61,6 +63,7 @@ class ValueParserForText {
 
   static common::ErrorCode ParseNumeric(BString const &tianmu_s, int64_t &out, common::ColumnType at);
   static common::ErrorCode ParseBigIntAdapter(const BString &tianmu_s, int64_t &out);
+  static common::ErrorCode ParseBitAdapter(const BString &tianmu_s, int64_t &out);
   static common::ErrorCode ParseDecimal(BString const &tianmu_s, int64_t &out, short precision, short scale);
   static common::ErrorCode ParseDateTimeAdapter(BString const &tianmu_s, int64_t &out, common::ColumnType at);
 

@@ -359,7 +359,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
       vcolumn::VirtualColumn *vc;
       vc = order_by[0].vc;
       bool asc = (order_by[0].dir == 0);  // ascending sorting, if needed
-      if (!vc->Type().IsString() && !vc->Type().IsLookup() && vc->GetDim() == 0) {
+      if (!vc->Type().IsString() && !vc->Type().Lookup() && vc->GetDim() == 0) {
         std::vector<PackOrderer> po(1);
         po[0].Init(vc,
                    (asc ? PackOrderer::OrderType::kMaxAsc
@@ -492,7 +492,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                                               // min and max of possible packs
         case common::ColOperation::AVG:       // easy implementation of AVG: between
                                               // min and max
-          if (!vc->Type().IsString() && !vc->Type().IsLookup()) {
+          if (!vc->Type().IsString() && !vc->Type().Lookup()) {
             int64_t min_val = common::NULL_VALUE_64;
             int64_t max_val = common::NULL_VALUE_64;
             if (!nulls_only)
@@ -515,7 +515,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                                          // min(suspect)
           // Rough max of MIN: minimum of actual_min(relevant) and maximum of
           // max(suspect)
-          if (!vc->Type().IsString() && !vc->Type().IsLookup() && vc->GetDim() != -1) {
+          if (!vc->Type().IsString() && !vc->Type().Lookup() && vc->GetDim() != -1) {
             int dim = vc->GetDim();
             int64_t min_val = common::NULL_VALUE_64;
             int64_t max_val = common::NULL_VALUE_64;
@@ -659,7 +659,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         case common::ColOperation::SUM:
           // Rough min of SUM: positive only: sum of sums of relevant
           // Rough max of SUM: positive only: sum of sums of suspect
-          if ((!vc->Type().IsString() && !vc->Type().IsLookup() && vc->GetDim() != -1) || vc->IsConst()) {
+          if ((!vc->Type().IsString() && !vc->Type().Lookup() && vc->GetDim() != -1) || vc->IsConst()) {
             if (IsTempTableColumn(vc) || SubqueryInFrom()) {
               bool nonnegative = false;
               MIIterator mit(filter.mind_, vc->GetDim(), true);
@@ -711,7 +711,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         case common::ColOperation::STD_SAMP:
         case common::ColOperation::VAR_POP:
         case common::ColOperation::VAR_SAMP:
-          if (!vc->Type().IsString() && !vc->Type().IsLookup() && vc->GetDim() != -1) {
+          if (!vc->Type().IsString() && !vc->Type().Lookup() && vc->GetDim() != -1) {
             int64_t min_val = common::NULL_VALUE_64;
             int64_t max_val = common::NULL_VALUE_64;
             if (!nulls_only) {

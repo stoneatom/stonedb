@@ -107,12 +107,12 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
     my_encoder.reset(new ColumnBinEncoder::EncoderDate(vc, decodable, nulls_possible, descending));
   } else if (vct.GetTypeName() == common::ColumnType::YEAR) {
     my_encoder.reset(new ColumnBinEncoder::EncoderYear(vc, decodable, nulls_possible, descending));
-  } else if (!monotonic_encoding && vct.IsLookup() && _vc2 == nullptr &&
+  } else if (!monotonic_encoding && vct.Lookup() && _vc2 == nullptr &&
              !types::RequiresUTFConversions(vc->GetCollation())) {  // Lookup encoding: only non-UTF
     my_encoder.reset(new ColumnBinEncoder::EncoderLookup(vc, decodable, nulls_possible, descending));
     lookup_encoder = true;
-  } else if (!monotonic_encoding && vct.IsLookup() && _vc2 != nullptr &&
-             vct2.IsLookup()) {  // Lookup in joining - may be UTF
+  } else if (!monotonic_encoding && vct.Lookup() && _vc2 != nullptr &&
+             vct2.Lookup()) {  // Lookup in joining - may be UTF
     my_encoder.reset(new ColumnBinEncoder::EncoderLookup(vc, decodable, nulls_possible, descending));
     lookup_encoder = true;
   } else if (vct.IsString() || vct2.IsString()) {
@@ -298,11 +298,8 @@ bool ColumnBinEncoder::EncoderInt::SecondColumn(vcolumn::VirtualColumn *vc) {
         << "Nontrivial comparison: date/time with non-date/time" << system::unlock;
     return false;
   }
-  bool is_timestamp1 = (this->vc_type.GetTypeName() == common::ColumnType::TIMESTAMP);
-  bool is_timestamp2 = (vc->Type().GetTypeName() == common::ColumnType::TIMESTAMP);
-  if (is_timestamp1 ^ is_timestamp2)
-    return false;  // cannot compare timestamp with anything different than
-                   // timestamp
+  if ((this->vc_type.IsDateTime()) ^ (vc->Type().IsDateTime()))  // support datetime/timestamp
+    return false;                                                // union timestamp/datetime
   // Easy case: integers/decimals with the same precision
   int64_t new_min_val = vc->RoughMin();
   int64_t max_val = max_code + min_val - (null_status == 1 ? 1 : 0);
@@ -569,10 +566,10 @@ ColumnBinEncoder::EncoderDate::EncoderDate(vcolumn::VirtualColumn *vc, bool deco
 }
 
 bool ColumnBinEncoder::EncoderDate::SecondColumn(vcolumn::VirtualColumn *vc) {
-  // Possible conversions: only dates.
-  if (vc->Type().GetTypeName() != common::ColumnType::DATE) {
+  // Possible conversions: support datetime/timestamp/date.
+  if (!vc->Type().IsDateTime()) {
     tianmu_control_.lock(vc->ConnInfo()->GetThreadID())
-        << "Nontrivial comparison: date with non-date" << system::unlock;
+        << "Nontrivial comparison: date with non-datetime." << system::unlock;
     return false;
   }
   int64_t new_min_val = types::DT::DateSortEncoding(vc->RoughMin());

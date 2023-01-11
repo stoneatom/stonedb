@@ -397,6 +397,24 @@ show create table t1;
 
 --echo # error of support type
 --error 6
-create table t_unsupport_type (a2 bit DEFAULT NULL);
---error 6
 create table t_unsupport_type (a2 json DEFAULT NULL);
+
+# test new type bit
+drop table if exists bittypes;
+create table bittypes (
+ id int not null primary key,
+
+ bit1 bit(1),
+ bit2 bit(2),
+ bit4 bit(4),
+ bit8 bit(8),
+ bit16 bit(16),
+ bit32 bit(32),
+ bit63 bit(63)
+
+) ENGINE=tianmu DEFAULT CHARSET=utf8mb4;
+show create table bittypes;
+drop table bittypes;
+
+--error 6
+create table tc(a bit(64)) engine=tianmu;

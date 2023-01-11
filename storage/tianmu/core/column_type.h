@@ -28,8 +28,8 @@ struct DataType;
 struct ColumnType {
   enum class enumCT {
     NOT_NULL = 0,
-    AUTO_INC = 1,
-    BLOOM_FILTER = 2,
+    AUTO_INC,
+    BLOOM_FILTER,
   };
 
  public:
@@ -95,7 +95,7 @@ struct ColumnType {
   // materialization of Attr
   void OverrideInternalSize(uint size) { internal_size = size; };
   int GetDisplaySize() const { return display_size; }
-  bool IsLookup() const { return fmt == common::PackFmt::LOOKUP; }
+  bool Lookup() const { return fmt == common::PackFmt::LOOKUP; }
   ColumnType RemovedLookup() const;
 
   bool IsNumeric() const {
@@ -121,7 +121,7 @@ struct ColumnType {
   const DTCollation &GetCollation() const { return collation; }
   void SetCollation(DTCollation _collation) { collation = _collation; }
   bool IsNumComparable(const ColumnType &sec) const {
-    if (IsLookup() || sec.IsLookup() || IsString() || sec.IsString())
+    if (Lookup() || sec.Lookup() || IsString() || sec.IsString())
       return false;
     if (scale != sec.scale)
       return false;

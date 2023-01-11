@@ -41,16 +41,18 @@ class ATI {
   }
   static bool IsFixedNumericType(common::ColumnType attr_type) {
     return IsInteger32Type(attr_type) || attr_type == common::ColumnType::BIGINT ||
-           attr_type == common::ColumnType::NUM;
+           attr_type == common::ColumnType::NUM || attr_type == common::ColumnType::BIT;
   }
 
   static bool IsRealType(common::ColumnType attr_type) {
     return attr_type == common::ColumnType::FLOAT || attr_type == common::ColumnType::REAL;
   }
+
+  static bool IsBitType(common::ColumnType attr_type) { return attr_type == common::ColumnType::BIT; }
+
   static bool IsNumericType(common::ColumnType attr_type) {
-    return IsInteger32Type(attr_type) || attr_type == common::ColumnType::BIGINT ||
-           attr_type == common::ColumnType::NUM || attr_type == common::ColumnType::FLOAT ||
-           attr_type == common::ColumnType::REAL;
+    return IsIntegerType(attr_type) || attr_type == common::ColumnType::NUM || attr_type == common::ColumnType::FLOAT ||
+           attr_type == common::ColumnType::REAL || attr_type == common::ColumnType::BIT;
   }
 
   static bool IsBinType(common::ColumnType attr_type) {
@@ -85,15 +87,16 @@ class AttributeTypeInfo {
  public:
   enum class enumATI {
     NOT_NULL = 0,
-    AUTO_INC = 1,
-    BLOOM_FILTER = 2,
+    AUTO_INC,
+    BLOOM_FILTER,
   };
 
-  AttributeTypeInfo(common::ColumnType attrt, bool notnull, uint precision = 0, ushort scale = 0, bool auto_inc = false,
-                    DTCollation collation = DTCollation(), common::PackFmt fmt = common::PackFmt::DEFAULT,
-                    bool filter = false, std::string field_name = std::string())
+  AttributeTypeInfo(common::ColumnType attrt, bool not_null, uint precision = 0, ushort scale = 0,
+                    bool auto_inc = false, DTCollation collation = DTCollation(),
+                    common::PackFmt fmt = common::PackFmt::DEFAULT, bool filter = false,
+                    std::string field_name = std::string())
       : attrt_(attrt), fmt_(fmt), precision_(precision), scale_(scale), collation_(collation), field_name_(field_name) {
-    flag_[static_cast<int>(enumATI::NOT_NULL)] = notnull;
+    flag_[static_cast<int>(enumATI::NOT_NULL)] = not_null;
     flag_[static_cast<int>(enumATI::BLOOM_FILTER)] = filter;
     flag_[static_cast<int>(enumATI::AUTO_INC)] = auto_inc;
 

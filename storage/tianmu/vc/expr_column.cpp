@@ -181,7 +181,7 @@ types::TianmuValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &
     return types::TianmuDateTime(GetValueInt64(mit), TypeName());
   if (core::ATI::IsRealType(TypeName()))
     return types::TianmuNum(GetValueInt64(mit), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::ColumnType::NUM)
+  if (lookup_to_num || TypeName() == common::ColumnType::NUM || TypeName() == common::ColumnType::BIT)
     return types::TianmuNum(GetValueInt64(mit), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();
@@ -269,7 +269,7 @@ bool ExpressionColumn::ExactlyOneLookup() {
   if (!deterministic_)
     return false;
   auto iter = var_map_.begin();
-  if (iter == var_map_.end() || !iter->GetTabPtr()->GetColumnType(iter->col_ndx).IsLookup())
+  if (iter == var_map_.end() || !iter->GetTabPtr()->GetColumnType(iter->col_ndx).Lookup())
     return false;  // not a lookup
   iter++;
   if (iter != var_map_.end())  // more than one column

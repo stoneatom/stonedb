@@ -70,6 +70,7 @@ enum class ColumnType : unsigned char {
   MEDIUMINT,
   BIGINT,
   LONGTEXT,
+  BIT,
   UNK = 255
 };
 
@@ -137,6 +138,8 @@ constexpr uint64_t TIANMU_BIGINT_UNSIGNED_MAX = 0xFFFFFFFFFFFFFFFFULL;  // 2^64 
 
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_LARGE = 3072;
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
+
+constexpr uint32_t TIANMU_BIT_MAX_PREC = 63;  // in the future we'll expand to 64.
 
 #define NULL_VALUE_D (*(double *)("\x01\x00\x00\x00\x00\x00\x00\x80"))
 #define TIANMU_INT_MAX (2147483647)

@@ -387,8 +387,8 @@ int64_t JoinerHash::MatchDim(MINewContents &new_mind, MIIterator &mit) {
       packrow_uniform = true;
       for (int i = 0; i < cond_hashed; i++) {
         if (jhash.StringEncoder(i)) {
-          if (!vc2[i]->Type().IsLookup()) {  // lookup treated as string, when the
-                                             // dictionaries aren't convertible
+          if (!vc2[i]->Type().Lookup()) {  // lookup treated as string, when the
+                                           // dictionaries aren't convertible
             types::BString local_min = vc2[i]->GetMinString(mit);
             types::BString local_max = vc2[i]->GetMaxString(mit);
             if (!local_min.IsNull() && !local_max.IsNull() && jhash.ImpossibleValues(i, local_min, local_max)) {
@@ -670,8 +670,8 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
       packrow_uniform = true;
       for (int i = 0; i < cond_hashed; i++) {
         if (tmp_jhash.StringEncoder(i)) {
-          if (!vc2[i]->Type().IsLookup()) {  // lookup treated as string, when the
-                                             // dictionaries aren't convertible
+          if (!vc2[i]->Type().Lookup()) {  // lookup treated as string, when the
+                                           // dictionaries aren't convertible
             types::BString local_min = vc2[i]->GetMinString(task_mit);
             types::BString local_max = vc2[i]->GetMaxString(task_mit);
             if (!local_min.IsNull() && !local_max.IsNull() && tmp_jhash.ImpossibleValues(i, local_min, local_max)) {

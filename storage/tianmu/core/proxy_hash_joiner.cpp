@@ -569,7 +569,7 @@ class ProxyHashJoiner::Action {
         if (miter->PackrowStarted()) {
           for (size_t index = 0; index < cond_hashed_; ++index) {
             if (column_encoder->at(index).IsString()) {
-              if (!vc2_[index]->Type().IsLookup()) {
+              if (!vc2_[index]->Type().Lookup()) {
                 types::BString local_min = vc2_[index]->GetMinString(*miter);
                 types::BString local_max = vc2_[index]->GetMaxString(*miter);
                 if (!local_min.IsNull() && !local_max.IsNull() && ImpossibleValues(index, local_min, local_max)) {
