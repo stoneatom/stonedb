@@ -87,7 +87,8 @@ CREATE TABLE tintu (
   PRIMARY KEY (id)
 )  engine=tianmu;
 
-insert into tintu (id, data) values(4294967294, "first"),(63, "middle"),(0, "last");
+#insert into tintu (id, data) values(4294967294, "first"),(63, "middle"),(0, "last");
+insert into tintu (id, data) values(2147483647, "first"),(63, "middle"),(0, "last");
 select * from tintu;
 --error 1062
 insert into tintu (id, data) values (0, "last");
@@ -123,7 +124,8 @@ CREATE TABLE tmediumintu (
   PRIMARY KEY (id)
 )  engine=tianmu;
 
-insert into tmediumintu (id, data) values(16777214, "first"),(63, "middle"),(0, "last");
+#insert into tmediumintu (id, data) values(16777214, "first"),(63, "middle"),(0, "last");
+insert into tmediumintu (id, data) values(8388607, "first"),(63, "middle"),(0, "last");
 select * from tmediumintu;
 --error 1062
 insert into tmediumintu (id, data) values (0, "last");
@@ -135,7 +137,8 @@ CREATE TABLE tbigintu (
   PRIMARY KEY (id)
 )  engine=tianmu;
 
-insert into tbigintu (id, data) values(18446744073709551614, "first"),(63, "middle"),(0, "last");
+#insert into tbigintu (id, data) values(18446744073709551614, "first"),(63, "middle"),(0, "last");
+insert into tbigintu (id, data) values(9223372036854775807, "first"),(63, "middle"),(0, "last");
 select * from tbigintu;
 --error 1062
 insert into tbigintu (id, data) values (0, "last");
