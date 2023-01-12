@@ -902,6 +902,7 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   hdr.numOfRecords += nvs->NumOfValues();
   hdr.numOfNulls += (Type().NotNull() ? 0 : nvs->NumOfNulls());
   hdr.natural_size += nvs->SumarizedSize();
+  hdr.numOfDeleted += nvs->NumOfDeletes();
 }
 
 void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {

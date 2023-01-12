@@ -35,6 +35,9 @@ class Transaction;
 
 enum class RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, RecordType_max };
 
+#define DELTA_RECORD_DELETE 'd'
+#define DELTA_RECORD_NORMAL 'n'
+
 class DeltaTable {
  public:
   DeltaTable() = default;

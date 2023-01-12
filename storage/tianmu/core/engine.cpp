@@ -393,6 +393,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
                                 std::unique_ptr<char[]> &buf, uint32_t &size) {
   // value_layout:
   //     (Insert)TypeFlag
+  //     isDeleted normal:n deleted:d
   //     table_id
   //     table_path
   //     fields_size
@@ -408,6 +409,9 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
   // RecordType
   *(RecordType *)ptr = RecordType::kInsert;
   ptr += sizeof(RecordType);
+  //isDeleted
+  *ptr = DELTA_RECORD_NORMAL;
+  ptr++;
   // table id
   *(int32_t *)ptr = table_id;
   ptr += sizeof(int32_t);

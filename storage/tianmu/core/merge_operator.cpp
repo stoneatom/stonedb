@@ -17,7 +17,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
   e_ptr += sizeof(RecordType);
 
   // value ptr
-  const char *ptr = existing_value->data();
+  const char *ptr = value.data();
   RecordType type = *(RecordType *)(ptr);
   ptr += sizeof(RecordType);
 
@@ -28,12 +28,36 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
 
   RecordType new_type;
   if (existing_type == RecordType::kInsert) {
+    // isDeleted
+    char isDeleted = *e_ptr;
+    e_ptr++;
+    if (isDeleted == DELTA_RECORD_DELETE) {
+      *new_value = existing_value->ToString();
+      return true;
+    }
+
+    // parse existing value table id and table path
+    int32_t e_tid = *(int32_t *)e_ptr;
+    e_ptr += sizeof(int32_t);
+    // table path
+    std::string e_path(e_ptr);
+    e_ptr += e_path.length() + sizeof(char);
+    // get existing field count
+    size_t e_field_count = *(size_t *)e_ptr;
+    e_ptr += sizeof(size_t);
+    // get existing null mask
+    utils::BitSet e_null_mask(e_field_count, const_cast<char *>(e_ptr));
+    e_ptr += e_null_mask.data_size();
+    // get existing field_head
+    int64_t *e_field_head = (int64_t *)e_ptr;
+    e_ptr += sizeof(int64_t) * e_field_count;
+
     if (type == RecordType::kUpdate) {
       new_type = RecordType::kInsert;
       // parse table id and table path
-      ptr += sizeof(int32_t);
+      ptr += sizeof(int32_t) + sizeof(char);
       std::string path(ptr);
-      ptr += path.length() + 1;
+      ptr += path.length() + sizeof(char);
       // get field count
       size_t field_count = *(size_t *)ptr;
       ptr += sizeof(size_t);
@@ -47,25 +71,12 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       int64_t *field_head = (int64_t *)ptr;
       ptr += sizeof(int64_t) * field_count;
 
-      // parse existing value table id and table path
-      int32_t e_tid = *(int32_t *)e_ptr;
-      e_ptr += sizeof(int32_t);
-      std::string e_path(e_ptr);
-      e_ptr += path.length() + 1;
-      // get existing field count
-      size_t e_field_count = *(size_t *)ptr;
-      e_ptr += sizeof(size_t);
-      assert(e_field_count == field_count);
-      // get existing null mask
-      utils::BitSet e_null_mask(e_field_count, const_cast<char *>(ptr));
-      e_ptr += e_null_mask.data_size();
-      // get existing field_head
-      int64_t *e_field_head = (int64_t *)ptr;
-      e_ptr += sizeof(int64_t) * e_field_count;
-
       // assemble new value
       *(RecordType *)n_ptr = new_type;  // new_type
       n_ptr += sizeof(RecordType);
+      // isDeleted
+      *n_ptr = isDeleted;
+      n_ptr++;
       *(int32 *)n_ptr = e_tid;  // tid
       n_ptr += sizeof(int32_t);
       std::memcpy(n_ptr, e_path.c_str(), e_path.length());  // path
@@ -120,12 +131,50 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       }
       std::memcpy(value_buff.get() + n_null_offset, null_mask.data(), null_mask.data_size());
       new_value->assign(value_buff.get(), n_ptr - value_buff.get());
+      return true;
     } else if (type == RecordType::kDelete) {
-      // todo(dfx): delete
+      // assemble new value
+      *(RecordType *)n_ptr = new_type;  // new_type
+      n_ptr += sizeof(RecordType);
+      // isDeleted
+      *n_ptr = DELTA_RECORD_DELETE;
+      n_ptr++;
+      *(int32 *)n_ptr = e_tid;  // tid
+      n_ptr += sizeof(int32_t);
+      std::memcpy(n_ptr, e_path.c_str(), e_path.length());  // path
+      n_ptr += e_path.length();
+      *(size_t *)n_ptr = e_field_count;  // field count
+      e_ptr += sizeof(size_t);
+      utils::BitSet n_null_mask(e_field_count);
+      auto n_null_offset = n_ptr - value_buff.get();  // null mask
+      n_ptr += n_null_mask.data_size();
+      int64_t *n_field_head = (int64_t *)n_ptr;  // field head
+      n_ptr += sizeof(int64_t) * e_field_count;
+
+      new_value->assign(value_buff.get(), n_ptr - value_buff.get());
+      return true;
     } else {
       return false;
     }
   } else if (existing_type == RecordType::kUpdate) {
+    // parse existing value table id and table path
+    int32_t e_tid = *(int32_t *)e_ptr;
+    e_ptr += sizeof(int32_t);
+    std::string e_path(e_ptr);
+    e_ptr += e_path.length() + 1;
+    // get existing field count
+    size_t e_field_count = *(size_t *)e_ptr;
+    e_ptr += sizeof(size_t);
+    // get update mask
+    utils::BitSet e_update_mask(e_field_count, const_cast<char *>(e_ptr));
+    e_ptr += e_update_mask.data_size();
+    // get existing null mask
+    utils::BitSet e_null_mask(e_field_count, const_cast<char *>(e_ptr));
+    e_ptr += e_null_mask.data_size();
+    // get existing update_head
+    int64_t *e_field_head = (int64_t *)e_ptr;
+    e_ptr += sizeof(int64_t) * e_field_count;
+
     if (type == RecordType::kUpdate) {
       new_type = RecordType::kUpdate;
       // parse table id and table path
@@ -144,25 +193,6 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       // get update_head
       int64_t *field_head = (int64_t *)ptr;
       ptr += sizeof(int64_t) * field_count;
-
-      // parse existing value table id and table path
-      int32_t e_tid = *(int32_t *)e_ptr;
-      e_ptr += sizeof(int32_t);
-      std::string e_path(e_ptr);
-      e_ptr += path.length() + 1;
-      // get existing field count
-      size_t e_field_count = *(size_t *)ptr;
-      e_ptr += sizeof(size_t);
-      assert(e_field_count == field_count);
-      // get update mask
-      utils::BitSet e_update_mask(field_count, const_cast<char *>(ptr));
-      ptr += e_update_mask.data_size();
-      // get existing null mask
-      utils::BitSet e_null_mask(e_field_count, const_cast<char *>(ptr));
-      e_ptr += e_null_mask.data_size();
-      // get existing update_head
-      int64_t *e_field_head = (int64_t *)ptr;
-      e_ptr += sizeof(int64_t) * e_field_count;
 
       // assemble new value
       *(RecordType *)n_ptr = new_type;  // new_type
@@ -223,8 +253,16 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       std::memcpy(value_buff.get() + n_update_offset, update_mask.data(), update_mask.data_size());
       std::memcpy(value_buff.get() + n_null_offset, null_mask.data(), null_mask.data_size());
       new_value->assign(value_buff.get(), n_ptr - value_buff.get());
+      return true;
     } else if (type == RecordType::kDelete) {
-      // todo(dfx): delete
+      *(RecordType *)n_ptr = RecordType::kDelete;  // new_type
+      n_ptr += sizeof(RecordType);
+      *(int32_t *)n_ptr = e_tid;  // tid
+      n_ptr += sizeof(int32_t);
+      std::memcpy(n_ptr, e_path.c_str(), e_path.length());  // path
+      n_ptr += e_path.length();
+      new_value->assign(value_buff.get(), n_ptr - value_buff.get());
+      return true;
     } else {
       return false;
     }
