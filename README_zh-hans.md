@@ -58,7 +58,7 @@ StoneDB 是一个兼容 MySQL 的高性能混合事务/分析处理(HTAP)数据�
 
 # 贡献指南
 
-StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享您如何使用StoneDB的经验，并在论坛上在社区中提供见解，或贡献项目，使 StoneDB 成为一个更好的开源项目。想获取更多的细节，可以看这里：[contributing guide](https://stonedb.io/zh/community/main/) 
+StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享您如何使用StoneDB的经验，并在论坛上在社区中提供见解，或贡献项目，使 StoneDB 成为一个更好的开源项目。想获取更多的细节，可以看这里：[contributing guide](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CONTRIBUTING.md) 
 
 # 快速开始
 
@@ -151,7 +151,7 @@ CREATE TABLE `example_table` (
 这个例子展示了 StoneDB 中的一些重要特性和限制。有关限制的更多信息，请参见 [StoneDB Limitations](https://stonedb.io/zh/docs/about-stonedb/limits). 
 
 - StoneDB 数据以列格式存储，并持久化到 RocksDB 中，RocksDB 作为磁盘按列存储格式化后的数据。所有数据会被压缩，压缩比为10:1 ~ 40:1。
-- 在处理特殊查询时，即使不创建任何索引，StoneDB 也能达到具有竞争力的性能。要了解更多信息，请点击[这里](https://stonedb.io/zh/)
+- 在处理特殊查询时，即使不创建任何索引，StoneDB 也能达到具有竞争力的性能。要了解更多信息，请点击[这里](https://stonedb.io/docs/about-stonedb/architecture)
 
 --- 
 
@@ -188,5 +188,5 @@ CREATE TABLE `example_table` (
 
 
 # 行为准则
-参加StoneDB项目时，请确保您的所有行为都符合[行为准则](https://stonedb.io/zh/community/main/) 。
+参加StoneDB项目时，请确保您的所有行为都符合[行为准则](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CODE_OF_CONDUCT.md) 。
 
