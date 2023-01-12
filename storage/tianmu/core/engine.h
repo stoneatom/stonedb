@@ -182,7 +182,7 @@ class Engine final {
   void ProcessDelayedMerge();
   std::unique_ptr<char[]> GetRecord(size_t &len);
   void EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
-                    std::unique_ptr<char[]> &buf, uint32_t &size);
+                    std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd);
 
  private:
   struct TianmuStat {

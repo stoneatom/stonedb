@@ -610,9 +610,10 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_SHORT:
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
-    case MYSQL_TYPE_LONGLONG:
-    case MYSQL_TYPE_BIT: {
+    case MYSQL_TYPE_LONGLONG: {
       int64_t value = f->val_int();
+      common::PushWarningIfOutOfRange(m_tx->Thd(), std::string(f->field_name), value, f->type(),
+                                      f->flags & UNSIGNED_FLAG);
       if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
         *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = m_attrs[col]->AutoIncNext();
@@ -626,6 +627,11 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
             m_attrs[col]->SetAutoInc(value);
         }
       }
+    } break;
+    case MYSQL_TYPE_BIT: {
+      int64_t value = f->val_int();
+      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
+      vc.ExpectedSize(sizeof(int64_t));
     } break;
     case MYSQL_TYPE_DECIMAL:
     case MYSQL_TYPE_FLOAT:
