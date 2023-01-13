@@ -486,6 +486,10 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
       else
         AppendNull();
       if(vc->IsDelete(i)){
+        if(!IsNull(dpn_->numOfRecords-1)){
+          SetNull(dpn_->numOfRecords-1);
+          dpn_->numOfNulls++;
+        }
         SetDeleted(dpn_->numOfRecords-1);
         dpn_->numOfDeleted++;
       }
@@ -564,6 +568,10 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
       else
         AppendNull();
       if(vc->IsDelete(i)){
+        if(!IsNull(dpn_->numOfRecords-1)){
+          SetNull(dpn_->numOfRecords-1);
+          dpn_->numOfNulls++;
+        }
         SetDeleted(dpn_->numOfRecords-1);
         dpn_->numOfDeleted++;
       }

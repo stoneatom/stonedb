@@ -275,8 +275,12 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
       continue;
     }
     if(vc->IsDelete(i)){
+      SetNull(dpn_->numOfRecords);
+      SetPtr(dpn_->numOfRecords, nullptr);
+      dpn_->numOfNulls++;
       SetDeleted(dpn_->numOfRecords);
       dpn_->numOfDeleted++;
+      dpn_->numOfRecords++;
       continue;
     }
 
