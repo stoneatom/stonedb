@@ -117,6 +117,105 @@ std::vector<bool> GetAttrsUseIndicator(TABLE *table) {
   }
   return attr_uses;
 }
+// for debug only, print all delta data
+static void DebugPrint(core::DeltaIterator &iter, Field **fields, size_t field_size) {
+  TIANMU_LOG(LogCtl_Level::DEBUG, "================= delta insert record ================");
+  core::DeltaIterator clone_iter(iter.GetTable(), iter.GetAttrs());
+  while (clone_iter.Valid()) {
+    auto record = clone_iter.GetData();
+    core::Engine::DecodeInsertRecord(record.data(), record.size(), fields);
+    // print a delta row
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < field_size; i++) {
+      Field *f = fields[i];
+      if (f->is_null()) {
+        ss << " {null} ";
+        continue;
+      }
+      switch (f->type()) {
+        case MYSQL_TYPE_TINY:
+        case MYSQL_TYPE_SHORT:
+        case MYSQL_TYPE_LONG:
+        case MYSQL_TYPE_INT24:
+        case MYSQL_TYPE_LONGLONG: {
+          int64_t v = f->val_int();
+          ss << " {" << v << "} ";
+        } break;
+        case MYSQL_TYPE_DECIMAL:
+        case MYSQL_TYPE_FLOAT:
+        case MYSQL_TYPE_DOUBLE: {
+          double v = f->val_real();
+          ss << " {" << v << "} ";
+        } break;
+        case MYSQL_TYPE_NEWDECIMAL: {
+          auto dec_f = dynamic_cast<Field_new_decimal *>(f);
+          auto dec = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
+          auto v = f->val_int();
+          ss << " {" << v << "} ";
+        } break;
+        case MYSQL_TYPE_TIME:
+        case MYSQL_TYPE_TIME2:
+        case MYSQL_TYPE_DATE:
+        case MYSQL_TYPE_DATETIME:
+        case MYSQL_TYPE_NEWDATE:
+        case MYSQL_TYPE_TIMESTAMP2:
+        case MYSQL_TYPE_DATETIME2: {
+          MYSQL_TIME my_time;
+          std::memset(&my_time, 0, sizeof(my_time));
+          f->get_time(&my_time);
+          types::DT dt(my_time);
+          ss << " {" << dt.val << "} ";
+        } break;
+        case MYSQL_TYPE_TIMESTAMP: {
+          MYSQL_TIME my_time;
+          std::memset(&my_time, 0, sizeof(my_time));
+          f->get_time(&my_time);
+          auto saved = my_time.second_part;
+          // convert to UTC
+          if (!common::IsTimeStampZero(my_time)) {
+            my_bool myb;
+            my_time_t secs_utc = current_thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
+            common::GMTSec2GMTTime(&my_time, secs_utc);
+          }
+          my_time.second_part = saved;
+          types::DT dt(my_time);
+          ss << " {" << dt.val << "} ";
+        } break;
+        case MYSQL_TYPE_YEAR:  // what the hell?
+        {
+          types::DT dt = {};
+          dt.year = f->val_int();
+          ss << " {" << dt.val << "} ";
+        } break;
+        case MYSQL_TYPE_VARCHAR:
+        case MYSQL_TYPE_TINY_BLOB:
+        case MYSQL_TYPE_MEDIUM_BLOB:
+        case MYSQL_TYPE_LONG_BLOB:
+        case MYSQL_TYPE_BLOB:
+        case MYSQL_TYPE_VAR_STRING:
+        case MYSQL_TYPE_STRING: {
+          String str;
+          f->val_str(&str);
+          ss << " {" << std::string(str.c_ptr(), str.length()) << "} ";
+        } break;
+        case MYSQL_TYPE_SET:
+        case MYSQL_TYPE_ENUM:
+        case MYSQL_TYPE_GEOMETRY:
+        case MYSQL_TYPE_NULL:
+        case MYSQL_TYPE_BIT:
+        default:
+          throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
+          break;
+      }
+    }
+    ss << "]";
+    TIANMU_LOG(LogCtl_Level::DEBUG, "==%s==", ss.str().c_str());
+    clone_iter++;
+  }
+  TIANMU_LOG(LogCtl_Level::DEBUG, "================= delta insert record ================");
+}
+
 }  // namespace
 
 static bool is_delay_insert(THD *thd) {
@@ -935,6 +1034,12 @@ int ha_tianmu::rnd_init(bool scan) {
         filter_ptr_.reset();
       }
     }
+    {
+      my_bitmap_map *org_bitmap;
+      dbug_tmp_use_all_columns(table, &org_bitmap, table->read_set, table->write_set);
+      DebugPrint(iterator_.GetDeltaIterator(), table->field, table->s->fields);
+      dbug_tmp_restore_column_maps(table->read_set, table->write_set, &org_bitmap);
+    }
     ret = 0;
     blob_buffers_.resize(0);
     if (table_ptr_ != nullptr)
@@ -1033,7 +1138,7 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
       ret = index_read(buf, pos, ref_length, HA_READ_KEY_EXACT);
     } else {
       uint64_t position = my_get_ptr(pos, ref_length);
-
+      // todo(dfx): need check position is in base or delta?
       filter_ptr_ = std::make_unique<core::Filter>(position + 1, share_->PackSizeShift());
       filter_ptr_->Reset();
       filter_ptr_->Set(position);
