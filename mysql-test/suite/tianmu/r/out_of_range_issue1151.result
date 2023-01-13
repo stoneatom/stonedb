@@ -1,6 +1,8 @@
-drop database if exists test;
-create database test;
-use test;
+drop database if exists out_of_range_issue1151;
+Warnings:
+Note	1008	Can't drop database 'out_of_range_issue1151'; database doesn't exist
+create database out_of_range_issue1151;
+use out_of_range_issue1151;
 create table tiny(a tinyint, b tinyint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
 insert into tiny values(-128, 0);
 insert into tiny values(127, 127);
@@ -187,3 +189,4 @@ ERROR 22003: Out of range value for column 'b' at row 1
 insert into bigint_ values(0, 1844674407370955161566);
 ERROR 22003: Out of range value for column 'b' at row 1
 drop table bigint_;
+drop database if exists out_of_range_issue1151;
