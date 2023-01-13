@@ -274,6 +274,11 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
       }
       continue;
     }
+    if(vc->IsDelete(i)){
+      SetDeleted(dpn_->numOfRecords);
+      dpn_->numOfDeleted++;
+      continue;
+    }
 
     char const *v = 0;
     uint size = 0;

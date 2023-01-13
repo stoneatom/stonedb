@@ -117,7 +117,7 @@ class ValueCache final {
   bool NotNull(size_t ono) const { return !nulls_[ono]; }
 
   bool IsDelete(size_t ono) const { 
-    return (deletes_.find(ono) == deletes_.end());
+    return (deletes_.find(ono) != deletes_.end());
   }
 
   size_t NumOfNulls() const { return null_cnt_; }
