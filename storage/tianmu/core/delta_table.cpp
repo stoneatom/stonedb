@@ -188,7 +188,6 @@ DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) 
   index::be_store_index(entry_key + key_pos, table_id);
   key_pos += sizeof(uint32_t);
   rocksdb::Slice entry_slice((char *)entry_key, key_pos);
-  ;
   // ==== for debug ====
   it_->Seek(entry_slice);
   while (it_->Valid()) {
