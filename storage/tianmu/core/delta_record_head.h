@@ -74,10 +74,9 @@ class DeltaRecordHeadForUpdate : public DeltaRecordHead {
   int32_t table_id_;
   std::string table_path_;
   size_t field_count_;
-  utils::BitSet null_mask_;
   utils::BitSet update_mask_;
-
-  int64_t *field_head_;
+  utils::BitSet null_mask_;
+  int64_t * field_head_;
   int null_offset_;
   int update_offset_;
   int field_offset_;

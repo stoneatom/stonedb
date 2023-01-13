@@ -668,13 +668,13 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
   // fields...
   for (uint col_id = 0; col_id < field_count; col_id++) {
     if (update_fields.find(col_id) == update_fields.end()) {
-      deltaRecord.field_head_[col_id] = -1;
+      deltaRecord.field_head_[col_id] = 0;
       continue;
     }
     Field *f = update_fields[col_id];
     if (f == nullptr) {
       deltaRecord.null_mask_.set(col_id);
-      deltaRecord.field_head_[col_id] = -1;
+      deltaRecord.field_head_[col_id] = 0;
       continue;
     }
     deltaRecord.update_mask_.set(col_id);

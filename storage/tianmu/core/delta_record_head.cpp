@@ -122,6 +122,7 @@ char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
 
 const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
   if(ptr == nullptr) return ptr;
+  const char *ptr_begin = ptr;
   record_type_ = *(RecordType *)(ptr);
   ptr += sizeof(RecordType);
   // parse existing value table id and table path
@@ -134,14 +135,17 @@ const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
   field_count_ = *(size_t *)ptr;
   ptr += sizeof(size_t);
   // update mask
+  update_offset_ = ptr - ptr_begin;
   update_mask_.Init(field_count_, const_cast<char *>(ptr));
-  ptr += null_mask_.data_size();
+  ptr += update_mask_.data_size();
   // get existing null mask
+  null_offset_ = ptr - ptr_begin;
   null_mask_.Init(field_count_, const_cast<char *>(ptr));
   ptr += null_mask_.data_size();
   // get existing field_head
   field_head_ = (int64_t *)ptr;
   ptr += sizeof(int64_t) * field_count_;
+  field_offset_ = ptr - ptr_begin;
   return ptr;
 }
 
