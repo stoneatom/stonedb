@@ -33,6 +33,7 @@ insert into tiny values(0, -127);
 insert into tiny values(0, 256);
 --error 1264
 insert into tiny values(0, 1234567);
+select * from tiny;
 drop table tiny;
 
 create table small(a smallint, b smallint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
@@ -70,6 +71,7 @@ insert into small values(0, -32768);
 insert into small values(0, 65536);
 --error 1264
 insert into small values(0, 1234567);
+select * from small;
 drop table small;
 
 create table medium(a mediumint, b mediumint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
@@ -107,6 +109,7 @@ insert into medium values(0, -8388608);
 insert into medium values(0, 16777216);
 --error 1264
 insert into medium values(0, 1677721511);
+select * from medium;
 drop table medium;
 
 create table int_(a int, b int unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
@@ -146,6 +149,7 @@ insert into int_ values(0, -4294967295);
 insert into int_ values(0, 4294967296);
 --error 1264
 insert into int_ values(0, 429496729611);
+select * from int_;
 drop table int_;
 
 create table bigint_(a bigint, b bigint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
@@ -183,5 +187,6 @@ insert into bigint_ values(0, -4294967295);
 insert into bigint_ values(0, 18446744073709551616);
 --error 1264
 insert into bigint_ values(0, 1844674407370955161566);
+select * from bigint_;
 drop table bigint_;
 drop database if exists out_of_range_issue1151;
