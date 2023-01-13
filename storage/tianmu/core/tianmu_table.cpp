@@ -1495,7 +1495,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   std::vector<uint64_t> delete_records;
   int delete_num = 0;
   {
-    uchar entry_key[32];
+    uchar entry_key[12];
     size_t key_pos = 0;
     auto cf_handle = m_delta->GetCFHandle();
     uint32_t mem_id = m_delta->GetDeltaTableID();

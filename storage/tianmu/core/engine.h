@@ -71,6 +71,7 @@ class Transaction;
 class RSIndex;
 class TaskExecutor;
 class DeltaTable;
+class DeltaIterator;
 
 class Engine final {
  public:

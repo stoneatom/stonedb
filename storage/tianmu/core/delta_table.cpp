@@ -16,16 +16,16 @@
 */
 
 #include "core/delta_table.h"
-#include "common/common_definitions.h"
 #include "core/table_share.h"
-#include "core/tianmu_table.h"
 #include "core/transaction.h"
-#include "index/kv_store.h"
 #include "index/kv_transaction.h"
 #include "index/rdb_meta_manager.h"
 
 namespace Tianmu {
 namespace core {
+
+/// DeltaTable
+
 DeltaTable::DeltaTable(const std::string &name, uint32_t delta_id, uint32_t cf_id)
     : fullname_(name), delta_tid_(delta_id), cf_handle_(ha_kvstore_->GetCfHandleByID(cf_id)) {
   ASSERT(cf_handle_, "column family handle not exist " + name);
@@ -88,7 +88,7 @@ common::ErrorCode DeltaTable::DropDeltaTable(const std::string &table_name) {
 
 void DeltaTable::Init(uint64_t base_row_num) {
   index::KVTransaction kv_trans;
-  uchar entry_key[32];
+  uchar entry_key[12];
   size_t entry_pos = 0;
   index::be_store_index(entry_key + entry_pos, delta_tid_);
   entry_pos += sizeof(uint32_t);
@@ -98,7 +98,7 @@ void DeltaTable::Init(uint64_t base_row_num) {
   iter->Seek(entry_slice);
 
   next_row_id.store(base_row_num);
-  if (iter->Valid() && iter->key().starts_with(entry_slice)) {
+  if (iter->Valid()) {
     load_id++;
     if (static_cast<RecordType>(iter->value()[0]) == RecordType::kInsert) {
       next_row_id++;
@@ -109,7 +109,7 @@ void DeltaTable::Init(uint64_t base_row_num) {
 }
 
 void DeltaTable::AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
-  uchar key[32];
+  uchar key[12];
   size_t key_pos = 0;
   index::KVTransaction kv_trans;
   // table id
@@ -130,7 +130,7 @@ void DeltaTable::AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, u
 }
 
 void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
-  uchar key[32];
+  uchar key[12];
   size_t key_pos = 0;
   index::KVTransaction &kv_trans=tx->KVTrans();
   // table id
@@ -152,7 +152,7 @@ void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<cha
 void DeltaTable::Truncate(Transaction *tx) {
   ASSERT(tx, "No truncate transaction.");
   // todo(dfx): just use DropColumnFamily() and CreateColumnFamily(), maybe faster
-  uchar entry_key[32];
+  uchar entry_key[12];
   size_t key_pos = 0;
   index::be_store_index(entry_key + key_pos, delta_tid_);
   key_pos += sizeof(uint32_t);
@@ -175,31 +175,114 @@ void DeltaTable::Truncate(Transaction *tx) {
   return;
 }
 
+/// DeltaIterator
+
 DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) : table_(table), attrs_(attrs) {
+  // get snapshot for rocksdb, snapshot will release when DeltaIterator is destructured
   auto snapshot = ha_kvstore_->GetRdbSnapshot();
   rocksdb::ReadOptions read_options(true, snapshot);
   it_ = std::unique_ptr<rocksdb::Iterator>(ha_kvstore_->GetRdb()->NewIterator(read_options, table_->GetCFHandle()));
-  it_->SeekToFirst();
-  bool first_insert = false;
+  uchar entry_key[12];
+  size_t key_pos = 0;
+  uint32_t table_id = table_->GetDeltaTableID();
+  index::be_store_index(entry_key + key_pos, table_id);
+  key_pos += sizeof(uint32_t);
+  rocksdb::Slice entry_slice((char *)entry_key, key_pos);
+  ;
+  // ==== for debug ====
+  it_->Seek(entry_slice);
   while (it_->Valid()) {
-    const char *ptr = it_->value().data();
-    if (static_cast<RecordType>(ptr[0]) != RecordType::kInsert) {
-      if (!first_insert) {
-        start_position_ = index::be_to_uint64(reinterpret_cast<const uchar *>(it_->key().data()) + sizeof(uint32_t));
-        first_insert = true;
-      }
-      it_->Next();
-    } else {
-      break;
-    }
+    auto row_id = GetCurrRowIdFromRecord();
+    TIANMU_LOG(LogCtl_Level::DEBUG, " this table id: %d, row id: %d, type: %d, this record value: %s", table_id, row_id,
+               static_cast<RecordType>(it_->value().data()[0]), it_->value());
+    it_->Next();
+  }
+  // ==== for debug ====
+  it_->Seek(entry_slice);
+  while (it_->Valid() && !IsCurrInsertType()) {
+    it_->Next();
   }
   if (it_->Valid()) {
-    const char *ptr = it_->value().data();
-    ASSERT(static_cast<RecordType>(ptr[0]) == RecordType::kInsert);
-    position_ = index::be_to_uint64(reinterpret_cast<const uchar *>(it_->key().data()) + sizeof(uint32_t));
+    position_ = GetCurrRowIdFromRecord();
+    start_position_ = position_;
   } else {
     position_ = -1;
   }
 }
+
+DeltaIterator::DeltaIterator(DeltaIterator &&other) noexcept {
+  table_ = other.table_;
+  position_ = other.position_;
+  start_position_ = other.start_position_;
+  current_record_fetched_ = other.current_record_fetched_;
+  it_ = std::move(other.it_);
+  record_ = std::move(other.record_);
+  attrs_ = std::move(other.attrs_);
+}
+
+DeltaIterator &DeltaIterator::operator=(DeltaIterator &&other) noexcept {
+  table_ = other.table_;
+  position_ = other.position_;
+  start_position_ = other.start_position_;
+  current_record_fetched_ = other.current_record_fetched_;
+  it_ = std::move(other.it_);
+  record_ = std::move(other.record_);
+  attrs_ = std::move(other.attrs_);
+  return *this;
+}
+
+bool DeltaIterator::operator==(const DeltaIterator &other) {
+  return table_->GetDeltaTableID() == other.table_->GetDeltaTableID() && position_ == other.position_;
+}
+
+bool DeltaIterator::operator!=(const DeltaIterator &other) { return !(*this == other); }
+
+void DeltaIterator::operator++(int) {
+  it_->Next();
+  while (it_->Valid() && !IsCurrInsertType()) {
+    it_->Next();
+  }
+  if (it_->Valid()) {
+    DEBUG_ASSERT(IsCurrInsertType());
+    position_ = GetCurrRowIdFromRecord();
+  } else {
+    position_ = -1;
+  }
+  current_record_fetched_ = false;
+}
+
+std::string &DeltaIterator::GetData() {
+  record_ = it_->value().ToString();
+  current_record_fetched_ = true;
+  return record_;
+}
+
+void DeltaIterator::MoveTo(int64_t row_id) {
+  uchar key[12];
+  size_t key_pos = 0;
+  // table id
+  index::be_store_index(key + key_pos, table_->GetDeltaTableID());
+  key_pos += sizeof(uint32_t);
+  // row id
+  index::be_store_uint64(key + key_pos, row_id);
+  key_pos += sizeof(uint64_t);
+  it_->Seek({(char *)key, key_pos});
+  if (it_->Valid()) {  // need check valid
+    DEBUG_ASSERT(GetCurrRowIdFromRecord() == row_id);
+    position_ = GetCurrRowIdFromRecord();
+  } else {
+    position_ = -1;
+  }
+  current_record_fetched_ = false;
+}
+
+bool DeltaIterator::IsCurrInsertType() {
+  return static_cast<RecordType>(it_->value().data()[0]) == RecordType::kInsert;
+}
+
+uint64_t DeltaIterator::GetCurrRowIdFromRecord() {
+  return index::be_to_uint64(reinterpret_cast<const uchar *>(it_->key().data()) + sizeof(uint32_t));
+}
+
 }  // namespace core
 }  // namespace Tianmu

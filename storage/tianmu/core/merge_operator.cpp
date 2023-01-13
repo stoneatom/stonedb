@@ -11,6 +11,10 @@ namespace Tianmu::core {
 
 bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice *existing_value,
                                 const rocksdb::Slice &value, std::string *new_value, rocksdb::Logger *logger) const {
+  if (existing_value == nullptr) {
+    *new_value = value.ToString();
+    return true;
+  }
   // existing value ptr
   const char *e_ptr = existing_value->data();
   RecordType existing_type = *(RecordType *)(e_ptr);
@@ -22,7 +26,6 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
   std::unique_ptr<char[]> value_buff(new char[value_buff_size]);
   char *n_ptr = value_buff.get();
 
-  RecordType new_type;
   if (existing_type == RecordType::kInsert) {
     DeltaRecordHeadForInsert e_insertRecord;
     e_ptr = e_insertRecord.record_decode(e_ptr);

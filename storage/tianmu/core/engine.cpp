@@ -652,7 +652,6 @@ void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
       default:
         throw common::Exception("Unsupported field type for INSERT " + std::to_string(field->type()));
     }
-    ptr += length;
   }
 }
 
@@ -1574,8 +1573,10 @@ void Engine::ProcessDeltaStoreMerge() {
         std::scoped_lock guard(mem_table_mutex);
         for (auto &[name, delta_table] : m_table_deltas) {
           uint64_t record_count = delta_table->CountRecords();
-          if (record_count >= tianmu_sysvar_insert_numthreshold ||
-              (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) {
+          bool for_delta_debug = false;
+          if ((record_count >= tianmu_sysvar_insert_numthreshold ||
+               (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) &&
+              for_delta_debug) {
             auto share = ha_tianmu_engine_->getTableShare(name);
             auto table_id = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());
@@ -1783,13 +1784,13 @@ void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableS
   tm_table->UpdateToDelta(row_id, std::move(buf), buf_sz);
 }
 
-void Engine::DeleteToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, 
+void Engine::DeleteToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share,
                           TABLE *table, uint64_t row_id){
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
   EncodeDeleteRecord(table_path, share->TabID(),buf, buf_sz);
   auto tm_table = share->GetSnapshot();
-  tm_table->DeleteToDelta(row_id, std::move(buf), buf_sz);              
+  tm_table->DeleteToDelta(row_id, std::move(buf), buf_sz);
 }
 
 int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transaction *trans_, TABLE *table,

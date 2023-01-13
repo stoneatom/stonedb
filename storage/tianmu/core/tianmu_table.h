@@ -210,7 +210,6 @@ class TianmuIterator {
   bool operator!=(const TianmuIterator &iter) { return !(*this == iter); }
   void operator++(int);
 
-  bool Inited() const { return table != nullptr; }
   std::shared_ptr<types::TianmuDataType> &GetData(int col) {
     FetchValues();
     return record[col];

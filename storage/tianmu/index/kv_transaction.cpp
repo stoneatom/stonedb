@@ -63,7 +63,7 @@ rocksdb::Status KVTransaction::GetData(rocksdb::ColumnFamilyHandle *column_famil
 
 rocksdb::Status KVTransaction::PutData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                        const rocksdb::Slice &value) {
-  return data_batch_->Put(column_family, key, value);
+  return data_batch_->Merge(column_family, key, value);
 }
 
 rocksdb::Status KVTransaction::SingleDeleteData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key) {

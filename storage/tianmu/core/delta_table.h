@@ -28,6 +28,7 @@
 #include "rocksdb/iterator.h"
 #include "rocksdb/slice.h"
 #include "types/tianmu_data_types.h"
+#include "util/bitset.h"
 
 namespace Tianmu {
 namespace core {
@@ -67,10 +68,6 @@ class DeltaTable {
   std::string fullname_;
   uint32_t delta_tid_ = 0;
   rocksdb::ColumnFamilyHandle *cf_handle_ = nullptr;
-  //
-  // public:
-  //  DeltaIterator Begin(const std::vector<bool> &attrs) { return DeltaIterator::CreateBegin(this, attrs); }
-  //  DeltaIterator End() { return DeltaIterator::CreateEnd(); }
 };
 
 class DeltaIterator {
@@ -81,73 +78,38 @@ class DeltaIterator {
   ~DeltaIterator() = default;
   DeltaIterator(const DeltaIterator &) = delete;
   DeltaIterator &operator=(const DeltaIterator &) = delete;
-  DeltaIterator(DeltaIterator &&other) noexcept {
-    table_ = other.table_;
-    position_ = other.position_;
-    start_position_ = other.start_position_;
-    current_record_fetched_ = other.current_record_fetched_;
-    it_ = std::move(other.it_);
-    record_ = std::move(other.record_);
-    attrs_ = std::move(other.attrs_);
-  };
-  DeltaIterator &operator=(DeltaIterator &&other) noexcept {
-    table_ = other.table_;
-    position_ = other.position_;
-    start_position_ = other.start_position_;
-    current_record_fetched_ = other.current_record_fetched_;
-    it_ = std::move(other.it_);
-    record_ = std::move(other.record_);
-    attrs_ = std::move(other.attrs_);
-    return *this;
-  }
+  DeltaIterator(DeltaIterator &&other) noexcept;
+  DeltaIterator &operator=(DeltaIterator &&other) noexcept;
   DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs);
-  bool operator==(const DeltaIterator &iter) {
-    return table_->GetDeltaTableID() == iter.table_->GetDeltaTableID() && position_ == iter.position_;
-  };
-  bool operator!=(const DeltaIterator &iter) { return !(*this == iter); }
-  void operator++(int) {
-    it_->Next();
-    int64_t new_pos;
-    if (it_->Valid()) {
-      // new_pos = it->key(); parse the real row_id
-      ;
-    } else {
-      new_pos = -1;
-    }
-    position_ = new_pos;
-    current_record_fetched_ = false;
-  };
 
-  bool Inited() const { return table_ != nullptr; }
-  std::string &GetData() {
-    // parse value
-    // check type=Insert
-    // read data to record
-    current_record_fetched_ = true;
-    return record_;
-  }
-  void MoveTo(int64_t row_id) {
-    // combined key{delta_id+row_id}
-    // it = new iterator().seek(key)
-    int64_t new_pos;
-    if (it_->Valid()) {  // need check valid
-      // new_pos = it->key(); parse the real row_id
-      ;
-    } else {
-      new_pos = -1;
-    }
-    position_ = new_pos;
-    current_record_fetched_ = false;
-  }
+ public:
+  bool operator==(const DeltaIterator &other);
+  bool operator!=(const DeltaIterator &other);
+  void operator++(int);
+  // fetch current row data from rocksdb to record_
+  std::string &GetData();
+  // move to the rocksdb iterator to this row [row_id]
+  void MoveTo(int64_t row_id);
+  // get current row_id in the rocksdb
   int64_t Position() const { return position_; }
+  // this is dividing point between delta and base
   int64_t StartPosition() const { return start_position_; }
+  // check current iterator is valid
   bool Valid() const { return position_ != -1; }
 
+ public:
+  DeltaTable *GetTable() const { return table_; }
+  std::vector<bool> GetAttrs() const { return attrs_; }
+
  private:
+  // decode the current row's RecordType from the rocksdb data.value
+  inline bool IsCurrInsertType();
+  // decode the current row_id from the rocksdb data.key
+  inline uint64_t GetCurrRowIdFromRecord();
+
   DeltaTable *table_ = nullptr;
   int64_t position_ = -1;
-  int64_t start_position_ = -1;  // this is dividing point between delta and base
-  //  Transaction *conn_ = nullptr;
+  int64_t start_position_ = -1;
   [[maybe_unused]] bool current_record_fetched_ = false;
   std::unique_ptr<rocksdb::Iterator> it_ = nullptr;
   std::string record_;
