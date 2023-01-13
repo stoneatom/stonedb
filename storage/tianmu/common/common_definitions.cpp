@@ -32,7 +32,8 @@ void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint code, 
   push_warning(thd, level, code, msg);
 }
 
-// Here for args int `type`, we do not use enum directly as it'll caused compiling failed for the dependent package.
+// TODO:Here for args int `type`, we do not use enum directly as it'll caused compiling failed for the dependent
+// package. It will be changed back to enum type later
 void PushWarningIfOutOfRange(THD *thd, std::string col_name, int64_t v, int type, bool unsigned_flag) {
   // below `0` is for min unsigned value.
   switch (type) {
