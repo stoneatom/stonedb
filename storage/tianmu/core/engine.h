@@ -197,7 +197,6 @@ class Engine final {
   void EncodeDeleteRecord(const std::string &table_path, int table_id,std::unique_ptr<char[]> &buf, uint32_t &buf_size);
   void ProcessInsertBufferMerge();
   void ProcessDeltaStoreMerge();
-  void EncodeDeleteRecord();
 
  private:
   struct TianmuStat {

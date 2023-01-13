@@ -22,6 +22,7 @@
 
 #include "common/exception.h"
 #include "core/tianmu_attr.h"
+#include "core/delta_record_head.h"
 #include "index/kv_store.h"
 #include "rocksdb/db.h"
 #include "rocksdb/iterator.h"
@@ -32,9 +33,6 @@ namespace Tianmu {
 namespace core {
 class TableShare;
 class Transaction;
-
-enum class RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, RecordType_max };
-
 class DeltaTable {
  public:
   DeltaTable() = default;

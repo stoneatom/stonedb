@@ -23,13 +23,13 @@ namespace utils {
 
 class BitSet {
  public:
-  BitSet() = delete;
-  BitSet(size_t sz_, char *data = nullptr) : sz_(sz_) {
+  BitSet() = default;
+  BitSet(size_t sz, char *data = nullptr) : sz_(sz) {
     if (data) {
       ptr_ = data;
       allocated_ = false;
     } else {
-      ptr_ = new char[(sz_ + NO_OF_BITS - 1) / NO_OF_BITS]();
+      ptr_ = new char[(sz + NO_OF_BITS - 1) / NO_OF_BITS]();
       allocated_ = true;
     }
   }
@@ -41,6 +41,17 @@ class BitSet {
     }
   }
 
+  void Init(size_t sz, char *data = nullptr){
+    sz_ = sz;
+    if (data) {
+      ptr_ = data;
+      allocated_ = false;
+    } else {
+      ptr_ = new char[(sz + NO_OF_BITS - 1) / NO_OF_BITS]();
+      allocated_ = true;
+    }
+  }
+
   bool operator[](size_t pos) const { return ptr_[pos / NO_OF_BITS] & (1U << (pos % NO_OF_BITS)); }
   void set(size_t pos) { ptr_[pos / NO_OF_BITS] |= (1U << (pos % NO_OF_BITS)); }
   void reset(size_t pos) { ptr_[pos / NO_OF_BITS] &= ~(1U << (pos % NO_OF_BITS)); }
@@ -48,7 +59,7 @@ class BitSet {
   size_t data_size() const { return (sz_ + NO_OF_BITS - 1) / NO_OF_BITS; }
 
  private:
-  char *ptr_;
+  char *ptr_ = nullptr;
   size_t sz_;
   bool allocated_;
   static constexpr size_t NO_OF_BITS = 8;

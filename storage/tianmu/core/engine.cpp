@@ -391,41 +391,12 @@ Engine::~Engine() {
 
 void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
                                 std::unique_ptr<char[]> &buf, uint32_t &size) {
-  // value_layout:
-  //     (Insert)TypeFlag
-  //     table_id
-  //     table_path
-  //     fields_size
-  //     fields count
-  //     null_mask
-  //     fields head
-  //     fields...
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
-  utils::BitSet null_mask(col);
-
   char *ptr = buf.get();
-  // RecordType
-  *(RecordType *)ptr = RecordType::kInsert;
-  ptr += sizeof(RecordType);
-  // table id
-  *(int32_t *)ptr = table_id;
-  ptr += sizeof(int32_t);
-  // table path
-  int32_t path_len = table_path.size();
-  std::memcpy(ptr, table_path.c_str(), path_len);
-  ptr += path_len;
-  *ptr++ = 0;  // end with \0
-  // field count
-  *(size_t *)ptr = col;
-  ptr += sizeof(size_t);
-  // null mask
-  auto null_offset = ptr - buf.get();
-  ptr += null_mask.data_size();
-  // field head
-  int64_t *field_head = (int64_t *)ptr;
-  ptr += sizeof(int64_t) * col;
-  auto field_offset = ptr - buf.get();
+  DeltaRecordHeadForInsert deltaRecord(DELTA_RECORD_NORMAL,table_id,table_path,col);
+  ptr = deltaRecord.record_encode(ptr);
+
   for (uint i = 0; i < col; i++) {
     Field *f = field[i];
 
@@ -452,7 +423,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
     }
 
     if (f->is_null()) {
-      null_mask.set(i);
+      deltaRecord.null_mask_.set(i);
       continue;
     }
 
@@ -464,7 +435,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < TIANMU_TINYINT_MIN)
           v = TIANMU_TINYINT_MIN;
         *(int64_t *)ptr = v;
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_SHORT: {
@@ -474,7 +445,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < TIANMU_SMALLINT_MIN)
           v = TIANMU_SMALLINT_MIN;
         *(int64_t *)ptr = v;
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONG: {
@@ -484,7 +455,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < TIANMU_INT_MIN)
           v = TIANMU_INT_MIN;
         *(int64_t *)ptr = v;
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_INT24: {
@@ -494,7 +465,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < TIANMU_MEDIUMINT_MIN)
           v = TIANMU_MEDIUMINT_MIN;
         *(int64_t *)ptr = v;
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONGLONG: {
@@ -504,7 +475,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < common::TIANMU_BIGINT_MIN)
           v = common::TIANMU_BIGINT_MIN;
         *(int64_t *)ptr = v;
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
@@ -512,13 +483,13 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
         *(int64_t *)ptr = *reinterpret_cast<int64_t *>(&v);
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_NEWDECIMAL: {
         auto dec_f = dynamic_cast<Field_new_decimal *>(f);
         *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_TIME:
@@ -533,7 +504,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         f->get_time(&my_time);
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
 
@@ -551,7 +522,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         my_time.second_part = saved;
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_YEAR:  // what the hell?
@@ -559,7 +530,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         types::DT dt = {};
         dt.year = f->val_int();
         *(int64_t *)ptr = dt.val;
-        field_head[i] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_VARCHAR:
@@ -575,7 +546,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         ptr += sizeof(uint32_t);
         std::memcpy(ptr, str.ptr(), str.length());
         ptr += str.length();
-        field_head[i] = sizeof(uint32_t) + str.length();
+        deltaRecord.field_head_[i] = sizeof(uint32_t) + str.length();
       } break;
       case MYSQL_TYPE_SET:
       case MYSQL_TYPE_ENUM:
@@ -589,28 +560,20 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
     ASSERT(ptr <= buf.get() + size, "Buffer overflow");
   }
 
-  std::memcpy(buf.get() + null_offset, null_mask.data(), null_mask.data_size());
+  std::memcpy(buf.get() + deltaRecord.null_offset_, deltaRecord.null_mask_.data(), deltaRecord.null_mask_.data_size());
   size = ptr - buf.get();
 }
 
 void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
-  ptr += sizeof(RecordType);
-  ptr += sizeof(int32_t);
-  std::string path(ptr);
-  ptr += path.length() + 1;
-  size_t field_count = *(size_t *)ptr;
-  ptr += sizeof(size_t);
-  utils::BitSet null_mask(field_count, const_cast<char *>(ptr));
-  ptr += null_mask.data_size();
-  auto *field_head = (int64_t *)ptr;
-  ptr += sizeof(int64_t) * field_count;
-  for (uint i = 0; i < field_count; i++) {
+  DeltaRecordHeadForInsert deltaRecord;
+  ptr = deltaRecord.record_decode(ptr);
+  for (uint i = 0; i < deltaRecord.field_count_; i++) {
     auto field = fields[i];
-    if (null_mask[i]) {
+    if (deltaRecord.null_mask_[i]) {
       field->set_null();
       continue;
     }
-    auto length = field_head[i];
+    auto length = deltaRecord.field_head_[i];
     switch (field->type()) {
       case MYSQL_TYPE_TINY:
       case MYSQL_TYPE_SHORT:
@@ -696,59 +659,26 @@ void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
 void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
                                 std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
                                 std::unique_ptr<char[]> &buf, uint32_t &buf_size) {
-  // value_layout:
-  //     (Update)TypeFlag
-  //     table_id
-  //     table_path
-  //     fields_count
-  //     update_mask
-  //     null_mask
-  //     field_head
-  //     update_fields...
 
   buf_size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[buf_size]);
-  utils::BitSet update_mask(field_count);
-  utils::BitSet null_mask(field_count);
-
   char *ptr = buf.get();
-  // RecordType
-  *(RecordType *)ptr = RecordType::kUpdate;
-  ptr += sizeof(RecordType);
-  // table id
-  *(int32_t *)ptr = table_id;
-  ptr += sizeof(int32_t);
-  // table path
-  int32_t path_len = table_path.size();
-  std::memcpy(ptr, table_path.c_str(), path_len);
-  ptr += path_len;
-  *ptr++ = 0;  // end with \0
-  // field count
-  *(size_t *)ptr = field_count;
-  ptr += sizeof(size_t);
-  // update mask
-  auto update_offset = ptr - buf.get();
-  ptr += update_mask.data_size();
-  // null mask
-  auto null_offset = ptr - buf.get();
-  ptr += null_mask.data_size();
-  // field head
-  int64_t *field_head = (int64_t *)ptr;
-  ptr += sizeof(int64_t) * field_count;
-  auto field_offset = ptr - buf.get();
+  DeltaRecordHeadForUpdate deltaRecord(table_id,table_path,field_count);
+  ptr = deltaRecord.record_encode(ptr);
+
   // fields...
   for (uint col_id = 0; col_id < field_count; col_id++) {
     if (update_fields.find(col_id) == update_fields.end()) {
-      field_head[col_id] = -1;
+      deltaRecord.field_head_[col_id] = -1;
       continue;
     }
     Field *f = update_fields[col_id];
     if (f == nullptr) {
-      null_mask.set(col_id);
-      field_head[col_id] = -1;
+      deltaRecord.null_mask_.set(col_id);
+      deltaRecord.field_head_[col_id] = -1;
       continue;
     }
-    update_mask.set(col_id);
+    deltaRecord.update_mask_.set(col_id);
     // resize
     size_t length;
     if (f->flags & BLOB_FLAG)
@@ -778,7 +708,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         else if (v < TIANMU_TINYINT_MIN)
           v = TIANMU_TINYINT_MIN;
         *(int64_t *)ptr = v;
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_SHORT: {
@@ -788,7 +718,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         else if (v < TIANMU_SMALLINT_MIN)
           v = TIANMU_SMALLINT_MIN;
         *(int64_t *)ptr = v;
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONG: {
@@ -798,7 +728,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         else if (v < TIANMU_INT_MIN)
           v = TIANMU_INT_MIN;
         *(int64_t *)ptr = v;
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_INT24: {
@@ -808,7 +738,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         else if (v < TIANMU_MEDIUMINT_MIN)
           v = TIANMU_MEDIUMINT_MIN;
         *(int64_t *)ptr = v;
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONGLONG: {
@@ -818,7 +748,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         else if (v < common::TIANMU_BIGINT_MIN)
           v = common::TIANMU_BIGINT_MIN;
         *(int64_t *)ptr = v;
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
@@ -826,13 +756,13 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
         *(int64_t *)ptr = *reinterpret_cast<int64_t *>(&v);
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_NEWDECIMAL: {
         auto dec_f = dynamic_cast<Field_new_decimal *>(f);
         *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_TIME:
@@ -847,7 +777,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         f->get_time(&my_time);
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
 
@@ -865,7 +795,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         my_time.second_part = saved;
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_YEAR:  // what the hell?
@@ -873,7 +803,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         types::DT dt = {};
         dt.year = f->val_int();
         *(int64_t *)ptr = dt.val;
-        field_head[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_VARCHAR:
@@ -889,7 +819,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         ptr += sizeof(uint32_t);
         std::memcpy(ptr, str.ptr(), str.length());
         ptr += str.length();
-        field_head[col_id] = sizeof(uint32_t) + str.length();
+        deltaRecord.field_head_[col_id] = sizeof(uint32_t) + str.length();
       } break;
       case MYSQL_TYPE_SET:
       case MYSQL_TYPE_ENUM:
@@ -902,8 +832,8 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
     }
     ASSERT(ptr <= buf.get() + buf_size, "Buffer overflow");
   }
-  std::memcpy(buf.get() + update_offset, update_mask.data(), update_mask.data_size());
-  std::memcpy(buf.get() + null_offset, null_mask.data(), null_mask.data_size());
+  std::memcpy(buf.get() + deltaRecord.update_offset_, deltaRecord.update_mask_.data(), deltaRecord.update_mask_.data_size());
+  std::memcpy(buf.get() + deltaRecord.null_offset_, deltaRecord.null_mask_.data(), deltaRecord.null_mask_.data_size());
   buf_size = ptr - buf.get();
 }
 
@@ -913,14 +843,8 @@ void Engine::EncodeDeleteRecord(const std::string &table_path, int table_id,std:
   buf_size = sizeof(RecordType) + sizeof(int32_t) + path_len;
   buf.reset(new char[buf_size]);
   char *ptr = buf.get();
-  // RecordType
-  *reinterpret_cast<RecordType *>(ptr) =  RecordType::kDelete;
-  ptr += sizeof(RecordType);
-  // table id
-  *reinterpret_cast<int32_t *>(ptr) = table_id;
-  ptr += sizeof(int32_t);
-  // table path
-  std::memcpy(ptr, table_path.c_str(), path_len);
+  DeltaRecordHeadForDelete deltaRecord(table_id,table_path);
+  ptr = deltaRecord.record_encode(ptr);
 }
 
 std::unique_ptr<char[]> Engine::GetRecord(size_t &len) {

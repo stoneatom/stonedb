@@ -478,13 +478,17 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
   dpn_->synced = false;
 
   for (size_t i = 0; i < vc->NumOfValues(); i++) {
-    if (!vc->IsNull(i)) {
+    if (vc->NotNull(i)) {
       AppendValue(*reinterpret_cast<uint64_t *>(const_cast<char *>(vc->GetDataBytesPointer(i))));
     } else {
       if (nv.has_value())
         AppendValue(nv->i);
       else
         AppendNull();
+      if(vc->IsDelete(i)){
+        SetDeleted(dpn_->numOfRecords-1);
+        dpn_->numOfDeleted++;
+      }
     }
   }
   // sum has already been updated outside
@@ -559,6 +563,10 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
         AppendValue(nv->i - new_min);
       else
         AppendNull();
+      if(vc->IsDelete(i)){
+        SetDeleted(dpn_->numOfRecords-1);
+        dpn_->numOfDeleted++;
+      }
     }
   }
   // sum has already been updated outside

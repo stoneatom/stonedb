@@ -161,6 +161,7 @@ class DelayedInsertParser final {
       }
       // value_layout:
       //     (Insert)TypeFlag
+      //     isDeleted normal:n deleted:d
       //     table_id
       //     table_path
       //     fields_size
@@ -170,6 +171,8 @@ class DelayedInsertParser final {
       //     fields...
       auto ptr = (*vec)[processed].get();
       ptr += sizeof(RecordType);
+      char isDeleted = *ptr;
+      ptr++;
       ptr += sizeof(int32_t);
       std::string path(ptr);
       ptr += path.length() + 1;
@@ -181,6 +184,10 @@ class DelayedInsertParser final {
       ptr += sizeof(int64_t) * field_count;
       for (uint i = 0; i < attrs.size(); i++) {
         auto &vc = value_buffers[i];
+        if(isDeleted == DELTA_RECORD_DELETE){
+          vc.ExpectedDelete();
+          continue;
+        }
         if (null_mask[i]) {
           vc.ExpectedNull(true);
           continue;
