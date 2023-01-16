@@ -52,9 +52,11 @@ TableShare::TableShare(const fs::path &table_path, const TABLE_SHARE *table_shar
   }
 
   thr_lock_init(&thr_lock);
+  TIANMU_LOG(LogCtl_Level::DEBUG, "TableShare alloc, table_path: %s", table_path.string().c_str());
 }
 
 TableShare::~TableShare() {
+  TIANMU_LOG(LogCtl_Level::DEBUG, "TableShare dealloc, table_path: %s", table_path.string().c_str());
   thr_lock_delete(&thr_lock);
 
   if (current.use_count() > 1)

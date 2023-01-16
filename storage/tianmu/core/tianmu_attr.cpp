@@ -823,18 +823,22 @@ void TianmuAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
   unsigned long newv;
 
   do {
-    ASSERT(v > tag_one,
-           "Unexpected lock counter!: " + Path().string() + " index:" + std::to_string(pn) + " " + std::to_string(v));
+    if (v <= tag_one) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "UnlockPackFromUse fail, v [%ld] <= tag_one [%ld]", v, tag_one);
+      ASSERT(0,
+             "Unexpected lock counter!: " + Path().string() + " index:" + std::to_string(pn) + " " + std::to_string(v));
+    }
     newv = v - tag_one;
     if ((v & ~tag_mask) == tag_one)
       newv = 0;
   } while (!dpn->CAS(v, newv));
 
-  if (newv == 0) {
-    auto ap = reinterpret_cast<Pack *>(v & tag_mask);
-    ap->Unlock();
-  } else {
+  if (newv != 0) {
+    return;
   }
+
+  auto ap = reinterpret_cast<Pack *>(v & tag_mask);
+  ap->Unlock();
 }
 
 void TianmuAttr::Collapse() {

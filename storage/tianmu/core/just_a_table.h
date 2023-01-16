@@ -58,6 +58,9 @@ class JustATable : public std::enable_shared_from_this<JustATable> {
 
   virtual const ColumnType &GetColumnType(int n_a) = 0;
   virtual uint32_t Getpackpower() const = 0;
+  virtual std::string GetTableName() = 0;
+  virtual std::string GetFieldName(int attr) = 0;
+
   //! Returns column value in the form required by complex expressions
   ValueOrNull GetComplexValue(const int64_t obj, const int attr);
 

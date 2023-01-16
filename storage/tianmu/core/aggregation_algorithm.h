@@ -47,7 +47,7 @@ class AggregationAlgorithm {
                       bool &ag_not_changeabe, bool &stop_all, int64_t &uniform_pos, int64_t rows_in_pack,
                       int64_t local_factor, int just_one_aggr = -1);
   void MultiDimensionalGroupByScan(GroupByWrapper &gbw, int64_t &limit, int64_t &offset, ResultSender *sender,
-                                   bool limit_less_than_no_groups, bool force_parall);
+                                   bool limit_less_than_no_groups);
   void MultiDimensionalDistinctScan(GroupByWrapper &gbw, MIIterator &mit);
   void AggregateFillOutput(GroupByWrapper &gbw, int64_t gt_pos, int64_t &omit_by_offset);
 

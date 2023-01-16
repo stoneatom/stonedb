@@ -19,6 +19,7 @@
 #pragma once
 
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 namespace Tianmu {
@@ -30,11 +31,22 @@ class MIIterator;
 
 class VCPackGuardian final {
  public:
+  enum class GUARDIAN_LOCK_STRATEGY { LOCK_ONE, LOCK_ONE_THREAD, LOCK_ALL, LOCK_LRU };
+
+ public:
   VCPackGuardian(vcolumn::VirtualColumn *vc) : my_vc_(*vc) {}
   ~VCPackGuardian() = default;
 
   void LockPackrow(const MIIterator &mit);
+  void LockPackrowOnLockOne(const MIIterator &mit);
+  void LockPackrowOnLockOneByThread(const MIIterator &mit);
+  void LockPackrowOnLockAll(const MIIterator &mit);
+  void LockPackrowOnLockLRU(const MIIterator &mit);
   void UnlockAll();
+  void UnlockAllOnLockOne();
+  void UnlockAllOnLockOneByThread();
+  void UnlockAllOnLockAll();
+  void UnlockAllOnLockLRU();
 
  private:
   void Initialize(int no_th);
@@ -48,8 +60,19 @@ class VCPackGuardian final {
   // Structures used for LOCK_ONE
   std::vector<std::vector<int>> last_pack_;
 
+  // thread_id::cur_dim::col_index -> pack
+  std::unordered_map<uint64_t, std::unordered_map<int, std::unordered_map<int, int>>> last_pack_thread_;
+
   int guardian_threads_{1};  // number of parallel threads using the guardian
   std::mutex mx_thread_;
+
+  GUARDIAN_LOCK_STRATEGY current_strategy_ = GUARDIAN_LOCK_STRATEGY::LOCK_ONE_THREAD;
+  std::unordered_map<int, std::unordered_map<int, char>> lock_packs_;
+  std::unordered_map<int, std::vector<int>> lru_packs_;
+
+ private:
+  constexpr static int LOCK_LRU_LIMIT = 10000;
+  constexpr static int LOCK_LRU_ONCE_ERASE = 10;
 };
 }  // namespace core
 }  // namespace Tianmu

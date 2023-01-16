@@ -2250,6 +2250,13 @@ bool TempTable::RecordIterator::operator!=(RecordIterator const &it) const {
   return (_currentRNo != it._currentRNo);
 }
 
+std::string TempTable::GetFieldName(int attr) {
+  DEBUG_ASSERT(attr < static_cast<int>(NumOfAttrs()));
+  Attr *atr = GetAttrP(static_cast<uint>(attr));
+  DEBUG_ASSERT(atr != nullptr);
+  return std::string(const_cast<const char *>(atr->alias));
+}
+
 TempTableForSubquery::~TempTableForSubquery() {
   if (no_global_virt_cols != -1) {  // otherwise never evaluated
     for (uint i = no_global_virt_cols; i < virt_cols.size(); i++) delete virt_cols[i];

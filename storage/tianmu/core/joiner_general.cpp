@@ -75,13 +75,25 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     // TODO: There is no time to continue to optimize this parameter,
     // later need to provide a configurable parameter to
     // control whether to enable multithreading
+
+    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
 #ifdef INNER_JOIN_LOOP_MULTI_THREAD
+    std::string thread_type("multi");
     ExecuteInnerJoinLoopMultiThread(mit, cond, new_mind, all_dims, pack_desc_locked, tuples_in_output, tips.limit,
                                     tips.count_only);
 #else
+    std::string thread_type("sin");
     ExecuteInnerJoinLoopSingleThread(mit, cond, new_mind, all_dims, pack_desc_locked, tuples_in_output, tips.limit,
                                      tips.count_only);
 #endif
+
+    auto diff =
+        std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+    if (diff.count() > logger::SLOW_QUERY_LIMIT_SEC) {
+      TIANMU_LOG(LogCtl_Level::INFO, "ExecuteJoinConditions thread_type: %s spend: %f NumOfTuples: %d",
+                 thread_type.c_str(), diff.count(), mit.NumOfTuples());
+    }
   }
   // Postprocessing and cleanup
   if (tips.count_only)
@@ -153,6 +165,7 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task [[maybe
               new_mind->SetNewTableValue(i, (*mii)[i]);
           new_mind->CommitNewTableValues();
         }
+
         (*tuples_in_output)++;
       }
 
@@ -287,7 +300,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
 
   int hardware_concurrency = std::thread::hardware_concurrency();
   // TODO: The original code was the number of CPU cores divided by 4, and the reason for that is to be traced further
-  int threads_num = hardware_concurrency > 4 ? (hardware_concurrency / 4) : 1;
+  int threads_num = hardware_concurrency > 4 ? ((hardware_concurrency / 4) + 1) : 1;
 
   int loopcnt = 0;
   int mod = 0;
@@ -301,9 +314,10 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
     --threads_num;
   } while ((num <= 1) && (threads_num >= 1));
 
-  TIANMU_LOG(LogCtl_Level::DEBUG,
-             "ExecuteInnerJoinLoopMultiThreading packnum: %d threads_num: %d loopcnt: %d num: %d mod: %d", packnum,
-             threads_num, loopcnt, num, mod);
+  TIANMU_LOG(
+      LogCtl_Level::INFO,
+      "ExecuteInnerJoinLoopMultiThreading packnum: %d threads_num: %d loopcnt: %d num: %d mod: %d NumOfTuples: %d",
+      packnum, threads_num, loopcnt, num, mod, mit.NumOfTuples());
 
   std::vector<CTask> vTask;
   vTask.reserve(loopcnt);
