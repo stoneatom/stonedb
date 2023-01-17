@@ -154,31 +154,11 @@ static double PowOfTen(int exponent) { return std::pow((double)10, exponent); }
   @retval   - number of bytes scanned from ptr.
 */
 static size_t
-field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bool unwanted_str)
+field_str_to_sql_conditions(std::string &str_condition, Field *f, bool unwanted_str)
 {
   const uchar *ptr = f->is_null() ? nullptr:f->ptr;
   if(!ptr){
     return 0;
-  }
-  uint32 length= 0;
-  uint32 ASC_max = 255;
-  if (f->type() == MYSQL_TYPE_STRING)
-  {
-    if (meta > ASC_max)
-    {
-      uint byte0= meta >> 8;
-      uint byte1= meta & 0xFF;
-      
-      if ((byte0 & 0x30) != 0x30)
-      {
-        /* a long CHAR() field: see #37426 */
-        length= byte1 | (((byte0 & 0x30) ^ 0x30) << 4);
-      }
-      else
-        length = meta & 0xFF;
-    }
-    else
-      length= meta;
   }
 
   switch (f->type()) {
@@ -187,6 +167,7 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bo
   case MYSQL_TYPE_INT24:
   case MYSQL_TYPE_SHORT:
   case MYSQL_TYPE_LONGLONG:
+  case MYSQL_TYPE_BIT:
     {
       int64_t v = f->val_int();
       str_condition = std::to_string(v);
@@ -199,16 +180,6 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bo
       double v = f->val_real();
       str_condition = std::to_string(v);
       return 4;
-    }
-  case MYSQL_TYPE_BIT:
-    {
-      /* Meta-data: bit_len, bytes_in_rec, 2 bytes */
-      uint nbits= ((meta >> 8) * 8) + (meta & 0xFF);
-      length= (nbits + 7) / 8;
-      char tmp[120] = {0};
-      my_b_write_bit(tmp, ptr, nbits);
-      str_condition = tmp;
-      return length;
     }
   case MYSQL_TYPE_TIMESTAMP:
   case MYSQL_TYPE_TIMESTAMP2:
@@ -259,35 +230,6 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bo
       str_condition = tmp;
       return 1;
     }
-  
-  case MYSQL_TYPE_ENUM:
-    switch (meta & 0xFF) {
-    case 1:
-    {
-      int64_t v = f->val_int();
-      str_condition = std::to_string(v);
-      return 1;
-    }
-    case 2:
-    {
-      int32 i32= uint2korr(ptr);
-      char tmp[64] = {0};
-      sprintf(tmp, "%d", i32);
-      str_condition = tmp;
-      return 2;
-    }
-    default:
-      return 0;
-    }
-    break;
-    
-  case MYSQL_TYPE_SET:
-  {
-    char tmp[64] = {0};
-    my_b_write_bit(tmp, ptr , (meta & 0xFF) * 8);
-    str_condition = tmp;
-    return meta & 0xFF;
-  }
   case MYSQL_TYPE_BLOB:
   case MYSQL_TYPE_VARCHAR:
   case MYSQL_TYPE_VAR_STRING:
@@ -303,6 +245,10 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bo
     str_condition = "'" + str1 + "'";
     return 4;
   }
+  case MYSQL_TYPE_SET:
+  case MYSQL_TYPE_ENUM:
+  case MYSQL_TYPE_GEOMETRY:
+  case MYSQL_TYPE_NULL:
   default:
     break;
   }
@@ -380,7 +326,7 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
         continue;
       }
 
-      field_str_to_sql_conditions(str_cond, f, meta, false);
+      field_str_to_sql_conditions(str_cond, f, false);
       if(str_cond.empty()) {
         col_id = 0;
         key_field_name = "";
@@ -392,7 +338,7 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
       return true;
     }
 
-    field_str_to_sql_conditions(str_cond, f, meta, unwanted_str);
+    field_str_to_sql_conditions(str_cond, f, unwanted_str);
     if(str_cond.empty()){
       continue;
     }
