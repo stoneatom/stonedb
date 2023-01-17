@@ -4,6 +4,7 @@ sidebar_position: 6.2
 ---
 
 # Data Types
+
 The following table lists the data types supported by StoneDB.
 
 | **Category** | **Data type** |
@@ -27,9 +28,9 @@ The following table provides the value range of each integer data type.
 | MEDIUMINT | 3 | Yes | -8388608 | 8388607 |
 |  |  | No | 0 | 8388607 |
 | INT | 4 | Yes | -2147483647 | 2147483647 |
-|  |  | unsigned | 0 | 2147483647 |
-| BIGINT | 8 | Yes | -9223372036854775808 | 9223372036854775807 |
-|  |  | unsigned | 0 | 18446744073709551615 |
+|  |  | No | 0 | 2147483647 |
+| BIGINT | 8 | Yes | -9223372036854775806 | 9223372036854775807 |
+|  |  | No | 0 | 9223372036854775807 |
 
 On StoneDB, the precision for DECIMAL numbers cannot be higher than 18. For example, if you specify **decimal(19)** in your code, an error will be reported. **DECIMAL(6, 2)** indicates that up to 6 places are supported at the left of the decimal and up to 2 at the right, and thus the value range is [-9999.99, 9999.99].
 # String data types
