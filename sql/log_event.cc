@@ -81,6 +81,18 @@ PSI_memory_key key_memory_Rows_query_log_event_rows_query;
 using std::min;
 using std::max;
 
+//tmp define
+#define ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX 3234
+#define ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX 3235
+#define ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX 3236
+#define ER_TIANMU_NOT_SUPPORTED_GEOMETRY 3237
+#define ER_TIANMU_NOT_SUPPORTED_ENUM 3238
+#define ER_TIANMU_NOT_SUPPORTED_SET 3239
+#define ER_TIANMU_NOT_SUPPORTED_TRIGGER 3240
+#define ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY 3241
+#define ER_TIANMU_NOT_SUPPORTED_PARTITION 3242
+#define ER_TIANMU_NOT_FOUND_INDEX 3243
+
 /**
   BINLOG_CHECKSUM variable.
 */
@@ -4969,6 +4981,20 @@ compare_errors:
                       "Could not execute %s event. Detailed error: %s;",
                       get_type_str(), thd->get_stmt_da()->message_text());
       }
+      clear_all_errors(thd, const_cast<Relay_log_info*>(rli));
+      thd->killed= THD::NOT_KILLED;
+    }
+    /*
+      Tianmu engine as slave: ingnor some errors
+    */    
+    else if(ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX == actual_error
+            || ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX  == actual_error
+            || ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX  == actual_error
+            || ER_TIANMU_NOT_SUPPORTED_TRIGGER == actual_error
+            || ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY == actual_error
+            || ER_TIANMU_NOT_FOUND_INDEX == actual_error)
+    {
+      DBUG_PRINT("info",("error ignored"));
       clear_all_errors(thd, const_cast<Relay_log_info*>(rli));
       thd->killed= THD::NOT_KILLED;
     }
