@@ -55,7 +55,7 @@ sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTI
 - MTR binlog.binlog_unsafe Crash。[#341](https://github.com/stoneatom/stonedb/issues/341)
 - 其它BUG。[#682](https://github.com/stoneatom/stonedb/issues/682) [#553](https://github.com/stoneatom/stonedb/issues/553) [#508](https://github.com/stoneatom/stonedb/issues/508)
 ### 行为变更
-使用快速部署StoneDB为MySQL的备库Shell脚本，默认sql_mode开启强制Tianmu引擎餐参数：MANDATORY_TIANMU。<br /> 
+使用快速部署StoneDB为MySQL的备库Shell脚本，默认sql_mode开启强制Tianmu引擎参数：MANDATORY_TIANMU。<br /> 
 ### 支持平台
 
 - CentOS 7.6以上。
