@@ -4,7 +4,6 @@ sidebar_position: 11.0
 ---
 
 # Release Notes
-
 ## StoneDB-5.7-V1.0.2
 Release date： January 15,2023
 ### New features
@@ -21,6 +20,7 @@ Release date： January 15,2023
 - Sql_mode add value 'MANDATORY_TIANMU' for mandatory Tianmu engine in table 
    - The following statement demonstrates the syntax：
 ```sql
+
 # Global level
 mysql>set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
 
