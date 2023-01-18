@@ -22,5 +22,11 @@ sidebar_position: 100
 
 所有的下载包链接都导向了 Github 页面，如果您当前的网络无法正常访问 Github，可以前往 [Gitee](https://gitee.com/StoneDB/stonedb/releases/tag/5.7-v1.0.2-GA) 按需下载相关安装包。
 
-如果有更多问题，可以通过邮件联系我们：contact@stonedb.io
+如果有更多问题，可以通过以下方式联系我们：
+
+- 邮件：`contact@stonedb.io`
+- 公众号：`StoneDB`
+- 知乎：`StoneDB`
+- 哔哩哔哩：`StoneDB`
+
 :::
