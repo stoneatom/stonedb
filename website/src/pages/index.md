@@ -80,7 +80,7 @@ A Real-time HTAP Database
                 - Minimal TCO, Making Data Services Affordable to Everyone
 ```
 
-```custom-roadMap 2022-10-20
+```custom-roadMap 2023-01-15
 - Roadmap
     - StoneDB_5.6_v1.0.0
         1. Support integrated hybrid row-column storage and use an in-memory computing architecture.
@@ -97,11 +97,34 @@ A Real-time HTAP Database
         4. Add the support for binlogs in the row-based format.
         - 2022-10-24
     - StoneDB_5.7_v1.0.2
-        1. Upgrade basic components to improve performance, security, etc.
-        2. Add the partitioning feature.
-        3. Add the parallel processing feature.
-        4. Add the vectorized processing feature.
-        - 2022-12-31
+        1. Supports user-defined functions
+        2. Supports ESCAPE
+        3. Supports Primary key and Supports syntactically index constraints
+        4. Supports modifying the character set of table or field
+        5. Supports BIT data type：Supports Creation, change and deletion；Supports logical operation
+        6. Supports replace into statement
+        7. Supports syntactically unsigned and zerofill
+        8. Sql_mode add value 'MANDATORY_TIANMU' for mandatory Tianmu engine in table
+        - 2023-01-15
+    - StoneDB_5.7_v1.0.3
+        1. The capability of the active and standby clusters is enhanced
+        2. Definition of some data objects
+        3. Binlog modification
+        4. The active and standby clusters automatically search for the master
+        - 2023-02-30
+    - StoneDB_5.7_v1.0.4
+        1. Stored procedure enhancement
+        2. MySQL Event (Batch processing capability)
+        3. Window functions
+        4. Security functions - enhanced identity authentication, storage encryption
+        - 2023-04-30
+    - StoneDB_5.7_v1.0.5
+        1. Performance Enhancement - Parallel Execution Capability
+        2. Performance Enhancement - vector computing
+        3. Multi-master, one-slave architecture
+        4. Data exchange (multiple export formats)
+        5. Security functions - transmission encryption, data desensitization
+        - 2023-06-30
     - StoneDB_8.0_v1.0.0
         - Adapt to MySQL 8.0.
         - 2023-03-06
