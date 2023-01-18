@@ -1,6 +1,6 @@
 ---
 id: quick-start
-sidebar_position: 3.2
+sidebar_position: 3.3
 ---
 
 # 快速上手
