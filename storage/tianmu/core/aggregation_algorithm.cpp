@@ -248,8 +248,8 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
     if (static_cast<uint64_t>(mit.NumOfTuples()) > tianmu_sysvar_groupby_parallel_rows_minimum) {
       int thd_limit = std::thread::hardware_concurrency() * 2;
       thd_cnt = tianmu_sysvar_groupby_parallel_degree > thd_limit ? thd_limit : tianmu_sysvar_groupby_parallel_degree;
-      TIANMU_LOG(LogCtl_Level::DEBUG,
-                 "MultiDimensionalGroupByScan multi threads thd_cnt: %d thd_limit: %d NumOfTuples:%d "
+      TIANMU_LOG(LogCtl_Level::INFO,
+                 "MultiDimensionalGroupByScan multi threads thd_cnt: %d thd_limit: %d NumOfTuples: %d "
                  "groupby_parallel_degree: %d groupby_parallel_rows_minimum: %lld",
                  thd_cnt, thd_limit, mit.NumOfTuples(), tianmu_sysvar_groupby_parallel_degree,
                  tianmu_sysvar_groupby_parallel_rows_minimum);
@@ -321,8 +321,8 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
 
       auto diff =
           std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
-      if (diff.count() > logger::SLOW_QUERY_LIMIT_SEC) {
-        TIANMU_LOG(LogCtl_Level::DEBUG, "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d",
+      if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+        TIANMU_LOG(LogCtl_Level::INFO, "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d",
                    thread_type.c_str(), diff.count(), mit.NumOfTuples());
       }
 
@@ -925,7 +925,7 @@ void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVec
 
   auto diff =
       std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
-  if (diff.count() > logger::SLOW_QUERY_LIMIT_SEC) {
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
     TIANMU_LOG(LogCtl_Level::INFO, "TaskAggrePacks task_id: %d spend: %f pack_start: %d pack_end: %d", task->dwTaskId,
                diff.count(), task->dwStartPackno, task->dwEndPackno);
   }

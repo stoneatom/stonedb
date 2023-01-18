@@ -1,0 +1,38 @@
+DROP DATABASE IF EXISTS issue422_test;
+CREATE DATABASE issue422_test;
+USE issue422_test;
+DROP TABLE IF EXISTS test1;
+CREATE TABLE t1(id int, name varchar(20)) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+drop procedure if exists idata;
+create procedure idata(in num INT)
+begin
+declare i int;
+set i=1;
+while(i<=num) do
+if (i < 200) then
+insert into t1 values(i, 'James');
+elseif (i >= 200 && i < 1500) then
+insert into t1 values(i, 'Lily');
+else
+insert into t1 values(i, 'Kevin');
+end if;
+set i=i+1;
+end while;
+end //
+call idata(3000);
+set global tianmu_slow_query_record_interval=0;
+set global tianmu_groupby_parallel_rows_minimum=1000;
+set global tianmu_groupby_parallel_degree=0;
+select sum(id),name from t1 group by name order by name;
+sum(id)	name
+19900	James
+3377250	Kevin
+1104350	Lily
+set global tianmu_groupby_parallel_degree=2;
+select sum(id),name from t1 group by name order by name;
+sum(id)	name
+19900	James
+3377250	Kevin
+1104350	Lily
+set global tianmu_slow_query_record_interval=2;
+drop database issue422_test;

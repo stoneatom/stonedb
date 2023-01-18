@@ -177,6 +177,9 @@ tianmu_groupby_parallel_degree=0
 # that can start executing a multithreaded group by thread
 tianmu_groupby_parallel_rows_minimum=655360
 
+# Slow Query Threshold of recording tianmu logs, in seconds
+tianmu_slow_query_record_interval=2
+
 # here, at the end of [mysqld] group mtr will automatically disable
 # all optional plugins.
 

@@ -2250,11 +2250,11 @@ bool TempTable::RecordIterator::operator!=(RecordIterator const &it) const {
   return (_currentRNo != it._currentRNo);
 }
 
-std::string TempTable::GetFieldName(int attr) {
+const std::string &&TempTable::GetFieldName(int attr) {
   DEBUG_ASSERT(attr < static_cast<int>(NumOfAttrs()));
   Attr *atr = GetAttrP(static_cast<uint>(attr));
   DEBUG_ASSERT(atr != nullptr);
-  return std::string(const_cast<const char *>(atr->alias));
+  return std::move(std::string(const_cast<const char *>(atr->alias)));
 }
 
 TempTableForSubquery::~TempTableForSubquery() {

@@ -24,7 +24,6 @@ namespace Tianmu {
 
 namespace logger {
 enum class LogCtl_Level { DISABLED = 0, FATAL = 1, ERROR = 2, WARN = 3, INFO = 4, DEBUG = 5, TRACE = 6 };
-constexpr float SLOW_QUERY_LIMIT_SEC = 5.0;
 }  // namespace logger
 
 namespace utils {

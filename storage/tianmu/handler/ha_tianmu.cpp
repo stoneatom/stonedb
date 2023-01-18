@@ -2414,6 +2414,9 @@ static MYSQL_SYSVAR_UINT(groupby_parallel_degree, tianmu_sysvar_groupby_parallel
 static MYSQL_SYSVAR_ULONGLONG(groupby_parallel_rows_minimum, tianmu_sysvar_groupby_parallel_rows_minimum,
                               PLUGIN_VAR_LONGLONG, "group by parallel minimum rows", nullptr, nullptr, 655360, 655360,
                               INT64_MAX, 0);
+static MYSQL_SYSVAR_UINT(slow_query_record_interval, tianmu_sysvar_slow_query_record_interval, PLUGIN_VAR_INT,
+                         "slow Query Threshold of recording tianmu logs, in seconds", nullptr, nullptr, 0, 0, INT32_MAX,
+                         0);
 static MYSQL_SYSVAR_BOOL(orderby_speedup, tianmu_sysvar_orderby_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, FALSE);
 static MYSQL_SYSVAR_UINT(join_parallel, tianmu_sysvar_join_parallel, PLUGIN_VAR_INT,
                          "join matching parallel: 0-Disabled, 1-Auto, N-specify count", nullptr, nullptr, 1, 0, 1000,
@@ -2543,6 +2546,7 @@ static struct st_mysql_sys_var *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_thread
                                                      MYSQL_SYSVAR(global_debug_level),
                                                      MYSQL_SYSVAR(groupby_parallel_degree),
                                                      MYSQL_SYSVAR(groupby_parallel_rows_minimum),
+                                                     MYSQL_SYSVAR(slow_query_record_interval),
                                                      MYSQL_SYSVAR(hugefiledir),
                                                      MYSQL_SYSVAR(index_cache_size),
                                                      MYSQL_SYSVAR(index_search),

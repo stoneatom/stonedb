@@ -31,7 +31,7 @@ class MIIterator;
 
 class VCPackGuardian final {
  public:
-  enum class GUARDIAN_LOCK_STRATEGY { LOCK_ONE, LOCK_ONE_THREAD, LOCK_ALL, LOCK_LRU };
+  enum class GUARDIAN_LOCK_STRATEGY { LOCK_ONE, LOCK_ONE_THREAD };
 
  public:
   VCPackGuardian(vcolumn::VirtualColumn *vc) : my_vc_(*vc) {}
@@ -40,13 +40,9 @@ class VCPackGuardian final {
   void LockPackrow(const MIIterator &mit);
   void LockPackrowOnLockOne(const MIIterator &mit);
   void LockPackrowOnLockOneByThread(const MIIterator &mit);
-  void LockPackrowOnLockAll(const MIIterator &mit);
-  void LockPackrowOnLockLRU(const MIIterator &mit);
   void UnlockAll();
   void UnlockAllOnLockOne();
   void UnlockAllOnLockOneByThread();
-  void UnlockAllOnLockAll();
-  void UnlockAllOnLockLRU();
 
  private:
   void Initialize(int no_th);
@@ -69,12 +65,6 @@ class VCPackGuardian final {
   std::mutex mx_thread_;
 
   GUARDIAN_LOCK_STRATEGY current_strategy_ = GUARDIAN_LOCK_STRATEGY::LOCK_ONE_THREAD;
-  std::unordered_map<int, std::unordered_map<int, char>> lock_packs_;
-  std::unordered_map<int, std::vector<int>> lru_packs_;
-
- private:
-  constexpr static int LOCK_LRU_LIMIT = 10000;
-  constexpr static int LOCK_LRU_ONCE_ERASE = 10;
 };
 }  // namespace core
 }  // namespace Tianmu

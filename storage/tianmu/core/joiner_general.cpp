@@ -90,7 +90,7 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
 
     auto diff =
         std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
-    if (diff.count() > logger::SLOW_QUERY_LIMIT_SEC) {
+    if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
       TIANMU_LOG(LogCtl_Level::INFO, "ExecuteJoinConditions thread_type: %s spend: %f NumOfTuples: %d",
                  thread_type.c_str(), diff.count(), mit.NumOfTuples());
     }

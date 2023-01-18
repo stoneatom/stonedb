@@ -59,6 +59,7 @@ my_bool tianmu_sysvar_filterevaluation_speedup;
 my_bool tianmu_sysvar_groupby_speedup;
 unsigned int tianmu_sysvar_groupby_parallel_degree;
 unsigned long long tianmu_sysvar_groupby_parallel_rows_minimum;
+unsigned int tianmu_sysvar_slow_query_record_interval;
 unsigned int tianmu_sysvar_index_cache_size;
 my_bool tianmu_sysvar_index_search;
 my_bool tianmu_sysvar_enable_rowstore;

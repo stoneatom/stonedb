@@ -94,6 +94,8 @@ extern unsigned int tianmu_sysvar_groupby_parallel_degree;
 // Threshold for the minimum number of rows
 // that can start executing a multithreaded group by thread
 extern unsigned long long tianmu_sysvar_groupby_parallel_rows_minimum;
+// Slow Query Threshold of recording tianmu logs, in seconds
+extern unsigned int tianmu_sysvar_slow_query_record_interval;
 
 void ConfigureRCControl();
 
