@@ -44,111 +44,11 @@
   Currently, only Tianmu Engine uses this function.
 */
 
-
-/**
-  Prints a quoted string to io cache.
-  Control characters are displayed as hex sequence, e.g. \x00
-  
-  @param[in] file              IO cache
-  @param[in] prt               Pointer to string
-  @param[in] length            String length
-*/
-
-static void
-my_b_write_quoted(IO_CACHE *file, const uchar *ptr, uint length)
-{
-  const uchar *s;
-  my_b_printf(file, "'");
-  for (s= ptr; length > 0 ; s++, length--)
-  {
-    if (*s > 0x1F && *s != '\'' && *s != '\\')
-      my_b_write(file, s, 1);
-    else
-    {
-      uchar hex[10];
-      size_t len= my_snprintf((char*) hex, sizeof(hex), "%s%02x", "\\x", *s);
-      my_b_write(file, hex, len);
-    }
-  }
-  my_b_printf(file, "'");
-}
-
-/**
-  Prints a bit string to io cache in format  b'1010'.
-  
-  @param[in] file              IO cache
-  @param[in] ptr               Pointer to string
-  @param[in] nbits             Number of bits
-*/
-static void
-my_b_write_bit(char *file, const uchar *ptr, uint nbits)
-{
-  uint bitnum, nbits8= ((nbits + 7) / 8) * 8, skip_bits= nbits8 - nbits;
-  strncpy(file , "b'" , 2);
-  file += 2;
-  for (bitnum= skip_bits ; bitnum < nbits8; bitnum++)
-  {
-    int is_set= (ptr[(bitnum) / 8] >> (7 - bitnum % 8))  & 0x01;
-    char *c = (char*) (is_set ? "1" : "0");
-    strncpy(file , c ,1);
-    file ++;
-  }
-  strncpy(file , "'" ,1);
-}
-
-
-/**
-  Prints a packed string to io cache.
-  The string consists of length packed to 1 or 2 bytes,
-  followed by string data itself.
-  
-  @param[in] file              IO cache
-  @param[in] ptr               Pointer to string
-  @param[in] length            String size
-  
-  @retval   - number of bytes scanned.
-*/
-static size_t
-my_b_write_quoted_with_length(IO_CACHE *file, const uchar *ptr, uint length)
-{
-  if (length < 256)
-  {
-    length= *ptr;
-    my_b_write_quoted(file, ptr + 1, length);
-    return length + 1;
-  }
-  else
-  {
-    length= uint2korr(ptr);
-    my_b_write_quoted(file, ptr + 2, length);
-    return length + 2;
-  }
-}
-
-
-/**
-  Prints a 32-bit number in both signed and unsigned representation
-  
-  @param[in] file              IO cache
-  @param[in] sl                Signed number
-  @param[in] ul                Unsigned number
-*/
-static void
-my_b_write_sint32_and_uint32(IO_CACHE *file, int32 si, uint32 ui)
-{
-  my_b_printf(file, "%d", si);
-  if (si < 0)
-    my_b_printf(file, " (%u)", ui);
-}
-
-static double PowOfTen(int exponent) { return std::pow((double)10, exponent); }
-
 /**
  Conversion conditions of column data
   
   @param[std::string] str_condition       condition cache
   @param[Field *] f                       Column Properties
-  @param[in] meta                         Column meta information
   @param[bool] unwanted_str               Whether string condition is required
   
   @retval   - number of bytes scanned from ptr.
@@ -234,7 +134,6 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f, bool unwanted_
   case MYSQL_TYPE_VARCHAR:
   case MYSQL_TYPE_VAR_STRING:
   case MYSQL_TYPE_STRING:
-  case MYSQL_TYPE_JSON:
   {
     if(unwanted_str){
         return 0;
@@ -245,6 +144,8 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f, bool unwanted_
     str_condition = "'" + str1 + "'";
     return 4;
   }
+  //The tianmu engine does not support the following types. If it does, please adapt the type.
+  case MYSQL_TYPE_JSON:
   case MYSQL_TYPE_SET:
   case MYSQL_TYPE_ENUM:
   case MYSQL_TYPE_GEOMETRY:
