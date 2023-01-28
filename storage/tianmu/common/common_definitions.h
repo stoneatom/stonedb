@@ -38,6 +38,8 @@ constexpr size_t operator""_GB(unsigned long long v) { return 1024u * 1024u * 10
 namespace common {
 
 extern void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint code, const char *msg);
+extern void PushWarningIfOutOfRange(THD *thd, std::string col_name, int64_t v, int type, bool unsigned_flag);
+std::string getErrMsg(std::string col_name, int64_t min, int64_t max, bool unsigned_flag, int64_t v);
 
 // Column Type
 // NOTE: do not change the order of implemented data types! Stored as int(...)

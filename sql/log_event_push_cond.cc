@@ -154,7 +154,7 @@ static double PowOfTen(int exponent) { return std::pow((double)10, exponent); }
   @retval   - number of bytes scanned from ptr.
 */
 static size_t
-filed_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bool unwanted_str)
+field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bool unwanted_str)
 {
   const uchar *ptr = f->is_null() ? nullptr:f->ptr;
   if(!ptr){
@@ -353,12 +353,13 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
     use the field of the unique constraint as the push down condition
   */
   std::string key_field_name;
-  if(m_table->s->key_info && 
+  if(m_table->s &&
+    m_table->s->key_parts > 0 &&
+    m_table->s->key_info &&
     m_table->s->key_info->key_part &&
-    m_table->s->key_info->key_part->field)
-  {
-    key_field_name = m_table->s->key_info->key_part->field->field_name;
-  }
+    m_table->s->key_info->key_part->field){
+        key_field_name = m_table->s->key_info->key_part->field->field_name;
+    }
   int cond_num = 0;
   bool unwanted_str = false;
   /*
@@ -379,7 +380,7 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
         continue;
       }
 
-      filed_str_to_sql_conditions(str_cond, f, meta, false);
+      field_str_to_sql_conditions(str_cond, f, meta, false);
       if(str_cond.empty()) {
         col_id = 0;
         key_field_name = "";
@@ -391,7 +392,7 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
       return true;
     }
 
-    filed_str_to_sql_conditions(str_cond, f, meta, unwanted_str);
+    field_str_to_sql_conditions(str_cond, f, meta, unwanted_str);
     if(str_cond.empty()){
       continue;
     }
