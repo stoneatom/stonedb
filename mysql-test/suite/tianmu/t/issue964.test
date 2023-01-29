@@ -16,14 +16,14 @@ DROP TABLE IF EXISTS t1,t2;
 
 CREATE TABLE `t1` (
   `id` int(11) DEFAULT NULL,
-  `name` varchar(20) DEFAULT NULL,
-  KEY `idx_n` (`name`)
+  `name` varchar(20),
+  PRIMARY KEY `idx_n` (`name`)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE `t2` (
   `id` int(11) DEFAULT NULL,
-  `name` varchar(20) DEFAULT NULL,
-  KEY `idx_n` (`name`)
+  `name` varchar(20),
+  PRIMARY KEY `idx_n` (`name`)
 )DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 ## insert data, only for table t1

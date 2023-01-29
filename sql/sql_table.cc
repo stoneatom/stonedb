@@ -3031,10 +3031,8 @@ static void calculate_interval_lengths(const CHARSET_INFO *cs,
    1	Error
 */
 
-int prepare_create_field(Create_field *sql_field, 
-			 uint *blob_columns, 
-			 longlong table_flags)
-{
+int prepare_create_field(Create_field *sql_field, uint *blob_columns,
+                         longlong table_flags, enum legacy_db_type db_type) {
   unsigned int dup_val_count;
   DBUG_ENTER("prepare_field");
 
@@ -3061,8 +3059,12 @@ int prepare_create_field(Create_field *sql_field,
   case MYSQL_TYPE_GEOMETRY:
     if (!(table_flags & HA_CAN_GEOMETRY))
     {
-      my_printf_error(ER_CHECK_NOT_IMPLEMENTED, ER(ER_CHECK_NOT_IMPLEMENTED),
-                      MYF(0), "GEOMETRY");
+      if (db_type == DB_TYPE_TIANMU) {
+        my_error(ER_TIANMU_NOT_SUPPORTED_GEOMETRY, MYF(0));
+      } else {
+        my_printf_error(ER_CHECK_NOT_IMPLEMENTED, ER(ER_CHECK_NOT_IMPLEMENTED),
+                        MYF(0), "GEOMETRY");
+      }
       DBUG_RETURN(1);
     }
     sql_field->pack_flag=FIELDFLAG_GEOM |
@@ -3108,6 +3110,10 @@ int prepare_create_field(Create_field *sql_field,
       sql_field->pack_flag|=FIELDFLAG_BINARY;
     break;
   case MYSQL_TYPE_ENUM:
+    if (db_type == DB_TYPE_TIANMU) {
+      my_error(ER_TIANMU_NOT_SUPPORTED_ENUM, MYF(0));
+      DBUG_RETURN(1);
+    }
     sql_field->pack_flag=pack_length_to_packflag(sql_field->pack_length) |
       FIELDFLAG_INTERVAL;
     if (sql_field->charset->state & MY_CS_BINSORT)
@@ -3119,6 +3125,10 @@ int prepare_create_field(Create_field *sql_field,
       DBUG_RETURN(1);
     break;
   case MYSQL_TYPE_SET:
+    if (db_type == DB_TYPE_TIANMU) {
+      my_error(ER_TIANMU_NOT_SUPPORTED_SET, MYF(0));
+      DBUG_RETURN(1);
+    }
     sql_field->pack_flag=pack_length_to_packflag(sql_field->pack_length) |
       FIELDFLAG_BITFIELD;
     if (sql_field->charset->state & MY_CS_BINSORT)
@@ -3177,7 +3187,6 @@ int prepare_create_field(Create_field *sql_field,
     sql_field->pack_flag|= FIELDFLAG_NO_DEFAULT;
   DBUG_RETURN(0);
 }
-
 
 static TYPELIB *create_typelib(MEM_ROOT *mem_root,
                                Create_field *field_def,
@@ -3827,8 +3836,8 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
   {
     assert(sql_field->charset != 0);
 
-    if (prepare_create_field(sql_field, &blob_columns, 
-			     file->ha_table_flags()))
+    if (prepare_create_field(sql_field, &blob_columns, file->ha_table_flags(),
+                             create_info->db_type->db_type))
       DBUG_RETURN(TRUE);
     if (sql_field->sql_type == MYSQL_TYPE_VARCHAR)
       create_info->varchar= TRUE;
@@ -3924,6 +3933,20 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
     }
     (*key_count)++;
     tmp=file->max_key_parts();
+
+    if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+      if ((file->ha_table_flags() & HA_NON_SECONDARY_KEY) &&
+          key->type == KEYTYPE_MULTIPLE) {
+        my_error(ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX, MYF(0));
+        DBUG_RETURN(TRUE);
+      }
+      if (file->ha_table_flags() & HA_NON_UNIQUE_KEY &&
+          key->type == KEYTYPE_UNIQUE) {
+        my_error(ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX, MYF(0));
+        DBUG_RETURN(TRUE);
+      }
+    }
+
     if (key->columns.elements > tmp && key->type != KEYTYPE_SPATIAL)
     {
       my_error(ER_TOO_MANY_KEY_PARTS,MYF(0),tmp);
@@ -4055,9 +4078,14 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
                      MYF(0));
           DBUG_RETURN(TRUE);
         }
-	my_message(ER_TABLE_CANT_HANDLE_FT, ER(ER_TABLE_CANT_HANDLE_FT),
-                   MYF(0));
-	DBUG_RETURN(TRUE);
+        if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+          my_message(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX,
+                     ER(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX), MYF(0));
+        } else {
+          my_message(ER_TABLE_CANT_HANDLE_FT, ER(ER_TABLE_CANT_HANDLE_FT),
+                     MYF(0));
+        }
+        DBUG_RETURN(TRUE);
       }
     }
     /*
@@ -8465,11 +8493,19 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
     while ((drop=drop_it++)) {
       switch (drop->type) {
       case Alter_drop::KEY:
+        if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+          my_error(ER_TIANMU_NOT_FOUND_INDEX, MYF(0));
+          goto err;
+        }
+        /*fall through*/
       case Alter_drop::COLUMN:
         my_error(ER_CANT_DROP_FIELD_OR_KEY, MYF(0),
                  alter_info->drop_list.head()->name);
         goto err;
       case Alter_drop::FOREIGN_KEY:
+        if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+          my_error(ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY, MYF(0));
+        }
         break;
       default:
         assert(false);
@@ -8481,8 +8517,12 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
   }
   if (rename_key_list.elements)
   {
-    my_error(ER_KEY_DOES_NOT_EXITS, MYF(0), rename_key_list.head()->old_name,
-             table->s->table_name.str);
+    if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+      my_error(ER_TIANMU_NOT_FOUND_INDEX, MYF(0));
+    } else {
+      my_error(ER_KEY_DOES_NOT_EXITS, MYF(0), rename_key_list.head()->old_name,
+               table->s->table_name.str);
+    }
     goto err;
   }
 
@@ -9341,9 +9381,10 @@ bool mysql_alter_table(THD *thd, const char *new_db, const char *new_name,
    till this point for the alter operation.
   */
   if ((alter_info->flags & Alter_info::ADD_FOREIGN_KEY) &&
-      check_fk_parent_table_access(thd, alter_ctx.new_db,
-                                   create_info, alter_info))
+      check_fk_parent_table_access(thd, alter_ctx.new_db, create_info,
+                                   alter_info)) {
     DBUG_RETURN(true);
+  }
 
   /*
    If this is an ALTER TABLE and no explicit row type specified reuse

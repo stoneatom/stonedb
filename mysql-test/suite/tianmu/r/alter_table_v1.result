@@ -79,57 +79,18 @@ drop database mysqltest;
 #
 # ALTER TABLE ... ENABLE/DISABLE KEYS
 #
-create table t1 (n1 int not null, n2 int, n3 int, n4 float,
-unique(n1),
-key (n1, n2, n3, n4),
-key (n2, n3, n4, n1),
-key (n3, n4, n1, n2),
-key (n4, n1, n2, n3))engine=tianmu;
+create table t1 (n1 int not null, n2 int, n3 int, n4 float)engine=tianmu;
 alter table t1 disable keys;
 Warnings:
 Note	1031	Table storage engine for 't1' doesn't have this option
 show keys from t1;
 Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
-t1	0	n1	1	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n1_2	1	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n1_2	2	n2	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n1_2	3	n3	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n1_2	4	n4	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n2	1	n2	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n2	2	n3	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n2	3	n4	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n2	4	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n3	1	n3	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n3	2	n4	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n3	3	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n3	4	n2	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n4	1	n4	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n4	2	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n4	3	n2	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n4	4	n3	NULL	NULL	NULL	NULL	YES	LSMTREE		
 insert into t1 values(RAND()*100,RAND()*100,RAND()*10,RAND()*10);
 alter table t1 enable keys;
 Warnings:
 Note	1031	Table storage engine for 't1' doesn't have this option
 show keys from t1;
 Table	Non_unique	Key_name	Seq_in_index	Column_name	Collation	Cardinality	Sub_part	Packed	Null	Index_type	Comment	Index_comment
-t1	0	n1	1	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n1_2	1	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n1_2	2	n2	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n1_2	3	n3	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n1_2	4	n4	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n2	1	n2	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n2	2	n3	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n2	3	n4	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n2	4	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n3	1	n3	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n3	2	n4	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n3	3	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n3	4	n2	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n4	1	n4	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n4	2	n1	NULL	NULL	NULL	NULL		LSMTREE		
-t1	1	n4	3	n2	NULL	NULL	NULL	NULL	YES	LSMTREE		
-t1	1	n4	4	n3	NULL	NULL	NULL	NULL	YES	LSMTREE		
 drop table t1;
 #
 # Alter table and rename
