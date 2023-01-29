@@ -290,10 +290,6 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
   if (thd->lex->sql_command == SQLCOM_LOCK_TABLES)
     DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 
-  if (is_delay_insert(thd) && table_share->tmp_table == NO_TMP_TABLE && lock_type == F_WRLCK) {
-    DBUG_RETURN(0);
-  }
-
   try {
     if (lock_type == F_UNLCK) {
       if (thd->lex->sql_command == SQLCOM_UNLOCK_TABLES)
