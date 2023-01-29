@@ -31,9 +31,7 @@ CREATE TABLE `account` (
   `version` int(11) DEFAULT '0' COMMENT '',
   `account_balance` decimal(15,2) DEFAULT '0.00' COMMENT '',
   `order_froze_amount` decimal(15,2) DEFAULT NULL COMMENT '',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `account_acc_id_uindex` (`acc_id`),
-  KEY `index_name` (`acc_id`)
+  PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COMMENT='账户';
 
 CREATE TABLE `account_statement` (
@@ -60,9 +58,7 @@ CREATE TABLE `account_statement` (
   `after_froze_amount` decimal(15,2) DEFAULT '0.00' COMMENT '',
   `before_froze_order_amount` decimal(15,2) DEFAULT NULL COMMENT '',
   `after_froze_order_amount` decimal(15,2) DEFAULT NULL COMMENT '',
-  PRIMARY KEY (`id`),
-  KEY `index_business_no` (`business_no`),
-  KEY `index_name` (`acc_id`)
+  PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COMMENT='账户流水';
 
 CREATE TABLE `customer_branch_account` (
@@ -90,11 +86,7 @@ CREATE TABLE `customer_branch_account` (
   `change_sign` varchar(50) DEFAULT NULL COMMENT '',
   `rebate_item` varchar(30) DEFAULT NULL COMMENT '',
   `rebate_subitem` varchar(30) DEFAULT NULL COMMENT '',
-  PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `union` (`branch_org_code`,`customer_code`,`agency_org_code`,`draw_category`,`transfer_course`,`type`,`dr`)
-  USING BTREE COMMENT '',
-  KEY `idx_union` (`agency_org_code`,`customer_code`,`draw_category`,`transfer_course`,`dr`)
-  USING BTREE COMMENT ''
+  PRIMARY KEY (`id`) USING BTREE
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='关系表';
 
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR

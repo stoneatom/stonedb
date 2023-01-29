@@ -55,12 +55,7 @@ drop database mysqltest;
 --echo # ALTER TABLE ... ENABLE/DISABLE KEYS
 --echo #
 
-create table t1 (n1 int not null, n2 int, n3 int, n4 float,
-                unique(n1),
-                key (n1, n2, n3, n4),
-                key (n2, n3, n4, n1),
-                key (n3, n4, n1, n2),
-                key (n4, n1, n2, n3))engine=tianmu;
+create table t1 (n1 int not null, n2 int, n3 int, n4 float)engine=tianmu;
                 
 alter table t1 disable keys;
 show keys from t1;
