@@ -689,11 +689,11 @@ void ParameterizedFilter::DescriptorJoinOrdering() {
   }
 }
 
-void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips)
-
-{
+void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips) {
   // Calculate joins (i.e. any condition using attributes from two dimensions)
   // as well as other conditions (incl. one-dim) flagged as "outer join"
+
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
   thd_proc_info(mind_->ConnInfo().Thd(), "join");
   DimensionVector all_involved_dims(mind_->NumOfDimensions());
@@ -728,6 +728,13 @@ void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips)
   mind_->UpdateNumOfTuples();
   // display results (the last alg.)
   DisplayJoinResults(all_involved_dims, join_alg, is_outer, conditions_used);
+
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO, "UpdateJoinCondition spend: %f join_type: %d", diff.count(),
+               static_cast<int>(join_alg));
+  }
 }
 
 void ParameterizedFilter::DisplayJoinResults(DimensionVector &all_involved_dims, JoinAlgType join_performed,
@@ -1247,8 +1254,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     if (descriptors_[i].done)
       continue;
 
-    if (descriptors_[i].IsType_Join() || descriptors_[i].IsDelayed() || descriptors_[i].IsOuter() ||
-        descriptors_[i].IsType_In() || descriptors_[i].IsType_Exists()) {
+    if (descriptors_[i].IsType_Join() || descriptors_[i].IsDelayed() || descriptors_[i].IsOuter()) {
       (!descriptors_[i].IsDelayed()) ? no_of_join_conditions++ : no_of_delayed_conditions++;
     }
   }
@@ -1261,14 +1267,16 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   int no_desc = 0;
   for (uint i = 0; i < descriptors_.Size(); i++) {
     if (!descriptors_[i].done && descriptors_[i].IsInner() && !descriptors_[i].IsType_Join() &&
-        !descriptors_[i].IsDelayed() && !descriptors_[i].IsType_Exists() && !descriptors_[i].IsType_In())
+        !descriptors_[i].IsDelayed())
       ++no_desc;
   }
+
+  std::chrono::high_resolution_clock::time_point start_apply_desc = std::chrono::high_resolution_clock::now();
 
   int desc_no = 0;
   for (uint i = 0; i < descriptors_.Size(); i++) {
     if (descriptors_[i].done || !descriptors_[i].IsInner() || descriptors_[i].IsType_Join() ||
-        descriptors_[i].IsDelayed() || descriptors_[i].IsType_In() || descriptors_[i].IsType_Exists())
+        descriptors_[i].IsDelayed())
       continue;
 
     ++desc_no;
@@ -1299,6 +1307,13 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     }
 
     last_desc_dim = cur_dim;
+  }
+
+  auto diff_apply_desc = std::chrono::duration_cast<std::chrono::duration<float>>(
+      std::chrono::high_resolution_clock::now() - start_apply_desc);
+  if (diff_apply_desc.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO, "ApplyDescriptor spend: %f op: %d", diff_apply_desc.count(),
+               static_cast<int>(descriptors_[0].op));
   }
 
   rough_mind_->UpdateReducedDimension();

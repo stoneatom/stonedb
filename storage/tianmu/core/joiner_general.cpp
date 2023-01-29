@@ -340,7 +340,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
     tmp.dwStartPackno = pack_start;
     tmp.dwEndPackno = pack_end;
 
-    TIANMU_LOG(LogCtl_Level::DEBUG, "ExecuteInnerJoinLoop dwTaskId: %d dwStartPackno: %d dwEndPackno: %d", tmp.dwTaskId,
+    TIANMU_LOG(LogCtl_Level::INFO, "ExecuteInnerJoinLoop dwTaskId: %d dwStartPackno: %d dwEndPackno: %d", tmp.dwTaskId,
                tmp.dwStartPackno, tmp.dwEndPackno);
 
     vTask.push_back(tmp);

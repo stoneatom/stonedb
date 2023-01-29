@@ -166,8 +166,8 @@ tianmu_global_debug_level=4
 tianmu_enable_histogram_cmap_bloom=OFF
 
 # Parallel hash join
-tianmu_force_hashjoin=OFF
-tianmu_join_parallel=0
+tianmu_force_hashjoin=ON
+tianmu_join_parallel=1
 
 # The parallelism degree of multithreaded aggregation
 # the number of threads executing group by multithreaded aggregation

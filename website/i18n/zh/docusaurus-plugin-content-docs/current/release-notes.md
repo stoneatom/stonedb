@@ -4,20 +4,21 @@ sidebar_position: 11.0
 ---
 
 # 发版日志
+
 ## StoneDB_5.7_v1.0.2 的发行日志 (2023-01-15, GA)
 发布日期： 2023 年 01 月 15 日
 ### 功能开发
 
 - 支持自定义函数。
 - 支持转义功能。
-- 支持主键和支持(语法上)索引约束。
+- 支持主键，语法上支持索引。
 - 支持修改表/字段的字符集。
 - 支持BIT数据类型
-   - BIT 数据类型创建、更改、删除
+   - 建表时允许指定字段类型为 BIT，也允许修改表字段类型为 BIT(需要满足类型转换条件)。
    - BIT 数据类型逻辑运算
 - 支持replace into 功能。
 - 支持(语法上)支持unsigned 和zerofill。
-- sql_mode增加强制Tianmu引擎参数：MANDATORY_TIANMU。
+- SQL MODE 中增加参数 MANDATORY TIANMU，用于指定表的默认存储引擎为 TIANMU。
    - 语法举例：
 ```sql
 # 全局级别
@@ -34,10 +35,12 @@ sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTI
 ### 易用性
 
 - 安装包自动检测识别能力。
-- 快速部署StoneDB为MySQL的备库能力。
+- 快速部署StoneDB为MySQL的从库能力。
+
 ### 稳定性
 
-- 做为备库的稳定性增强。
+- 做为从库的稳定性增强。
+
 ### 问题修复
 修复了如下 Bug：
 
@@ -54,12 +57,15 @@ sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTI
 - 子查询场景。[#732](https://github.com/stoneatom/stonedb/issues/732)
 - MTR binlog.binlog_unsafe Crash。[#341](https://github.com/stoneatom/stonedb/issues/341)
 - 其它BUG。[#682](https://github.com/stoneatom/stonedb/issues/682) [#553](https://github.com/stoneatom/stonedb/issues/553) [#508](https://github.com/stoneatom/stonedb/issues/508)
+
 ### 行为变更
-使用快速部署StoneDB为MySQL的备库Shell脚本，默认sql_mode开启强制Tianmu引擎参数：MANDATORY_TIANMU。<br /> 
+使用快速部署StoneDB为MySQL的从库Shell脚本，默认 sql_mode 开启强制 Tianmu 引擎参数：MANDATORY_TIANMU。
+
 ### 支持平台
 
 - CentOS 7.6以上。
 - Ubuntu 20。
+
 ### 其他
 
 - 添加一些MTR测试用例。
