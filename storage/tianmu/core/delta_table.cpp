@@ -189,13 +189,13 @@ DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) 
   key_pos += sizeof(uint32_t);
   rocksdb::Slice entry_slice((char *)entry_key, key_pos);
   // ==== for debug ====
-//  it_->Seek(entry_slice);
-//  while (it_->Valid()) {
-//    auto row_id = GetCurrRowIdFromRecord();
-//    TIANMU_LOG(LogCtl_Level::DEBUG, " this table id: %d, row id: %d, type: %d, this record value: %s", table_id, row_id,
-//               static_cast<RecordType>(it_->value().data()[0]), it_->value());
-//    it_->Next();
-//  }
+  it_->Seek(entry_slice);
+  while (it_->Valid()) {
+    auto row_id = GetCurrRowIdFromRecord();
+    TIANMU_LOG(LogCtl_Level::DEBUG, " this table id: %d, row id: %d, type: %d, this record value: %s", table_id, row_id,
+               static_cast<RecordType>(it_->value().data()[0]), it_->value());
+    it_->Next();
+  }
   // ==== for debug ====
   it_->Seek(entry_slice);
   while (it_->Valid() && !IsCurrInsertType()) {

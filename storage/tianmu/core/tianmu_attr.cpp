@@ -909,7 +909,7 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   size_t load_nulls = nv.has_value() ? 0 : nvs->NumOfNulls();
 
   // nulls only
-  if (load_nulls == load_values && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
+  if (load_nulls == load_values && nvs->NumOfDeletes() == 0 && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
     dpn.numOfRecords += load_values;
     dpn.numOfNulls += load_values;
     return;
@@ -982,7 +982,7 @@ void TianmuAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   auto cnt = nvs->NumOfValues();
 
   // no need to store any values - uniform package
-  if (load_nulls == cnt && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
+  if (load_nulls == cnt && nvs->NumOfDeletes() == 0 &&  (dpn.numOfRecords == 0 || dpn.NullOnly())) {
     dpn.numOfRecords += cnt;
     dpn.numOfNulls += cnt;
     return;
@@ -1172,13 +1172,14 @@ void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64
       DeleteByPrimaryKey(tx, row_id, ColId());
 
       get_pack(pn)->DeleteByRow(row2offset(row_id));
-
-      // update global data
-      hdr.numOfNulls -= dpn_save.numOfNulls;
-      hdr.numOfNulls += dpn.numOfNulls;
-      hdr.numOfDeleted++;
     }
+    // update global data
+    hdr.numOfNulls -= dpn_save.numOfNulls;
+    hdr.numOfNulls += dpn.numOfNulls;
+    hdr.numOfDeleted -= dpn_save.numOfDeleted;
+    hdr.numOfNulls += dpn.numOfDeleted;
     ResetMaxMin(dpn);
+
   }
 }
 
