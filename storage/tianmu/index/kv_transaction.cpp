@@ -66,6 +66,11 @@ rocksdb::Status KVTransaction::PutData(rocksdb::ColumnFamilyHandle *column_famil
   return data_batch_->Merge(column_family, key, value);
 }
 
+rocksdb::Status KVTransaction::MergeData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
+                                       const rocksdb::Slice &value) {
+  return data_batch_->Merge(column_family, key, value);
+}
+
 rocksdb::Status KVTransaction::SingleDeleteData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key) {
   // notice: if a key is overwritten (by calling Put() multiple times), then the
   // result of calling SingleDelete() on this key is undefined, delete is better

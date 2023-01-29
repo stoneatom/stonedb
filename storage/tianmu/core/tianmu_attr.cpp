@@ -55,14 +55,10 @@ TianmuAttr::TianmuAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num,
     common::TX_ID v(co[3], co[4]);
 
     switch (t) {
-      case FilterType::CMAP:
-        return std::make_shared<RSIndex_CMap>(Path() / common::COL_FILTER_DIR, v);
-      case FilterType::HIST:
-        return std::make_shared<RSIndex_Hist>(Path() / common::COL_FILTER_DIR, v);
-      case FilterType::BLOOM:
-        return std::make_shared<RSIndex_Bloom>(Path() / common::COL_FILTER_DIR, v);
-      default:
-        TIANMU_ERROR("bad type");
+      case FilterType::CMAP:return std::make_shared<RSIndex_CMap>(Path() / common::COL_FILTER_DIR, v);
+      case FilterType::HIST:return std::make_shared<RSIndex_Hist>(Path() / common::COL_FILTER_DIR, v);
+      case FilterType::BLOOM:return std::make_shared<RSIndex_Bloom>(Path() / common::COL_FILTER_DIR, v);
+      default:TIANMU_ERROR("bad type");
     }
   };
 }
@@ -189,47 +185,35 @@ size_t TianmuAttr::ComputeNaturalSize() {
   switch (TypeName()) {
     case common::ColumnType::STRING:
     case common::ColumnType::BYTE:
-    case common::ColumnType::DATE:
-      na_size += Type().GetPrecision() * NumOfObj();
+    case common::ColumnType::DATE:na_size += Type().GetPrecision() * NumOfObj();
       break;
     case common::ColumnType::TIME:
     case common::ColumnType::YEAR:
     case common::ColumnType::DATETIME:
-    case common::ColumnType::TIMESTAMP:
-      na_size += Type().GetDisplaySize() * NumOfObj();
+    case common::ColumnType::TIMESTAMP:na_size += Type().GetDisplaySize() * NumOfObj();
       break;
-    case common::ColumnType::NUM:
-      na_size += (Type().GetPrecision() + (Type().GetScale() ? 1 : 0)) * NumOfObj();
+    case common::ColumnType::NUM:na_size += (Type().GetPrecision() + (Type().GetScale() ? 1 : 0)) * NumOfObj();
       break;
     case common::ColumnType::BIGINT:
-    case common::ColumnType::REAL:
-      na_size += 8 * NumOfObj();
+    case common::ColumnType::REAL:na_size += 8 * NumOfObj();
       break;
     case common::ColumnType::FLOAT:
-    case common::ColumnType::INT:
-      na_size += 4 * NumOfObj();
+    case common::ColumnType::INT:na_size += 4 * NumOfObj();
       break;
-    case common::ColumnType::MEDIUMINT:
-      na_size += 3 * NumOfObj();
+    case common::ColumnType::MEDIUMINT:na_size += 3 * NumOfObj();
       break;
-    case common::ColumnType::SMALLINT:
-      na_size += 2 * NumOfObj();
+    case common::ColumnType::SMALLINT:na_size += 2 * NumOfObj();
       break;
-    case common::ColumnType::BYTEINT:
-      na_size += 1 * NumOfObj();
+    case common::ColumnType::BYTEINT:na_size += 1 * NumOfObj();
       break;
-    case common::ColumnType::VARCHAR:
-      na_size += hdr.natural_size;
+    case common::ColumnType::VARCHAR:na_size += hdr.natural_size;
       break;
-    case common::ColumnType::LONGTEXT:
-      na_size += hdr.natural_size;
+    case common::ColumnType::LONGTEXT:na_size += hdr.natural_size;
       break;
     case common::ColumnType::VARBYTE:
-    case common::ColumnType::BIN:
-      na_size += hdr.natural_size;
+    case common::ColumnType::BIN:na_size += hdr.natural_size;
       break;
-    default:
-      break;
+    default:break;
   }
   return na_size;
 }
@@ -426,8 +410,8 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
       int64_t res = GetValueInt64(obj);
       if (res == common::NULL_VALUE_64)
         return;
-      size = m_dict->ValueSize((int)res);
-      std::memcpy(val_buf, m_dict->GetBuffer((int)res), size);
+      size = m_dict->ValueSize((int) res);
+      std::memcpy(val_buf, m_dict->GetBuffer((int) res), size);
       return;
     } else {  // no dictionary
       if (dpn.Trivial())
@@ -444,16 +428,16 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
     int64_t v = GetValueInt64(obj);
     if (v == common::NULL_VALUE_64)
       return;
-    *(int *)val_buf = int(v);
+    *(int *) val_buf = int(v);
     val_buf[4] = 0;
     return;
   } else if (a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIGINT || ATI::IsRealType(a_type) ||
-             ATI::IsDateTimeType(a_type)) {
+      ATI::IsDateTimeType(a_type)) {
     size = 8;
     int64_t v = GetValueInt64(obj);
     if (v == common::NULL_VALUE_64)
       return;
-    *(int64_t *)(val_buf) = v;
+    *(int64_t *) (val_buf) = v;
     val_buf[8] = 0;
     return;
   }
@@ -490,7 +474,7 @@ types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
     else if (ATI::IsRealType(a_type))
       ret = types::TianmuNum(this->GetNotNullValueInt64(obj), 0, true, a_type);
     else if (lookup_to_num || a_type == common::ColumnType::NUM)
-      ret = types::TianmuNum((int64_t)GetNotNullValueInt64(obj), Type().GetScale());
+      ret = types::TianmuNum((int64_t) GetNotNullValueInt64(obj), Type().GetScale());
   }
   return ret;
 }
@@ -502,20 +486,20 @@ types::TianmuDataType &TianmuAttr::GetValueData(size_t obj, types::TianmuDataTyp
     common::ColumnType a_type = TypeName();
     DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
-      ((types::BString &)value) = GetNotNullValueString(obj);
+      ((types::BString &) value) = GetNotNullValueString(obj);
     else if (ATI::IsBinType(a_type)) {
       auto tmp_size = GetLength(obj);
-      ((types::BString &)value) = types::BString(nullptr, tmp_size, true);
-      GetValueBin(obj, tmp_size, ((types::BString &)value).val_);
+      ((types::BString &) value) = types::BString(nullptr, tmp_size, true);
+      GetValueBin(obj, tmp_size, ((types::BString &) value).val_);
       value.null_ = false;
     } else if (ATI::IsIntegerType(a_type))
-      ((types::TianmuNum &)value).Assign(GetNotNullValueInt64(obj), -1, false, a_type);
+      ((types::TianmuNum &) value).Assign(GetNotNullValueInt64(obj), -1, false, a_type);
     else if (ATI::IsDateTimeType(a_type)) {
-      ((types::TianmuDateTime &)value) = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
+      ((types::TianmuDateTime &) value) = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
     } else if (ATI::IsRealType(a_type))
-      ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), 0, true, a_type);
+      ((types::TianmuNum &) value).Assign(this->GetNotNullValueInt64(obj), 0, true, a_type);
     else
-      ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), Type().GetScale());
+      ((types::TianmuNum &) value).Assign(this->GetNotNullValueInt64(obj), Type().GetScale());
   }
   return value;
 }
@@ -542,9 +526,9 @@ int64_t TianmuAttr::GetSum(int pack, bool &nonnegative) {
       /* dpns.Size() == 0 || */ Type().IsString())
     return common::NULL_VALUE_64;
   if (!Type().IsFloat() &&
-      (dpn.min_i < (common::MINUS_INF_64 / (SHORT_MAX + 1)) || dpn.max_i > (common::PLUS_INF_64 / (SHORT_MAX + 1))))
+      (dpn.min_i<(common::MINUS_INF_64 / (SHORT_MAX + 1)) || dpn.max_i>(common::PLUS_INF_64 / (SHORT_MAX + 1))))
     return common::NULL_VALUE_64;  // conservative overflow test for
-                                   // int/decimals
+  // int/decimals
   nonnegative = (dpn.min_i >= 0);
   return dpn.sum_i;
 }
@@ -607,7 +591,7 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
   }
   if (Type().IsLookup()) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
-    return m_dict->GetRealValue((int)code);
+    return m_dict->GetRealValue((int) code);
   }
   common::ColumnType a_type = TypeName();
   if (ATI::IsIntegerType(a_type)) {
@@ -677,7 +661,7 @@ int TianmuAttr::EncodeValue_T(const types::BString &tianmu_s, bool new_val, comm
     common::ErrorCode tmp_tianmu_rc = types::TianmuNum::Parse(tianmu_s, tianmu_n, TypeName());
     if (tianmu_err_code)
       *tianmu_err_code = tmp_tianmu_rc;
-    return (int)(int64_t)tianmu_n;
+    return (int) (int64_t) tianmu_n;
   }
   return common::NULL_VALUE_32;
 }
@@ -695,22 +679,22 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   if ((Type().IsLookup() && v->Type() != common::ColumnType::NUM)) {
     return EncodeValue_T(v->ToBString(), false, tianmu_err_code);
   } else if (ATI::IsDateTimeType(TypeName()) || ATI::IsDateTimeNType(TypeName())) {
-    return ((types::TianmuDateTime *)v)->GetInt64();
+    return ((types::TianmuDateTime *) v)->GetInt64();
   }
   ASSERT(GetPackType() == common::PackType::INT, "Pack type must be numeric!");
 
-  int64_t vv = ((types::TianmuNum *)v)->ValueInt();
-  int vp = ((types::TianmuNum *)v)->Scale();
+  int64_t vv = ((types::TianmuNum *) v)->ValueInt();
+  int vp = ((types::TianmuNum *) v)->Scale();
   if (ATI::IsRealType(TypeName())) {
-    if (((types::TianmuNum *)v)->IsReal())
+    if (((types::TianmuNum *) v)->IsReal())
       return vv;  // already stored as double
     double res = double(vv);
     res /= types::Uint64PowOfTen(vp);
     // for(int i=0;i<vp;i++) res*=10;
-    return *(int64_t *)(&res);  // encode
+    return *(int64_t *) (&res);  // encode
   }
-  if (((types::TianmuNum *)v)->IsReal()) {  // v is double
-    double vd = *(double *)(&vv);
+  if (((types::TianmuNum *) v)->IsReal()) {  // v is double
+    double vd = *(double *) (&vv);
     vd *= types::Uint64PowOfTen(Type().GetScale());  // translate into int64_t of proper precision
     if (vd > common::PLUS_INF_64)
       return common::PLUS_INF_64;
@@ -719,7 +703,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
     int64_t res = int64_t(vd);
     if (fabs(vd - double(res)) > 0.01)
       rounded = true;  // ignore errors which are 2 digits less than declared
-                       // precision
+    // precision
     return res;
   }
   unsigned char dplaces = Type().GetScale();
@@ -753,8 +737,7 @@ size_t TianmuAttr::GetPrefixLength(int pack) {
 
   auto const &dpn(get_dpn(pack));
   size_t dif_pos = 0;
-  for (; (dif_pos < sizeof(uint64_t)) && dpn.min_s[dif_pos] && (dpn.min_s[dif_pos] == dpn.max_s[dif_pos]); ++dif_pos)
-    ;
+  for (; (dif_pos < sizeof(uint64_t)) && dpn.min_s[dif_pos] && (dpn.min_s[dif_pos] == dpn.max_s[dif_pos]); ++dif_pos);
 
   return dif_pos;
 }
@@ -874,15 +857,15 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   PreparePackForLoad();
   int pi = SizeOfPack() - 1;
   switch (GetPackType()) {
-    case common::PackType::INT:
+    case common::PackType::INT: {
       LoadDataPackN(pi, nvs);
       break;
+    }
     case common::PackType::STR: {
       LoadDataPackS(pi, nvs);
       break;
     }
-    default:
-      throw common::DatabaseException("Unknown pack type" + Path().string());
+    default:throw common::DatabaseException("Unknown pack type" + Path().string());
       break;
   }
 
@@ -903,6 +886,12 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   hdr.numOfNulls += (Type().NotNull() ? 0 : nvs->NumOfNulls());
   hdr.natural_size += nvs->SumarizedSize();
   hdr.numOfDeleted += nvs->NumOfDeletes();
+  TIANMU_LOG(LogCtl_Level::DEBUG,
+             "DELTA_DEBUG: INSERT load data tid: %d, cid: %d, pack index: %d, pack current num: %d",
+             m_tid,
+             m_cid,
+             pi,
+             hdr.numOfRecords);
 }
 
 void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
@@ -938,8 +927,8 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
     dpn.sum_i += nvs->SumInt();
   } else {
     nvs->CalcRealStats(nv);
-    *(double *)&load_min = nvs->MinDouble();
-    *(double *)&load_max = nvs->MaxDouble();
+    *(double *) &load_min = nvs->MinDouble();
+    *(double *) &load_max = nvs->MaxDouble();
     dpn.sum_d += nvs->SumDouble();
   }
 
@@ -977,9 +966,9 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
       } else {
         int64_t a_min = GetMinInt64();
         int64_t a_max = GetMaxInt64();
-        if (*(double *)(&a_min) > dpn.min_d)
+        if (*(double *) (&a_min) > dpn.min_d)
           SetMinInt64(dpn.min_i);
-        if (*(double *)(&a_max) < dpn.max_d)
+        if (*(double *) (&a_max) < dpn.max_d)
           SetMaxInt64(dpn.max_i);  // 1-level statistics
       }
     }
@@ -1060,7 +1049,6 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
 
   // group by pn
   std::unordered_map<common::PACK_INDEX, std::unordered_map<uint64_t, Value>> packs;
-  //  for (const auto &[row, val] : rows) {
   for (const auto &row : rows) {
     auto row_id = row.first;
     auto row_val = row.second;
@@ -1137,7 +1125,7 @@ void TianmuAttr::DeleteData(uint64_t row) {
   FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
 
   // primary key process
-  DeleteByPrimaryKey(row, ColId());
+  DeleteByPrimaryKey(current_txn_, row, ColId());
 
   CopyPackForWrite(pn);
   auto &dpn = get_dpn(pn);
@@ -1155,7 +1143,7 @@ void TianmuAttr::DeleteData(uint64_t row) {
   ResetMaxMin(dpn);
 }
 
-void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64_t> &rows){
+void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64_t> &rows) {
   // group by pn
   std::unordered_map<common::PACK_INDEX, std::vector<uint64_t>> packs;
   //  for (const auto &[row, val] : rows) {
@@ -1181,7 +1169,7 @@ void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64
 
     for (const auto &row_id : pack.second) {
       // primary key process
-      DeleteByPrimaryKey(row_id, ColId());
+      DeleteByPrimaryKey(tx, row_id, ColId());
 
       get_pack(pn)->DeleteByRow(row2offset(row_id));
 
@@ -1194,7 +1182,7 @@ void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64
   }
 }
 
-void TianmuAttr::ResetMaxMin(DPN &dpn){
+void TianmuAttr::ResetMaxMin(DPN &dpn) {
   if (GetPackType() == common::PackType::INT) {
     if (dpn.min_i < hdr.min) {
       hdr.min = dpn.min_i;
@@ -1298,11 +1286,11 @@ types::BString TianmuAttr::MinS(Filter *f) {
       auto p = get_packS(b);
       if (GetPackType() == common::PackType::INT &&
           (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM ||
-           (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM_AND_NULLS && f->IsFull(b)))) {
+              (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM_AND_NULLS && f->IsFull(b)))) {
         CompareAndSetCurrentMin(DecodeValue_S(dpn.min_i), min, set);
         it.NextPack();
       } else if (!(dpn.NullOnly() || dpn.numOfRecords == 0)) {
-        while (it.IsValid() && b == (unsigned int)it.GetCurrPack()) {
+        while (it.IsValid() && b == (unsigned int) it.GetCurrPack()) {
           int n = it.GetCurrInPack();
           if (GetPackType() == common::PackType::STR && p->IsNull(n) == 0) {
             CompareAndSetCurrentMin(p->GetValueBinary(n), min, set);
@@ -1333,7 +1321,7 @@ types::BString TianmuAttr::MaxS(Filter *f) {
       auto p = get_packS(b);
       if (GetPackType() == common::PackType::INT &&
           (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM ||
-           (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM_AND_NULLS && f->IsFull(b)))) {
+              (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM_AND_NULLS && f->IsFull(b)))) {
         CompareAndSetCurrentMax(DecodeValue_S(dpn.min_i), max);
       } else if (!(dpn.NullOnly() || dpn.numOfRecords == 0)) {
         while (it.IsValid() && b == it.GetCurrPack()) {
@@ -1413,7 +1401,7 @@ std::shared_ptr<RSIndex_Hist> TianmuAttr::GetFilter_Hist() {
   }
   if (!filter_hist)
     filter_hist = std::static_pointer_cast<RSIndex_Hist>(ha_tianmu_engine_->filter_cache.Get(
-        FilterCoordinate(m_tid, m_cid, (int)FilterType::HIST, m_version.v1, m_version.v2), filter_creator));
+        FilterCoordinate(m_tid, m_cid, (int) FilterType::HIST, m_version.v1, m_version.v2), filter_creator));
   return filter_hist;
 }
 
@@ -1431,7 +1419,7 @@ std::shared_ptr<RSIndex_CMap> TianmuAttr::GetFilter_CMap() {
     return filter_cmap;
   }
   return std::static_pointer_cast<RSIndex_CMap>(ha_tianmu_engine_->filter_cache.Get(
-      FilterCoordinate(m_tid, m_cid, (int)FilterType::CMAP, m_version.v1, m_version.v2), filter_creator));
+      FilterCoordinate(m_tid, m_cid, (int) FilterType::CMAP, m_version.v1, m_version.v2), filter_creator));
 }
 
 std::shared_ptr<RSIndex_Bloom> TianmuAttr::GetFilter_Bloom() {
@@ -1448,7 +1436,7 @@ std::shared_ptr<RSIndex_Bloom> TianmuAttr::GetFilter_Bloom() {
     return filter_bloom;
   }
   return std::static_pointer_cast<RSIndex_Bloom>(ha_tianmu_engine_->filter_cache.Get(
-      FilterCoordinate(m_tid, m_cid, (int)FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
+      FilterCoordinate(m_tid, m_cid, (int) FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
 }
 
 void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &v) {
@@ -1490,7 +1478,7 @@ void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col
   }
 }
 
-void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
+void TianmuAttr::DeleteByPrimaryKey(core::Transaction *tx, uint64_t row, uint64_t col) {
   auto path = m_share->owner->Path();
   std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(path);
   // col is not primary key
@@ -1503,7 +1491,7 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
   if (GetPackType() == common::PackType::STR) {
     auto currentValue = GetValueString(row);
     std::string currentRowKey(currentValue.val_, currentValue.size());
-    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    common::ErrorCode returnCode = tab->DeleteIndex(tx, currentRowKey, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %s for primary key", currentValue.GetDataBytesPointer());
       throw common::Exception("Delete: " + currentValue.ToString() + " for primary key");
@@ -1511,7 +1499,7 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
   } else {  // common::PackType::INT
     auto currentValue = GetValueInt64(row);
     std::string currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
-    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    common::ErrorCode returnCode = tab->DeleteIndex(tx, currentRowKey, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %" PRId64 " for primary key", currentValue);
       throw common::Exception("Delete: " + std::to_string(currentValue) + " for primary key");

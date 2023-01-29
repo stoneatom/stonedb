@@ -1545,6 +1545,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       iter->Next();
     }
   }
+  clock_gettime(CLOCK_REALTIME, &t2);
   if (!insert_records.empty()) {
     insert_num += AsyncParseInsertRecords(&iop, &insert_records);
   }

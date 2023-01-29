@@ -119,7 +119,7 @@ std::vector<bool> GetAttrsUseIndicator(TABLE *table) {
 }
 // for debug only, print all delta data
 static void DebugPrint(core::DeltaIterator &iter, Field **fields, size_t field_size) {
-  TIANMU_LOG(LogCtl_Level::DEBUG, "================= delta insert record ================");
+  TIANMU_LOG(LogCtl_Level::DEBUG, ">>>================= delta insert record ================");
   core::DeltaIterator clone_iter(iter.GetTable(), iter.GetAttrs());
   while (clone_iter.Valid()) {
     auto record = clone_iter.GetData();
@@ -213,7 +213,7 @@ static void DebugPrint(core::DeltaIterator &iter, Field **fields, size_t field_s
     TIANMU_LOG(LogCtl_Level::DEBUG, "==%s==", ss.str().c_str());
     clone_iter++;
   }
-  TIANMU_LOG(LogCtl_Level::DEBUG, "================= delta insert record ================");
+  TIANMU_LOG(LogCtl_Level::DEBUG, "================= delta insert record ================>>>");
 }
 
 }  // namespace
@@ -1034,12 +1034,12 @@ int ha_tianmu::rnd_init(bool scan) {
         filter_ptr_.reset();
       }
     }
-    {
-      my_bitmap_map *org_bitmap;
-      dbug_tmp_use_all_columns(table, &org_bitmap, table->read_set, table->write_set);
-      DebugPrint(iterator_.GetDeltaIterator(), table->field, table->s->fields);
-      dbug_tmp_restore_column_maps(table->read_set, table->write_set, &org_bitmap);
-    }
+//    {
+//      my_bitmap_map *org_bitmap;
+//      dbug_tmp_use_all_columns(table, &org_bitmap, table->read_set, table->write_set);
+//      DebugPrint(iterator_.GetDeltaIterator(), table->field, table->s->fields);
+//      dbug_tmp_restore_column_maps(table->read_set, table->write_set, &org_bitmap);
+//    }
     ret = 0;
     blob_buffers_.resize(0);
     if (table_ptr_ != nullptr)

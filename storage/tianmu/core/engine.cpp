@@ -1573,7 +1573,8 @@ void Engine::ProcessDeltaStoreMerge() {
         std::scoped_lock guard(mem_table_mutex);
         for (auto &[name, delta_table] : m_table_deltas) {
           uint64_t record_count = delta_table->CountRecords();
-          bool for_delta_debug = false;
+          // todo(dfx): !this need delete!
+          bool for_delta_debug = true;
           if ((record_count >= tianmu_sysvar_insert_numthreshold ||
                (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) &&
               for_delta_debug) {
