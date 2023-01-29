@@ -23,14 +23,12 @@
 #ifndef SQL_TABLE_INCLUDED
 #define SQL_TABLE_INCLUDED
 
-#include "my_global.h"                          /* my_bool */
-#include "m_ctype.h"                            /* CHARSET_INFO */
-#include "mysql_com.h"                          /* enum_field_types */
-#include "mysql/psi/mysql_thread.h"             /* mysql_mutex_t */
-#include "my_global.h"                  /* my_bool */
-#include "m_ctype.h"                    /* CHARSET_INFO */
-#include "mysql_com.h"                  /* enum_field_types */
-#include "mysql/psi/mysql_thread.h"     /* mysql_mutex_t */
+#include "handler.h"
+#include "m_ctype.h"                /* CHARSET_INFO */
+#include "my_global.h"              /* my_bool */
+#include "mysql/psi/mysql_thread.h" /* mysql_mutex_t */
+#include "mysql_com.h"              /* enum_field_types */
+
 
 class Alter_info;
 class Alter_table_ctx;
@@ -225,9 +223,9 @@ bool fill_field_definition(THD *thd,
                            class sp_head *sp,
                            enum enum_field_types field_type,
                            Create_field *field_def);
-int prepare_create_field(Create_field *sql_field,
-			 uint *blob_columns,
-			 longlong table_flags);
+int prepare_create_field(Create_field *sql_field, uint *blob_columns,
+                         longlong table_flags,
+                         enum legacy_db_type db_type = DB_TYPE_DEFAULT);
 const CHARSET_INFO* get_sql_field_charset(Create_field *sql_field,
                                           HA_CREATE_INFO *create_info);
 bool mysql_write_frm(ALTER_PARTITION_PARAM_TYPE *lpt, uint flags);

@@ -17,11 +17,11 @@ DROP TABLE IF EXISTS t1;
 DROP TABLE IF EXISTS t2;
 DROP TABLE IF EXISTS t3;
 --enable_warnings
-CREATE TABLE t1(a int, b int, c int, KEY b(b), KEY c(c))engine=tianmu;
+CREATE TABLE t1(a int, b int, c int)engine=tianmu;
 insert into t1 values (1,0,0),(2,0,0);
 CREATE TABLE t2 (a int, b varchar(2), c varchar(2), PRIMARY KEY(a))engine=tianmu;
 insert into t2 values (1,'',''), (2,'','');
-CREATE TABLE t3 (a int, b int, PRIMARY KEY (a,b), KEY a (a), KEY b (b))engine=tianmu;
+CREATE TABLE t3 (a int, b int, PRIMARY KEY (a,b))engine=tianmu;
 insert into t3 values (1,1),(1,2);
 
 --disable_warnings

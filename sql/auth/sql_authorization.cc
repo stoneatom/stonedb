@@ -4388,8 +4388,15 @@ bool check_fk_parent_table_access(THD *thd,
                                              ha_default_handlerton(thd);
 
   // Return if engine does not support Foreign key Constraint.
-  if (!ha_check_storage_engine_flag(db_type, HTON_SUPPORTS_FOREIGN_KEYS))
+  if (!ha_check_storage_engine_flag(db_type, HTON_SUPPORTS_FOREIGN_KEYS)) {
+    if (db_type == tianmu_hton &&
+        (alter_info->flags & Alter_info::ADD_FOREIGN_KEY)) {
+      my_error(ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY, MYF(0));
+      return true;
+    }
+
     return false;
+  }
 
   while ((key= key_iterator++))
   {
