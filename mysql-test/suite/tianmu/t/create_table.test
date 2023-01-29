@@ -356,9 +356,9 @@ drop view t1;
 --echo #
 
 create view t1 as select 1 as a;
---error 1471
+--error 1348
 insert into t1 (a) values (1);
---error 1288
+--error 1348
 update t1 set a=3 where a=2;
 --error 1050
 create table t1 (a int);

@@ -190,7 +190,14 @@ sub copytree {
 
     # Only copy plain files
     next unless -f "$from_dir/$_";
-    copy("$from_dir/$_", "$to_dir/$_");
+    if ( -l "$from_dir/$_" ) {
+      my $old_link = "$from_dir/$_";
+      my $new_link = "$to_dir/$_";
+      my $dst = readlink($old_link);
+      symlink $dst, $new_link;
+    } else {
+      copy("$from_dir/$_", "$to_dir/$_");
+    }
   }
   closedir(DIR);
 

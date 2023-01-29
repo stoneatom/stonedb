@@ -91,6 +91,26 @@ class VirtualColumnBase : public core::Column {
    * - Doubles must be cast e.g. *(double*)&
    */
   inline int64_t GetValueInt64(const core::MIIterator &mit) { return GetValueInt64Impl(mit); }
+
+  /* Get a numberic valufe from a column, for some senario, the column value can not be
+   * evaluated repeatedly. The function is used to just get the value without evaluation.For some UDF
+   * which has some dml(eg, insert a row), if the value has been evaluated, this function should
+   * be used instead of GetValueInt64, similar function is GetValueStringDirect and
+   * GetValueDoubleDirect, please refer to this SQL(like tianmu/func_define.test)):
+   * < SQL START>
+   * DELIMITER //;
+   * CREATE FUNCTION f3(i INT) RETURNS INT DETERMINISTIC
+   * BEGIN
+   * INSERT INTO t2 VALUES(i+1);
+   *  RETURN 42;
+   * END //
+   * DELIMITER ;//
+   *
+   * CREATE TABLE t2(col1 INT);
+   * select f3(121) from sys_tianmu.dummy;
+   * < SQL END>
+   */
+  virtual int64_t GetValueInt64Direct(const core::MIIterator &mit) { return GetValueInt64Impl(mit); }
   virtual int64_t GetNotNullValueInt64(const core::MIIterator &mit) = 0;
 
   /*! \brief get Item
@@ -123,6 +143,9 @@ class VirtualColumnBase : public core::Column {
    * value as hexadecimal number
    */
   inline void GetValueString(types::BString &s, const core::MIIterator &mit) { GetValueStringImpl(s, mit); }
+
+  // please refer to VirtualColumnBase::GetValueInt64Direct for details
+  virtual void GetValueStringDirect(types::BString &s, const core::MIIterator &mit) { GetValueStringImpl(s, mit); }
   virtual void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) = 0;
 
   /*! \brief Get a double value from a column, possibly converting the original
@@ -135,6 +158,8 @@ class VirtualColumnBase : public core::Column {
    * from this row
    */
   inline double GetValueDouble(const core::MIIterator &mit) { return (GetValueDoubleImpl(mit)); }
+  // please refer to VirtualColumnBase::GetValueInt64Direct for details
+  virtual double GetValueDoubleDirect(const core::MIIterator &mit) { return (GetValueDoubleImpl(mit)); }
   /*! \brief Get a value from a colunm, whatever the column type is
    *
    * \pre necessary datapacks (containing rows pointed by \e mit) are loaded and

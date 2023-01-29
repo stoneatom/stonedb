@@ -1581,8 +1581,15 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
       // even though we seem to reject the control of views
       if (!IsTianmuTable(tl->table))
         return false;
-      else
+      else {
+        const char *db = tl->table->s->db.str;
+        const char *table_name = tl->table->s->table_name.str;
+
+        if ((strcasecmp(db, "sys_tianmu") == 0) && (strcasecmp(table_name, "dummy") == 0)) {
+          continue;
+        }
         has_TIANMUTable = true;
+      }
     }
   }
   if (!has_TIANMUTable)  // No Tianmu table is involved. Return to MySQL.

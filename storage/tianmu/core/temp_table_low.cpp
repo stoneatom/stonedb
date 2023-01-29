@@ -474,21 +474,21 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
-          data_ptr->Assign(vc->GetValueInt64(it), col->Type().GetScale(), false, ct);
+          data_ptr->Assign(vc->GetValueInt64Direct(it), col->Type().GetScale(), false, ct);
         record.emplace_back(data_ptr);
       } else if (ATI::IsRealType(ct)) {
         auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
-          data_ptr->Assign(vc->GetValueDouble(it));
+          data_ptr->Assign(vc->GetValueDoubleDirect(it));
         record.emplace_back(data_ptr);
       } else if (ATI::IsDateTimeType(ct)) {
         auto data_ptr = new types::TianmuDateTime();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
-          data_ptr->Assign(vc->GetValueInt64(it), ct);
+          data_ptr->Assign(vc->GetValueInt64Direct(it), ct);
         record.emplace_back(data_ptr);
       } else {
         ASSERT(ATI::IsStringType(ct), "not all possible attr_types checked");
@@ -496,7 +496,7 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
-          vc->GetNotNullValueString(*data_ptr, it);
+          vc->GetValueStringDirect(*data_ptr, it);
         record.emplace_back(data_ptr);
       }
     }

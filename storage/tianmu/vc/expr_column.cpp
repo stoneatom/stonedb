@@ -122,6 +122,12 @@ int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
   return last_val_->Get64();
 }
 
+int64_t ExpressionColumn::GetValueInt64Direct(const core::MIIterator &mit) {
+  if (last_val_->IsNull())
+    return common::NULL_VALUE_64;
+  return last_val_->Get64();
+}
+
 bool ExpressionColumn::IsNullImpl(const core::MIIterator &mit) {
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
@@ -140,10 +146,48 @@ void ExpressionColumn::GetValueStringImpl(types::BString &s, const core::MIItera
   last_val_->GetBString(s);
 }
 
+void ExpressionColumn::GetValueStringDirect(types::BString &s, const core::MIIterator &mit) {
+  if (core::ATI::IsDateTimeType(TypeName())) {
+    int64_t tmp;
+    types::TianmuDateTime vd(last_val_->Get64(), TypeName());
+    vd.ToInt64(tmp);
+    last_val_->SetFixed(tmp);
+  }
+  last_val_->GetBString(s);
+}
+
 double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   double val = 0;
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
+  if (last_val_->IsNull())
+    val = NULL_VALUE_D;
+
+  if (core::ATI::IsIntegerType(TypeName()))
+    val = (double)last_val_->Get64();
+  else if (core::ATI::IsFixedNumericType(TypeName()))
+    val = ((double)last_val_->Get64()) / types::PowOfTen(ct.GetScale());
+  else if (core::ATI::IsRealType(TypeName())) {
+    val = last_val_->GetDouble();
+  } else if (core::ATI::IsDateTimeType(TypeName())) {
+    types::TianmuDateTime vd(last_val_->Get64(),
+                             TypeName());  // 274886765314048  ->  2000-01-01
+    int64_t vd_conv = 0;
+    vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
+    val = (double)vd_conv;
+  } else if (core::ATI::IsStringType(TypeName())) {
+    auto str = last_val_->ToString();
+    if (str)
+      val = std::stod(*str);
+  } else
+    DEBUG_ASSERT(0 && "conversion to double not implemented");
+
+  return val;
+}
+
+double ExpressionColumn::GetValueDoubleDirect(const core::MIIterator &mit) {
+  double val = 0;
+
   if (last_val_->IsNull())
     val = NULL_VALUE_D;
 

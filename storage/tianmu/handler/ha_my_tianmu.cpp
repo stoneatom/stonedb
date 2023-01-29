@@ -34,8 +34,14 @@ enum class TianmuEngineReturnValues {
 bool AtLeastOneTianmuTableInvolved(LEX *lex) {
   for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
     TABLE *table = table_list->table;
-    if (core::Engine::IsTianmuTable(table))
+    if (core::Engine::IsTianmuTable(table)) {
+      const char *db = table->s->db.str;
+      const char *table_name = table->s->table_name.str;
+      if ((strcasecmp(db, "sys_tianmu") == 0) && (strcasecmp(table_name, "dummy") == 0)) {
+        continue;
+      }
       return true;
+    }
   }
   return false;
 }

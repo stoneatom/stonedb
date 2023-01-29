@@ -1,0 +1,38 @@
+DROP DATABASE IF EXISTS issue1167_test;
+CREATE DATABASE issue1167_test CHARACTER SET = utf8mb4;
+USE issue1167_test;
+select count(*) from sys_tianmu.dummy;
+count(*)
+1
+create table t1 (a int) engine=tianmu default CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+insert into t1 values (120), (0), (111);
+select a+0 from t1 union select NULL;
+a+0
+120
+0
+111
+NULL
+select * from ( select a+0 from t1 union select NULL) as t3;
+a+0
+120
+0
+111
+NULL
+create table t2 (a int)  engine=tianmu default CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+insert into t2 values (120), (0), (111) ;
+select NULL union select a+0 from t2;
+NULL
+NULL
+120
+0
+111
+select * from (select NULL union select a+0 from t2) as t3;
+NULL
+NULL
+120
+0
+111
+#
+# Clean Resource
+#
+DROP DATABASE issue1167_test;

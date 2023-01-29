@@ -27,6 +27,24 @@
 #include "sql_insert.h"     // Sql_cmd_insert...
 
 
+// For without from clause, add "sys_tianmu.dummy" as from clause
+PT_table_reference_list *PT_creat_tianmu_dummy(Parse_context *pc) {
+  LEX_CSTRING db = {C_STRING_WITH_LEN("sys_tianmu")};
+  LEX_CSTRING table = {C_STRING_WITH_LEN("dummy")};
+  Table_ident *table_ident_arg =
+      new (pc->mem_root) Table_ident(pc->thd, db, table, true);
+  PT_table_factor_table_ident *factor_table_ident = new (pc->mem_root)
+      PT_table_factor_table_ident(table_ident_arg, nullptr, nullptr, nullptr);
+
+  POS pos;
+  PT_join_table_list *join_table_list =
+      new (pc->mem_root) PT_join_table_list(pos, factor_table_ident);
+  PT_table_reference_list *table_refer_list =
+      new (pc->mem_root) PT_table_reference_list(join_table_list);
+
+  return table_refer_list;
+}
+
 bool PT_group::contextualize(Parse_context *pc)
 {
   if (super::contextualize(pc))

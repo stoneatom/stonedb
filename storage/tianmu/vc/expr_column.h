@@ -69,6 +69,10 @@ class ExpressionColumn : public VirtualColumn {
   void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) override { GetValueStringImpl(s, mit); }
   core::MysqlExpression::StringType GetStringType() { return expr_->GetStringType(); }
 
+  //
+  virtual double GetValueDoubleDirect(const core::MIIterator &mit) override;
+  virtual void GetValueStringDirect(types::BString &s, const core::MIIterator &mit) override;
+  virtual int64_t GetValueInt64Direct(const core::MIIterator &mit) override;
   // Special functions for expressions on lookup
   virtual bool ExactlyOneLookup();  // the column is a deterministic expression
                                     // on exactly one lookup column, return the
@@ -79,6 +83,7 @@ class ExpressionColumn : public VirtualColumn {
   void LockSourcePacks(const core::MIIterator &mit, int);
 
   Item *GetItem() override { return expr_->GetItem(); }
+  std::shared_ptr<core::ValueOrNull> Evaluate(const core::MIIterator &mit);
 
   /////////////// Data access //////////////////////
  protected:

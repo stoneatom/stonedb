@@ -36,6 +36,8 @@
 
 template<enum_parsing_context Context> class PTI_context;
 
+class PT_table_reference_list;
+extern PT_table_reference_list *PT_creat_tianmu_dummy(Parse_context *pc);
 
 class PT_statement : public Parse_tree_node
 {
@@ -678,6 +680,10 @@ public:
 
   virtual bool contextualize(Parse_context *pc)
   {
+    if (opt_from_clause == nullptr && !opt_bootstrap && !opt_initialize) {
+      opt_from_clause = down_cast<Parse_tree_node *>(PT_creat_tianmu_dummy(pc));
+    }
+
     if (super::contextualize(pc) ||
         (opt_from_clause != NULL && opt_from_clause->contextualize(pc)) ||
         (opt_where != NULL && opt_where->itemize(pc, &opt_where)) ||
@@ -2248,6 +2254,9 @@ public:
 
   virtual bool contextualize(Parse_context *pc)
   {
+    if (from_clause == nullptr && !opt_bootstrap && !opt_initialize) {
+      from_clause = PT_creat_tianmu_dummy(pc);
+    }
     if (super::contextualize(pc) ||
         select_options_and_item_list->contextualize(pc) ||
         (opt_into1 != NULL &&
