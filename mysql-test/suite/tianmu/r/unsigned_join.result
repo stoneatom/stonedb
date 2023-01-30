@@ -1,0 +1,45 @@
+#
+# Test unsigned_join
+#
+DROP DATABASE IF EXISTS unsigned_joins_test;
+CREATE DATABASE unsigned_joins_test;
+USE unsigned_joins_test;
+create table customer (
+c_custkey int unsigned,
+c_name varchar (25),
+c_address varchar (40),
+c_nationkey int,
+c_phone char (15),
+c_acctbal decimal(12,2),
+c_mktsegment char (10),
+c_comment varchar (117)
+);
+create table orders (
+o_orderkey int,
+o_custkey int unsigned,
+o_orderstatus char (1),
+o_totalprice decimal(12,2),
+o_orderdate date,
+o_orderpriority char (15),
+o_clerk char (15),
+o_shippriority int,
+o_comment varchar (79)
+);
+LOAD DATA LOCAL infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/1m_customer.tbl' INTO TABLE customer FIELDS TERMINATED BY '|';
+LOAD DATA LOCAL infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/1m_orders.tbl' INTO TABLE orders FIELDS TERMINATED BY '|';
+select count(*) as count1 from customer join orders on orders.o_custkey = customer.c_custkey;
+count1
+1500
+select count(*) as count2 from customer left join orders on orders.o_custkey = customer.c_custkey;
+count2
+1550
+select count(*) as count3 from customer right join orders on orders.o_custkey = customer.c_custkey;
+count3
+1500
+select count(*) as count4 from customer where exists (select o_custkey from orders where orders.o_custkey = customer.c_custkey);
+count4
+100
+select count(*) as count5 from customer where not exists (select o_custkey from orders where orders.o_custkey = customer.c_custkey);
+count5
+50
+DROP DATABASE unsigned_joins_test;
