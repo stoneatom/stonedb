@@ -1481,7 +1481,7 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
 
 void TianmuTable::InsertToDelta(std::unique_ptr<char[]> buf, uint32_t size) {
   uint64_t row_id = NextRowId();
-  return m_delta->AddInsertRecord(row_id, std::move(buf), size);
+  return m_delta->AddInsertRecord(current_txn_, row_id, std::move(buf), size);
 }
 
 void TianmuTable::UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {

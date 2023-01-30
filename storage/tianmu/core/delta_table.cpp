@@ -108,10 +108,10 @@ void DeltaTable::Init(uint64_t base_row_num) {
   stat.write_cnt.store(load_id);
 }
 
-void DeltaTable::AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
+void DeltaTable::AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
   uchar key[12];
   size_t key_pos = 0;
-  index::KVTransaction kv_trans;
+  index::KVTransaction &kv_trans=tx->KVTrans();
   // table id
   index::be_store_index(key + key_pos, delta_tid_);
   key_pos += sizeof(uint32_t);
@@ -123,7 +123,6 @@ void DeltaTable::AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, u
   if (!status.ok()) {
     throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) + " date:" + std::string(buf.get()));
   }
-  kv_trans.Commit();
   load_id++;
   stat.write_cnt++;
   stat.write_bytes += size;
