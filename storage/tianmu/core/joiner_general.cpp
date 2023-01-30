@@ -79,11 +79,11 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
 #ifdef INNER_JOIN_LOOP_MULTI_THREAD
-    std::string thread_type("multi");
+    const char *thread_type = "multi";
     ExecuteInnerJoinLoopMultiThread(mit, cond, new_mind, all_dims, pack_desc_locked, tuples_in_output, tips.limit,
                                     tips.count_only);
 #else
-    std::string thread_type("sin");
+    const char *thread_type = "sin";
     ExecuteInnerJoinLoopSingleThread(mit, cond, new_mind, all_dims, pack_desc_locked, tuples_in_output, tips.limit,
                                      tips.count_only);
 #endif
@@ -91,8 +91,8 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     auto diff =
         std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
     if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
-      TIANMU_LOG(LogCtl_Level::INFO, "ExecuteJoinConditions thread_type: %s spend: %f NumOfTuples: %d",
-                 thread_type.c_str(), diff.count(), mit.NumOfTuples());
+      TIANMU_LOG(LogCtl_Level::INFO, "ExecuteJoinConditions thread_type: %s spend: %f NumOfTuples: %d", thread_type,
+                 diff.count(), mit.NumOfTuples());
     }
   }
   // Postprocessing and cleanup

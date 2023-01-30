@@ -1312,8 +1312,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   auto diff_apply_desc = std::chrono::duration_cast<std::chrono::duration<float>>(
       std::chrono::high_resolution_clock::now() - start_apply_desc);
   if (diff_apply_desc.count() > tianmu_sysvar_slow_query_record_interval) {
-    TIANMU_LOG(LogCtl_Level::INFO, "ApplyDescriptor spend: %f op: %d", diff_apply_desc.count(),
-               static_cast<int>(descriptors_[0].op));
+    TIANMU_LOG(LogCtl_Level::INFO, "ApplyDescriptor total spend: %f", diff_apply_desc.count());
   }
 
   rough_mind_->UpdateReducedDimension();
@@ -1493,9 +1492,10 @@ void ParameterizedFilter::RoughUpdateParamFilter() {
   RoughUpdateJoins();
 }
 
-void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
-// desc_number = -1 => switch off the rough part
-{
+void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit) {
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+
+  // desc_number = -1 => switch off the rough part
   Descriptor &desc = descriptors_[desc_number];
   if (desc.op == common::Operator::O_TRUE) {
     desc.done = true;
@@ -1544,6 +1544,10 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
       pack_some++;
   }
 
+  const char *eva_type = "sin";
+  int eva_sin_num = 0;
+  int thread_num = 1;
+
   MIUpdatingIterator mit(mind_, dims);
   desc.CopyDesCond(mit);
   if (desc.EvaluateOnIndex(mit, limit) == common::ErrorCode::SUCCESS) {
@@ -1553,6 +1557,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
     int poolsize = ha_tianmu_engine_->query_thread_pool.size();
     if ((tianmu_sysvar_threadpoolsize > 0) && (packs_no / poolsize > 0) && !desc.IsType_Subquery() &&
         !desc.ExsitTmpTable()) {
+      eva_type = "multi";
       int step = 0;
       int task_num = 0;
       /*Partition task slice*/
@@ -1562,6 +1567,8 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
         step = pack_some / poolsize;
         task_num = packs_no / step;
       }
+
+      thread_num = task_num;
 
       int mod = packs_no % task_num;
       int num = packs_no / task_num;
@@ -1631,6 +1638,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
         } else {
           // common::RoughSetValue::RS_SOME or common::RoughSetValue::RS_UNKNOWN
           desc.EvaluatePack(mit);
+          ++eva_sin_num;
         }
 
         if (mind_->m_conn->Killed())
@@ -1654,7 +1662,16 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
   }
 
   desc.UpdateVCStatistics();
-  return;
+
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO,
+               "ApplyDescriptor spend: %f op: %d dim: %d eva_type: %s thread_num: %d NumOfTuples: %d packs_no: %d "
+               "pack_all: %d eva_sin_num: %d",
+               diff.count(), static_cast<int>(desc.op), one_dim, eva_type, thread_num, mit.NumOfTuples(), packs_no,
+               pack_all, eva_sin_num);
+  }
 }
 
 void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Transaction *ci, common::RoughSetValue *rf,

@@ -287,7 +287,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         }
       }
 
-      std::string thread_type = "multi";
+      const char *thread_type = "multi";
       std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 
       if (ag_worker.ThreadsUsed() > 1) {
@@ -322,8 +322,8 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
       auto diff =
           std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
       if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
-        TIANMU_LOG(LogCtl_Level::INFO, "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d",
-                   thread_type.c_str(), diff.count(), mit.NumOfTuples());
+        TIANMU_LOG(LogCtl_Level::INFO, "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d", thread_type,
+                   diff.count(), mit.NumOfTuples());
       }
 
       gbw.ClearDistinctBuffers();              // reset buffers for a new contents

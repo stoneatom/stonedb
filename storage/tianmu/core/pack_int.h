@@ -126,7 +126,7 @@ class PackInt final : public Pack {
 
   bool is_real_ = false;
   struct {
-    int64_t operator[](size_t n) const {
+    inline int64_t operator[](size_t n) const {
       switch (value_type_) {
         case 8:
           return ptr_int64_[n];
@@ -140,7 +140,7 @@ class PackInt final : public Pack {
           TIANMU_ERROR("bad value type in pakcN");
       }
     }
-    bool empty() const { return ptr_ == nullptr; }
+    inline bool empty() const { return ptr_ == nullptr; }
 
    public:
     unsigned char value_type_;
