@@ -92,7 +92,7 @@ void DeltaTable::Init(uint64_t base_row_num) {
   size_t entry_pos = 0;
   index::be_store_index(entry_key + entry_pos, delta_tid_);
   entry_pos += sizeof(uint32_t);
-  rocksdb::Slice entry_slice((char *)entry_key, entry_pos);
+  rocksdb::Slice entry_slice((char *) entry_key, entry_pos);
   rocksdb::ReadOptions ropts;
   std::unique_ptr<rocksdb::Iterator> iter(kv_trans.GetDataIterator(ropts, cf_handle_));
   iter->Seek(entry_slice);
@@ -119,9 +119,9 @@ void DeltaTable::AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, u
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
 
-  rocksdb::Status status = kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
+  rocksdb::Status status = kv_trans.PutData(cf_handle_, {(char *) key, key_pos}, {buf.get(), size});
   if (!status.ok()) {
-    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size)+ " date:" + std::string(buf.get()));
+    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) + " date:" + std::string(buf.get()));
   }
   kv_trans.Commit();
   load_id++;
@@ -132,7 +132,7 @@ void DeltaTable::AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, u
 void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
   uchar key[12];
   size_t key_pos = 0;
-  index::KVTransaction &kv_trans=tx->KVTrans();
+  index::KVTransaction &kv_trans = tx->KVTrans();
   // table id
   index::be_store_index(key + key_pos, delta_tid_);
   key_pos += sizeof(uint32_t);
@@ -140,9 +140,9 @@ void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<cha
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
 
-  rocksdb::Status status = kv_trans.MergeData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
+  rocksdb::Status status = kv_trans.MergeData(cf_handle_, {(char *) key, key_pos}, {buf.get(), size});
   if (!status.ok()) {
-    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size)+ " date:" + std::string(buf.get()));
+    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) + " date:" + std::string(buf.get()));
   }
   load_id++;
   stat.write_cnt++;
@@ -156,7 +156,7 @@ void DeltaTable::Truncate(Transaction *tx) {
   size_t key_pos = 0;
   index::be_store_index(entry_key + key_pos, delta_tid_);
   key_pos += sizeof(uint32_t);
-  rocksdb::Slice entry_slice((char *)entry_key, key_pos);
+  rocksdb::Slice entry_slice((char *) entry_key, key_pos);
   rocksdb::ReadOptions ropts;
   std::unique_ptr<rocksdb::Iterator> iter(tx->KVTrans().GetDataIterator(ropts, cf_handle_));
   iter->Seek(entry_slice);
@@ -180,25 +180,27 @@ void DeltaTable::Truncate(Transaction *tx) {
 DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) : table_(table), attrs_(attrs) {
   // get snapshot for rocksdb, snapshot will release when DeltaIterator is destructured
   auto snapshot = ha_kvstore_->GetRdbSnapshot();
-  rocksdb::ReadOptions read_options(true, snapshot);
+  rocksdb::ReadOptions read_options;
+  read_options.total_order_seek = true;
+  read_options.snapshot = snapshot;
   it_ = std::unique_ptr<rocksdb::Iterator>(ha_kvstore_->GetRdb()->NewIterator(read_options, table_->GetCFHandle()));
   uchar entry_key[12];
   size_t key_pos = 0;
   uint32_t table_id = table_->GetDeltaTableID();
   index::be_store_index(entry_key + key_pos, table_id);
   key_pos += sizeof(uint32_t);
-  rocksdb::Slice entry_slice((char *)entry_key, key_pos);
+  rocksdb::Slice prefix((char *) entry_key, key_pos);
   // ==== for debug ====
-  it_->Seek(entry_slice);
-  while (it_->Valid()) {
-    auto row_id = GetCurrRowIdFromRecord();
-    TIANMU_LOG(LogCtl_Level::DEBUG, " this table id: %d, row id: %d, type: %d, this record value: %s", table_id, row_id,
-               static_cast<RecordType>(it_->value().data()[0]), it_->value());
-    it_->Next();
-  }
+//  it_->Seek(entry_slice);
+//  while (it_->Valid()) {
+//    auto row_id = GetCurrRowIdFromRecord();
+//    TIANMU_LOG(LogCtl_Level::DEBUG, " this table id: %d, row id: %d, type: %d, this record value: %s", table_id, row_id,
+//               static_cast<RecordType>(it_->value().data()[0]), it_->value());
+//    it_->Next();
+//  }
   // ==== for debug ====
-  it_->Seek(entry_slice);
-  while (it_->Valid() && !IsCurrInsertType()) {
+  it_->Seek(prefix);
+  while (it_->Valid() && it_->key().starts_with(prefix) && !IsCurrInsertType()) {
     it_->Next();
   }
   if (it_->Valid()) {
@@ -265,7 +267,7 @@ void DeltaIterator::MoveTo(int64_t row_id) {
   // row id
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
-  it_->Seek({(char *)key, key_pos});
+  it_->Seek({(char *) key, key_pos});
   if (it_->Valid()) {  // need check valid
     DEBUG_ASSERT(GetCurrRowIdFromRecord() == row_id);
     position_ = GetCurrRowIdFromRecord();

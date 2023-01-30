@@ -52,7 +52,7 @@ char * DeltaRecordHeadForInsert::record_encode(char *ptr) {
   null_offset_ = ptr - ptr_begin;
   ptr += null_mask_.data_size();
   // field head
-  field_head_ = (int64_t *)ptr;
+  field_head_ = (uint32_t *)ptr;
   ptr += sizeof(int64_t) * field_count_;
   field_offset_ = ptr - ptr_begin;
   return ptr;
@@ -77,7 +77,7 @@ const char *DeltaRecordHeadForInsert::record_decode(const char *ptr) {
   null_mask_.Init(field_count_, const_cast<char *>(ptr));
   ptr += null_mask_.data_size();
   // get existing field_head
-  field_head_ = (int64_t *)ptr;
+  field_head_ = (uint32_t *)ptr;
   ptr += sizeof(int64_t) * field_count_;
   return ptr;
 }
@@ -114,7 +114,7 @@ char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
   null_offset_ = ptr - ptr_begin;
   ptr += null_mask_.data_size();
   // field head
-  field_head_ = (int64_t *)ptr;
+  field_head_ = (uint32_t *)ptr;
   ptr += sizeof(int64_t) * field_count_;
   field_offset_ = ptr - ptr_begin;
   return ptr;
@@ -143,8 +143,8 @@ const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
   null_mask_.Init(field_count_, const_cast<char *>(ptr));
   ptr += null_mask_.data_size();
   // get existing field_head
-  field_head_ = (int64_t *)ptr;
-  ptr += sizeof(int64_t) * field_count_;
+  field_head_ = (uint32_t *)ptr;
+  ptr += sizeof(uint32_t) * field_count_;
   field_offset_ = ptr - ptr_begin;
   return ptr;
 }

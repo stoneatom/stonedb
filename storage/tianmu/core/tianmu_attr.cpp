@@ -887,11 +887,11 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   hdr.natural_size += nvs->SumarizedSize();
   hdr.numOfDeleted += nvs->NumOfDeletes();
   TIANMU_LOG(LogCtl_Level::DEBUG,
-             "DELTA_DEBUG: INSERT load data tid: %d, cid: %d, pack index: %d, pack current num: %d",
+             "DELTA INSERT load_data_task tid: %d, cid: %d, pack index: %d, pack size: %d, write batch size: %d",
              m_tid,
              m_cid,
              pi,
-             hdr.numOfRecords);
+             (hdr.numOfRecords - pi * 65536), nvs->NumOfValues());
 }
 
 void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
@@ -982,7 +982,7 @@ void TianmuAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   auto cnt = nvs->NumOfValues();
 
   // no need to store any values - uniform package
-  if (load_nulls == cnt && nvs->NumOfDeletes() == 0 &&  (dpn.numOfRecords == 0 || dpn.NullOnly())) {
+  if (load_nulls == cnt && nvs->NumOfDeletes() == 0 && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
     dpn.numOfRecords += cnt;
     dpn.numOfNulls += cnt;
     return;
@@ -1100,6 +1100,12 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
     hdr.numOfNulls -= dpn_save.numOfNulls;
     hdr.numOfNulls += dpn.numOfNulls;
     ResetMaxMin(dpn);
+    TIANMU_LOG(LogCtl_Level::DEBUG,
+               "DELTA UPDATE batch_update_task tid: %d, cid: %d, pack index: %d, write batch size: %d",
+               m_tid,
+               m_cid,
+               pn,
+               pack.second.size());
   }
 }
 
@@ -1179,7 +1185,12 @@ void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64
     hdr.numOfDeleted -= dpn_save.numOfDeleted;
     hdr.numOfNulls += dpn.numOfDeleted;
     ResetMaxMin(dpn);
-
+    TIANMU_LOG(LogCtl_Level::DEBUG,
+               "DELTA DELETE batch_delete_task tid: %d, cid: %d, pack index: %d, write batch size: %d",
+               m_tid,
+               m_cid,
+               pn,
+               pack.second.size());
   }
 }
 

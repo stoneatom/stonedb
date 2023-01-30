@@ -203,8 +203,12 @@ class Engine final {
   struct TianmuStat {
     unsigned long loaded;
     unsigned long load_cnt;
-    unsigned long delayinsert;
-    unsigned long failed_delayinsert;
+    unsigned long delta_insert;
+    unsigned long failed_delta_insert;
+    unsigned long delta_update;
+    unsigned long failed_delta_update;
+    unsigned long delta_delete;
+    unsigned long failed_delta_delete;
     unsigned long select;
     unsigned long loaded_dup;
     unsigned long update;
