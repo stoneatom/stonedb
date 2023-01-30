@@ -60,6 +60,8 @@
 
 #include "violite.h"                       /* SSL_handle */
 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 class Reprepare_observer;
 class sp_cache;
 class Rows_log_event;

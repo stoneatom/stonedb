@@ -489,6 +489,17 @@ class VirtualColumnBase : public core::Column {
   void SetLocalNullsOnly(bool loc_nulls_only) { nulls_only_ = loc_nulls_only; }
   bool GetLocalNullsOnly() { return nulls_only_; }
   virtual std::vector<VirtualColumn *> GetChildren() const { return std::vector<VirtualColumn *>(); }
+  const char *GetFieldName() const override {
+    if (var_map_.empty()) {
+      return "-";
+    }
+    const VarMap &var = var_map_.front();
+    if (!var.GetTabPtr()) {
+      return "-";
+    }
+
+    return var.GetTabPtr()->GetFieldName(var.col_ndx);
+  }
 
  protected:
   virtual int64_t GetValueInt64Impl(const core::MIIterator &) = 0;

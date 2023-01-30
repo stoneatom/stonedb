@@ -98,7 +98,7 @@ class ColumnShare final {
     ASSERT(i >= 0 && size_t(i) < capacity, "bad index " + std::to_string(i));
     return i;
   }
-  std::string GetFieldName() const { return field_name_; }
+  const char *GetFieldName() const { return field_name_.c_str(); }
 
  private:
   void Init(common::TX_ID xid);

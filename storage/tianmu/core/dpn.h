@@ -24,6 +24,8 @@
 
 #include "common/common_definitions.h"
 
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+
 namespace Tianmu {
 namespace core {
 constexpr uint64_t tag_one = (1L << 48);

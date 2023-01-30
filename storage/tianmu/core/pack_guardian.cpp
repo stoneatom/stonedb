@@ -107,14 +107,13 @@ void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
             iter_dim->second.erase(col_index);
           }
 
-#ifdef AGGREGATION_GROUP_BY_MULTI_THREADS_DEBUG
+#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
           TIANMU_LOG(LogCtl_Level::DEBUG,
                      "LockPackrowOnLockOneByThread erase cur_dim: %d col_index: %d erase_pack: %d "
                      "field_name: %s "
                      "table_name: %s "
                      "thread_id: %lu",
-                     cur_dim, col_index, last_pack, tab->GetFieldName(col_index).c_str(), tab->GetTableName().c_str(),
-                     thread_id);
+                     cur_dim, col_index, last_pack, tab->GetFieldName(col_index), tab->GetTableName(), thread_id);
 #endif
         }
       }
@@ -183,12 +182,12 @@ void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
       lock_dim[col_index] = cur_pack;
     }
 
-#ifdef AGGREGATION_GROUP_BY_MULTI_THREADS_DEBUG
+#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
     TIANMU_LOG(LogCtl_Level::DEBUG,
                "LockPackrowOnLockOneByThread cur_dim: %d col_index: %d cur_pack: %d field_name: %s table_name: %s "
                "thread_id: %lu",
-               cur_dim, col_index, cur_pack, iter->GetTabPtr().get()->GetFieldName(col_index).c_str(),
-               iter->GetTabPtr().get()->GetTableName().c_str(), thread_id);
+               cur_dim, col_index, cur_pack, iter->GetTabPtr().get()->GetFieldName(col_index),
+               iter->GetTabPtr().get()->GetTableName(), thread_id);
 #endif
   }
 }
@@ -309,19 +308,21 @@ void VCPackGuardian::UnlockAllOnLockOneByThread() {
     int cur_pack = iter_val->second;
     iter.GetTabPtr()->UnlockPackFromUse(col_index, cur_pack);
 
-#ifdef AGGREGATION_GROUP_BY_MULTI_THREADS_DEBUG
+#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
     TIANMU_LOG(LogCtl_Level::DEBUG,
                "UnlockAllOnLockOneByThread cur_dim: %d cur_pack: %d col_index: %d field_name: %s table_name: %s "
                "thread_id: %lu",
-               cur_dim, cur_pack, col_index, iter.GetTabPtr().get()->GetFieldName(col_index).c_str(),
-               iter.GetTabPtr().get()->GetTableName().c_str(), thread_id);
+               cur_dim, cur_pack, col_index, iter.GetTabPtr().get()->GetFieldName(col_index),
+               iter.GetTabPtr().get()->GetTableName(), thread_id);
 #endif
   }
 
   {
     std::scoped_lock lock(mx_thread_);
     last_pack_thread_.erase(thread_id);
+#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
     TIANMU_LOG(LogCtl_Level::DEBUG, "UnlockAllOnLockOneByThread erase thread_id: %lu", thread_id);
+#endif
   }
 }
 

@@ -90,11 +90,11 @@ class TianmuTable final : public JustATable {
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   const ColumnType &GetColumnType(int col) override;
   PhysicalColumn *GetColumn(int col_no) override { return m_attrs[col_no].get(); }
-  const std::string &&GetTableName() override {
+  const char *GetTableName() override {
     DEBUG_ASSERT(share != nullptr);
-    return std::move(const_cast<const TableShare *>(share)->Path());
+    return const_cast<const TableShare *>(share)->Path().c_str();
   }
-  const std::string &&GetFieldName(int attr) override;
+  const char *GetFieldName(int attr) override;
   TianmuAttr *GetAttr(int n_a);
   const TableShare *GetTableShare() { return share; };
 

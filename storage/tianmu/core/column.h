@@ -43,6 +43,7 @@ class Column {
   inline void SetTypeName(common::ColumnType type) { ct.SetTypeName(type); }
   void SetCollation(DTCollation collation) { ct.SetCollation(collation); }
   DTCollation GetCollation() { return ct.GetCollation(); }
+  virtual const char *GetFieldName() const { return "-"; };
 
  protected:
   ColumnType ct;

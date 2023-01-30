@@ -391,8 +391,8 @@ class TempTable : public JustATable {
 
   void MarkCondPush() { can_cond_push_down = true; };
   bool CanCondPushDown() { return can_cond_push_down; };
-  const std::string &&GetTableName() override { return std::move(std::string("-")); }
-  const std::string &&GetFieldName(int attr) override;
+  const char *GetTableName() override { return "-"; }
+  const char *GetFieldName(int attr) override;
 
  protected:
   int64_t no_obj;

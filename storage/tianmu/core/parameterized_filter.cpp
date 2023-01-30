@@ -1493,7 +1493,9 @@ void ParameterizedFilter::RoughUpdateParamFilter() {
 }
 
 void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit) {
+#ifdef DEBUG_EVALUATE_PACK
   std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
 
   // desc_number = -1 => switch off the rough part
   Descriptor &desc = descriptors_[desc_number];
@@ -1663,6 +1665,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit) {
 
   desc.UpdateVCStatistics();
 
+#ifdef DEBUG_EVALUATE_PACK
   auto diff =
       std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
   if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
@@ -1672,6 +1675,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit) {
                diff.count(), static_cast<int>(desc.op), one_dim, eva_type, thread_num, mit.NumOfTuples(), packs_no,
                pack_all, eva_sin_num);
   }
+#endif
 }
 
 void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Transaction *ci, common::RoughSetValue *rf,

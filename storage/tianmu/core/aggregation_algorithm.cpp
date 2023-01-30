@@ -213,7 +213,8 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
 }
 
 void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int64_t &limit, int64_t &offset,
-                                                       ResultSender *sender, bool limit_less_than_no_groups) {
+                                                       ResultSender *sender,
+                                                       [[maybe_unused]] bool limit_less_than_no_groups) {
   MEASURE_FET("TempTable::MultiDimensionalGroupByScan(...)");
   bool first_pass = true;
   // tuples are numbered according to tuple_left filter (not used, if tuple_left
@@ -243,10 +244,10 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
   }
   gbw.SetDistinctTuples(mit.NumOfTuples());
 
-  int thd_cnt = 1;
+  unsigned int thd_cnt = 1;
   if (tianmu_sysvar_groupby_parallel_degree > 1) {
     if (static_cast<uint64_t>(mit.NumOfTuples()) > tianmu_sysvar_groupby_parallel_rows_minimum) {
-      int thd_limit = std::thread::hardware_concurrency() * 2;
+      unsigned int thd_limit = std::thread::hardware_concurrency() * 2;
       thd_cnt = tianmu_sysvar_groupby_parallel_degree > thd_limit ? thd_limit : tianmu_sysvar_groupby_parallel_degree;
       TIANMU_LOG(LogCtl_Level::INFO,
                  "MultiDimensionalGroupByScan multi threads thd_cnt: %d thd_limit: %d NumOfTuples: %d "
@@ -527,7 +528,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
   bool require_locking_ag = true;  // a new packrow, so locking will be needed
   bool require_locking_gr = true;  // do not lock if the grouping row is uniform
 
-#ifdef AGGREGATION_GROUP_BY_MULTI_THREADS_DEBUG
+#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
   auto get_cur_dim = ([&gbw, &mit](int gr_a) -> int {
     auto sc = gbw.SourceColumn(gr_a);
     if (!sc) {
@@ -548,7 +549,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
 
   if (require_locking_gr) {
     for (int gr_a = 0; gr_a < gbw.NumOfGroupingAttrs(); gr_a++) {
-#ifdef AGGREGATION_GROUP_BY_MULTI_THREADS_DEBUG
+#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
       TIANMU_LOG(LogCtl_Level::DEBUG, "AggregatePackrow LockPackAlways gr_a: %d dim: %d cur_pack: %d", gr_a,
                  get_cur_dim(gr_a), get_cur_pack(gr_a));
 #endif
@@ -560,7 +561,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
   }
   if (require_locking_ag) {
     for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++) {
-#ifdef AGGREGATION_GROUP_BY_MULTI_THREADS_DEBUG
+#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
       TIANMU_LOG(LogCtl_Level::DEBUG, "AggregatePackrow LockPackAlways gr_a: %d dim: %d cur_pack: %d", gr_a,
                  get_cur_dim(gr_a), get_cur_pack(gr_a));
 #endif

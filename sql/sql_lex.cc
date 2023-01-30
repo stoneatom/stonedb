@@ -41,6 +41,7 @@
 #include "sql_insert.h"                // Sql_cmd_insert_base
 #include "lex_token.h"
 
+#pragma GCC diagnostic ignored "-Wchar-subscripts"
 
 extern int HINT_PARSER_parse(THD *thd,
                              Hint_scanner *scanner,
@@ -996,7 +997,7 @@ static LEX_STRING get_quoted_token(Lex_input_stream *lip,
 
 static char *get_text(Lex_input_stream *lip, int pre_skip, int post_skip)
 {
-  reg1 uchar c,sep; //TIANMU UPGRADE
+  uchar c,sep; //TIANMU UPGRADE
   uint found_escape=0;
   const CHARSET_INFO *cs= lip->m_thd->charset();
 
@@ -1383,7 +1384,7 @@ int MYSQLlex(YYSTYPE *yylval, YYLTYPE *yylloc, THD *thd)
 
 static int lex_one_token(YYSTYPE *yylval, THD *thd)
 {
-  reg1 char c= 0; //TIANMU UPGRADE
+  char c= 0; //TIANMU UPGRADE
   bool comment_closed;
   int tokval, result_state;
   uint length;

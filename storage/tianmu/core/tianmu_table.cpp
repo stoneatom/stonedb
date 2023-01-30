@@ -1408,9 +1408,9 @@ int TianmuTable::MergeMemTable(system::IOParameters &iop) {
   return no_loaded_rows;
 }
 
-const std::string &&TianmuTable::GetFieldName(int attr) {
+const char *TianmuTable::GetFieldName(int attr) {
   DEBUG_ASSERT(attr < static_cast<int>(NumOfAttrs()));
-  return std::move(GetATIs()[attr].GetFieldName());
+  return GetATIs()[attr].GetFieldName();
 }
 
 }  // namespace core
