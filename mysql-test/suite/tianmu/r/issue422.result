@@ -35,4 +35,55 @@ sum(id)	name
 3377250	Kevin
 1104350	Lily
 set global tianmu_slow_query_record_interval=2;
+drop table t1;
+CREATE TABLE t1 (
+spID int(10) unsigned,
+userID int(10) unsigned,
+score int(5) unsigned,
+lsg char(40)
+) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (1,1,1,'');
+INSERT INTO t1 VALUES (2,2,2,'');
+INSERT INTO t1 VALUES (2,1,1,'');
+INSERT INTO t1 VALUES (3,3,3,'');
+CREATE TABLE t2 (
+userID int(10),
+niName char(15),
+passwd char(8),
+mail char(50),
+vName char(30),
+nName char(40),
+adr char(60),
+plz char(5),
+ort char(35),
+land char(20)
+) ENGINE=TIANMU;
+INSERT INTO t2 VALUES (1,'name','pass','mail','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (2,'name','pass','mail','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (3,'name','pass','mail','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (4,'name','pass','mail','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (5,'name','pass','mail','v','n','adr','1','1','1');
+SELECT t2.userid, MIN(t1.score) FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid;
+userid	MIN(t1.score)
+1	1
+2	2
+3	3
+SELECT t2.userid, MIN(t1.score) FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY NULL;
+userid	MIN(t1.score)
+1	1
+2	2
+3	3
+SELECT t2.userid, MIN(t1.score) FROM t1, t2 WHERE t1.userID=t2.userID AND t1.spID=2  GROUP BY t2.userid;
+userid	MIN(t1.score)
+1	1
+2	2
+SELECT t2.userid, MIN(t1.score+0.0) FROM t1, t2 WHERE t1.userID=t2.userID AND t1.spID=2  GROUP BY t2.userid;
+userid	MIN(t1.score+0.0)
+1	1.0
+2	2.0
+SELECT t2.userid, MIN(t1.score+0.0) FROM t1, t2 WHERE t1.userID=t2.userID AND t1.spID=2  GROUP BY t2.userid ORDER BY NULL;
+userid	MIN(t1.score+0.0)
+1	1.0
+2	2.0
+drop table t1,t2;
 drop database issue422_test;

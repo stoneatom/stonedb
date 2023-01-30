@@ -857,6 +857,10 @@ void Descriptor::EvaluatePackImpl(MIUpdatingIterator &mit) {
     }
   } else {
     if (IsType_Subquery() && op != common::Operator::O_OR_TREE) {
+#ifdef DEBUG_EVALUATE_PACK
+      std::chrono::high_resolution_clock::time_point start_subquery = std::chrono::high_resolution_clock::now();
+#endif
+      int check_num = 0;
       // pack based optimization of corr. subq. by using RoughQuery
       common::Tribool res = RoughCheckSubselectCondition(mit, SubSelectOptimizationType::PACK_BASED);
       if (res == false)
@@ -866,25 +870,24 @@ void Descriptor::EvaluatePackImpl(MIUpdatingIterator &mit) {
         while (mit.IsValid()) {
           // row based optimization of corr. subq. by using RoughQuery
           res = RoughCheckSubselectCondition(mit, SubSelectOptimizationType::ROW_BASED);
-          // if(res == false)
-          //	false_c++;
-          // else if(res == true)
-          //	true_c++;
-          // else
-          //	unkn_c++;
           if (res == false)
             mit.ResetCurrent();
           else if (res == common::TRIBOOL_UNKNOWN && CheckCondition(mit) == false)
             mit.ResetCurrent();
           ++mit;
+          ++check_num;
           if (mit.PackrowStarted())
             break;
         }
-        // cout << "# of skipped subqueries: " << true_c << "/" << false_c <<
-        // "/" << unkn_c
-        // << " -> " << (true_c + false_c) << " / " << (true_c + false_c +
-        // unkn_c) << endl;
       }
+#ifdef DEBUG_EVALUATE_PACK
+      auto diff_subquery = std::chrono::duration_cast<std::chrono::duration<float>>(
+          std::chrono::high_resolution_clock::now() - start_subquery);
+      if (diff_subquery.count() > tianmu_sysvar_slow_query_record_interval) {
+        TIANMU_LOG(LogCtl_Level::INFO, "EvaluatePackImpl subquery spend: %f op: %d check_num: %d",
+                   diff_subquery.count(), static_cast<int>(op), check_num);
+      }
+#endif
     } else {
       std::scoped_lock guard(mtx);
       while (mit.IsValid()) {
