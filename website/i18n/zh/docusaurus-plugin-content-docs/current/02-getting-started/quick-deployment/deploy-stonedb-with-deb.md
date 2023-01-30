@@ -3,7 +3,7 @@ id: deploy-stonedb-with-deb
 sidebar_position: 3.14
 ---
 
-# **Ubuntu 20 下通过 DEB 包部署 StoneDB**
+# Ubuntu 20 下通过 DEB 包部署 StoneDB
 
 ## 步骤 1：安装 StoneDB
 1. 下载 StoneDB 软件包。您可以通过以下两种方式进行下载：
