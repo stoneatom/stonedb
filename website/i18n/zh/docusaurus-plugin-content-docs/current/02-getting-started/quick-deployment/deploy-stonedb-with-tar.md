@@ -3,7 +3,7 @@ id: deploy-stonedb-with-tar
 sidebar_position: 3.13
 ---
 
-# **使用 TAR 包快速部署 StoneDB**
+# 使用 TAR 包快速部署 StoneDB
 
 ## 步骤 1：安装 StoneDB
 1. 下载 StoneDB 软件包。
