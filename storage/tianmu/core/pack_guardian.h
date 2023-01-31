@@ -59,7 +59,8 @@ class VCPackGuardian final {
   // thread_id::cur_dim::col_index -> pack
   // TODO: A parallel hash table implementation with multithreading security
   // https://greg7mdp.github.io/parallel-hashmap/
-  std::unordered_map<uint64_t, std::unordered_map<int, std::unordered_map<int, int>>> last_pack_thread_;
+  using TypeLockOne = std::unordered_map<uint64_t, std::unordered_map<int, std::unordered_map<int, int>>>;
+  TypeLockOne last_pack_thread_;
 
   int guardian_threads_{1};  // number of parallel threads using the guardian
   std::mutex mx_thread_;

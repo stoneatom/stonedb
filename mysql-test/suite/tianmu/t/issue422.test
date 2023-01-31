@@ -49,7 +49,7 @@ set global tianmu_groupby_parallel_rows_minimum=1000;
 
 ## query 
 
-## groupy bu of single thread
+## group by of single thread
 
 ## set threads
 set global tianmu_groupby_parallel_degree=0;

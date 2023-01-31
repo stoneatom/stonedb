@@ -34,6 +34,14 @@ mkdir ../build/${build_tag}
 cd ../build/${build_tag}
 mkdir ${install_target}
 
+# -DDEBUG_AGGREGA_COST
+# -DDEBUG_PACK_GUARDIAN
+# -DDEBUG_EVALUATE_PACK
+# -DDEBUG_APPLY_DESC_COST
+# -DDEBUG_JOIN_COST
+
+# export CPPFLAGS="-DDEBUG_AGGREGA_COST -DDDEBUG_APPLY_DESC_COST"
+
 # step 4. begin to build
 cmake ../../ \
 -DCMAKE_BUILD_TYPE=${build_type} \

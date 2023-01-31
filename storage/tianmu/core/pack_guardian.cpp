@@ -76,7 +76,13 @@ void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
 
   uint64_t thread_id = pthread_self();
 
-  auto iter_thread = last_pack_thread_.find(thread_id);
+  TypeLockOne::iterator iter_thread;
+
+  {
+    std::scoped_lock lock(mx_thread_);
+    iter_thread = last_pack_thread_.find(thread_id);
+  }
+
   bool has_myself_thread = last_pack_thread_.end() != iter_thread;
 
   for (auto iter = var_map.cbegin(); iter != var_map.cend(); iter++) {
@@ -100,12 +106,8 @@ void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
             continue;
           }
 
+          iter_dim->second.erase(col_index);
           tab->UnlockPackFromUse(col_index, last_pack);
-
-          {
-            std::scoped_lock lock(mx_thread_);
-            iter_dim->second.erase(col_index);
-          }
 
 #ifdef DEBUG_PACK_GUARDIAN
           TIANMU_LOG(LogCtl_Level::DEBUG,
@@ -175,8 +177,16 @@ void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
       }
     }
 
-    {
-      std::scoped_lock lock(mx_thread_);
+    if (!has_myself_thread) {
+      std::unordered_map<int, std::unordered_map<int, int>> pack_value;
+      auto &lock_dim = pack_value[cur_dim];
+      lock_dim[col_index] = cur_pack;
+
+      {
+        std::scoped_lock lock(mx_thread_);
+        last_pack_thread_[thread_id] = std::move(pack_value);
+      }
+    } else {
       auto &lock_thread = last_pack_thread_[thread_id];
       auto &lock_dim = lock_thread[cur_dim];
       lock_dim[col_index] = cur_pack;
@@ -306,6 +316,7 @@ void VCPackGuardian::UnlockAllOnLockOneByThread() {
     }
 
     int cur_pack = iter_val->second;
+    iter_pack->second.erase(col_index);
     iter.GetTabPtr()->UnlockPackFromUse(col_index, cur_pack);
 
 #ifdef DEBUG_PACK_GUARDIAN

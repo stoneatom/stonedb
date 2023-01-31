@@ -162,23 +162,16 @@ tianmu_insert_delayed=1
 # INFO = 4, DEBUG = 5, TRACE = 6
 tianmu_global_debug_level=4
 
-# Knowledge grid
-tianmu_enable_histogram_cmap_bloom=OFF
-
-# Parallel hash join
-tianmu_force_hashjoin=ON
-tianmu_join_parallel=1
-
 # The parallelism degree of multithreaded aggregation
 # the number of threads executing group by multithreaded aggregation
-tianmu_groupby_parallel_degree=0
+tianmu_groupby_parallel_degree=4
 
-# Threshold for the minimum number of rows 
-# that can start executing a multithreaded group by thread
+# Threshold for the minimum number of rows
+# that can start executing a multithreaded group by thread, minimum is 655360
 tianmu_groupby_parallel_rows_minimum=655360
 
-# Slow Query Threshold of recording tianmu logs, in seconds
-tianmu_slow_query_record_interval=2
+# order by parallel switch
+tianmu_orderby_speedup=1
 
 # here, at the end of [mysqld] group mtr will automatically disable
 # all optional plugins.

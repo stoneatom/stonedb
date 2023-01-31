@@ -812,6 +812,10 @@ void TianmuAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
     return;
   }
 
+  if (pn >= m_idx.size()) {
+    return;
+  }
+
   auto dpn = &get_dpn(pn);
   if (dpn->IsLocal())
     dpn = m_share->get_dpn_ptr(dpn->base);
@@ -824,7 +828,7 @@ void TianmuAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
 
   do {
     if (v <= tag_one) {
-      TIANMU_LOG(LogCtl_Level::DEBUG, "UnlockPackFromUse fail, v [%ld] <= tag_one [%ld]", v, tag_one);
+      TIANMU_LOG(LogCtl_Level::ERROR, "UnlockPackFromUse fail, v [%ld] <= tag_one [%ld]", v, tag_one);
       ASSERT(0,
              "Unexpected lock counter!: " + Path().string() + " index:" + std::to_string(pn) + " " + std::to_string(v));
     }

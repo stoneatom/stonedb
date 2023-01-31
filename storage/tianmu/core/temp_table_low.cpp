@@ -40,10 +40,13 @@
 namespace Tianmu {
 namespace core {
 
-bool TempTable::OrderByAndMaterialize(
-    std::vector<SortDescriptor> &ord, int64_t limit, int64_t offset,
-    ResultSender *sender)  // Sort MultiIndex using some (existing) attributes in some tables
-{
+// Sort MultiIndex using some (existing) attributes in some tables
+bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t limit, int64_t offset,
+                                      ResultSender *sender) {
+#ifdef DEBUG_TEMP_TABLE_COST
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
+
   // "limit=10; offset=20" means that the first 10 positions of sorted table will contain objects 21...30.
   MEASURE_FET("TempTable::OrderBy(...)");
   thd_proc_info(m_conn->Thd(), "order by");
@@ -193,7 +196,7 @@ bool TempTable::OrderByAndMaterialize(
     for (int i = 0; i < task_num; ++i) {
       int pstart = ((i == 0) ? 0 : mod + i * num);
       int pend = mod + (i + 1) * num - 1;
-      TIANMU_LOG(LogCtl_Level::INFO, "create new MIIterator: start pack %d, endpack %d", pstart, pend);
+      TIANMU_LOG(LogCtl_Level::DEBUG, "create new MIIterator: start pack %d, endpack %d", pstart, pend);
 
       auto &mi = mis.emplace_back(*filter.mind_, true);
 
@@ -303,8 +306,17 @@ bool TempTable::OrderByAndMaterialize(
   } while (valid && global_row < limit + offset);
   tianmu_control_.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
 
-  // TIANMU_LOG(LogCtl_Level::INFO, "OrderByAndMaterialize complete global_row %d, limit %d,
-  // offset %d", global_row, limit, offset);
+#ifdef DEBUG_TEMP_TABLE_COST
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO,
+               "OrderByAndMaterialize spend: %f task_num: %d packs_no: %d global_row: %ld offset: %d limit: %d "
+               "no_dims: %d no_obj: %d",
+               diff.count(), task_num, packs_no, global_row, offset, limit, no_dims, no_obj);
+  }
+#endif
+
   return true;
 }
 

@@ -2410,17 +2410,17 @@ static MYSQL_SYSVAR_BOOL(filterevaluation_speedup, tianmu_sysvar_filterevaluatio
                          nullptr, nullptr, TRUE);
 static MYSQL_SYSVAR_BOOL(groupby_speedup, tianmu_sysvar_groupby_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
 static MYSQL_SYSVAR_UINT(groupby_parallel_degree, tianmu_sysvar_groupby_parallel_degree, PLUGIN_VAR_INT,
-                         "group by parallel degree, number of worker threads", nullptr, nullptr, 0, 0, INT32_MAX, 0);
+                         "group by parallel degree, number of worker threads", nullptr, nullptr, 8, 0, INT32_MAX, 0);
 static MYSQL_SYSVAR_ULONGLONG(groupby_parallel_rows_minimum, tianmu_sysvar_groupby_parallel_rows_minimum,
                               PLUGIN_VAR_LONGLONG, "group by parallel minimum rows", nullptr, nullptr, 655360, 655360,
                               INT64_MAX, 0);
 static MYSQL_SYSVAR_UINT(slow_query_record_interval, tianmu_sysvar_slow_query_record_interval, PLUGIN_VAR_INT,
                          "slow Query Threshold of recording tianmu logs, in seconds", nullptr, nullptr, 0, 0, INT32_MAX,
                          0);
-static MYSQL_SYSVAR_BOOL(orderby_speedup, tianmu_sysvar_orderby_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, FALSE);
+static MYSQL_SYSVAR_BOOL(orderby_speedup, tianmu_sysvar_orderby_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
 static MYSQL_SYSVAR_UINT(join_parallel, tianmu_sysvar_join_parallel, PLUGIN_VAR_INT,
                          "join matching parallel: 0-Disabled, 1-Auto, N-specify count", nullptr, nullptr, 1, 0, 1000,
-                         0);
+                         1);
 static MYSQL_SYSVAR_UINT(join_splitrows, tianmu_sysvar_join_splitrows, PLUGIN_VAR_INT,
                          "join split rows:0-Disabled, 1-Auto, N-specify count", nullptr, nullptr, 0, 0, 1000, 0);
 static MYSQL_SYSVAR_BOOL(minmax_speedup, tianmu_sysvar_minmax_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
@@ -2454,7 +2454,7 @@ static MYSQL_SYSVAR_UINT(lookup_max_size, tianmu_sysvar_lookup_max_size, PLUGIN_
 
 static MYSQL_SYSVAR_BOOL(qps_log, tianmu_sysvar_qps_log, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
 
-static MYSQL_SYSVAR_BOOL(force_hashjoin, tianmu_sysvar_force_hashjoin, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, FALSE);
+static MYSQL_SYSVAR_BOOL(force_hashjoin, tianmu_sysvar_force_hashjoin, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
 static MYSQL_SYSVAR_UINT(start_async, tianmu_sysvar_start_async, PLUGIN_VAR_INT,
                          "Enable async, specifies async threads x/100 * cpus", nullptr, start_async_update, 0, 0, 100,
                          0);
