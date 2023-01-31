@@ -600,7 +600,16 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
 
 void Engine::CreateTable(const std::string &table, TABLE *form) { TianmuTable::CreateNew(GetTableOption(table, form)); }
 
-AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
+AttributeTypeInfo Engine::GetAttrTypeInfo(Field &field) {
+  AttributeTypeInfo ati = GetAttrTypeInfoInternal(field);
+  bitmap_set_bit(field.table->write_set, field.field_index);
+  bitmap_set_bit(field.table->read_set, field.field_index);
+  field.set_default();
+  ati.SetDefaultValue(&field);
+  return ati;
+}
+
+AttributeTypeInfo Engine::GetAttrTypeInfoInternal(const Field &field) {
   bool auto_inc = field.flags & AUTO_INCREMENT_FLAG;
   if (auto_inc && field.part_of_key.to_ulonglong() == 0) {
     throw common::AutoIncException("AUTO_INCREMENT can be only declared on primary key column!");

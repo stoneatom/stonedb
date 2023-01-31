@@ -80,7 +80,7 @@ my_bool rcbase_query_caching_of_table_permitted(THD *thd, [[maybe_unused]] char 
   return ((my_bool)FALSE);
 }
 
-static core::Value GetValueFromField(Field *f) {
+core::Value GetValueFromField(Field *f) {
   core::Value v;
 
   if (f->is_null())
@@ -112,7 +112,8 @@ static core::Value GetValueFromField(Field *f) {
       // convert to UTC
       if (!common::IsTimeStampZero(my_time)) {
         my_bool myb;
-        my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
+        // in some senario,current_txn_ is empty, so use f->table->in_use instead to get THD.
+        my_time_t secs_utc = f->table->in_use->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
         common::GMTSec2GMTTime(&my_time, secs_utc);
       }
       types::DT dt = {};
@@ -1634,7 +1635,13 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
         DBUG_RETURN(false);
     } else if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
-      std::vector<Field *> v_new(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
+
+      Field_iterator_table it_field;
+      std::vector<Field *> v_new;
+      for (it_field.set_table(altered_table); !it_field.end_of_fields(); it_field.next()) {
+        v_new.emplace_back(it_field.field());
+      }
+
       ha_tianmu_engine_->PrepareAlterTable(table_name_, v_new, v_old, ha_thd());
       DBUG_RETURN(false);
     } else if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {

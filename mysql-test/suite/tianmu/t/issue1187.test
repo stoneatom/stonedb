@@ -1,0 +1,45 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issuse1187_test;
+--enable_warnings
+
+CREATE DATABASE issuse1187_test;
+USE issuse1187_test;
+
+create table t1(id int,name varchar(5)) ;
+insert into t1 values(1,'AAA'),(2,'BBB');
+alter table t1 add column age int null;
+select * from t1;
+
+create table t2(id int,name varchar(5)) ;
+insert into t2 values(1,'AAA'),(2,'BBB');
+alter table t2 add column age int not null;
+select * from t2;
+
+create table t3(id int,name varchar(5)) ;
+insert into t3 values(1,'AAA'),(2,'BBB');
+alter table t3 add column age int not null default 66;
+select * from t3;
+insert into t3(id,name) values (3,'CCC');
+select * from t3;
+alter table t3 alter column age set default 77;
+insert into t3(id,name) values (4,'DDD');
+select * from t3;
+
+create table t4(id int,name varchar(5)) ;
+insert into t4 values(1,'AAA'),(2,'BBB');
+alter table t4 add column age DECIMAL(17,9);
+select * from t4;
+
+create table t5(id int,name varchar(5)) ;
+insert into t5 values(1,'AAA'),(2,'BBB');
+alter table t5 add column age DECIMAL(17,9) not null;
+select * from t5;
+
+create table t6(id int,name varchar(5)) ;
+insert into t6 values(1,'AAA'),(2,'BBB');
+alter table t6 add column age DECIMAL(17,9) not null default '800.0024';
+select * from t6;
+
+DROP DATABASE issuse1187_test;

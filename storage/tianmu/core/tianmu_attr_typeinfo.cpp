@@ -19,10 +19,14 @@
 #include "common/data_format.h"
 #include "common/txt_data_format.h"
 #include "core/tianmu_attr.h"
+#include "handler/ha_tianmu.h"
 #include "types/tianmu_data_types.h"
 #include "types/tianmu_num.h"
 
 namespace Tianmu {
+namespace handler {
+extern Tianmu::core::Value GetValueFromField(Field *f);
+}
 namespace core {
 int ATI::TextSize(common::ColumnType attrt, uint precision, int scale, DTCollation collation) {
   return common::TxtDataFormat::StaticExtrnalSize(attrt, precision, scale, &collation);
@@ -36,5 +40,8 @@ const types::TianmuDataType &AttributeTypeInfo::ValuePrototype() const {
   DEBUG_ASSERT(ATI::IsDateTimeType(attrt_));
   return types::TianmuDateTime::NullValue();
 }
+
+void AttributeTypeInfo::SetDefaultValue(Field *field) { value_ = Tianmu::handler::GetValueFromField(field); }
+
 }  // namespace core
 }  // namespace Tianmu

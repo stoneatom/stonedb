@@ -87,19 +87,42 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
   fmeta.WriteExact(&meta, sizeof(meta));
   fmeta.Flush();
 
+  size_t no_nulls{no_rows};
+  int64_t min{0};
+  int64_t max{0};
+  bool int_not_null{false};
+  bool is_real{false};
+  core::Value value = ati.GetDefaultValue();
+  if (ati.GetPackType() == common::PackType::INT && value.HasValue()) {
+    int_not_null = true;
+  }
+  if (ATI::IsRealType(ati.Type())) {
+    is_real = true;
+  }
+
+  if (int_not_null) {
+    no_nulls = 0;
+    if (is_real) {
+      common::double_int_t t(value.GetDouble());
+      min = max = t.i;
+    } else {
+      min = max = value.GetInt();
+    }
+  }
+
   COL_VER_HDR hdr{
-      no_rows,  // no_obj
-      no_rows,  // no_nulls
-      no_pack,  // no of packs
-      0,        // no of deleted
-      0,        // auto_inc next
-      0,        // min
-      0,        // max
-      0,        // dict file version name. 0 means n/a
-      0,        // is unique?
-      0,        // is unique_updated?
-      0,        // natural size
-      0,        // compressed size
+      no_rows,   // no_obj
+      no_nulls,  // no_nulls
+      no_pack,   // no of packs
+      0,         // no of deleted
+      0,         // auto_inc next
+      min,       // min
+      max,       // max
+      0,         // dict file version name. 0 means n/a
+      0,         // is unique?
+      0,         // is unique_updated?
+      0,         // natural size
+      0,         // compressed size
   };
 
   if (ati.Lookup()) {
@@ -128,7 +151,20 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
     DPN dpn;
     dpn.reset();
     dpn.used = 1;
-    dpn.numOfNulls = 1 << pss;
+    if (int_not_null) {
+      dpn.numOfNulls = 0;
+      if (is_real) {
+        dpn.max_d = value.GetDouble();
+        dpn.min_d = value.GetDouble();
+        dpn.sum_d = value.GetDouble() * (1 << pss);
+      } else {
+        dpn.max_i = value.GetInt();
+        dpn.min_i = value.GetInt();
+        dpn.sum_i = value.GetInt() * (1 << pss);
+      }
+    } else {
+      dpn.numOfNulls = 1 << pss;
+    }
     dpn.numOfRecords = 1 << pss;
     dpn.xmax = common::MAX_XID;
     dpn.dataAddress = DPN_INVALID_ADDR;
@@ -141,7 +177,21 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
     auto left = no_rows % (1 << pss);
     if (left != 0) {
       dpn.numOfRecords = left;
-      dpn.numOfNulls = left;
+
+      if (int_not_null) {
+        dpn.numOfNulls = 0;
+        if (is_real) {
+          dpn.max_d = value.GetDouble();
+          dpn.min_d = value.GetDouble();
+          dpn.sum_d = value.GetDouble() * left;
+        } else {
+          dpn.max_i = value.GetInt();
+          dpn.min_i = value.GetInt();
+          dpn.sum_i = value.GetInt() * left;
+        }
+      } else {
+        dpn.numOfNulls = left;
+      }
     }
     fdn.WriteExact(&dpn, sizeof(dpn));
     fdn.Flush();

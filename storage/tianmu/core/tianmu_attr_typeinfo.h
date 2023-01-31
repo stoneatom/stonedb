@@ -21,6 +21,7 @@
 #include <bitset>
 
 #include "common/common_definitions.h"
+#include "core/value.h"
 
 namespace Tianmu {
 namespace types {
@@ -124,6 +125,8 @@ class AttributeTypeInfo {
   bool Lookup() const { return fmt_ == common::PackFmt::LOOKUP; }
   unsigned char Flag() const { return flag_.to_ulong(); }
   void SetFlag(unsigned char v) { flag_ = std::bitset<std::numeric_limits<unsigned char>::digits>(v); }
+  void SetDefaultValue(Field *field);
+  core::Value GetDefaultValue() const { return value_; }
 
  private:
   common::ColumnType attrt_;
@@ -132,6 +135,7 @@ class AttributeTypeInfo {
   int scale_;
   DTCollation collation_;
   std::string field_name_;
+  core::Value value_;
 
   std::bitset<std::numeric_limits<unsigned char>::digits> flag_;
 };

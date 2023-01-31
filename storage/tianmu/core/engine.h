@@ -148,7 +148,8 @@ class Engine final {
  public:
   static common::ColumnType GetCorrespondingType(const Field &field);
   static AttributeTypeInfo GetCorrespondingATI(Field &field);
-  static AttributeTypeInfo GetAttrTypeInfo(const Field &field);
+  static AttributeTypeInfo GetAttrTypeInfo(Field &field);
+  static AttributeTypeInfo GetAttrTypeInfoInternal(const Field &field);
   static common::ColumnType GetCorrespondingType(const enum_field_types &eft);
   static bool IsTianmuTable(TABLE *table);
   static bool ConvertToField(Field *field, types::TianmuDataType &tianmu_item, std::vector<uchar> *blob_buf);
