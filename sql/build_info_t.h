@@ -4,4 +4,6 @@
 #define STONEDB_BRANCH_NAME             "AS_BRANCH_NAME"
 #define STONEDB_COMMIT_ID               "AS_COMMIT_ID"
 #define STONEDB_COMMIT_TIME             "AS_COMMIT_TIME"
+#define STONEDB_TAG_NAME                "AS_TAG_NAME"
+
 #endif
