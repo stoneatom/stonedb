@@ -72,17 +72,9 @@ void ValueOrNull::GetBString(types::BString &tianmu_s) const {
 }
 
 ValueOrNull::ValueOrNull(ValueOrNull const &von)
-    : x(von.x),
-      len(von.len),
-      string_owner(von.string_owner),
-      null(von.null) {
+    : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null) {
   if (string_owner) {
-    try {
-      sp = new char[len + 1];
-    } catch (const std::bad_alloc &e) {
-      TIANMU_LOG(LogCtl_Level::FATAL, "ValueOrNull new char fail, len: %d err: %s", len, e.what());
-      throw common::SystemException("ValueOrNull new char fail");
-    }
+    sp = new char[len + 1];
     std::memcpy(sp, von.sp, len);
     sp[len] = 0;
   } else {

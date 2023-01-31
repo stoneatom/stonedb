@@ -3927,7 +3927,7 @@ static uint find_field(Field **fields, uchar *record, uint start, uint length)
 
 	/* Check that the integer is in the internal */
 
-int set_zone(register int nr, int min_zone, int max_zone)//TIANMU UPGRADE 
+int set_zone(int nr, int min_zone, int max_zone)//TIANMU UPGRADE 
 {
   if (nr<=min_zone)
     return (min_zone);
@@ -3938,7 +3938,7 @@ int set_zone(register int nr, int min_zone, int max_zone)//TIANMU UPGRADE
 
 	/* Adjust number to next larger disk buffer */
 
-ulong next_io_size(register ulong pos)//TIANMU UPGRADE
+ulong next_io_size(ulong pos)//TIANMU UPGRADE
 {
   ulong offset;
   if ((offset= pos & (IO_SIZE-1)))

@@ -76,7 +76,9 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     // later need to provide a configurable parameter to
     // control whether to enable multithreading
 
+#ifdef DEBUG_JOIN_COST
     std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
 
 #ifdef INNER_JOIN_LOOP_MULTI_THREAD
     const char *thread_type = "multi";
@@ -88,12 +90,14 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
                                      tips.count_only);
 #endif
 
+#ifdef DEBUG_JOIN_COST
     auto diff =
         std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
     if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
       TIANMU_LOG(LogCtl_Level::INFO, "ExecuteJoinConditions thread_type: %s spend: %f NumOfTuples: %d", thread_type,
                  diff.count(), mit.NumOfTuples());
     }
+#endif
   }
   // Postprocessing and cleanup
   if (tips.count_only)

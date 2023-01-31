@@ -288,8 +288,11 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         }
       }
 
-      const char *thread_type = "multi";
+      [[maybe_unused]] const char *thread_type = "multi";
+
+#ifdef DEBUG_AGGREGA_COST
       std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
 
       if (ag_worker.ThreadsUsed() > 1) {
         ag_worker.DistributeAggreTaskAverage(mit);
@@ -320,12 +323,14 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         }
       }
 
+#ifdef DEBUG_AGGREGA_COST
       auto diff =
           std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
       if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
         TIANMU_LOG(LogCtl_Level::INFO, "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d", thread_type,
                    diff.count(), mit.NumOfTuples());
       }
+#endif
 
       gbw.ClearDistinctBuffers();              // reset buffers for a new contents
       MultiDimensionalDistinctScan(gbw, mit);  // if not needed, no effect
@@ -528,7 +533,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
   bool require_locking_ag = true;  // a new packrow, so locking will be needed
   bool require_locking_gr = true;  // do not lock if the grouping row is uniform
 
-#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
+#ifdef DEBUG_PACK_GUARDIAN
   auto get_cur_dim = ([&gbw, &mit](int gr_a) -> int {
     auto sc = gbw.SourceColumn(gr_a);
     if (!sc) {
@@ -549,7 +554,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
 
   if (require_locking_gr) {
     for (int gr_a = 0; gr_a < gbw.NumOfGroupingAttrs(); gr_a++) {
-#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
+#ifdef DEBUG_PACK_GUARDIAN
       TIANMU_LOG(LogCtl_Level::DEBUG, "AggregatePackrow LockPackAlways gr_a: %d dim: %d cur_pack: %d", gr_a,
                  get_cur_dim(gr_a), get_cur_pack(gr_a));
 #endif
@@ -561,7 +566,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
   }
   if (require_locking_ag) {
     for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++) {
-#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
+#ifdef DEBUG_PACK_GUARDIAN
       TIANMU_LOG(LogCtl_Level::DEBUG, "AggregatePackrow LockPackAlways gr_a: %d dim: %d cur_pack: %d", gr_a,
                  get_cur_dim(gr_a), get_cur_pack(gr_a));
 #endif
@@ -902,7 +907,9 @@ void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVec
                                           GroupByWrapper *gbw, Transaction *ci [[maybe_unused]]) {
   TIANMU_LOG(LogCtl_Level::DEBUG, "TaskAggrePacks task_id: %d start pack_start: %d pack_end: %d", task->dwTaskId,
              task->dwStartPackno, task->dwEndPackno);
+#ifdef DEBUG_AGGREGA_COST
   std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
 
   taskIterator->Rewind();
   int task_pack_num = 0;
@@ -924,12 +931,14 @@ void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVec
     ++task_pack_num;
   }
 
+#ifdef DEBUG_AGGREGA_COST
   auto diff =
       std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
   if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
     TIANMU_LOG(LogCtl_Level::INFO, "TaskAggrePacks task_id: %d spend: %f pack_start: %d pack_end: %d", task->dwTaskId,
                diff.count(), task->dwStartPackno, task->dwEndPackno);
   }
+#endif
 }
 
 void AggregationWorkerEnt::PrepShardingCopy(MIIterator *mit, GroupByWrapper *gb_sharding,

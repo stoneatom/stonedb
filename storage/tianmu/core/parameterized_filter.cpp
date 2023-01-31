@@ -693,7 +693,9 @@ void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips) {
   // Calculate joins (i.e. any condition using attributes from two dimensions)
   // as well as other conditions (incl. one-dim) flagged as "outer join"
 
+#ifdef DEBUG_JOIN_COST
   std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
 
   thd_proc_info(mind_->ConnInfo().Thd(), "join");
   DimensionVector all_involved_dims(mind_->NumOfDimensions());
@@ -729,12 +731,14 @@ void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips) {
   // display results (the last alg.)
   DisplayJoinResults(all_involved_dims, join_alg, is_outer, conditions_used);
 
+#ifdef DEBUG_JOIN_COST
   auto diff =
       std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
   if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
     TIANMU_LOG(LogCtl_Level::INFO, "UpdateJoinCondition spend: %f join_type: %d", diff.count(),
                static_cast<int>(join_alg));
   }
+#endif
 }
 
 void ParameterizedFilter::DisplayJoinResults(DimensionVector &all_involved_dims, JoinAlgType join_performed,
@@ -1271,7 +1275,9 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       ++no_desc;
   }
 
+#ifdef DEBUG_APPLY_DESC_COST
   std::chrono::high_resolution_clock::time_point start_apply_desc = std::chrono::high_resolution_clock::now();
+#endif
 
   int desc_no = 0;
   for (uint i = 0; i < descriptors_.Size(); i++) {
@@ -1309,11 +1315,13 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     last_desc_dim = cur_dim;
   }
 
+#ifdef DEBUG_APPLY_DESC_COST
   auto diff_apply_desc = std::chrono::duration_cast<std::chrono::duration<float>>(
       std::chrono::high_resolution_clock::now() - start_apply_desc);
   if (diff_apply_desc.count() > tianmu_sysvar_slow_query_record_interval) {
     TIANMU_LOG(LogCtl_Level::INFO, "ApplyDescriptor total spend: %f", diff_apply_desc.count());
   }
+#endif
 
   rough_mind_->UpdateReducedDimension();
   mind_->UpdateNumOfTuples();
@@ -1493,7 +1501,7 @@ void ParameterizedFilter::RoughUpdateParamFilter() {
 }
 
 void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit) {
-#ifdef DEBUG_EVALUATE_PACK
+#ifdef DEBUG_APPLY_DESC_COST
   std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
 #endif
 
@@ -1546,9 +1554,9 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit) {
       pack_some++;
   }
 
-  const char *eva_type = "sin";
-  int eva_sin_num = 0;
-  int thread_num = 1;
+  [[maybe_unused]] const char *eva_type = "sin";
+  [[maybe_unused]] int eva_sin_num = 0;
+  [[maybe_unused]] int thread_num = 1;
 
   MIUpdatingIterator mit(mind_, dims);
   desc.CopyDesCond(mit);
@@ -1665,7 +1673,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit) {
 
   desc.UpdateVCStatistics();
 
-#ifdef DEBUG_EVALUATE_PACK
+#ifdef DEBUG_APPLY_DESC_COST
   auto diff =
       std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
   if (diff.count() > tianmu_sysvar_slow_query_record_interval) {

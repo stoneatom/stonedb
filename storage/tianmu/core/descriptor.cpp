@@ -845,12 +845,16 @@ void Descriptor::EvaluatePackImpl(MIUpdatingIterator &mit) {
     auto diff_attr = std::chrono::duration_cast<std::chrono::duration<float>>(
         std::chrono::high_resolution_clock::now() - start_attr);
     if (diff_attr.count() > tianmu_sysvar_slow_query_record_interval) {
+      int attr_type = static_cast<int>(attr.vc->TypeName());
+      int val1_type = val1.vc ? static_cast<int>(val1.vc->TypeName()) : -1;
+      int val2_type = val2.vc ? static_cast<int>(val2.vc->TypeName()) : -1;
       const char *attr_name = attr.vc->GetFieldName();
       const char *val1_name = val1.vc ? val1.vc->GetFieldName() : "-";
       const char *val2_name = val2.vc ? val2.vc->GetFieldName() : "-";
       TIANMU_LOG(LogCtl_Level::INFO,
-                 "EvaluatePackImpl attr.vc spend: %f column_type: %d attr_name: %s val1_name: %s val2_name: %s",
-                 diff_attr.count(), static_cast<int>(attr.vc->TypeName()), attr_name, val1_name, val2_name);
+                 "EvaluatePackImpl attr.vc spend: %f attr_type: %d attr_name: %s val1_type: %d val1_name: %s "
+                 "val2_type: %d val2_name: %s",
+                 diff_attr.count(), attr_type, attr_name, val1_type, val1_name, val2_type, val2_name);
     }
 #endif
   } else if (IsType_OrTree() && (GetParallelSize() == 0)) {

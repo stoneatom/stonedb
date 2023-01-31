@@ -107,7 +107,7 @@ void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
             iter_dim->second.erase(col_index);
           }
 
-#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
+#ifdef DEBUG_PACK_GUARDIAN
           TIANMU_LOG(LogCtl_Level::DEBUG,
                      "LockPackrowOnLockOneByThread erase cur_dim: %d col_index: %d erase_pack: %d "
                      "field_name: %s "
@@ -182,7 +182,7 @@ void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
       lock_dim[col_index] = cur_pack;
     }
 
-#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
+#ifdef DEBUG_PACK_GUARDIAN
     TIANMU_LOG(LogCtl_Level::DEBUG,
                "LockPackrowOnLockOneByThread cur_dim: %d col_index: %d cur_pack: %d field_name: %s table_name: %s "
                "thread_id: %lu",
@@ -308,7 +308,7 @@ void VCPackGuardian::UnlockAllOnLockOneByThread() {
     int cur_pack = iter_val->second;
     iter.GetTabPtr()->UnlockPackFromUse(col_index, cur_pack);
 
-#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
+#ifdef DEBUG_PACK_GUARDIAN
     TIANMU_LOG(LogCtl_Level::DEBUG,
                "UnlockAllOnLockOneByThread cur_dim: %d cur_pack: %d col_index: %d field_name: %s table_name: %s "
                "thread_id: %lu",
@@ -320,7 +320,7 @@ void VCPackGuardian::UnlockAllOnLockOneByThread() {
   {
     std::scoped_lock lock(mx_thread_);
     last_pack_thread_.erase(thread_id);
-#ifdef DEBUG_AGGREGATION_GROUP_BY_MULTI_THREADS
+#ifdef DEBUG_PACK_GUARDIAN
     TIANMU_LOG(LogCtl_Level::DEBUG, "UnlockAllOnLockOneByThread erase thread_id: %lu", thread_id);
 #endif
   }
