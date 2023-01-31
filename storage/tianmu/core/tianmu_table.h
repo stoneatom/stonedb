@@ -74,7 +74,7 @@ class TianmuTable final : public JustATable {
   static void Alter(const std::string &path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                     size_t no_objs);
   void Truncate();
-  void UpdateItem(uint64_t row, uint64_t col, Value v, core::Transaction *current_transaction);
+  void UpdateItem(uint64_t row, uint64_t col, Value &old_v, Value &new_v, core::Transaction *current_transaction);
   void DeleteItem(uint64_t row, uint64_t col, core::Transaction *current_transaction);
 
   void LockPackInfoForUse();     // lock attribute data against memory manager
@@ -125,15 +125,22 @@ class TianmuTable final : public JustATable {
   int64_t NoRecordsLoaded() { return no_loaded_rows; }
   int64_t NoRecordsDuped() { return no_dup_rows; }
 
+  void GetValueFromField(Field *f, Value &v);
+  void UpdateGetOldNewValue(TABLE *table, uint64_t col_id, Value &old_v, Value &new_v);
+
   // directly (no delta)
   int Insert(TABLE *table);
   int Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data);
   int Delete(TABLE *table, uint64_t row_id);
-
+  
   // delta frontend
-  void InsertToDelta(std::unique_ptr<char[]> buf, uint32_t size);
+  void InsertToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
   void UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
   void DeleteToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
+
+  void InsertIndexForDelta(TABLE *table, uint64_t row_id);
+  void UpdateIndexForDelta(TABLE *table, uint64_t row_id, uint64_t col);
+  void DeleteIndexForDelta(TABLE *table, uint64_t row_id);
 
   // delta backend
   void LoadDataInfile(system::IOParameters &iop);

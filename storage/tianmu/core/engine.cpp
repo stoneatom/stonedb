@@ -394,7 +394,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
   char *ptr = buf.get();
-  DeltaRecordHeadForInsert deltaRecord(DELTA_RECORD_NORMAL,table_id,table_path,col);
+  DeltaRecordHeadForInsert deltaRecord(DELTA_RECORD_NORMAL, table_id, table_path, col);
   ptr = deltaRecord.record_encode(ptr);
 
   for (uint i = 0; i < col; i++) {
@@ -658,11 +658,10 @@ void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
 void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
                                 std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
                                 std::unique_ptr<char[]> &buf, uint32_t &buf_size) {
-
   buf_size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[buf_size]);
   char *ptr = buf.get();
-  DeltaRecordHeadForUpdate deltaRecord(table_id,table_path,field_count);
+  DeltaRecordHeadForUpdate deltaRecord(table_id, table_path, field_count);
   ptr = deltaRecord.record_encode(ptr);
 
   // fields...
@@ -831,18 +830,20 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
     }
     ASSERT(ptr <= buf.get() + buf_size, "Buffer overflow");
   }
-  std::memcpy(buf.get() + deltaRecord.update_offset_, deltaRecord.update_mask_.data(), deltaRecord.update_mask_.data_size());
+  std::memcpy(buf.get() + deltaRecord.update_offset_, deltaRecord.update_mask_.data(),
+              deltaRecord.update_mask_.data_size());
   std::memcpy(buf.get() + deltaRecord.null_offset_, deltaRecord.null_mask_.data(), deltaRecord.null_mask_.data_size());
   buf_size = ptr - buf.get();
 }
 
-void Engine::EncodeDeleteRecord(const std::string &table_path, int table_id,std::unique_ptr<char[]> &buf, uint32_t &buf_size){
+void Engine::EncodeDeleteRecord(const std::string &table_path, int table_id, std::unique_ptr<char[]> &buf,
+                                uint32_t &buf_size) {
   int32_t path_len = table_path.size();
 
   buf_size = sizeof(RecordType) + sizeof(int32_t) + path_len;
   buf.reset(new char[buf_size]);
   char *ptr = buf.get();
-  DeltaRecordHeadForDelete deltaRecord(table_id,table_path);
+  DeltaRecordHeadForDelete deltaRecord(table_id, table_path);
   ptr = deltaRecord.record_encode(ptr);
 }
 
@@ -1573,7 +1574,7 @@ void Engine::ProcessDeltaStoreMerge() {
         std::scoped_lock guard(mem_table_mutex);
         for (auto &[name, delta_table] : m_table_deltas) {
           uint64_t record_count = delta_table->CountRecords();
-          //delta debug
+          // delta debug
           bool for_delta_debug = true;
           if ((record_count >= tianmu_sysvar_insert_numthreshold ||
                (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) &&
@@ -1740,13 +1741,17 @@ void Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableS
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
+  auto tm_table = share->GetSnapshot();
+  uint64_t row_id = tm_table->NextRowId();
+  // Insert primary key first
+  tm_table->InsertIndexForDelta(table, row_id);
+
   // check & encode
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
   EncodeInsertRecord(table_path, share->TabID(), table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
   // insert to delta
-  auto tm_table = share->GetSnapshot();
-  tm_table->InsertToDelta(std::move(buf), buf_sz);
+  tm_table->InsertToDelta(row_id, std::move(buf), buf_sz);
 }
 
 void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table,
@@ -1754,20 +1759,33 @@ void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableS
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
-
+  auto tm_table = share->GetSnapshot();
+  auto path = share->Path();
+  std::shared_ptr<index::TianmuTableIndex> tab = GetTableIndex(path);
   std::unordered_map<uint, Field *> update_fields;
   for (uint col_id = 0; col_id < table->s->fields; col_id++) {
+    bool col_is_index = false;
     if (!bitmap_is_set(table->write_set, col_id)) {
       continue;
     }
     auto field = table->field[col_id];
+    // Determine whether the column is a primary key
+    if (tab) {
+      std::vector<uint> keycols = tab->KeyCols();
+      if (std::find(keycols.begin(), keycols.end(), col_id) != keycols.end()) {
+        col_is_index = true;
+      }
+    }
+
     if (field->real_maybe_null()) {
       if (field->is_null_in_record(old_data) && field->is_null_in_record(new_data)) {
         continue;
       }
-
       if (field->is_null_in_record(new_data)) {
         update_fields.emplace(col_id, nullptr);  // set to null
+        if (col_is_index) {
+          tm_table->UpdateIndexForDelta(table, row_id, col_id);
+        }
         continue;
       }
     }
@@ -1775,22 +1793,27 @@ void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableS
     auto n_ptr = field->ptr - table->record[0] + new_data;
     if (field->is_null_in_record(old_data) || std::memcmp(o_ptr, n_ptr, field->pack_length()) != 0) {
       update_fields.emplace(col_id, field);
+      if (col_is_index) {
+        tm_table->UpdateIndexForDelta(table, row_id, col_id);
+      }
     }
   }
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
   EncodeUpdateRecord(table_path, share->TabID(), update_fields, table->s->fields, table->s->blob_fields, buf, buf_sz);
-  auto tm_table = share->GetSnapshot();
+
   tm_table->UpdateToDelta(row_id, std::move(buf), buf_sz);
 }
 
-void Engine::DeleteToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share,
-                          TABLE *table, uint64_t row_id){
+void Engine::DeleteToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table,
+                           uint64_t row_id) {
+  auto tm_table = share->GetSnapshot();
+  tm_table->DeleteIndexForDelta(table, row_id);
+
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeDeleteRecord(table_path, share->TabID(),buf, buf_sz);
-  auto tm_table = share->GetSnapshot();
+  EncodeDeleteRecord(table_path, share->TabID(), buf, buf_sz);
   tm_table->DeleteToDelta(row_id, std::move(buf), buf_sz);
 }
 
@@ -1811,6 +1834,10 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
       ret = rct->Insert(table);
     }
     return ret;
+  } catch (common::DupKeyException &e) {
+    ret = HA_ERR_FOUND_DUPP_KEY;
+    TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed: %s", e.what());
+    my_message(static_cast<int>(common::ErrorCode::DUPP_KEY), e.what(), MYF(0));
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed. %s %s", e.what(), e.trace().c_str());
   } catch (std::exception &e) {
@@ -1840,7 +1867,8 @@ int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_p
   return ret;
 }
 
-int Engine::DeleteRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id) {
+int Engine::DeleteRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share,
+                      uint64_t row_id) {
   int ret = 0;
   if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
     DeleteToDelta(table_path, share, table, row_id);

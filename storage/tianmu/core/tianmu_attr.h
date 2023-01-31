@@ -90,9 +90,10 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   static void Create(const fs::path &path, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows);
 
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
-  void UpdateData(uint64_t row, Value &v);
+  void UpdateData(uint64_t row, Value &old_v, Value &new_v);
   void UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, Value>& rows);
-  void UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &v);
+  void UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v, 
+                              const Value &new_v);
   void Truncate();
   void DeleteData(uint64_t row);
   void DeleteByPrimaryKey(uint64_t row, uint64_t col);

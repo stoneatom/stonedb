@@ -1008,7 +1008,7 @@ void TianmuAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   get_packS(pi)->LoadValues(nvs);
 }
 
-void TianmuAttr::UpdateData(uint64_t row, Value &v) {
+void TianmuAttr::UpdateData(uint64_t row, Value &old_v, Value &new_v) {
   // rclog << lock << "update data for row " << row << " col " << m_cid <<
   // system::unlock;
   no_change = false;
@@ -1016,7 +1016,7 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
   auto pn = row2pack(row);
   FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
   // primary key process
-  UpdateIfIndex(nullptr, row, ColId(), v);
+  UpdateIfIndex(nullptr, row, ColId(), old_v, new_v);
 
   CopyPackForWrite(pn);
 
@@ -1027,8 +1027,8 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
     ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
   }
 
-  if (ct.IsLookup() && v.HasValue()) {
-    auto &str = v.GetString();
+  if (ct.IsLookup() && new_v.HasValue()) {
+    auto &str = new_v.GetString();
     int code = m_dict->GetEncodedValue(str.data(), str.size());
     if (code < 0) {
       ASSERT(m_tx != nullptr, "attempt to update dictionary in readonly transaction");
@@ -1042,10 +1042,10 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
       }
       code = m_dict->Add(str.data(), str.size());
     }
-    v.SetInt(code);
+    new_v.SetInt(code);
   }
 
-  get_pack(pn)->UpdateValue(row2offset(row), v);
+  get_pack(pn)->UpdateValue(row2offset(row), new_v);
   dpn.synced = false;
 
   // update global data
@@ -1086,8 +1086,6 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
     for (const auto &row : pack.second) {
       uint64_t row_id = row.first;
       Value row_val = row.second;
-      // primary key process
-      UpdateIfIndex(tx, row_id, ColId(), row_val);
       if (ct.IsLookup() && row_val.HasValue()) {
         auto &str = row_val.GetString();
         int code = m_dict->GetEncodedValue(str.data(), str.size());
@@ -1180,9 +1178,6 @@ void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64
     }
 
     for (const auto &row_id : pack.second) {
-      // primary key process
-      DeleteByPrimaryKey(row_id, ColId());
-
       get_pack(pn)->DeleteByRow(row2offset(row_id));
     }
     // update global data
@@ -1452,7 +1447,8 @@ std::shared_ptr<RSIndex_Bloom> TianmuAttr::GetFilter_Bloom() {
       FilterCoordinate(m_tid, m_cid, (int)FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
 }
 
-void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &v) {
+void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v, 
+                              const Value &new_v) {
   if (tx == nullptr) {
     tx = current_txn_;
   }
@@ -1465,22 +1461,22 @@ void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col
   if (std::find(keycols.begin(), keycols.end(), col) == keycols.end())
     return;
 
-  if (!v.HasValue())
+  if (!new_v.HasValue())
     throw common::Exception("primary key not support null!");
 
   if (GetPackType() == common::PackType::STR) {
-    auto &vnew = v.GetString();
-    auto vold = GetValueString(row);
+    auto &vnew = new_v.GetString();
+    auto &vold = old_v.GetString();
     std::string nkey(vnew.data(), vnew.length());
-    std::string okey(vold.val_, vold.size());
+    std::string okey(vold.data(), vold.length());
     common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
       throw common::DupKeyException("Duplicate entry: " + vnew + " for primary key");
     }
   } else {  // common::PackType::INT
-    int64_t vnew = v.GetInt();
-    int64_t vold = GetValueInt64(row);
+    int64_t vnew = new_v.GetInt();
+    int64_t vold = old_v.GetInt();
     std::string nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
     std::string okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
     common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
@@ -1503,8 +1499,8 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
 
   if (GetPackType() == common::PackType::STR) {
     auto currentValue = GetValueString(row);
-    std::string currentRowKey(currentValue.val_, currentValue.size());
-    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    std::vector<std::string> fields {currentValue.ToString()};
+    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, fields, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %s for primary key", currentValue.GetDataBytesPointer());
       throw common::Exception("Delete: " + currentValue.ToString() + " for primary key");
@@ -1512,7 +1508,8 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
   } else {  // common::PackType::INT
     auto currentValue = GetValueInt64(row);
     std::string currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
-    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    std::vector<std::string> fields {currentRowKey};
+    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, fields, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %" PRId64 " for primary key", currentValue);
       throw common::Exception("Delete: " + std::to_string(currentValue) + " for primary key");
