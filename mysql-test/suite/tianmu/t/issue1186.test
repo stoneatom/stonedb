@@ -1,0 +1,173 @@
+--source include/have_tianmu.inc
+--source include/have_binlog_format_row.inc
+
+--disable_warnings
+-- source include/master-slave.inc
+DROP DATABASE IF EXISTS issue1186_test;
+--enable_warnings
+
+--source include/sync_slave_sql_with_master.inc
+
+connection master;
+--echo # on master:
+
+CREATE DATABASE issue1186_test;
+
+USE issue1186_test;
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on master:
+show databases;
+
+--echo #
+--echo # Secondary INDEX
+--echo # 
+
+connection master;
+--echo # on master:
+
+CREATE TABLE tb_stu_info1 (id int(11) NOT NULL, height int(11) DEFAULT NULL,KEY height (height)) ENGINE=INNODB;
+
+CREATE TABLE tb_stu_info2 (id int(11) NOT NULL, height int(11) DEFAULT NULL,INDEX height (height)) ENGINE=INNODB;
+
+CREATE TABLE tb_stu_info3 (id int, col_name varchar(10)) ENGINE=INNODB;
+
+CREATE INDEX index_name ON tb_stu_info3(col_name);
+
+ALTER TABLE tb_stu_info3 DROP INDEX index_name;
+
+ALTER TABLE  tb_stu_info3  add INDEX  index_name  (col_name) ;
+
+ALTER TABLE tb_stu_info3 RENAME INDEX index_name TO index_name1;
+
+ALTER TABLE tb_stu_info3 DROP INDEX index_name1;
+
+ALTER TABLE  tb_stu_info3  add KEY  index_name  (col_name) ;
+
+ALTER TABLE tb_stu_info3 RENAME KEY index_name TO index_name2;
+
+ALTER TABLE tb_stu_info3 DROP KEY index_name2;
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show tables;
+
+--echo #
+--echo # UNIQUE INDEX
+--echo #
+
+connection master;
+--echo # on master:
+
+CREATE TABLE tb_stu_info_1 (id int(11) NOT NULL, height int(11) DEFAULT NULL,UNIQUE KEY height (height)) ENGINE=INNODB;
+
+CREATE TABLE tb_stu_info_2 (id int(11) NOT NULL, height int(11) DEFAULT NULL,UNIQUE INDEX height (height)) ENGINE=INNODB;
+
+CREATE TABLE tb_stu_info_3 (id int(11) NOT NULL, height int(11) DEFAULT NULL) ENGINE=INNODB;
+
+ALTER TABLE tb_stu_info_3 ADD CONSTRAINT constraint_name UNIQUE INDEX(height);
+
+ALTER TABLE tb_stu_info_3  RENAME INDEX constraint_name TO constraint_name1;
+
+ALTER TABLE tb_stu_info_3 DROP INDEX constraint_name1;
+
+ALTER TABLE tb_stu_info_3 ADD CONSTRAINT constraint_name UNIQUE KEY(height);
+
+ALTER TABLE tb_stu_info_3  RENAME KEY constraint_name TO constraint_name2;
+
+ALTER TABLE tb_stu_info_3 DROP KEY constraint_name2;
+
+CREATE UNIQUE INDEX index_name ON tb_stu_info_3(height);
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show tables;
+
+--echo #
+--echo # FULL INDEX
+--echo #
+
+connection master;
+--echo # on master:
+
+CREATE TABLE tb_posts1 (id int(4) NOT NULL AUTO_INCREMENT,
+  title varchar(255) NOT NULL,
+  post_content text,
+  PRIMARY KEY (id),
+  FULLTEXT KEY post_content (post_content)
+)ENGINE=INNODB;
+
+# is wrong
+# ALTER TABLE tb_posts1 DROP KEY post_content;
+
+CREATE TABLE tb_posts2 (id int(4) NOT NULL AUTO_INCREMENT,
+  title varchar(255) NOT NULL,
+  post_content text,
+  PRIMARY KEY (id)
+)ENGINE=INNODB;
+
+ALTER TABLE tb_posts2 ADD FULLTEXT INDEX  index_name (post_content);
+
+ALTER TABLE tb_posts2 DROP INDEX index_name;
+
+CREATE FULLTEXT INDEX index_name ON tb_posts2 (post_content);
+
+DROP INDEX index_name ON tb_posts2;
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show tables;
+
+--echo #
+--echo # TRIGGER
+--echo #
+
+connection master;
+--echo # on master:
+
+CREATE TABLE employees(
+   id INT auto_increment PRIMARY KEY,
+   employeeNumber INT NOT NULL,
+   lastname VARCHAR(50) NOT NULL,
+   action VARCHAR(50) DEFAULT NULL) ENGINE=INNODB;
+
+CREATE TABLE employees_audit(
+   id INT auto_increment PRIMARY KEY,
+   employeeNumber INT NOT NULL,
+   lastname VARCHAR(50) NOT NULL,
+   action VARCHAR(50) DEFAULT NULL) ENGINE=INNODB;
+
+CREATE TABLE employees_audit2(
+   id INT auto_increment PRIMARY KEY,
+   employeeNumber INT NOT NULL,
+   lastname VARCHAR(50) NOT NULL,
+   action VARCHAR(50) DEFAULT NULL) ENGINE=INNODB;
+
+
+DELIMITER |;
+CREATE TRIGGER before_employee_update 
+	BEFORE UPDATE ON employees 
+	FOR EACH ROW
+BEGIN
+	INSERT INTO employees_audit 
+	SET action = 'update',
+	employeeNumber = 1,
+	lastname = "nihao",
+	new_lastname = "niyehao";
+END |
+DELIMITER ;|
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show triggers;
+
+
+connection master;
+--echo # on master:
+
+DROP DATABASE issue1186_test;
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show databases;
+stop slave;
