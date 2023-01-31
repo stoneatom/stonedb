@@ -8103,6 +8103,9 @@ static void set_server_version(void)
 {
   char *end= strxmov(server_version, MYSQL_SERVER_VERSION,
                      MYSQL_SERVER_SUFFIX_STR, NullS);
+  //for release version: 5.7.36-StoneDB-v0.0.2
+  //for debug version: 5.7.36-StoneDB-v0.0.2.abcdef123, abcdef123 means commit id;
+#if 0
 #ifdef EMBEDDED_LIBRARY
   end= my_stpcpy(end, "-embedded");
 #endif
@@ -8122,6 +8125,24 @@ static void set_server_version(void)
       static_cast<int>(sizeof("-asan")))
     end= my_stpcpy(end, "-asan");
 #endif
+#endif
+
+  if (SERVER_VERSION_LENGTH - (end - server_version) >
+      static_cast<int>(sizeof("-")))
+    end = my_stpcpy(end, "-");
+  if (SERVER_VERSION_LENGTH - (end - server_version) >
+      static_cast<int>(sizeof(STONEDB_TAG_NAME)))
+    end = my_stpcpy(end, STONEDB_TAG_NAME);
+
+#ifndef NDEBUG
+  if (SERVER_VERSION_LENGTH - (end - server_version) >
+      static_cast<int>(sizeof(".")))
+    end = my_stpcpy(end, ".");
+  if (SERVER_VERSION_LENGTH - (end - server_version) >
+      static_cast<int>(sizeof(STONEDB_COMMIT_ID)))
+    end = my_stpcpy(end, STONEDB_COMMIT_ID);
+#endif
+
 }
 
 

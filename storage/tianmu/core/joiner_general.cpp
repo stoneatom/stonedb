@@ -319,7 +319,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
   } while ((num <= 1) && (threads_num >= 1));
 
   TIANMU_LOG(
-      LogCtl_Level::INFO,
+      LogCtl_Level::DEBUG,
       "ExecuteInnerJoinLoopMultiThreading packnum: %d threads_num: %d loopcnt: %d num: %d mod: %d NumOfTuples: %d",
       packnum, threads_num, loopcnt, num, mod, mit.NumOfTuples());
 
@@ -344,7 +344,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
     tmp.dwStartPackno = pack_start;
     tmp.dwEndPackno = pack_end;
 
-    TIANMU_LOG(LogCtl_Level::INFO, "ExecuteInnerJoinLoop dwTaskId: %d dwStartPackno: %d dwEndPackno: %d", tmp.dwTaskId,
+    TIANMU_LOG(LogCtl_Level::DEBUG, "ExecuteInnerJoinLoop dwTaskId: %d dwStartPackno: %d dwEndPackno: %d", tmp.dwTaskId,
                tmp.dwStartPackno, tmp.dwEndPackno);
 
     vTask.push_back(tmp);

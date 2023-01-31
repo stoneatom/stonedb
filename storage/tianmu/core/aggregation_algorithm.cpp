@@ -249,7 +249,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
     if (static_cast<uint64_t>(mit.NumOfTuples()) > tianmu_sysvar_groupby_parallel_rows_minimum) {
       unsigned int thd_limit = std::thread::hardware_concurrency() * 2;
       thd_cnt = tianmu_sysvar_groupby_parallel_degree > thd_limit ? thd_limit : tianmu_sysvar_groupby_parallel_degree;
-      TIANMU_LOG(LogCtl_Level::INFO,
+      TIANMU_LOG(LogCtl_Level::DEBUG,
                  "MultiDimensionalGroupByScan multi threads thd_cnt: %d thd_limit: %d NumOfTuples: %d "
                  "groupby_parallel_degree: %d groupby_parallel_rows_minimum: %lld",
                  thd_cnt, thd_limit, mit.NumOfTuples(), tianmu_sysvar_groupby_parallel_degree,
@@ -993,7 +993,7 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
     --threads_num;
   } while ((num <= 1) && (threads_num >= 1));
 
-  TIANMU_LOG(LogCtl_Level::INFO,
+  TIANMU_LOG(LogCtl_Level::DEBUG,
              "DistributeAggreTaskAverage packnum: %d threads_num: %d loopcnt: %d num: %d mod: %d NumOfTuples: %d",
              packnum, threads_num, loopcnt, num, mod, mit.NumOfTuples());
 
