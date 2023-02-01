@@ -206,12 +206,9 @@ common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::stri
   return err_code;
 }
 
-common::ErrorCode TianmuTableIndex::DeleteIndex(core::Transaction *tx, std::string &currentRowKey,
+common::ErrorCode TianmuTableIndex::DeleteIndex(core::Transaction *tx, std::vector<std::string> &fields,
                                                 uint64_t row [[maybe_unused]]) {
   StringWriter value, packkey;
-  std::vector<std::string> fields;
-
-  fields.emplace_back(currentRowKey);
 
   rocksdb_key_->pack_key(packkey, fields, value);
   common::ErrorCode rc = CheckUniqueness(tx, {(const char *)packkey.ptr(), packkey.length()});
