@@ -133,7 +133,7 @@ class TianmuTable final : public JustATable {
   int Insert(TABLE *table);
   int Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data);
   int Delete(TABLE *table, uint64_t row_id);
-  
+
   // delta frontend
   void InsertToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
   void UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
