@@ -815,7 +815,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG: {
       int64_t value = f->val_int();
-      common::PushWarningIfOutOfRange(m_tx->Thd(), std::string(f->field_name), value, f->type(),
+      common::PushWarningIfOutOfRange(current_txn_->Thd(), std::string(f->field_name), value, f->type(),
                                       f->flags & UNSIGNED_FLAG);
       if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
