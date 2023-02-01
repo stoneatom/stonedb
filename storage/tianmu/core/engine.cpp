@@ -273,6 +273,14 @@ int Engine::Init(uint engine_slot) {
       std::function<void()> func;
     } jobs[] = {
         {60, [this]() { this->LogStat(); }},
+        {5, [this]() {
+          for (auto &delta : m_table_deltas) {
+            TIANMU_LOG(
+                LogCtl_Level::INFO,
+                "delta table id: %d current load id: %d, merge id: %d, row_id: %d",
+                delta.second->GetDeltaTableID(), delta.second->load_id.load(), delta.second->merge_id.load(), delta.second->row_id.load());
+          }
+        }},
         {60 * 5,
          []() {
            TIANMU_LOG(
@@ -289,7 +297,7 @@ int Engine::Init(uint engine_slot) {
     };
 
     int counter = 0;
-    const long loop_interval = 60;
+    const long loop_interval = 5;
 
     while (!exiting) {
       counter++;
@@ -859,10 +867,13 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
   buf_size = ptr - buf.get();
 }
 
-void Engine::EncodeDeleteRecord(const std::string &table_path, int table_id, std::unique_ptr<char[]> &buf, uint32_t &buf_size) {
+void Engine::EncodeDeleteRecord(const std::string &table_path,
+                                int table_id,
+                                std::unique_ptr<char[]> &buf,
+                                uint32_t &buf_size) {
   int32_t path_len = table_path.size();
 
-  buf_size = sizeof(RecordType) + sizeof(int32_t) + path_len;
+  buf_size = sizeof(RecordType) + sizeof(uint32_t) + sizeof(int32_t) + path_len + 1;
   buf.reset(new char[buf_size]);
   char *ptr = buf.get();
   DeltaRecordHeadForDelete deltaRecord(table_id, table_path);
@@ -1719,14 +1730,6 @@ void Engine::LogStat() {
 
   if (tianmu_stat.loaded == saved.loaded && tianmu_stat.delta_insert > saved.delta_insert) {
     TIANMU_LOG(LogCtl_Level::ERROR, "No data loaded from delta store"); // why this log? need add update delete?
-  }
-
-  for (auto &delta : m_table_deltas) {
-    TIANMU_LOG(
-        LogCtl_Level::INFO,
-        "delta table id (%d) current record num: %d ",
-        delta.second->GetDeltaTableID(),
-        delta.second->CountRecords());
   }
 
   // update with last minute statistics

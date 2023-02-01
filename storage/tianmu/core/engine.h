@@ -102,7 +102,7 @@ class Engine final {
   std::vector<AttrInfo> GetTableAttributesInfo(const std::string &table_path, TABLE_SHARE *table_share);
   void UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                    CHARSET_INFO *cs);
-  void GetTableIterator(const std::string &table_path, CombinedIterator& iterator,
+  void GetTableIterator(const std::string &table_path, CombinedIterator &iterator,
                         std::shared_ptr<TianmuTable> &table, const std::vector<bool> &,
                         THD *thd);
   common::TianmuError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
@@ -122,7 +122,7 @@ class Engine final {
   void InsertDelayed(const std::string &table_path, int table_id, TABLE *table);
   void InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
   void UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id,
-                    const uchar *old_data, uchar *new_data);
+                     const uchar *old_data, uchar *new_data);
   void DeleteToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id);
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
   std::string DeltaStoreStat();
@@ -190,12 +190,12 @@ class Engine final {
   std::shared_ptr<TableShare> getTableShare(const std::string &table_path);
   std::unique_ptr<char[]> GetRecord(size_t &len);
 
-  void EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
-                          std::unique_ptr<char[]> &buf, uint32_t &size);
-  void EncodeUpdateRecord(const std::string &table_path, int table_id,
-                          std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
-                          std::unique_ptr<char[]> &buf, uint32_t &buf_size);
-  void EncodeDeleteRecord(const std::string &table_path, int table_id,std::unique_ptr<char[]> &buf, uint32_t &buf_size);
+  static void EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
+                                 std::unique_ptr<char[]> &buf, uint32_t &size);
+  static void EncodeUpdateRecord(const std::string &table_path, int table_id,
+                                 std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
+                                 std::unique_ptr<char[]> &buf, uint32_t &buf_size);
+  static void EncodeDeleteRecord(const std::string &table_path, int table_id, std::unique_ptr<char[]> &buf, uint32_t &buf_size);
   void ProcessInsertBufferMerge();
   void ProcessDeltaStoreMerge();
 
@@ -344,10 +344,10 @@ enum class tianmu_var_name {
   TIANMU_VAR_LIMIT  // KEEP THIS LAST
 };
 
-static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT",        "TIANMU_LOAD_DATAFORMAT",
-                                                "TIANMU_LOAD_PIPEMODE",       "TIANMU_LOAD_NULL",
-                                                "TIANMU_LOAD_THROTTLE",       "TIANMU_LOAD_TIANMUEXPRESSIONS",
-                                                "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
+static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT", "TIANMU_LOAD_DATAFORMAT",
+                                                "TIANMU_LOAD_PIPEMODE", "TIANMU_LOAD_NULL",
+                                                "TIANMU_LOAD_THROTTLE", "TIANMU_LOAD_TIANMUEXPRESSIONS",
+                                                "TIANMU_LOAD_PARALLEL_AGGR", "TIANMU_LOAD_REJECT_FILE",
                                                 "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
 
 std::string get_parameter_name(enum tianmu_var_name vn);

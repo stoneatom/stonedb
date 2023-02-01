@@ -102,6 +102,7 @@ class TianmuTable final : public JustATable {
   int64_t NumOfDeleted() const;
   int64_t NumOfValues() const;
   int64_t NumOfObj() const override;
+  // gen row id
   uint64_t NextRowId();
 
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;

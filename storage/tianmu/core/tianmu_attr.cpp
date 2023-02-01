@@ -886,7 +886,7 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   hdr.numOfNulls += (Type().NotNull() ? 0 : nvs->NumOfNulls());
   hdr.natural_size += nvs->SumarizedSize();
   hdr.numOfDeleted += nvs->NumOfDeletes();
-  TIANMU_LOG(LogCtl_Level::DEBUG,
+  TIANMU_LOG(LogCtl_Level::INFO,
              "DELTA INSERT load_data_task tid: %d, cid: %d, pack index: %d, pack size: %d, write batch size: %d",
              m_tid,
              m_cid,
@@ -1100,7 +1100,7 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
     hdr.numOfNulls -= dpn_save.numOfNulls;
     hdr.numOfNulls += dpn.numOfNulls;
     ResetMaxMin(dpn);
-    TIANMU_LOG(LogCtl_Level::DEBUG,
+    TIANMU_LOG(LogCtl_Level::INFO,
                "DELTA UPDATE batch_update_task tid: %d, cid: %d, pack index: %d, write batch size: %d",
                m_tid,
                m_cid,
@@ -1185,7 +1185,7 @@ void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64
     hdr.numOfDeleted -= dpn_save.numOfDeleted;
     hdr.numOfNulls += dpn.numOfDeleted;
     ResetMaxMin(dpn);
-    TIANMU_LOG(LogCtl_Level::DEBUG,
+    TIANMU_LOG(LogCtl_Level::INFO,
                "DELTA DELETE batch_delete_task tid: %d, cid: %d, pack index: %d, write batch size: %d",
                m_tid,
                m_cid,

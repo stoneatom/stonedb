@@ -156,36 +156,16 @@ class DelayedInsertParser final {
         // no more to parse
         return no_of_rows_returned;
       }
-      // value_layout:
-      //     (Insert)TypeFlag
-      //     isDeleted normal:n deleted:d
-      //     table_id
-      //     table_path
-      //     fields_size
-      //     fields_count
-      //     null_mask
-      //     field_head
-      //     fields...
-      auto ptr = (*vec)[processed].get();
-      ptr += sizeof(RecordType);
-      char isDeleted = *ptr;
-      ptr++;
-      ptr += sizeof(int32_t);
-      std::string path(ptr);
-      ptr += path.length() + 1;
-      size_t field_count = *(size_t *) ptr;
-      ptr += sizeof(size_t);
-      utils::BitSet null_mask(attrs.size(), ptr);
-      ptr += null_mask.data_size();
-      int64_t *field_head = (int64_t *) ptr;
-      ptr += sizeof(int64_t) * field_count;
+      auto ptr = const_cast<const char *>((*vec)[processed].get());
+      DeltaRecordHeadForInsert rec_head;
+      ptr = rec_head.record_decode(ptr);
       for (uint i = 0; i < attrs.size(); i++) {
         auto &vc = value_buffers[i];
-        if (isDeleted == DELTA_RECORD_DELETE) {
+        if (rec_head.is_deleted_ == DELTA_RECORD_DELETE) {
           vc.ExpectedDelete();
           continue;
         }
-        if (null_mask[i]) {
+        if (rec_head.null_mask_[i]) {
           vc.ExpectedNull(true);
           continue;
         }
@@ -288,34 +268,15 @@ class DelayedUpdateParser final {
     }
     uint update_row_num = update_rows->size();
     for (auto &[row_id, row] : *update_rows) {
-      // value_layout:
-      //     (Update)TypeFlag
-      //     table_id
-      //     table_path
-      //     fields_count
-      //     update_mask
-      //     null_mask
-      //     field_head
-      //     update_fields...
-      auto row_ptr = row.get();
-      row_ptr += sizeof(RecordType);
-      row_ptr += sizeof(int32_t);
-      std::string path(row_ptr);
-      row_ptr += path.length() + 1;
-      size_t field_count = *(size_t *) row_ptr;
-      row_ptr += sizeof(size_t);
-      utils::BitSet update_mask(attrs.size(), row_ptr);
-      row_ptr += update_mask.data_size();
-      utils::BitSet null_mask(attrs.size(), row_ptr);
-      row_ptr += null_mask.data_size();
-      int64_t *field_head = (int64_t *) row_ptr;
-      row_ptr += sizeof(int64_t) * field_count;
+      auto row_ptr = const_cast<const char *>(row.get());
+      DeltaRecordHeadForUpdate rec_head;
+      row_ptr = rec_head.record_decode(row_ptr);
       for (uint col_id = 0; col_id < attrs.size(); col_id++) {
-        if (!update_mask[col_id]) {
+        if (!rec_head.update_mask_[col_id]) {
           continue;
         }
         core::Value val;
-        if (null_mask[col_id]) {
+        if (rec_head.null_mask_[col_id]) {
           update_cols_buf[col_id].emplace(row_id, val);
           continue;
         }
@@ -325,7 +286,7 @@ class DelayedUpdateParser final {
           case common::PackType::STR: {
             uint32_t len = *(uint32_t *) row_ptr;
             row_ptr += sizeof(uint32_t);
-            val.SetString(row_ptr, len);
+            val.SetString(const_cast<char *>(row_ptr), len);
             update_cols_buf[col_id].emplace(row_id, val);
             row_ptr += len;
           }
@@ -764,7 +725,7 @@ int64_t TianmuTable::NumOfDeleted() const { return m_attrs[0]->NumOfDeleted(); }
 
 int64_t TianmuTable::NumOfValues() const { return NumOfObj(); }
 
-uint64_t TianmuTable::NextRowId() { return m_delta->next_row_id++; }
+uint64_t TianmuTable::NextRowId() { return m_delta->row_id++; }
 
 void TianmuTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
@@ -1514,14 +1475,16 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
     rocksdb::ReadOptions r_opts;
     r_opts.total_order_seek = true;
     std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(r_opts, cf_handle));
+    iter->Seek(prefix);
     // ==== for debug ====
 //    iter->SeekToFirst();
-    TIANMU_LOG(LogCtl_Level::DEBUG,
-               "MergeDeltaTable curr table id: %d, row id: %d",
-               index::be_to_uint32(reinterpret_cast<const uchar *>(iter->key().data())),
-               index::be_to_uint64(reinterpret_cast<const uchar *>(iter->key().data()) + sizeof(uint32_t)));
+    if (iter->Valid()) {
+      TIANMU_LOG(LogCtl_Level::INFO,
+                 "MergeDeltaTable curr table id: %d, row id: %d",
+                 index::be_to_uint32(reinterpret_cast<const uchar *>(iter->key().data())),
+                 index::be_to_uint64(reinterpret_cast<const uchar *>(iter->key().data()) + sizeof(uint32_t)));
+    }
     // ==== for debug ====
-    iter->Seek(prefix);
     while (iter->Valid() && iter->key().starts_with(prefix)) {
       auto key = iter->key();
       uint64_t row_id = index::be_to_uint64(reinterpret_cast<const uchar *>(key.data()) + sizeof(uint32_t));
@@ -1529,31 +1492,24 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       std::unique_ptr<char[]> buf(new char[value.size()]);
       std::memcpy(buf.get(), value.data(), value.size());
       auto type = *reinterpret_cast<RecordType *>(buf.get());
+      auto load_num = *reinterpret_cast<uint32_t *>(buf.get() + sizeof(RecordType));
       if (type == RecordType::kInsert) {
         insert_records.emplace_back(std::move(buf));
-        m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
-        m_delta->merge_id++;
-        m_delta->stat.read_cnt++;
-        m_delta->stat.read_bytes += value.size();
       } else if (type == RecordType::kUpdate) {
         update_records.emplace(row_id, std::move(buf));
-        m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
-        m_delta->merge_id++;
-        m_delta->stat.read_cnt++;
-        m_delta->stat.read_bytes += value.size();
       } else if (type == RecordType::kDelete) {
         delete_records.emplace_back(row_id);
-        m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
-        m_delta->merge_id++;
-        m_delta->stat.read_cnt++;
-        m_delta->stat.read_bytes += value.size();
+      } else {
+        TIANMU_LOG(LogCtl_Level::ERROR, "record type (%d) cannot be processed, delete this record!", type);
       }
+      m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
+      m_delta->merge_id.fetch_add(load_num);
+      m_delta->stat.read_cnt++;
+      m_delta->stat.read_bytes += value.size();
       if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        // todo(dfx): parse insert records[async]
         insert_num += AsyncParseInsertRecords(&iop, &insert_records);
       }
       if (update_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        // todo(dfx): parse update records[async]
         update_num += AsyncParseUpdateRecords(&iop, &update_records);
       }
       if (delete_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
@@ -1699,7 +1655,7 @@ void TianmuIterator::Initialize(const std::vector<bool> &attrs_) {
       attrs.push_back(attr);
       record.emplace_back(attr->ValuePrototype(false).Clone());
       values_fetchers.push_back(
-          [attr, &capture0 = *record[attr_id]](auto && PH1) { attr->GetValueData(std::forward<decltype(PH1)>(PH1), capture0, false); });
+          [attr, &capture0 = *record[attr_id]](auto &&PH1) { attr->GetValueData(std::forward<decltype(PH1)>(PH1), capture0, false); });
 //      std::bind(&TianmuAttr::GetValueData, attr, std::placeholders::_1, std::ref(*record[attr_id]), false));
     } else {
       record.emplace_back(table->GetAttr(attr_id)->ValuePrototype(false).Clone());
