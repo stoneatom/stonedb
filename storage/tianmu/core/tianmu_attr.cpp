@@ -1093,7 +1093,7 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
     for (const auto &row : pack.second) {
       uint64_t row_id = row.first;
       Value row_val = row.second;
-      if (ct.IsLookup() && row_val.HasValue()) {
+      if (ct.Lookup() && row_val.HasValue()) {
         auto &str = row_val.GetString();
         int code = m_dict->GetEncodedValue(str.data(), str.size());
         if (code < 0) {

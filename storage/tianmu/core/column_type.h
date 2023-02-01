@@ -96,6 +96,7 @@ struct ColumnType {
   void OverrideInternalSize(uint size) { internal_size = size; };
   int GetDisplaySize() const { return display_size; }
   bool Lookup() const { return fmt == common::PackFmt::LOOKUP; }
+  bool IsLookup() const { return fmt == common::PackFmt::LOOKUP; }
   ColumnType RemovedLookup() const;
 
   bool IsNumeric() const {

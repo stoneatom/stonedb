@@ -192,7 +192,7 @@ class DelayedInsertParser final {
           }
             break;
           case common::PackType::INT: {
-            if (attr->Type().IsLookup()) {
+            if (attr->Type().Lookup()) {
               uint32_t len = *(uint32_t *) ptr;
               ptr += sizeof(uint32_t);
               types::BString s(len == 0 ? "" : ptr, len);
@@ -293,7 +293,7 @@ class DelayedUpdateParser final {
           }
             break;
           case common::PackType::INT: {
-            if (attr->Type().IsLookup()) {
+            if (attr->Type().Lookup()) {
               uint32_t len = *(uint32_t *) row_ptr;
               row_ptr += sizeof(uint32_t);
               types::BString s(len == 0 ? "" : row_ptr, len);

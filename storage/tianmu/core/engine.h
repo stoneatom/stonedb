@@ -148,7 +148,6 @@ class Engine final {
  public:
   utils::thread_pool bg_load_thread_pool;
   utils::thread_pool load_thread_pool;
-  utils::thread_pool delta_thread_pool;
   utils::thread_pool query_thread_pool;
   utils::thread_pool delete_or_update_thread_pool;
   DataCache cache;

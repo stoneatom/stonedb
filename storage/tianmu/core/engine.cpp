@@ -552,6 +552,7 @@ void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
       case MYSQL_TYPE_SHORT:
       case MYSQL_TYPE_LONG:
       case MYSQL_TYPE_INT24:
+      case MYSQL_TYPE_BIT:
       case MYSQL_TYPE_LONGLONG: {
         int64_t v = *(int64_t *)ptr;
         ptr += sizeof(int64_t);
