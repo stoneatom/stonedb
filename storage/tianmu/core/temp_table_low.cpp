@@ -468,7 +468,8 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
 
       auto vc = col->term.vc;
       if (ct == common::ColumnType::INT || ct == common::ColumnType::MEDIUMINT || ct == common::ColumnType::SMALLINT ||
-          ct == common::ColumnType::BYTEINT || ct == common::ColumnType::NUM || ct == common::ColumnType::BIGINT) {
+          ct == common::ColumnType::BYTEINT || ct == common::ColumnType::NUM || ct == common::ColumnType::BIGINT ||
+          ct == common::ColumnType::BIT) {
         auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();

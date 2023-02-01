@@ -1,0 +1,90 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test escape
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS escape_test;
+--enable_warnings
+
+CREATE DATABASE escape_test;
+USE escape_test;
+
+CREATE TABLE `st1` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) DEFAULT NULL,
+  `uid` VARCHAR(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8;
+
+INSERT INTO st1 (NAME,uid) VALUES('zhangsan','hello');
+INSERT INTO st1 (NAME,uid) VALUES('lisi_wu','world');
+INSERT INTO st1 (NAME,uid) VALUES('wangwu%','world');
+INSERT INTO st1 (NAME,uid) VALUES('%a','world');
+INSERT INTO st1 (NAME,uid) VALUES('%_','world');
+select * from st1;
+
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "san", "%");
+
+# If we want to match % or _, we must use \ to escape
+
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "%", "%");
+
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "\%", "%");
+
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "\%", "%");
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "$%", "%") ESCAPE "$";
+
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "\_", "%");
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "a_", "%") ESCAPE "a";
+
+SELECT * FROM st1 WHERE NAME LIKE "a%_" ESCAPE "a" ;
+SELECT * FROM st1 WHERE NAME LIKE "a%a" ESCAPE "a" ;
+#bug1157 SELECT * FROM st1 WHERE NAME LIKE "a%a_" ESCAPE "a";
+
+drop table st1;
+CREATE TABLE `st1` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) DEFAULT NULL,
+  `uid` VARCHAR(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8;
+
+INSERT INTO st1 (NAME,uid) VALUES('123hello','hello');
+INSERT INTO st1 (NAME,uid) VALUES('123hello123','world');
+INSERT INTO st1 (NAME,uid) VALUES('hello123','world');
+INSERT INTO st1 (NAME,uid) VALUES('_hello','world');
+
+select * from st1;
+
+select * from st1 where name like '%hello%';
+select * from st1 where name like '_hello';
+select * from st1 where name like 'hello12_';
+#bug1157 select * from st1 where name like '/_hello' escape '/';
+
+
+create table st2(id int ,column_2 varchar(10),column_3 varchar(10));
+insert into st2 values(1,'_a\\\\','111111');
+insert into st2 values(2,'12%','%12%');
+insert into st2 values(3,'a_a','a%');
+insert into st2 values(4,'_a\\','_12%');
+insert into st2 values(5,'\\a','\\\\_a%12%');
+
+select * from st2 where column_2 like '%\\\%' ;
+
+select * from st2 where column_2 like '%\%' ;
+select * from st2 where column_2 like '%\\%' ;
+
+select * from st2 where column_2 like '%\_%' ;
+
+select * from st2 where column_2 like '%?_%'  escape '?';
+
+#bug1162 select * from st2 where column_2 like '%?_a\\%';
+#bug1162 select * from st2 where column_2 like '%\_a\\%';
+
+#bug1162 select * from st2 where column_2 like '%?_a?\%';
+#bug1162 select * from st2 where column_2 like '%\_a\\%';
+
+# clean up
+DROP DATABASE escape_test;

@@ -1152,7 +1152,7 @@ void TianmuAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Des
 
 bool TianmuAttr::IsDistinct(Filter *f) {
   MEASURE_FET("TianmuAttr::IsDistinct(...)");
-  if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation()))
+  if (ct.Lookup() && types::RequiresUTFConversions(GetCollation()))
     return false;
 
   if (PhysicalColumn::IsDistinct() == common::RoughSetValue::RS_ALL) {  // = is_unique_updated && is_unique
@@ -1263,7 +1263,7 @@ size_t TianmuAttr::MaxStringSize(Filter *f)  // maximal byte string length in co
 {
   LoadPackInfo();
   size_t max_size = 1;
-  if (Type().IsLookup()) {
+  if (Type().Lookup()) {
     int64_t cur_min = common::PLUS_INF_64;
     int64_t cur_max = common::MINUS_INF_64;
     for (uint b = 0; b < SizeOfPack(); b++) {

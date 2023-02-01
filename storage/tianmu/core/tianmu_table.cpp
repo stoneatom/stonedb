@@ -52,6 +52,7 @@ void TianmuTable::GetValueFromField(Field *f, Value &v) {
     case MYSQL_TYPE_SHORT:
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
+    case MYSQL_TYPE_BIT:
     case MYSQL_TYPE_LONGLONG:v.SetInt(f->val_int());
       break;
     case MYSQL_TYPE_DECIMAL:
@@ -126,7 +127,6 @@ void TianmuTable::GetValueFromField(Field *f, Value &v) {
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_GEOMETRY:
     case MYSQL_TYPE_NULL:
-    case MYSQL_TYPE_BIT:
     default:throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
       break;
   }
@@ -393,15 +393,19 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
   for (auto &p : fs::directory_iterator(tmp_dir / common::COLUMN_DIR)) fs::remove(p);
 
   TABLE_META meta;
-  system::TianmuFile f;
-  f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
-  f.ReadExact(&meta, sizeof(meta));
+  {
+    system::TianmuFile f;
+    f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
+    f.ReadExact(&meta, sizeof(meta));
+  }
   meta.id = ha_tianmu_engine_->GetNextTableId();  // only table id is updated
 
-  system::TianmuFile tempf;
-  tempf.OpenReadWrite(tmp_dir / common::TABLE_DESC_FILE);
-  tempf.WriteExact(&meta, sizeof(meta));
-  tempf.Flush();
+  {
+    system::TianmuFile tempf;
+    tempf.OpenReadWrite(tmp_dir / common::TABLE_DESC_FILE);
+    tempf.WriteExact(&meta, sizeof(meta));
+    tempf.Flush();
+  }
 
   std::vector<common::TX_ID> old_versions(old_cols.size());
   {
@@ -811,6 +815,8 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG: {
       int64_t value = f->val_int();
+      common::PushWarningIfOutOfRange(m_tx->Thd(), std::string(f->field_name), value, f->type(),
+                                      f->flags & UNSIGNED_FLAG);
       if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
         *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = m_attrs[col]->AutoIncNext();
@@ -824,23 +830,25 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
             m_attrs[col]->SetAutoInc(value);
         }
       }
-    }
-      break;
+    } break;
+    case MYSQL_TYPE_BIT: {
+      int64_t value = f->val_int();
+      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
+      vc.ExpectedSize(sizeof(int64_t));
+    } break;
     case MYSQL_TYPE_DECIMAL:
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE: {
       double value = f->val_real();
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = *reinterpret_cast<int64_t *>(&value);
       vc.ExpectedSize(sizeof(int64_t));
-    }
-      break;
+    } break;
     case MYSQL_TYPE_NEWDECIMAL: {
       auto dec_f = dynamic_cast<Field_new_decimal *>(f);
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) =
           std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
       vc.ExpectedSize(sizeof(int64_t));
-    }
-      break;
+    } break;
     case MYSQL_TYPE_TIMESTAMP: {
       MYSQL_TIME my_time;
       std::memset(&my_time, 0, sizeof(my_time));
@@ -861,8 +869,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
-    }
-      break;
+    } break;
     case MYSQL_TYPE_TIME:
     case MYSQL_TYPE_TIME2:
     case MYSQL_TYPE_DATE:
@@ -883,16 +890,14 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
-    }
-      break;
+    } break;
     case MYSQL_TYPE_YEAR:  // what the hell?
     {
       types::DT dt = {};
       dt.year = f->val_int();
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
-    }
-      break;
+    } break;
     case MYSQL_TYPE_VARCHAR:
     case MYSQL_TYPE_TINY_BLOB:
     case MYSQL_TYPE_MEDIUM_BLOB:
@@ -902,7 +907,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_STRING: {
       String buf;
       f->val_str(&buf);
-      if (m_attrs[col]->Type().IsLookup()) {
+      if (m_attrs[col]->Type().Lookup()) {
         types::BString s(buf.length() == 0 ? "" : buf.ptr(), buf.length());
         int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
         *buf = m_attrs[col]->EncodeValue_T(s, true);
@@ -912,14 +917,13 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
         std::memcpy(ptr, buf.ptr(), buf.length());
         vc.ExpectedSize(buf.length());
       }
-    }
-      break;
+    } break;
     case MYSQL_TYPE_SET:
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_GEOMETRY:
     case MYSQL_TYPE_NULL:
-    case MYSQL_TYPE_BIT:
-    default:throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
+    default:
+      throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
       break;
   }
 }
@@ -1158,9 +1162,9 @@ size_t TianmuTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint ro
       case common::ColumnType::STRING: {
         row_len += (2 * vcs[att].Size(row));  // real data len
         row_len += delimiter;
-      }
-        break;
-      default:row_len += 255;  // max Display Width(M) ; number(255), datetime(19)
+      } break;
+      default:
+        row_len += 255;  // max Display Width(M) ; number(255), datetime(19)
         row_len += delimiter;
 
         break;
@@ -1180,7 +1184,7 @@ int TianmuTable::binlog_insert2load_log_event(system::IOParameters &iop) {
   uint32 fname_start_pos = 0;
   uint32 fname_end_pos = 0;
 
-  lf_info = (LOAD_FILE_INFO *) iop.GetLogInfo();
+  lf_info = (LOAD_FILE_INFO *)iop.GetLogInfo();
   THD *thd = lf_info->thd;
 
   auto pa = fs::path(iop.GetTableName());
@@ -1216,7 +1220,7 @@ int TianmuTable::binlog_insert2load_log_event(system::IOParameters &iop) {
 
   std::memcpy(load_data_query, p, pl);
   Execute_load_query_log_event e(thd, load_data_query, pl, static_cast<uint>(fname_start_pos - 1),
-                                 static_cast<uint>(fname_end_pos), (binary_log::enum_load_dup_handling) 0, TRUE, FALSE,
+                                 static_cast<uint>(fname_end_pos), (binary_log::enum_load_dup_handling)0, TRUE, FALSE,
                                  FALSE, 0);
   return mysql_bin_log.write_event(&e);
 }
@@ -1232,7 +1236,7 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
   static char ESCAPE_CHAR = '\\';
   static std::string ENCLOSE("``");
 
-  LOAD_FILE_INFO *lf_info = (LOAD_FILE_INFO *) iop.GetLogInfo();
+  LOAD_FILE_INFO *lf_info = (LOAD_FILE_INFO *)iop.GetLogInfo();
   if (lf_info == nullptr || lf_info->thd->is_current_stmt_binlog_format_row())
     return 0;
   max_event_size = lf_info->thd->variables.max_allowed_packet;
@@ -1274,15 +1278,16 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
         case common::ColumnType::SMALLINT:
         case common::ColumnType::INT:
         case common::ColumnType::MEDIUMINT:
-        case common::ColumnType::BIGINT: {
+        case common::ColumnType::BIGINT:
+        case common::ColumnType::BIT: {
           types::BString s;
-          int64_t v = *(int64_t *) (vcs[att].GetDataBytesPointer(i));
+          int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64)
             s = types::BString();
           else {
-            types::TianmuNum rcd(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
-                                 m_attrs[att]->TypeName());
-            s = rcd.ToBString();
+            types::TianmuNum tianmu_num(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
+                                        m_attrs[att]->TypeName());
+            s = tianmu_num.ToBString();
           }
           std::memcpy(ptr, s.GetDataBytesPointer(), s.size());
           ptr += s.size();
@@ -1290,11 +1295,10 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             *ptr = FIELDS_DELIMITER;
             ptr += sizeof(FIELDS_DELIMITER);
           }
-        }
-          break;
+        } break;
         case common::ColumnType::TIMESTAMP: {
           types::BString s;
-          int64_t v = *(int64_t *) (vcs[att].GetDataBytesPointer(i));
+          int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64) {
             s = types::TianmuDateTime().ToBString();
           } else {
@@ -1308,14 +1312,13 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             *ptr = FIELDS_DELIMITER;
             ptr += sizeof(FIELDS_DELIMITER);
           }
-        }
-          break;
+        } break;
         case common::ColumnType::YEAR:
         case common::ColumnType::TIME:
         case common::ColumnType::DATETIME:
         case common::ColumnType::DATE: {
           types::BString s;
-          int64_t v = *(int64_t *) (vcs[att].GetDataBytesPointer(i));
+          int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64) {
             s = types::TianmuDateTime().ToBString();
           } else {
@@ -1328,8 +1331,7 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             *ptr = FIELDS_DELIMITER;
             ptr += sizeof(FIELDS_DELIMITER);
           }
-        }
-          break;
+        } break;
         case common::ColumnType::VARCHAR:
         case common::ColumnType::VARBYTE:
         case common::ColumnType::BIN:
@@ -1344,8 +1346,8 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             ptr += ENCLOSE.length();
           } else {
             types::BString s;
-            if (m_attrs[att]->Type().IsLookup()) {
-              s = m_attrs[att]->DecodeValue_S(*(int64_t *) v);
+            if (m_attrs[att]->Type().Lookup()) {
+              s = m_attrs[att]->DecodeValue_S(*(int64_t *)v);
               v = s.GetDataBytesPointer();
               size = s.size();
             }
@@ -1367,15 +1369,14 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             *ptr = FIELDS_DELIMITER;
             ptr += sizeof(FIELDS_DELIMITER);
           }
-        }
-          break;
+        } break;
         case common::ColumnType::DATETIME_N:
         case common::ColumnType::TIMESTAMP_N:
         case common::ColumnType::TIME_N:
         case common::ColumnType::UNK:
         default:
           throw common::Exception("Unsupported Tianmu Type " +
-              std::to_string(static_cast<unsigned char>(m_attrs[att]->TypeName())));
+                                  std::to_string(static_cast<unsigned char>(m_attrs[att]->TypeName())));
           break;
       }
     }
@@ -1383,7 +1384,7 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
     ptr += sizeof(LINES_DELIMITER);
   }
   buffer = block_buf.get();
-  for (block_len = (uint) (ptr - block_buf.get()); block_len > 0;
+  for (block_len = (uint)(ptr - block_buf.get()); block_len > 0;
        buffer += std::min(block_len, max_event_size), block_len -= std::min(block_len, max_event_size)) {
     if (lf_info->wrote_create_file) {
       Append_block_log_event a(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
@@ -1412,7 +1413,7 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
 
   uint to_prepare, no_of_rows_returned;
   do {
-    to_prepare = share->PackSize() - (int) (m_attrs[0]->NumOfObj() % share->PackSize());
+    to_prepare = share->PackSize() - (int)(m_attrs[0]->NumOfObj() % share->PackSize());
     std::vector<loader::ValueCache> vcs;
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
     size_t real_loaded_rows = vcs[0].NumOfValues();

@@ -166,7 +166,7 @@ static std::string has_mem_name(const LEX_STRING &comment) {
   return name;
 }
 
-bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value) {
+bool parameter_equals(THD *thd, enum tianmu_param_name vn, longlong value) {
   longlong param = 0;
   std::string s_res;
 
@@ -191,10 +191,6 @@ Engine::Engine()
                                                                             : 1)),
       load_thread_pool("loader",
                        tianmu_sysvar_load_threads ? tianmu_sysvar_load_threads : std::thread::hardware_concurrency()),
-      delta_thread_pool(
-          "delta", tianmu_sysvar_bg_load_threads
-                       ? tianmu_sysvar_bg_load_threads
-                       : ((std::thread::hardware_concurrency() / 2) ? (std::thread::hardware_concurrency() / 2) : 1)),
       query_thread_pool(
           "query", tianmu_sysvar_query_threads ? tianmu_sysvar_query_threads : std::thread::hardware_concurrency()),
       delete_or_update_thread_pool("delete_or_update", tianmu_sysvar_delete_or_update_threads
@@ -297,7 +293,7 @@ int Engine::Init(uint engine_slot) {
     };
 
     int counter = 0;
-    const long loop_interval = 5;
+    const long loop_interval = 5;  // todo(dfx): change to 60
 
     while (!exiting) {
       counter++;
@@ -398,7 +394,7 @@ Engine::~Engine() {
 }
 
 void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
-                                std::unique_ptr<char[]> &buf, uint32_t &size) {
+                                std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd) {
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
   char *ptr = buf.get();
@@ -436,53 +432,23 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
     }
 
     switch (f->type()) {
-      case MYSQL_TYPE_TINY: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_TINYINT_MAX)
-          v = TIANMU_TINYINT_MAX;
-        else if (v < TIANMU_TINYINT_MIN)
-          v = TIANMU_TINYINT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_SHORT: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_SMALLINT_MAX)
-          v = TIANMU_SMALLINT_MAX;
-        else if (v < TIANMU_SMALLINT_MIN)
-          v = TIANMU_SMALLINT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_LONG: {
-        int64_t v = f->val_int();
-        if (v > std::numeric_limits<int>::max())
-          v = std::numeric_limits<int>::max();
-        else if (v < TIANMU_INT_MIN)
-          v = TIANMU_INT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_INT24: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_MEDIUMINT_MAX)
-          v = TIANMU_MEDIUMINT_MAX;
-        else if (v < TIANMU_MEDIUMINT_MIN)
-          v = TIANMU_MEDIUMINT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
+      case MYSQL_TYPE_TINY:
+      case MYSQL_TYPE_SHORT:
+      case MYSQL_TYPE_LONG:
+      case MYSQL_TYPE_INT24:
       case MYSQL_TYPE_LONGLONG: {
         int64_t v = f->val_int();
-        if (v > common::TIANMU_BIGINT_MAX)
-          v = common::TIANMU_BIGINT_MAX;
-        else if (v < common::TIANMU_BIGINT_MIN)
-          v = common::TIANMU_BIGINT_MIN;
-        *(int64_t *)ptr = v;
+        common::PushWarningIfOutOfRange(thd, std::string(f->field_name), v, f->type(), f->flags & UNSIGNED_FLAG);
+        *reinterpret_cast<int64_t *>(ptr) = v;
+        deltaRecord.field_head_[i] = sizeof(int64_t);
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_BIT: {
+        int64_t v = f->val_int();
+        // open it when support M = 64, now all value parsed is < 0.
+        if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
+          v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
+        *reinterpret_cast<int64_t *>(ptr) = v;
         deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
@@ -490,7 +456,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
       case MYSQL_TYPE_FLOAT:
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
-        *(int64_t *)ptr = *reinterpret_cast<int64_t *>(&v);
+        *reinterpret_cast<int64_t *>(ptr) = *reinterpret_cast<int64_t *>(&v);
         deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
@@ -560,7 +526,6 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
       case MYSQL_TYPE_ENUM:
       case MYSQL_TYPE_GEOMETRY:
       case MYSQL_TYPE_NULL:
-      case MYSQL_TYPE_BIT:
       default:
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;
@@ -658,6 +623,7 @@ void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
         field->store(str.get(), str_len, field->charset());
       } break;
       default:
+        // MYSQL_TYPE_BIT
         throw common::Exception("Unsupported field type for INSERT " + std::to_string(field->type()));
     }
   }
@@ -665,7 +631,7 @@ void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
 
 void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
                                 std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
-                                std::unique_ptr<char[]> &buf, uint32_t &buf_size) {
+                                std::unique_ptr<char[]> &buf, uint32_t &buf_size, THD *thd) {
   buf_size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[buf_size]);
   char *ptr = buf.get();
@@ -673,18 +639,18 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
   ptr = deltaRecord.record_encode(ptr);
 
   // fields...
-  for (uint col_id = 0; col_id < field_count; col_id++) {
-    if (update_fields.find(col_id) == update_fields.end()) {
-      deltaRecord.field_head_[col_id] = 0;
+  for (uint i = 0; i < field_count; i++) {
+    if (update_fields.find(i) == update_fields.end()) {
+      deltaRecord.field_head_[i] = 0;
       continue;
     }
-    Field *f = update_fields[col_id];
+    Field *f = update_fields[i];
     if (f == nullptr) {
-      deltaRecord.null_mask_.set(col_id);
-      deltaRecord.field_head_[col_id] = 0;
+      deltaRecord.null_mask_.set(i);
+      deltaRecord.field_head_[i] = 0;
       continue;
     }
-    deltaRecord.update_mask_.set(col_id);
+    deltaRecord.update_mask_.set(i);
     // resize
     size_t length;
     if (f->flags & BLOB_FLAG)
@@ -707,68 +673,38 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
       ptr = buf.get() + used;
     }
     switch (f->type()) {
-      case MYSQL_TYPE_TINY: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_TINYINT_MAX)
-          v = TIANMU_TINYINT_MAX;
-        else if (v < TIANMU_TINYINT_MIN)
-          v = TIANMU_TINYINT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_SHORT: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_SMALLINT_MAX)
-          v = TIANMU_SMALLINT_MAX;
-        else if (v < TIANMU_SMALLINT_MIN)
-          v = TIANMU_SMALLINT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_LONG: {
-        int64_t v = f->val_int();
-        if (v > std::numeric_limits<int>::max())
-          v = std::numeric_limits<int>::max();
-        else if (v < TIANMU_INT_MIN)
-          v = TIANMU_INT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_INT24: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_MEDIUMINT_MAX)
-          v = TIANMU_MEDIUMINT_MAX;
-        else if (v < TIANMU_MEDIUMINT_MIN)
-          v = TIANMU_MEDIUMINT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
+      case MYSQL_TYPE_TINY:
+      case MYSQL_TYPE_SHORT:
+      case MYSQL_TYPE_LONG:
+      case MYSQL_TYPE_INT24:
       case MYSQL_TYPE_LONGLONG: {
         int64_t v = f->val_int();
-        if (v > common::TIANMU_BIGINT_MAX)
-          v = common::TIANMU_BIGINT_MAX;
-        else if (v < common::TIANMU_BIGINT_MIN)
-          v = common::TIANMU_BIGINT_MIN;
-        *(int64_t *)ptr = v;
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
+        common::PushWarningIfOutOfRange(thd, std::string(f->field_name), v, f->type(), f->flags & UNSIGNED_FLAG);
+        *reinterpret_cast<int64_t *>(ptr) = v;
+        deltaRecord.field_head_[i] = sizeof(int64_t);
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_BIT: {
+        int64_t v = f->val_int();
+        // open it when support M = 64, now all value parsed is < 0.
+        if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
+          v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
+        *reinterpret_cast<int64_t *>(ptr) = v;
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
       case MYSQL_TYPE_FLOAT:
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
-        *(int64_t *)ptr = *reinterpret_cast<int64_t *>(&v);
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
+        *reinterpret_cast<int64_t *>(ptr) = *reinterpret_cast<int64_t *>(&v);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_NEWDECIMAL: {
         auto dec_f = dynamic_cast<Field_new_decimal *>(f);
         *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_TIME:
@@ -783,7 +719,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         f->get_time(&my_time);
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
 
@@ -801,7 +737,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         my_time.second_part = saved;
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_YEAR:  // what the hell?
@@ -809,7 +745,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         types::DT dt = {};
         dt.year = f->val_int();
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[col_id] = sizeof(int64_t);
+        deltaRecord.field_head_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_VARCHAR:
@@ -825,13 +761,12 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         ptr += sizeof(uint32_t);
         std::memcpy(ptr, str.ptr(), str.length());
         ptr += str.length();
-        deltaRecord.field_head_[col_id] = sizeof(uint32_t) + str.length();
+        deltaRecord.field_head_[i] = sizeof(uint32_t) + str.length();
       } break;
       case MYSQL_TYPE_SET:
       case MYSQL_TYPE_ENUM:
       case MYSQL_TYPE_GEOMETRY:
       case MYSQL_TYPE_NULL:
-      case MYSQL_TYPE_BIT:
       default:
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;
@@ -997,6 +932,13 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
                                  filter);
       }
       throw common::UnsupportedDataTypeException();
+    }
+    case MYSQL_TYPE_BIT: {
+      const Field_bit_as_char *f_bit = ((const Field_bit_as_char *)&field);
+      if (/*f_bit->field_length > 0 && */ f_bit->field_length <= common::TIANMU_BIT_MAX_PREC)
+        return AttributeTypeInfo(common::ColumnType::BIT, notnull, f_bit->field_length);
+      throw common::UnsupportedDataTypeException(
+          "The bit(M) type, M must be less than or equal to 63 in tianmu engine.");
     }
     case MYSQL_TYPE_NEWDECIMAL: {
       const Field_new_decimal *fnd = ((const Field_new_decimal *)&field);
@@ -1253,13 +1195,13 @@ int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
   return 0;
 }
 
-std::string get_parameter_name(enum tianmu_var_name vn) {
+std::string get_parameter_name(enum tianmu_param_name vn) {
   DEBUG_ASSERT(static_cast<int>(vn) >= 0 &&
-               static_cast<int>(vn) <= static_cast<int>(tianmu_var_name::TIANMU_VAR_LIMIT));
+               static_cast<int>(vn) <= static_cast<int>(tianmu_param_name::TIANMU_VAR_LIMIT));
   return tianmu_var_name_strings[static_cast<int>(vn)];
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
+int get_parameter(THD *thd, enum tianmu_param_name vn, double &value) {
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
   my_bool null_val;
@@ -1273,7 +1215,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value) {
+int get_parameter(THD *thd, enum tianmu_param_name vn, int64_t &value) {
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
   my_bool null_val;
@@ -1288,7 +1230,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
+int get_parameter(THD *thd, enum tianmu_param_name vn, std::string &value) {
   my_bool null_val;
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
@@ -1307,7 +1249,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::string &s_result) {
+int get_parameter(THD *thd, enum tianmu_param_name vn, longlong &result, std::string &s_result) {
   user_var_entry *m_entry;
   std::string var_data = get_parameter_name(vn);
 
@@ -1317,7 +1259,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
 
   if (m_entry->type() == DECIMAL_RESULT) {
     switch (vn) {
-      case tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD: {
+      case tianmu_param_name::TIANMU_ABORT_ON_THRESHOLD: {
         double dv;
         my_bool null_value;
         my_decimal v;
@@ -1334,10 +1276,10 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
     return 0;
   } else if (m_entry->type() == INT_RESULT) {
     switch (vn) {
-      case tianmu_var_name::TIANMU_THROTTLE:
-      case tianmu_var_name::TIANMU_TIANMUEXPRESSIONS:
-      case tianmu_var_name::TIANMU_PARALLEL_AGGR:
-      case tianmu_var_name::TIANMU_ABORT_ON_COUNT:
+      case tianmu_param_name::TIANMU_THROTTLE:
+      case tianmu_param_name::TIANMU_TIANMUEXPRESSIONS:
+      case tianmu_param_name::TIANMU_PARALLEL_AGGR:
+      case tianmu_param_name::TIANMU_ABORT_ON_COUNT:
         my_bool null_value;
         result = m_entry->val_int(&null_value);
         break;
@@ -1354,15 +1296,15 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
     m_entry->val_str(&null_value, &str, NOT_FIXED_DEC);
     var_data = std::string(str.ptr());
 
-    if (vn == tianmu_var_name::TIANMU_DATAFORMAT || vn == tianmu_var_name::TIANMU_REJECT_FILE_PATH) {
+    if (vn == tianmu_param_name::TIANMU_DATAFORMAT || vn == tianmu_param_name::TIANMU_REJECT_FILE_PATH) {
       s_result = var_data;
-    } else if (vn == tianmu_var_name::TIANMU_PIPEMODE) {
+    } else if (vn == tianmu_param_name::TIANMU_PIPEMODE) {
       boost::to_upper(var_data);
       if (var_data == "SERVER")
         result = 1;
       if (var_data == "CLIENT")
         result = 0;
-    } else if (vn == tianmu_var_name::TIANMU_NULL) {
+    } else if (vn == tianmu_param_name::TIANMU_NULL) {
       s_result = var_data;
     }
     return 0;
@@ -1736,7 +1678,7 @@ void Engine::InsertDelayed(const std::string &table_path, int table_id, TABLE *t
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeInsertRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  EncodeInsertRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz, table->in_use);
 
   unsigned int failed = 0;
   while (true) {
@@ -1768,7 +1710,7 @@ void Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableS
   // check & encode
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeInsertRecord(table_path, share->TabID(), table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  EncodeInsertRecord(table_path, share->TabID(), table->field, table->s->fields, table->s->blob_fields, buf, buf_sz, table->in_use);
   // insert to delta
   tm_table->InsertToDelta(row_id, std::move(buf), buf_sz);
 }
@@ -1820,7 +1762,7 @@ void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableS
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeUpdateRecord(table_path, share->TabID(), update_fields, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  EncodeUpdateRecord(table_path, share->TabID(), update_fields, table->s->fields, table->s->blob_fields, buf, buf_sz, table->in_use);
 
   tm_table->UpdateToDelta(row_id, std::move(buf), buf_sz);
 }
@@ -2022,7 +1964,7 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
   if (file) {  // it writes to a file
     longlong param = 0;
     std::string s_res;
-    if (!get_parameter(thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
+    if (!get_parameter(thd, tianmu_param_name::TIANMU_DATAFORMAT, param, s_res)) {
       if (boost::iequals(boost::trim_copy(s_res), "MYSQL"))
         return false;
 
@@ -2135,14 +2077,14 @@ common::TianmuError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<
   int64_t abort_on_count = 0;
   double abort_on_threshold = 0;
 
-  get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file);
-  if (get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file) == 2)
+  get_parameter(&thd, tianmu_param_name::TIANMU_REJECT_FILE_PATH, reject_file);
+  if (get_parameter(&thd, tianmu_param_name::TIANMU_REJECT_FILE_PATH, reject_file) == 2)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
 
-  if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_COUNT, abort_on_count) == 2)
+  if (get_parameter(&thd, tianmu_param_name::TIANMU_ABORT_ON_COUNT, abort_on_count) == 2)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
 
-  if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
+  if (get_parameter(&thd, tianmu_param_name::TIANMU_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
 
@@ -2199,7 +2141,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   longlong param = 0;
   std::string s_res;
   if (common::DataFormat::GetNoFormats() > 1) {
-    if (!get_parameter(&thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
+    if (!get_parameter(&thd, tianmu_param_name::TIANMU_DATAFORMAT, param, s_res)) {
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df)
         return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
@@ -2210,7 +2152,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   } else
     io_mode = common::DataFormat::GetDataFormat(0)->GetId();
 
-  if (!get_parameter(&thd, tianmu_var_name::TIANMU_NULL, param, s_res))
+  if (!get_parameter(&thd, tianmu_param_name::TIANMU_NULL, param, s_res))
     io_params->SetNullsStr(s_res);
 
   if (io_params->LoadDelayed()) {
@@ -2272,7 +2214,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
       io_params->Delimiter().find(io_params->EscapeCharacter()) != std::string::npos)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Field terminator containing the escape character not supported.");
-#if 0
+#if 0 
   if (io_params->EscapeCharacter() != 0 && io_params->StringQualifier() != 0 &&
       io_params->EscapeCharacter() == io_params->StringQualifier())
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,

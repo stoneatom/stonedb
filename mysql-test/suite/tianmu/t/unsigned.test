@@ -1,0 +1,112 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test unsigned
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS unsigned_test;
+--enable_warnings
+
+CREATE DATABASE unsigned_test;
+USE unsigned_test;
+
+create table st1 (ukey int, c1 tinyint unsigned, c2 smallint unsigned, c3 int unsigned, c4 bigint unsigned);
+insert into st1 values (1,2,3,4,5), (2,127,32767,2147483647,9223372036854775807);
+select 'q1', st1.* from st1 order by 1;
+--error ER_WARN_DATA_OUT_OF_RANGE
+insert into st1 values (3,-127,-32766,-2147483646,-9223372036854775806);
+insert into st1 values (4,126,32766,2147483646,9223372036854775806),(5,125,32765,2147483645,9223372036854775805);
+--error ER_WARN_DATA_OUT_OF_RANGE
+insert into st1 values (6,1255,165535,14294967295,118446744073709551615);
+select 'q2', st1.* from st1 where ukey > 2 order by 1;
+
+insert into st1 values (7,NULL,NULL,NULL,NULL);
+select 'q3', st1.* from st1 where ukey=7;
+
+--error ER_WARN_DATA_OUT_OF_RANGE
+update st1 set c4=-9223372036854775806 where ukey=1;
+--error ER_WARN_DATA_OUT_OF_RANGE
+update st1 set c3=-2147483646 where ukey=1;
+--error ER_WARN_DATA_OUT_OF_RANGE
+update st1 set c2=-32766 where ukey=1;
+--error ER_WARN_DATA_OUT_OF_RANGE
+update st1 set c1=-127 where ukey between 0 and 2;
+select 'q4', st1.* from st1 where ukey<2;
+
+update st1 set c3=2147483646 where ukey=4;
+update st1 set c2=32766 where ukey=4;
+update st1 set c1=125 where ukey between 4 and 5;
+select 'q5', st1.* from st1 where ukey>3 order by 2;
+
+create table st2 (ukey int, c1 tinyint unsigned, c2 smallint unsigned, c3 int unsigned, c4 bigint unsigned);
+insert into st2 values (8,125,32764,2147483645,9223372036854775800), (9,126,32766,2147483646,9223372036854775800),(10,127,32767,2147483647,9223372036854775801);
+select 'q6', st2.* from st2 where c1 between 125 and 127;
+select 'q7', st2.* from st2 where c2 between 32764 and 32767;
+select 'q8', st2.* from st2 where c3 between 2147483645 and 2147483647;
+select 'q9', st2.* from st2 where c4 between 9223372036854775800 and 9223372036854775801;
+
+--disable_warnings
+drop table if exists st1;
+drop table if exists st2;
+DROP TABLE if exists st3;
+--enable_warnings
+
+create table st3 (ukey bigint unsigned, c1 float unsigned, c2 double unsigned, c3 decimal(5,2) unsigned, c4 decimal(18,6) unsigned);
+insert into st3 values (0,2.22507385E-18, 2.225073858507201E-307, 123.45, 1234567890.12345678); 
+select 'q10', st3.* from st3 order by st3.ukey;
+
+--error ER_WARN_DATA_OUT_OF_RANGE
+insert into st3 values (0,-2.22507385E-18, -2.225073858507201E-307, -123.45, -1234567890.12345678); 
+select 'q11', st3.* from st3 order by st3.ukey;
+
+--error ER_WARN_DATA_OUT_OF_RANGE
+insert into st3 values (0,0.0, 0.0, 43123.45, 34321234567890.12345678); 
+select 'q12', st3.* from st3 order by st3.ukey;
+select 'q13', st3.* from st3 where c2 > 0 order by st3.ukey;
+insert into st3 values (0,0.0, 0.0, 0.0, 0); 
+select 'q12', st3.* from st3 order by st3.ukey;
+
+--disable_warnings
+DROP TABLE if exists st3;
+DROP TABLE IF EXISTS st4;
+--enable_warnings
+
+CREATE TABLE st4 (ukey TINYINT UNSIGNED, c1 INT UNSIGNED);
+INSERT INTO st4 VALUES (0,1); 
+INSERT INTO st4 VALUES (0,2); 
+INSERT INTO st4 VALUES (0,3); 
+INSERT INTO st4 VALUES (0,4); 
+INSERT INTO st4 VALUES (0,5); 
+SELECT 'q13', st4.* FROM st4 ORDER BY st4.ukey;
+
+DROP TABLE IF EXISTS st4;
+CREATE TABLE st4 (ukey SMALLINT UNSIGNED, c1 INT UNSIGNED);
+INSERT INTO st4 VALUES (0,1); 
+INSERT INTO st4 VALUES (0,2); 
+INSERT INTO st4 VALUES (0,3); 
+INSERT INTO st4 VALUES (0,4); 
+INSERT INTO st4 VALUES (0,5); 
+SELECT 'q13', st4.* FROM st4 ORDER BY st4.ukey;
+
+DROP TABLE IF EXISTS st4;
+CREATE TABLE st4 (ukey INT UNSIGNED, c1 INT UNSIGNED);
+INSERT INTO st4 VALUES (0,1); 
+INSERT INTO st4 VALUES (0,2); 
+INSERT INTO st4 VALUES (0,3); 
+INSERT INTO st4 VALUES (0,4); 
+INSERT INTO st4 VALUES (0,5); 
+SELECT 'q13', st4.* FROM st4 ORDER BY st4.ukey;
+
+DROP TABLE IF EXISTS st4;
+CREATE TABLE st4 (ukey BIGINT UNSIGNED, c1 INT UNSIGNED);
+INSERT INTO st4 VALUES (0,1); 
+INSERT INTO st4 VALUES (0,2); 
+INSERT INTO st4 VALUES (0,3); 
+INSERT INTO st4 VALUES (0,4); 
+INSERT INTO st4 VALUES (0,5); 
+SELECT 'q13', st4.* FROM st4 ORDER BY st4.ukey;
+DROP TABLE IF EXISTS st4;
+
+# Clean UP
+DROP DATABASE unsigned_test;

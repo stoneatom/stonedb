@@ -37,9 +37,11 @@ std::unique_ptr<exporter::DataExporter> TxtDataFormat::CreateDataExporter(const 
 //! or number of chars if collation not binary and ColumnType::STRING or ColumnType::VARCHAR
 uint TxtDataFormat::StaticExtrnalSize(ColumnType attrt, uint precision, int scale, const DTCollation *col) {
   if (attrt == ColumnType::NUM)
+    // because "-0.1" may be declared as DEC(1,1), so 18 decimal places may take
+    // 21 characters, "-0.xxxxx...", "-", "0", "." need extra 3 bytes, 21 = 3 + 18.
     return 1 + precision + (scale ? 1 : 0) + (precision == (uint)scale ? 1 : 0);
-  // because "-0.1" may be declared as DEC(1,1), so 18 decimal places may take
-  // 21 characters
+  if (attrt == ColumnType::BIT)  // unsigned value.
+    return precision;            // e.g.: if precison = 4, bit value max display will be "1010", one byte one digit.
   if (attrt == ColumnType::BYTE || attrt == ColumnType::VARBYTE || attrt == ColumnType::BIN)
     return precision * 2;
   if (attrt == ColumnType::TIME_N || attrt == ColumnType::DATETIME_N)
@@ -51,9 +53,9 @@ uint TxtDataFormat::StaticExtrnalSize(ColumnType attrt, uint precision, int scal
   if (attrt == ColumnType::DATE)
     return 10;
   else if (attrt == ColumnType::INT)
-    return 11;
+    return 11;  // -2,147,483,648 ~ 2,147,483,647, 1(signed) + 10(max digits)
   else if (attrt == ColumnType::BIGINT)
-    return 20;
+    return 20;  // -9,223,372,036,854,775,808 ~ 9,223,372,036,854,775,807, 1(signed) + 19(max digits)
   else if (attrt == ColumnType::BYTEINT || attrt == ColumnType::YEAR)
     return 4;
   else if (attrt == ColumnType::SMALLINT)

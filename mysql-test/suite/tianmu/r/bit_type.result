@@ -1,0 +1,282 @@
+drop database if exists test_bit;
+Warnings:
+Note	1008	Can't drop database 'test_bit'; database doesn't exist
+create database test_bit;
+drop table if exists bittypes, t;
+Warnings:
+Note	1051	Unknown table 'test.bittypes'
+Note	1051	Unknown table 'test.t'
+CREATE TABLE t (b BIT(8));
+INSERT INTO t SET b = b'11111111';
+INSERT INTO t SET b = B'1010';
+INSERT INTO t SET b = 0b0101;
+INSERT INTO t values(b'1'), (B'1010'), (0b0101);
+SELECT b+0, BIN(b), OCT(b), HEX(b) FROM t;
+b+0	BIN(b)	OCT(b)	HEX(b)
+255	11111111	377	FF
+10	1010	12	A
+5	101	5	5
+1	1	1	1
+10	1010	12	A
+5	101	5	5
+INSERT INTO t values(b'111111111');
+ERROR 22001: Data too long for column 'b' at row 1
+insert into t values(b'2');
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'b'2')' at line 1
+insert into t values(0B111);
+ERROR 42S22: Unknown column '0B111' in 'field list'
+drop table t;
+CREATE TABLE t (b BIT(8));
+insert into t values('');
+insert into t values(' ');
+insert into t values('1');
+insert into t values('2');
+insert into t values('9');
+SELECT b+0, BIN(b), OCT(b), HEX(b) FROM t;
+b+0	BIN(b)	OCT(b)	HEX(b)
+0	0	0	0
+32	100000	40	20
+49	110001	61	31
+50	110010	62	32
+57	111001	71	39
+insert into t values('10');
+ERROR 22001: Data too long for column 'b' at row 1
+insert into t values('  ');
+ERROR 22001: Data too long for column 'b' at row 1
+insert into t values("22");
+ERROR 22001: Data too long for column 'b' at row 1
+drop table t;
+CREATE TABLE t (b BIT);
+insert into t values(b'0');
+insert into t values(b'1');
+insert into t values(b'');
+SELECT b+0, BIN(b), OCT(b), HEX(b) FROM t;
+b+0	BIN(b)	OCT(b)	HEX(b)
+0	0	0	0
+1	1	1	1
+0	0	0	0
+insert into t values(' ');
+ERROR 22001: Data too long for column 'b' at row 1
+drop table t;
+create table bit2(a bit(8), b bit(11)) engine=tianmu DEFAULT CHARSET=utf8mb4;
+insert into bit2 values(b'10111', b'1011');
+insert into bit2 values(b'10111111', b'1011000');
+select a>b, a=b, a<b, a<=>b, a<>b, a!=b, a<=b, a>=b from bit2;
+a>b	a=b	a<b	a<=>b	a<>b	a!=b	a<=b	a>=b
+1	0	0	0	1	1	0	1
+1	0	0	0	1	1	0	1
+select COALESCE(a),greatest(a, 0), greatest(a, 123), a is true, b is false, a is null, isnull(b),least(a,2.0) from bit2;
+COALESCE(a)	greatest(a, 0)	greatest(a, 123)	a is true	b is false	a is null	isnull(b)	least(a,2.0)
+23	23	123	1	0	0	0	2.0
+191	191	191	1	0	0	0	2.0
+select not a, a is true, b is null, a is not null, !(a+b), a and b, a and 0, a and null, a or 1, a or b, a xor 1, a xor b, a xor 0 from bit2;
+not a	a is true	b is null	a is not null	!(a+b)	a and b	a and 0	a and null	a or 1	a or b	a xor 1	a xor b	a xor 0
+0	1	0	1	0	1	0	NULL	1	1	0	0	1
+0	1	0	1	0	1	0	NULL	1	1	0	0	1
+select abs(-a), abs(a), acos(b), asin(a), atan(b),atan2(a),ceil(a+0.1), ceiling(a+0.2),conv(a, 16,2), conv(a, 16, 10), conv(a, 16, 16) from bit2;
+abs(-a)	abs(a)	acos(b)	asin(a)	atan(b)	atan2(a)	ceil(a+0.1)	ceiling(a+0.2)	conv(a, 16,2)	conv(a, 16, 10)	conv(a, 16, 16)
+23	23	NULL	NULL	1.4801364395941514	1.5273454314033659	24	24	10111	23	17
+191	191	NULL	NULL	1.5594331795306058	1.565560772538489	192	192	10111111	191	BF
+select cos(a), cot(b), degrees(a), exp(a), floor(a+0.33), ln(a), log(a), log10(a), log2(a), mod(a, 0), pi()+a, pow(a,b), radians(a), rand(a) from
+bit2;
+cos(a)	cot(b)	degrees(a)	exp(a)	floor(a+0.33)	ln(a)	log(a)	log10(a)	log2(a)	mod(a, 0)	pi()+a	pow(a,b)	radians(a)	rand(a)
+-0.5328330203333975	-0.0044257413313241135	1317.8029288008934	9744803446.248903	23	3.1354942159291497	3.1354942159291497	1.3617278360175928	4.523561956057013	NULL	26.141593	952809757913927	0.4014257279586958	0.9094319407915994
+-0.8037933932096717	28.232237325458215	10943.493886998724	8.917560070598843e82	191	5.25227342804663	5.25227342804663	2.2810333672477277	7.577428828035749	NULL	194.141593	5.38190859821405e200	3.3335788713091694	0.9401942872816643
+Warnings:
+Warning	1365	Division by 0
+Warning	1365	Division by 0
+select round(a), sign(b), sin(a), sqrt(a), tan(a),truncate(a+0.1123, 2) from bit2;
+round(a)	sign(b)	sin(a)	sqrt(a)	tan(a)	truncate(a+0.1123, 2)
+23	1	-0.8462204041751706	4.795831523312719	1.5881530833912738	23.11
+191	1	0.594908548461427	13.820274961085254	-0.7401261984573734	191.11
+SELECT DATE_ADD('2018-05-01',INTERVAL a DAY) from bit2;
+DATE_ADD('2018-05-01',INTERVAL a DAY)
+2018-05-24
+2018-11-08
+select a like "10111", b not like "1011" from bit2;
+a like "10111"	b not like "1011"
+0	1
+0	1
+select strcmp(a,b), strcmp(b,a),strcmp(a,a) from bit2;
+strcmp(a,b)	strcmp(b,a)	strcmp(a,a)
+1	-1	0
+-1	1	0
+select charset(binary a), collation(binary b) from bit2;
+charset(binary a)	collation(binary b)
+binary	binary
+binary	binary
+SELECT _latin1 b'1000001' from bit2;
+_latin1 b'1000001'
+A
+A
+SELECT _utf8mb4 0b1000001 COLLATE utf8mb4_danish_ci from bit2;
+_utf8mb4 0b1000001 COLLATE utf8mb4_danish_ci
+A
+A
+SELECT _utf8mb4 0B1000001 COLLATE utf8mb4_danish_ci from bit_test;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '0B1000001 COLLATE utf8mb4_danish_ci from bit_test' at line 1
+SELECT BIT_AND(a), BIT_OR(a), BIT_XOR(a), BIT_COUNT(a), bin(a >> 1), bin(a << 1), bin(~a), bin(a & b'1111'), a ^ b, a | b, a & b from bit2 group by a,b;
+BIT_AND(a)	BIT_OR(a)	BIT_XOR(a)	BIT_COUNT(a)	bin(a >> 1)	bin(a << 1)	bin(~a)	bin(a & b'1111')	a ^ b	a | b	a & b
+23	23	23	4	1011	101110	1111111111111111111111111111111111111111111111111111111111101000	111	28	31	3
+191	191	191	7	1011111	101111110	1111111111111111111111111111111111111111111111111111111101000000	1111	231	255	24
+select avg(a), count(distinct a), max(b),max(a),std(a),stddev(a),sum(a),var_pop(a),var_samp(b),variance(a) from bit2 group by a;
+avg(a)	count(distinct a)	max(b)	max(a)	std(a)	stddev(a)	sum(a)	var_pop(a)	var_samp(b)	variance(a)
+23.0000	1	11	23	0	0	23	0	NULL	0
+191.0000	1	88	191	0	0	191	0	NULL	0
+select a * 12345678910111213 from bit2;
+a * 12345678910111213
+283950614932557899
+2358024671831241683
+select a * 1234567891011121312 from bit2;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`bit2`.`a` * 1234567891011121312)'
+select a * 12345678910111213123 from bit2;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`bit2`.`a` * 12345678910111213123)'
+select a * 12345678910111213123456 from bit2;
+ERROR HY000: Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+drop table bit2;
+CREATE TABLE `bit_test` (
+`bit1` bit(1) DEFAULT NULL,
+`bit2` bit(2) DEFAULT NULL,
+`bit8` bit(8) DEFAULT NULL,
+`bit16` bit(16) DEFAULT NULL,
+`bit32` bit(32) DEFAULT NULL,
+`bit63` bit(63) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+LOAD DATA local INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/bit_test.txt' INTO TABLE bit_test fields TERMINATED BY ',' (@var1, @var2, @var3, @var4, @var5, @var6)
+SET bit1 = CAST(CONV(MID(@var1, 3, LENGTH(@var1)-3), 2, 10) AS UNSIGNED),
+bit2 = CAST(CONV(MID(@var2, 3, LENGTH(@var2)-3), 2, 10) AS UNSIGNED),
+bit8 = CAST(CONV(MID(@var3, 3, LENGTH(@var3)-3), 2, 10) AS UNSIGNED),
+bit16 = CAST(CONV(MID(@var4, 3, LENGTH(@var4)-3), 2, 10) AS UNSIGNED),
+bit32 = CAST(CONV(MID(@var5, 3, LENGTH(@var5)-3), 2, 10) AS UNSIGNED),
+bit63 = CAST(CONV(MID(@var6, 3, LENGTH(@var6)-3), 2, 10) AS UNSIGNED);
+Warnings:
+Warning	1406	Data too long for column 'bit1' at row 3
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+NULL	NULL	NULL	NULL	NULL	NULL
+0	0	0	0	0	0
+1	2	7	47	3071	268435455
+drop table bit_test;
+CREATE TABLE `bit_test` (
+`bit1` bit(1) DEFAULT NULL,
+`bit2` bit(2) DEFAULT NULL,
+`bit8` bit(8) DEFAULT NULL,
+`bit16` bit(16) DEFAULT NULL,
+`bit32` bit(32) DEFAULT NULL,
+`bit63` bit(63) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+insert into bit_test values(b'1', b'11',b'111',b'1111',b'11',b'111');
+insert into bit_test values(b'11', b'11',b'111',b'1111',b'11',b'111');
+ERROR 22001: Data too long for column 'bit1' at row 1
+insert into bit_test values(b'1', b'111',b'111',b'1111',b'11',b'111');
+ERROR 22001: Data too long for column 'bit2' at row 1
+insert into bit_test values(b'1', b'1',b'111111111',b'1111',b'11',b'111');
+ERROR 22001: Data too long for column 'bit8' at row 1
+insert into bit_test values(b'1', b'1',b'1',b'11111111111111111',b'11',b'111');
+ERROR 22001: Data too long for column 'bit16' at row 1
+insert into bit_test values(b'1', b'1',b'1',b'1', b'111111111111111111111111111111111',b'111');
+ERROR 22001: Data too long for column 'bit32' at row 1
+insert into bit_test values(b'1', b'1',b'1', b'1', b'1', b'11111111111111111111111111111111111111111111111111111111111111111');
+ERROR 22001: Data too long for column 'bit63' at row 1
+drop table bit_test;
+CREATE TABLE bittest(a bit(8));
+INSERT INTO bittest VALUES(b'00111001');
+INSERT INTO bittest VALUES(b'00111101');
+INSERT INTO bittest VALUES(b'00000001');
+insert into bittest values(b'00111010');
+insert into bittest values(b'00000000');
+select a,a+0,bin(a),oct(a),hex(a) from bittest;
+a	a+0	bin(a)	oct(a)	hex(a)
+9	57	111001	71	39
+=	61	111101	75	3D
+	1	1	1	1
+:	58	111010	72	3A
+ 	0	0	0	0
+select hex(a) from bittest where a='0';
+hex(a)
+0
+select hex(a) from bittest where a=0;
+hex(a)
+0
+select hex(a) from bittest where a=48;
+hex(a)
+select hex(a) from bittest where a=57;
+hex(a)
+39
+drop table bittest;
+CREATE TABLE `bit_test` (
+`bit1` bit(1) DEFAULT NULL,
+`bit2` bit(2) DEFAULT NULL,
+`bit8` bit(8) DEFAULT NULL,
+`bit16` bit(16) DEFAULT NULL,
+`bit32` bit(32) DEFAULT NULL,
+`bit63` bit(63) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+insert into bit_test values(b'1', b'11',b'111',b'1111',b'11',b'111');
+insert into bit_test values(null, b'11',b'111000',b'1111',b'11',null);
+insert into bit_test values(b'0', b'10',b'111',b'1111',b'11',b'0');
+insert into bit_test values(b'1', b'1',b'11111111',b'1111',b'11',b'111');
+insert into bit_test values(b'1', b'1',b'1',b'1111111111111111',b'11',b'111');
+insert into bit_test values(b'1', b'1',b'1',b'1', b'11111111111111111111111111111111',b'111');
+insert into bit_test values(b'1', b'1',b'1', b'1', b'1', b'11111111111111111111111111111111111111111111111111111111111111');
+insert into bit_test values(null, null, null, null, null, null);
+select count(*) from  bit_test;
+count(*)
+8
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+1	3	7	15	3	7
+NULL	3	56	15	3	NULL
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+insert into bit_test select * from bit_test;
+select count(*) from  bit_test;
+count(*)
+16
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+1	3	7	15	3	7
+NULL	3	56	15	3	NULL
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+1	3	7	15	3	7
+NULL	3	56	15	3	NULL
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+create table fork_bit select * from bit_test;
+select count(*) from  fork_bit;
+count(*)
+16
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from fork_bit;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+1	3	7	15	3	7
+NULL	3	56	15	3	NULL
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+1	3	7	15	3	7
+NULL	3	56	15	3	NULL
+0	2	7	15	3	0
+1	1	255	15	3	7
+1	1	1	65535	3	7
+1	1	1	1	4294967295	7
+1	1	1	1	1	4611686018427387903
+NULL	NULL	NULL	NULL	NULL	NULL
+drop table bit_test;
+drop table fork_bit;
+drop database test_bit;

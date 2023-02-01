@@ -102,7 +102,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   void ResetMaxMin(DPN &dpn);
 
   const types::TianmuDataType &ValuePrototype(bool lookup_to_num) const {
-    if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName()))
+    if ((Type().Lookup() && lookup_to_num) || ATI::IsNumericType(TypeName()))
       return types::TianmuNum::NullValue();
     if (ATI::IsStringType(TypeName()))
       return types::BString::NullValue();

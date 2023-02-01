@@ -192,7 +192,7 @@ bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
       (size_t)buffer.ExpectedSize() > attrs_[att]->Type().GetPrecision())
     return false;
 
-  if (attrs_[att]->Type().IsLookup() && !buffer.ExpectedNull()) {
+  if (attrs_[att]->Type().Lookup() && !buffer.ExpectedNull()) {
     types::BString s(ZERO_LENGTH_STRING, 0);
     buffer.Prepare(sizeof(int64_t));
     s.val_ = static_cast<char *>(buffer.PreparedBuffer());

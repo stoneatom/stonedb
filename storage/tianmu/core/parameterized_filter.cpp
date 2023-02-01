@@ -202,7 +202,7 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &desc, boo
     if (no_in_values > 1)
       eval += log(double(no_in_values)) * 0.5;  // INs are potentially slower (many comparisons needed)
 
-    if (col->Type().IsString() && !col->Type().IsLookup())
+    if (col->Type().IsString() && !col->Type().Lookup())
       eval += 0.5;  // strings are slower
 
     if (col->Type().IsFloat())

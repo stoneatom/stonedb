@@ -606,9 +606,10 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
 
   } else if (core::ATI::IsTxtType(ati.Type())) {
     // process escape characters
-    if (ati.CharLen() < (uint)value_size) {
+    if (ati.Precision() < static_cast<uint>(value_size)) {
       std::string valueStr(value_ptr, value_size);
-      value_size = ati.CharLen();
+
+      value_size = ati.Precision();
       TIANMU_LOG(LogCtl_Level::DEBUG, "Data format error. DbName:%s ,TableName:%s ,Col %d, value:%s", dbname_.c_str(),
                  tablename_.c_str(), col, valueStr.c_str());
       std::stringstream err_msg;

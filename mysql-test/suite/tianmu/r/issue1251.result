@@ -1,0 +1,3 @@
+select (select version() regexp '^5.7.36-StoneDB-v[0-9]*\\.[0-9]*\\.[0-9]*$') or (select version() regexp '^5.7.36-StoneDB-v[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9a-z]{9}$');
+(select version() regexp '^5.7.36-StoneDB-v[0-9]*\\.[0-9]*\\.[0-9]*$') or (select version() regexp '^5.7.36-StoneDB-v[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9a-z]{9}$')
+1

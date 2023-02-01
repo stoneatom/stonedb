@@ -231,7 +231,7 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
         types::TianmuNum rcn_max = mvc->GetSetMax(mit);
         if (rcn_min.IsNull() || rcn_max.IsNull())  // cannot determine min/max
           return common::RoughSetValue::RS_SOME;
-        if (Type().IsLookup()) {
+        if (Type().Lookup()) {
           v1 = rcn_min.GetValueInt64();
           v2 = rcn_max.GetValueInt64();
         } else {
@@ -266,7 +266,7 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
           int64_t v;  // TODO: get rid with the iterator below
           for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit);
                (it != end) && (res == common::RoughSetValue::RS_NONE); ++it) {
-            if (!Type().IsLookup()) {  // otherwise it will be decoded to text
+            if (!Type().Lookup()) {  // otherwise it will be decoded to text
               v = EncodeValue64(it->GetValue().Get(), v_rounded);
             } else
               v = it->GetInt64();
@@ -407,7 +407,7 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
       if ((TypeName() != sec->TypeName() &&  // Exceptions:
            !(ATI::IsDateTimeType(TypeName()) && ATI::IsDateTimeType(sec->TypeName())) &&
            !(ATI::IsIntegerType(TypeName()) && ATI::IsIntegerType(sec->TypeName()))) ||
-          Type().GetScale() != sec->Type().GetScale() || Type().IsLookup() || sec->Type().IsLookup())
+          Type().GetScale() != sec->Type().GetScale() || Type().Lookup() || sec->Type().Lookup())
         return common::RoughSetValue::RS_SOME;
       LoadPackInfo();
       sec->LoadPackInfo();
@@ -675,7 +675,7 @@ int64_t TianmuAttr::RoughMax(Filter *f, common::RoughSetValue *rf)  // f == null
 std::vector<int64_t> TianmuAttr::GetListOfDistinctValuesInPack(int pack) {
   std::vector<int64_t> list_vals;
   if (GetPackType() != common::PackType::INT || pack == -1 ||
-      (Type().IsLookup() && types::RequiresUTFConversions(GetCollation())))
+      (Type().Lookup() && types::RequiresUTFConversions(GetCollation())))
     return list_vals;
   auto const &dpn(get_dpn(pack));
   if (dpn.min_i == dpn.max_i) {
@@ -804,7 +804,7 @@ uint64_t TianmuAttr::ExactDistinctVals(Filter *f)  // provide the exact number o
                      // determined for sure
     return common::NULL_VALUE_64;
   LoadPackInfo();
-  if (Type().IsLookup() && !types::RequiresUTFConversions(GetCollation()) && f->IsFull())
+  if (Type().Lookup() && !types::RequiresUTFConversions(GetCollation()) && f->IsFull())
     return RoughMax(nullptr) + 1;
   bool nulls_only = true;
   for (uint p = 0; p < SizeOfPack(); p++)

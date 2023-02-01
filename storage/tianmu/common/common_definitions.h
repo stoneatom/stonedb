@@ -38,6 +38,8 @@ constexpr size_t operator""_GB(unsigned long long v) { return 1024u * 1024u * 10
 namespace common {
 
 extern void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint code, const char *msg);
+extern void PushWarningIfOutOfRange(THD *thd, std::string col_name, int64_t v, int type, bool unsigned_flag);
+std::string getErrMsg(std::string col_name, int64_t min, int64_t max, bool unsigned_flag, int64_t v);
 
 // Column Type
 // NOTE: do not change the order of implemented data types! Stored as int(...)
@@ -70,6 +72,7 @@ enum class ColumnType : unsigned char {
   MEDIUMINT,
   BIGINT,
   LONGTEXT,
+  BIT,
   UNK = 255
 };
 
@@ -137,6 +140,8 @@ constexpr uint64_t TIANMU_BIGINT_UNSIGNED_MAX = 0xFFFFFFFFFFFFFFFFULL;  // 2^64 
 
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_LARGE = 3072;
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
+
+constexpr uint32_t TIANMU_BIT_MAX_PREC = 63;  // in the future we'll expand to 64.
 
 #define NULL_VALUE_D (*(double *)("\x01\x00\x00\x00\x00\x00\x00\x80"))
 #define TIANMU_INT_MAX (2147483647)

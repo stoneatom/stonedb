@@ -53,6 +53,11 @@ DataType::DataType(common::ColumnType atype, int prec, int scale, DTCollation co
       valtype = ValueType::VT_FIXED;
       fixmax = MAX(TIANMU_TINYINT_MAX, -TIANMU_TINYINT_MIN);
       break;
+    case common::ColumnType::BIT:
+      valtype = ValueType::VT_FIXED;
+      fixmax = MAX(common::TIANMU_BIGINT_MAX,
+                   -common::TIANMU_BIGINT_MIN);  // TODO(fix max value with common::TIANMU_BIT_MAX_PREC)
+      break;
 
     case common::ColumnType::NUM:
       DEBUG_ASSERT((prec > 0) && (prec <= 19) && (fixscale >= 0));

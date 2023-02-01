@@ -129,7 +129,7 @@ types::TianmuValueObject ConstColumn::GetValueImpl([[maybe_unused]] const core::
     return types::TianmuDateTime(value_or_null_.Get64(), TypeName());
   if (core::ATI::IsRealType(TypeName()))
     return types::TianmuNum(value_or_null_.Get64(), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::ColumnType::NUM)
+  if (lookup_to_num || TypeName() == common::ColumnType::NUM || TypeName() == common::ColumnType::BIT)
     return types::TianmuNum((int64_t)value_or_null_.Get64(), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();
