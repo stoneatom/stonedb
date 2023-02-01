@@ -37,10 +37,21 @@ class DeltaRecordHead {
 };
 
 class DeltaRecordHeadForInsert : public DeltaRecordHead {
+  // layout:
+  //     (Insert)TypeFlag
+  //     load_num [count of currently loaded data, which is 1 by default, increased when the merge operator is triggered.]
+  //     isDeleted [normal:n deleted:d]
+  //     table_id
+  //     table_path
+  //     fields_size
+  //     fields_count
+  //     null_mask
+  //     field_head
+  //     fields...
  public:
   DeltaRecordHeadForInsert() = default;
   ~DeltaRecordHeadForInsert() = default;
-  DeltaRecordHeadForInsert(char is_deleted, int32_t &table_id, const std::string &table_path, size_t &field_count);
+  DeltaRecordHeadForInsert(char is_deleted, int32_t &table_id, const std::string &table_path, size_t &field_count, uint32_t load_num = 1);
   char *record_encode(char *ptr) override;
   const char *record_decode(const char *ptr) override;
 
@@ -48,22 +59,33 @@ class DeltaRecordHeadForInsert : public DeltaRecordHead {
   RecordType record_type_ = RecordType::kInsert;
 
  public:
+  uint32_t load_num_;
   char is_deleted_;
   int32_t table_id_;
   std::string table_path_;
   size_t field_count_;
   utils::BitSet null_mask_;
 
-  int64_t *field_head_;
+  uint32_t *field_head_;
   int null_offset_;
   int field_offset_;
 };
 
 class DeltaRecordHeadForUpdate : public DeltaRecordHead {
+  // layout:
+  //     (Update)TypeFlag
+  //     load_id
+  //     table_id
+  //     table_path
+  //     fields_count
+  //     update_mask
+  //     null_mask
+  //     field_head
+  //     update_fields...
  public:
   DeltaRecordHeadForUpdate() = default;
   ~DeltaRecordHeadForUpdate() = default;
-  DeltaRecordHeadForUpdate(int32_t &table_id, const std::string &table_path, size_t &field_count);
+  DeltaRecordHeadForUpdate(int32_t &table_id, const std::string &table_path, size_t &field_count, uint32_t load_num = 1);
   char *record_encode(char *ptr) override;
   const char *record_decode(const char *ptr) override;
 
@@ -71,12 +93,13 @@ class DeltaRecordHeadForUpdate : public DeltaRecordHead {
   RecordType record_type_ = RecordType::kUpdate;
 
  public:
+  uint32_t load_num_;
   int32_t table_id_;
   std::string table_path_;
   size_t field_count_;
   utils::BitSet update_mask_;
   utils::BitSet null_mask_;
-  int64_t * field_head_;
+  uint32_t *field_head_;
   int null_offset_;
   int update_offset_;
   int field_offset_;
@@ -86,7 +109,7 @@ class DeltaRecordHeadForDelete : public DeltaRecordHead {
  public:
   DeltaRecordHeadForDelete() = default;
   ~DeltaRecordHeadForDelete() = default;
-  DeltaRecordHeadForDelete(int32_t &table_id, const std::string &table_path);
+  DeltaRecordHeadForDelete(int32_t &table_id, const std::string &table_path, uint32_t load_num = 1);
   char *record_encode(char *ptr) override;
   const char *record_decode(const char *ptr) override;
 
@@ -94,6 +117,7 @@ class DeltaRecordHeadForDelete : public DeltaRecordHead {
   RecordType record_type_ = RecordType::kDelete;
 
  public:
+  uint32_t load_num_;
   int32_t table_id_;
   std::string table_path_;
 };

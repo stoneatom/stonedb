@@ -102,6 +102,7 @@ class TianmuTable final : public JustATable {
   int64_t NumOfDeleted() const;
   int64_t NumOfValues() const;
   int64_t NumOfObj() const override;
+  // gen row id
   uint64_t NextRowId();
 
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
@@ -132,7 +133,7 @@ class TianmuTable final : public JustATable {
   int Insert(TABLE *table);
   int Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data);
   int Delete(TABLE *table, uint64_t row_id);
-  
+
   // delta frontend
   void InsertToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
   void UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);

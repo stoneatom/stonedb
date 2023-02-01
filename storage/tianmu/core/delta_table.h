@@ -62,7 +62,7 @@ class DeltaTable {
   } stat;
   std::atomic<uint64_t> load_id{0};
   std::atomic<uint64_t> merge_id{0};
-  std::atomic<uint64_t> next_row_id{0};
+  std::atomic<uint64_t> row_id{0};
 
  private:
   std::string fullname_;
@@ -103,15 +103,19 @@ class DeltaIterator {
 
  private:
   // decode the current row's RecordType from the rocksdb data.value
-  inline bool IsCurrInsertType();
-  // decode the current row_id from the rocksdb data.key
-  inline uint64_t GetCurrRowIdFromRecord();
+  inline bool IsInsertType();
+  bool RdbKeyValid();
+  inline RecordType CurrentType();
+  inline uchar CurrentDeleteFlag();
+  inline uint32_t CurrentTableId();
+  inline uint64_t CurrentRowId();
 
   DeltaTable *table_ = nullptr;
   int64_t position_ = -1;
   int64_t start_position_ = -1;
   [[maybe_unused]] bool current_record_fetched_ = false;
   std::unique_ptr<rocksdb::Iterator> it_ = nullptr;
+  rocksdb::Slice prefix_;
   std::string record_;
   std::vector<bool> attrs_;
 };

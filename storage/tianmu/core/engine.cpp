@@ -273,6 +273,14 @@ int Engine::Init(uint engine_slot) {
       std::function<void()> func;
     } jobs[] = {
         {60, [this]() { this->LogStat(); }},
+        {5,
+         [this]() {
+           for (auto &delta : m_table_deltas) {
+             TIANMU_LOG(LogCtl_Level::INFO, "delta table id: %d current load id: %d, merge id: %d, row_id: %d",
+                        delta.second->GetDeltaTableID(), delta.second->load_id.load(), delta.second->merge_id.load(),
+                        delta.second->row_id.load());
+           }
+         }},
         {60 * 5,
          []() {
            TIANMU_LOG(
@@ -289,7 +297,7 @@ int Engine::Init(uint engine_slot) {
     };
 
     int counter = 0;
-    const long loop_interval = 60;
+    const long loop_interval = 5;
 
     while (!exiting) {
       counter++;
@@ -840,7 +848,7 @@ void Engine::EncodeDeleteRecord(const std::string &table_path, int table_id, std
                                 uint32_t &buf_size) {
   int32_t path_len = table_path.size();
 
-  buf_size = sizeof(RecordType) + sizeof(int32_t) + path_len;
+  buf_size = sizeof(RecordType) + sizeof(uint32_t) + sizeof(int32_t) + path_len + 1;
   buf.reset(new char[buf_size]);
   char *ptr = buf.get();
   DeltaRecordHeadForDelete deltaRecord(table_id, table_path);
@@ -1679,23 +1687,34 @@ void Engine::LogStat() {
   }
 
   TIANMU_LOG(LogCtl_Level::INFO,
-             "Select: %lu/%lu, Loaded: %lu/%lu(%lu/%lu), dup: %lu/%lu, insert: "
-             "%lu/%lu, failed insert: %lu/%lu, update: "
-             "%lu/%lu",
+             "Select: %lu/%lu, "
+             "Loaded: %lu/%lu(%lu/%lu), "
+             "dup: %lu/%lu, "
+             "delta insert: %lu/%lu, "
+             "failed delta insert: %lu/%lu, "
+             "delta update: %lu/%lu, "
+             "failed delta update: %lu/%lu, "
+             "delta delete: %lu/%lu, "
+             "failed delta delete: %lu/%lu, "
+             "update: %lu/%lu",
              tianmu_stat.select - saved.select, tianmu_stat.select, tianmu_stat.loaded - saved.loaded,
              tianmu_stat.loaded, tianmu_stat.load_cnt - saved.load_cnt, tianmu_stat.load_cnt,
              tianmu_stat.loaded_dup - saved.loaded_dup, tianmu_stat.loaded_dup,
-             tianmu_stat.delayinsert - saved.delayinsert, tianmu_stat.delayinsert,
-             tianmu_stat.failed_delayinsert - saved.failed_delayinsert, tianmu_stat.failed_delayinsert,
+             tianmu_stat.delta_insert - saved.delta_insert, tianmu_stat.delta_insert,
+             tianmu_stat.failed_delta_insert - saved.failed_delta_insert, tianmu_stat.failed_delta_insert,
+             tianmu_stat.delta_update - saved.delta_update, tianmu_stat.delta_update,
+             tianmu_stat.failed_delta_update - saved.failed_delta_update, tianmu_stat.failed_delta_update,
+             tianmu_stat.delta_insert - saved.delta_insert, tianmu_stat.delta_insert,
+             tianmu_stat.failed_delta_delete - saved.failed_delta_delete, tianmu_stat.failed_delta_delete,
              tianmu_stat.update - saved.update, tianmu_stat.update);
 
-  if (tianmu_stat.loaded == saved.loaded && tianmu_stat.delayinsert > saved.delayinsert) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "No data loaded from insert buffer");
+  if (tianmu_stat.loaded == saved.loaded && tianmu_stat.delta_insert > saved.delta_insert) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "No data loaded from delta store");  // why this log? need add update delete?
   }
 
   // update with last minute statistics
-  IPM = tianmu_stat.delayinsert - saved.delayinsert;
-  IT = tianmu_stat.delayinsert;
+  IPM = tianmu_stat.delta_insert - saved.delta_insert;
+  IT = tianmu_stat.delta_insert;
   QPM = tianmu_stat.select - saved.select;
   QT = tianmu_stat.select;
   LPM = tianmu_stat.loaded - saved.loaded;
@@ -1827,7 +1846,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
       } else {
         InsertDelayed(table_path, share->TabID(), table);
       }
-      tianmu_stat.delayinsert++;
+      tianmu_stat.delta_insert++;
     } else {
       current_txn_->SetLoadSource(common::LoadSource::LS_Direct);
       auto rct = current_txn_->GetTableByPath(table_path);
@@ -1847,7 +1866,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   }
 
   if (tianmu_sysvar_insert_delayed) {
-    tianmu_stat.failed_delayinsert++;
+    tianmu_stat.failed_delta_insert++;
     ret = 1;
   }
 
@@ -1859,12 +1878,16 @@ int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_p
   int ret = 0;
   if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
     UpdateToDelta(table_path, share, table, row_id, old_data, new_data);
-    tianmu_stat.delayinsert++;
+    tianmu_stat.delta_update++;
   } else {
     auto tm_table = current_txn_->GetTableByPath(table_path);
     ret = tm_table->Update(table, row_id, old_data, new_data);
   }
   return ret;
+  if (tianmu_sysvar_insert_delayed) {
+    tianmu_stat.failed_delta_update++;
+    ret = 1;
+  }
 }
 
 int Engine::DeleteRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share,
@@ -1872,12 +1895,16 @@ int Engine::DeleteRow(const std::string &table_path, TABLE *table, std::shared_p
   int ret = 0;
   if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
     DeleteToDelta(table_path, share, table, row_id);
-    tianmu_stat.delayinsert++;
+    tianmu_stat.delta_delete++;
   } else {
     auto tm_table = current_txn_->GetTableByPath(table_path);
     ret = tm_table->Delete(table, row_id);
   }
   return ret;
+  if (tianmu_sysvar_insert_delayed) {
+    tianmu_stat.failed_delta_delete++;
+    ret = 1;
+  }
 }
 
 common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {

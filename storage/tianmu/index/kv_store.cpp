@@ -306,7 +306,8 @@ bool KVStore::KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHan
 }
 
 bool KVStore::KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch) {
-  const rocksdb::Status s = txn_db_->GetBaseDB()->Write(wopts, batch);
+//  const rocksdb::Status s = txn_db_->GetBaseDB()->Write(wopts, batch); // todo(dfx): why base db?
+  const rocksdb::Status s = txn_db_->Write(wopts, batch);
   if (!s.ok()) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Rdb write batch fail: %s", s.ToString().c_str());
     return false;
