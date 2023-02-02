@@ -324,7 +324,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDat
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == INT_RESULT) {
             Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), tianmu_dt,
-                            isum_hybrid_rcbase->hybrid_field_type_);
+                            isum_hybrid_rcbase->hybrid_field_type_, is->unsigned_flag);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == REAL_RESULT) {
             Engine::Convert(is_null, isum_hybrid_rcbase->real_value(), tianmu_dt);
@@ -339,7 +339,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDat
         // do not check COUNT_DISTINCT_FUNC, we use only this for both types
         if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::SUM_BIT_FUNC) {
           isum_int_rcbase = (types::ItemSumInTianmuBase *)is;
-          Engine::Convert(is_null, value, tianmu_dt, is->field_type());
+          Engine::Convert(is_null, value, tianmu_dt, is->field_type(), is->unsigned_flag);
           if (is_null)
             value = 0;
           isum_int_rcbase->int64_value(value);
