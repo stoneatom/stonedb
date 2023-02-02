@@ -134,6 +134,7 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
         io_param_.GetTHD()->get_stmt_da()->inc_current_row_for_condition();
         if (num_of_skip_ < io_param_.GetSkipLines()) /*check skip lines */
         {
+          // does not load this line,continue to get next line
           num_of_skip_++;
           num_of_row_--;
           for (uint att = 0; att < attrs_.size(); ++att) {
@@ -142,8 +143,10 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
             auto &attr(attrs_[att]);
             attr->RollBackIfAutoInc();
           }
+          break;
         } else if (tab_index_ != nullptr) { /* check duplicate */
           if (HA_ERR_FOUND_DUPP_KEY == ProcessInsertIndex(tab_index_, value_buffers, num_of_row_ - 1)) {
+            // dose not load this line, continue to get next line
             num_of_row_--;
             num_of_dup_++;
             for (uint att = 0; att < attrs_.size(); ++att) {
@@ -152,6 +155,7 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
               auto &attr(attrs_[att]);
               attr->RollBackIfAutoInc();
             }
+            break;
           }
         }
 
