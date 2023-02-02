@@ -1,0 +1,242 @@
+--source include/have_tianmu.inc
+
+drop database if exists unsigned_support;
+create database unsigned_support;
+use unsigned_support;
+create table tiny(a tinyint, b tinyint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly
+insert into tiny values(-128, 0);
+insert into tiny values(127, 127);
+insert into tiny values(0, 127);
+insert into tiny values(-0, -0);
+insert into tiny values(+0, +0);
+# unsigned > 127
+#TODO deal with treated 128 as null, only exists in agg: insert into tiny values(0, 128);
+insert into tiny values(0, 129);
+insert into tiny values(0, 255);
+select * from tiny;
+# before: test out of range, currently the max value of unsigned is equal to signed
+# after: the max value of unsigned is equal to max unsigned
+# column signed a out of value
+--error 1264
+insert into tiny values(-129, 0);
+--error 1264
+insert into tiny values(128, 0);
+--error 1264
+insert into tiny values(1234, 0);
+# column unsigned b out of value(>255 || <0), deal with mysql
+--error 1264
+insert into tiny values(0, -1);
+--error 1264
+insert into tiny values(0, -127);
+--error 1264
+insert into tiny values(0, 256);
+--error 1264
+insert into tiny values(0, 1234567);
+select * from tiny;
+
+# test agg, refs: https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_bit-and
+# test basic agg, Item func override impl by tianmu
+select avg(b), sum(b), max(b), min(b), count(b) from tiny;
+# advanced agg, override by tianmu
+select bit_and(b), bit_or(b), bit_xor(b), group_concat(b), std(b), stddev(b), stddev_pop(b), stddev_samp(b), var_pop(b), var_samp(b), variance(b) from tiny;
+# test operators
+# test where, limit, order by clause
+select a+0, b+0 from tiny where a = -128 and b = 0 limit 2;
+select a+0, b+0 from tiny where a = 0 and b = -256;
+select a+0, b+0 from tiny where a != 0 and b != 0 and a=b;
+select a+0, b+0 from tiny order by b desc;
+
+# test boundary operations, unsigned bigint is 20 bits digits
+select b * 12345678910111213 from tiny;
+# error like mysql does: BIGINT UNSIGNED value is out of range in '(`test`.`tiny`.`b` * 1234567891011121312)'
+--error 1690
+select b * 123456789101112131 from tiny;
+--error 1690
+select b * 12345678910111213123 from tiny;
+# error(mysql will be numeric results, diff with tianmu):  Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+--error 1105
+select b * 12345678910111213123456 from tiny;
+
+drop table tiny;
+
+create table small(a smallint, b smallint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly
+insert into small values(-32768, 0);
+insert into small values(0, 0);
+insert into small values(122, 122);
+insert into small values(32767, 32767);
+insert into small values(-0, -0);
+insert into small values(+0, +0);
+#TODO deal with null: insert into small values(0, 32768);
+insert into small values(0, 32769);
+insert into small values(0, 41234);
+insert into small values(0, 65535);
+select * from small;
+# test out of range, currently the max value of unsigned is equal to signed
+# column signed a out of value
+--error 1264
+insert into small values(-32769, 0);
+--error 1264
+insert into small values(32768, 0);
+--error 1264
+insert into small values(-3276911, 0);
+--error 1264
+insert into small values(3276811, 0);
+# column unsigned b out of value(>65535 || <0), deal with mysql
+--error 1264
+insert into small values(0, -1);
+--error 1264
+insert into small values(0, -32768);
+--error 1264
+insert into small values(0, 65536);
+--error 1264
+insert into small values(0, 1234567);
+select * from small;
+
+# test agg, refs: https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_bit-and
+# test basic agg, Item func override impl by tianmu
+select avg(b), sum(b), max(b), min(b), count(b) from small;
+# advanced agg, override by tianmu
+select bit_and(b), bit_or(b), bit_xor(b), group_concat(b), std(b), stddev(b), stddev_pop(b), stddev_samp(b), var_pop(b), var_samp(b), variance(b) from small;
+# test operators
+# test where, limit, order by clause
+select a+0, b+0 from small where a = -32768 and b = 0 limit 2;
+select a+0, b+0 from small where a = 0 and b = -32768;
+select a+0, b+0 from small where a != 0 and b != 0 and a=b;
+select a+0, b+0 from small order by b desc;
+
+# test boundary operations, unsigned bigint is 20 bits digits
+select b * 123456789101112 from small;
+# error like mysql does: BIGINT UNSIGNED value is out of range in '(`test`.`small`.`b` * 1234567891011121312)'
+--error 1690
+select b * 123456789101112131 from small;
+--error 1690
+select b * 12345678910111213123 from small;
+# error(mysql will be numeric results, diff with tianmu):  Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+--error 1105
+select b * 12345678910111213123456 from small;
+
+drop table small;
+
+create table medium(a mediumint, b mediumint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly
+insert into medium values(-8388608, 0);
+insert into medium values(0, 0);
+insert into medium values(122, 122);
+insert into medium values(8388607, 8388607);
+insert into medium values(-0, -0);
+insert into medium values(+0, +0);
+#TODO deal with null: insert into medium values(0, 8388608);
+insert into medium values(0, 8388609);
+insert into medium values(0, 8388610);
+insert into medium values(0, 16777215);
+select * from medium;
+# test out of range, currently the max value of unsigned is equal to signed
+# column signed a out of value
+--error 1264
+insert into medium values(-8388609, 0);
+--error 1264
+insert into medium values(8388608, 0);
+--error 1264
+insert into medium values(-8388608111, 0);
+--error 1264
+insert into medium values(8388608111, 0);
+# column unsigned b out of value(>8388607 || <0), deal with mysql
+--error 1264
+insert into medium values(0, -1);
+--error 1264
+insert into medium values(0, -8388608);
+--error 1264
+insert into medium values(0, 16777216);
+--error 1264
+insert into medium values(0, 1677721511);
+select * from medium;
+
+# test agg, refs: https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_bit-and
+# test basic agg, Item func override impl by tianmu
+select avg(b), sum(b), max(b), min(b), count(b) from medium;
+# advanced agg, override by tianmu
+select bit_and(b), bit_or(b), bit_xor(b), group_concat(b), std(b), stddev(b), stddev_pop(b), stddev_samp(b), var_pop(b), var_samp(b), variance(b) from medium;
+# test operators
+# test where, limit, order by clause
+select a+0, b+0 from medium where a = -8388608 and b = 0 limit 2;
+select a+0, b+0 from medium where a = 0 and b = -8388608;
+select a+0, b+0 from medium where a != 0 and b != 0 and a=b;
+select a+0, b+0 from medium order by b desc;
+
+# test boundary operations, unsigned bigint is 20 bits digits
+select b * 123456789101 from medium;
+# error like mysql does: BIGINT UNSIGNED value is out of range in '(`test`.`medium`.`b` * 1234567891011121312)'
+--error 1690
+select b * 12345678910123 from medium;
+--error 1690
+select b * 12345678910111213123 from medium;
+# error(mysql will be numeric results, diff with tianmu):  Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+--error 1105
+select b * 123456789101112131234 from medium;
+
+drop table medium;
+
+create table int_(a int, b int unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly, range[-2147483647, 2147483647]
+insert into int_ values(-2147483647, 0);
+insert into int_ values(0, 0);
+insert into int_ values(122, 122);
+insert into int_ values(2147483647, 2147483647);
+insert into int_ values(-0, -0);
+insert into int_ values(+0, +0);
+#TODO: deal with 2147483648
+insert into int_ values(0, 2147483649);
+insert into int_ values(0, 3294967295);
+insert into int_ values(0, 4294967295);
+select * from int_;
+# test out of range, currently the max value of unsigned is equal to signed
+# column signed a out of value
+--error 1264
+insert into int_ values(-2147483649, 0);
+--error 1264
+insert into int_ values(2147483648, 0);
+--error 1264
+insert into int_ values(-214748364811, 0);
+--error 1264
+insert into int_ values(214748364811, 0);
+# deal with tianmu, -2147483648 also deal with tianmu
+--error 1264
+insert into int_ values(-2147483648, 0);
+# column unsigned b out of value(>4294967295 || <0), deal with mysql
+--error 1264
+insert into int_ values(0, -1);
+--error 1264
+insert into int_ values(0, -4294967295);
+--error 1264
+insert into int_ values(0, 4294967296);
+--error 1264
+insert into int_ values(0, 429496729611);
+select * from int_;
+
+# test agg, refs: https://dev.mysql.com/doc/refman/5.7/en/aggregate-functions.html#function_bit-and
+# test basic agg, Item func override impl by tianmu
+select avg(b), sum(b), max(b), min(b), count(b) from int_;
+# advanced agg, override by tianmu
+select bit_and(b), bit_or(b), bit_xor(b), group_concat(b), std(b), stddev(b), stddev_pop(b), stddev_samp(b), var_pop(b), var_samp(b), variance(b) from int_;
+# test operators
+# test where, limit, order by clause
+select a+0, b+0 from int_ where a = -2147483647 and b = 0 limit 2;
+select a+0, b+0 from int_ where a = 0 and b = -2147483648;
+select a+0, b+0 from int_ where a != 0 and b != 0 and a=b;
+select a+0, b+0 from int_ order by b desc;
+
+# test boundary operations, unsigned bigint is 20 bits digits
+select b * 1234567891 from int_;
+# error like mysql does: BIGINT UNSIGNED value is out of range in '(`test`.`int_`.`b` * 1234567891011121312)'
+--error 1690
+select b * 12345678910 from int_;
+--error 1690
+select b * 12345678910123456789 from int_;
+# error(mysql will be numeric results, diff with tianmu):  Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+--error 1105
+select b * 123456789101234567891 from int_;
+
+drop table int_;
+drop database unsigned_support;

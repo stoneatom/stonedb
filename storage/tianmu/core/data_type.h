@@ -40,11 +40,12 @@ struct DataType final {
                                 // otherwise common::CT::UNK)
   int fixscale;                 // base-10 scale of ValueType::VT_FIXED (no. of decimal digits after
                                 // comma)
-  int64_t fixmax;               // maximum _absolute_ value possible (upper bound) of ValueType::VT_FIXED;
+  uint64_t fixmax;              // maximum _absolute_ value possible (upper bound) of ValueType::VT_FIXED;
   // fixmax = -1  when upper bound is unknown or doesn't fit in int64_t;
   // precision of a decimal = QuickMath::precision10(fixmax)
   DTCollation collation;  // character set of ValueType::VT_STRING + coercibility
   int precision;
+  bool unsigned_flag_ = false;
 
   DataType() {
     valtype = ValueType::VT_NOTKNOWN;
@@ -53,8 +54,10 @@ struct DataType final {
     fixmax = -1;
     collation = DTCollation();
     precision = -1;
+    unsigned_flag_ = false;
   }
-  DataType(common::ColumnType atype, int prec = 0, int scale = 0, DTCollation collation = DTCollation());
+  DataType(common::ColumnType atype, int prec = 0, int scale = 0, DTCollation collation = DTCollation(),
+           bool unsigned_flag_ = false);
   DataType &operator=(const ColumnType &ct);
 
   bool IsKnown() const { return valtype != ValueType::VT_NOTKNOWN; }
