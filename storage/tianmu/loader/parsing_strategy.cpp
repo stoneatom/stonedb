@@ -71,6 +71,16 @@ ParsingStrategy::ParsingStrategy(const system::IOParameters &iop, std::vector<uc
   }
 }
 
+// continuous double enclosed char is reterpreted as a general char.
+// ref:https://dev.mysql.com/doc/refman/5.7/en/load-data.html
+inline bool DoubleEnclosedCharMatch(const char enclosed_char, const char *ptr, const char *buf_end) {
+  if (enclosed_char && *ptr == enclosed_char && ptr + 1 < buf_end && *(ptr + 1) == enclosed_char) {
+    return true;
+  }
+
+  return false;
+}
+
 inline void ParsingStrategy::GuessUnescapedEOL(const char *ptr, const char *const buf_end) {
   for (; ptr < buf_end; ptr++) {
     if (escape_char_ && *ptr == escape_char_) {
@@ -113,6 +123,8 @@ inline bool ParsingStrategy::SearchUnescapedPattern(const char *&ptr, const char
     while (ptr < search_end && *ptr != *c_pattern) {
       if (escape_char_ && *ptr == escape_char_)
         ptr += 2;
+      else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, search_end))
+        ptr += 2;
       else
         ++ptr;
     }
@@ -121,6 +133,8 @@ inline bool ParsingStrategy::SearchUnescapedPattern(const char *&ptr, const char
     while (ptr < search_end && (*ptr != *c_pattern || ptr[1] != c_pattern[1])) {
       if (escape_char_ && *ptr == escape_char_)
         ptr += 2;
+      else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, search_end))
+        ptr += 2;
       else
         ++ptr;
     }
@@ -128,6 +142,9 @@ inline bool ParsingStrategy::SearchUnescapedPattern(const char *&ptr, const char
     int b = 0;
     for (; ptr < buf_end; ++ptr) {
       if (escape_char_ && *ptr == escape_char_) {
+        b = 0;
+        ++ptr;
+      } else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, buf_end)) {
         b = 0;
         ++ptr;
       } else if (c_pattern[b] != *ptr) {
@@ -180,6 +197,8 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
     while (ptr < search_end && *ptr != *c_pattern) {
       if (escape_char_ && *ptr == escape_char_)
         ptr += 2;
+      else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, search_end))
+        ptr += 2;
       else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
         return SearchResult::END_OF_LINE;
       else
@@ -190,6 +209,8 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
     while (ptr < search_end && (*ptr != *c_pattern || ptr[1] != c_pattern[1])) {
       if (escape_char_ && *ptr == escape_char_)
         ptr += 2;
+      else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, search_end))
+        ptr += 2;
       else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
         return SearchResult::END_OF_LINE;
       else
@@ -199,6 +220,9 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
     int b = 0;
     for (; ptr < buf_end; ++ptr) {
       if (escape_char_ && *ptr == escape_char_) {
+        b = 0;
+        ++ptr;
+      } else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, buf_end)) {
         b = 0;
         ++ptr;
       } else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
@@ -623,6 +647,8 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
     for (size_t j = 0; j < value_size; j++) {
       if (value_ptr[j] == escape_char_)
         buf[new_size] = TranslateEscapedChar(value_ptr[++j]);
+      else if (DoubleEnclosedCharMatch(string_qualifier_, value_ptr + j, value_ptr + value_size))
+        buf[new_size] = value_ptr[++j];
       else
         buf[new_size] = value_ptr[j];
       new_size++;

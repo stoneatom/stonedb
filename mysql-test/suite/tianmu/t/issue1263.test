@@ -1,0 +1,130 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1263_test;
+--enable_warnings
+
+CREATE DATABASE issue1263_test;
+
+USE issue1263_test;
+
+--echo #
+--echo # load data exceeding  65553 rows with duplicate key
+--echo #
+CREATE TABLE AD_PINSTANCE_LOG_P(ID bigint, PRIMARY KEY (ID)) ENGINE=tianmu;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1263-1.txt' into table AD_PINSTANCE_LOG_P
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"' 
+LINES TERMINATED BY '\n'
+(@ID)
+set
+ID=NULLif(@ID,'')
+;
+
+select count(*) from AD_PINSTANCE_LOG_P;
+
+--echo #
+--echo # load data exceeding  65553 rows with limit lines clause
+--echo #
+CREATE TABLE AD_PINSTANCE_LOG(ID bigint) ENGINE=tianmu;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1263-1.txt' into table AD_PINSTANCE_LOG
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"' 
+LINES TERMINATED BY '\n'
+IGNORE 30 LINES
+(@ID)
+set
+ID=NULLif(@ID,'')
+;
+
+select count(*) from AD_PINSTANCE_LOG;
+
+--echo #
+--echo # load data whose columns contains double enclosed char
+--echo #
+CREATE TABLE AD_PINSTANCE_LOG_DOUBLE_ENCLOSED(ID bigint ,
+    AD_CLIENT_ID bigint, 
+    AD_ORG_ID bigint, 
+    AD_PINSTANCE_ID bigint, 
+    P_DATE DATETIME DEFAULT null, 
+    P_MSG VARCHAR(255), 
+    OWNERID bigint, 
+    MODIFIERID bigint, 
+    CREATIONDATE DATETIME, 
+    MODIFIEDDATE DATETIME, 
+    ISACTIVE CHAR(1) DEFAULT 'Y' NOT NULL, 
+    PRIMARY KEY (ID)) engine=tianmu;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1263-2.txt' into table AD_PINSTANCE_LOG_DOUBLE_ENCLOSED
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"' 
+LINES TERMINATED BY '\n'
+(
+@ID,
+@AD_CLIENT_ID,
+@AD_ORG_ID,
+@AD_PINSTANCE_ID,
+@P_DATE,
+@P_MSG,
+@OWNERID,
+@MODIFIERID,
+@CREATIONDATE,
+@MODIFIEDDATE,
+@ISACTIVE
+)
+set
+ID=NULLif(@ID,''),
+AD_CLIENT_ID=NULLif(@AD_CLIENT_ID,''),
+AD_ORG_ID=NULLif(@AD_ORG_ID,''),
+AD_PINSTANCE_ID=NULLif(@AD_PINSTANCE_ID,''),
+P_DATE=NULLif(@P_DATE,''),
+P_MSG=NULLif(@P_MSG,''),
+OWNERID=NULLif(@OWNERID,''),
+MODIFIERID=NULLif(@MODIFIERID,''),
+CREATIONDATE=NULLif(@CREATIONDATE,''),
+MODIFIEDDATE=NULLif(@MODIFIEDDATE,''),
+ISACTIVE=NULLif(@ISACTIVE,'')
+;
+select * from AD_PINSTANCE_LOG_DOUBLE_ENCLOSED;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+--error 1366
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1263-3.txt' into table AD_PINSTANCE_LOG_DOUBLE_ENCLOSED
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"' 
+LINES TERMINATED BY '\n'
+(
+@ID,
+@AD_CLIENT_ID,
+@AD_ORG_ID,
+@AD_PINSTANCE_ID,
+@P_DATE,
+@P_MSG,
+@OWNERID,
+@MODIFIERID,
+@CREATIONDATE,
+@MODIFIEDDATE,
+@ISACTIVE
+)
+set
+ID=NULLif(@ID,''),
+AD_CLIENT_ID=NULLif(@AD_CLIENT_ID,''),
+AD_ORG_ID=NULLif(@AD_ORG_ID,''),
+AD_PINSTANCE_ID=NULLif(@AD_PINSTANCE_ID,''),
+P_DATE=NULLif(@P_DATE,''),
+P_MSG=NULLif(@P_MSG,''),
+OWNERID=NULLif(@OWNERID,''),
+MODIFIERID=NULLif(@MODIFIERID,''),
+CREATIONDATE=NULLif(@CREATIONDATE,''),
+MODIFIEDDATE=NULLif(@MODIFIEDDATE,''),
+ISACTIVE=NULLif(@ISACTIVE,'')
+;
+
+select * from AD_PINSTANCE_LOG_DOUBLE_ENCLOSED;
+
+DROP DATABASE issue1263_test;
