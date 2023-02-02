@@ -32,6 +32,6 @@ The sample is as follows：
 ```
 
 # Run Test Cases  
-1. Setting Running Parameters：mysql-test/include/default_mysqld.cnf
+1. Setting Running Parameters: mysql-test/include/default_mysqld.cnf
 - default-storage-engine=tianmu
 - tianmu_insert_delayed=0
