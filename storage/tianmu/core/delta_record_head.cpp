@@ -59,6 +59,7 @@ char *DeltaRecordHeadForInsert::record_encode(char *ptr) {
   ptr += null_mask_.data_size();
   // field head
   field_head_ = (uint32_t *) ptr;
+  std::memset(ptr,0,sizeof(uint32_t) * field_count_);
   ptr += sizeof(uint32_t) * field_count_;
   field_offset_ = ptr - ptr_begin;
   return ptr;
@@ -129,6 +130,7 @@ char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
   ptr += null_mask_.data_size();
   // field head
   field_head_ = (uint32_t *) ptr;
+  std::memset(ptr,0,sizeof(uint32_t) * field_count_);
   ptr += sizeof(uint32_t) * field_count_;
   field_offset_ = ptr - ptr_begin;
   return ptr;
