@@ -66,7 +66,7 @@ class DeltaRecordHeadForInsert : public DeltaRecordHead {
   size_t field_count_;
   utils::BitSet null_mask_;
 
-  uint32_t *field_head_;
+  uint32_t *field_len_;
   int null_offset_;
   int field_offset_;
 };
@@ -99,7 +99,7 @@ class DeltaRecordHeadForUpdate : public DeltaRecordHead {
   size_t field_count_;
   utils::BitSet update_mask_;
   utils::BitSet null_mask_;
-  uint32_t *field_head_;
+  uint32_t *field_len_;
   int null_offset_;
   int update_offset_;
   int field_offset_;

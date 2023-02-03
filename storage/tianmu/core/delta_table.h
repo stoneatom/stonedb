@@ -21,8 +21,8 @@
 #include <string>
 
 #include "common/exception.h"
-#include "core/tianmu_attr.h"
 #include "core/delta_record_head.h"
+#include "core/tianmu_attr.h"
 #include "index/kv_store.h"
 #include "rocksdb/db.h"
 #include "rocksdb/iterator.h"

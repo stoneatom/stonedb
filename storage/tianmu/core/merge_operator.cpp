@@ -48,57 +48,30 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
 
       for (uint i = 0; i < updateRecord.field_count_; i++) {
         // this field length
-        insertRecord.field_head_[i] =
-            updateRecord.field_head_[i] > 0 ? updateRecord.field_head_[i] : e_insertRecord.field_head_[i];
-
-        // for debug
-        if (insertRecord.field_head_[i] > 1000) {
-          TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d", insertRecord.field_head_[i]);
-        }
-
-        {  // resize buf
-          size_t used = n_ptr - value_buff.get();
-          if (value_buff_size - used < insertRecord.field_head_[i]) {
-            while (value_buff_size - used < insertRecord.field_head_[i]) {
-              value_buff_size *= 2;
-              if (value_buff_size > 300) {
-                TIANMU_LOG(LogCtl_Level::DEBUG, "value_buff_size error: %d",value_buff_size);
-              }
-              if (value_buff_size > utils::MappedCircularBuffer::MAX_BUF_SIZE)
-                throw common::Exception(e_insertRecord.table_path_ + " INSERT data exceeds max buffer size " +
-                                        std::to_string(utils::MappedCircularBuffer::MAX_BUF_SIZE));
-            }
-            auto old_value_buff = std::move(value_buff);
-            value_buff = std::make_unique<char[]>(value_buff_size);
-            std::memcpy(value_buff.get(), old_value_buff.get(), used);
-            n_ptr = value_buff.get() + used;
-          }
-        }
+        insertRecord.field_len_[i] =
+            updateRecord.field_len_[i] > 0 ? updateRecord.field_len_[i] : e_insertRecord.field_len_[i];
         if (updateRecord.null_mask_[i]) {
           insertRecord.null_mask_.set(i);
-          //          insertRecord.field_head_[i] = 0;
           if (!e_insertRecord.null_mask_[i]) {
-            e_ptr += e_insertRecord.field_head_[i];
+            e_ptr += e_insertRecord.field_len_[i];
           }
         } else if (updateRecord.update_mask_[i]) {
-          std::memcpy(n_ptr, ptr, updateRecord.field_head_[i]);
-          //          insertRecord.field_head_[i] = updateRecord.field_head_[i];
-          n_ptr += updateRecord.field_head_[i];
-          ptr += updateRecord.field_head_[i];
+          std::memcpy(n_ptr, ptr, updateRecord.field_len_[i]);
+          n_ptr += updateRecord.field_len_[i];
+          ptr += updateRecord.field_len_[i];
           if (!e_insertRecord.null_mask_[i]) {
-            e_ptr += e_insertRecord.field_head_[i];
+            e_ptr += e_insertRecord.field_len_[i];
           }
         } else if (e_insertRecord.null_mask_[i]) {
           insertRecord.null_mask_.set(i);
-          //          insertRecord.field_head_[i] = 0;
         } else {
-          std::memcpy(n_ptr, e_ptr, e_insertRecord.field_head_[i]);
-          //          insertRecord.field_head_[i] = e_insertRecord.field_head_[i];
-          n_ptr += e_insertRecord.field_head_[i];
-          e_ptr += e_insertRecord.field_head_[i];
+          std::memcpy(n_ptr, e_ptr, e_insertRecord.field_len_[i]);
+          n_ptr += e_insertRecord.field_len_[i];
+          e_ptr += e_insertRecord.field_len_[i];
         }
       }
-      std::memcpy(value_buff.get() + insertRecord.null_offset_, insertRecord.null_mask_.data(), insertRecord.null_mask_.data_size());
+      std::memcpy(value_buff.get() + insertRecord.null_offset_, insertRecord.null_mask_.data(),
+                  insertRecord.null_mask_.data_size());
       new_value->assign(value_buff.get(), n_ptr - value_buff.get());
       return true;
     } else if (type == RecordType::kDelete) {
@@ -108,19 +81,22 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       DeltaRecordHeadForInsert insertRecord(DELTA_RECORD_DELETE, e_insertRecord.table_id_, e_insertRecord.table_path_,
                                             e_insertRecord.field_count_, n_load_num);
       n_ptr = insertRecord.record_encode(n_ptr);
-
+      insertRecord.field_len_ = {0};
       new_value->assign(value_buff.get(), n_ptr - value_buff.get());
       return true;
     } else {
       return false;
     }
   } else if (existing_type == RecordType::kUpdate) {
+    // exist update head
     DeltaRecordHeadForUpdate e_updateRecord;
     e_ptr = e_updateRecord.record_decode(e_ptr);
 
     if (type == RecordType::kUpdate) {
+      // update
       DeltaRecordHeadForUpdate updateRecord;
       ptr = updateRecord.record_decode(ptr);
+
       uint32_t n_load_num = e_updateRecord.load_num_ + updateRecord.load_num_;
       DeltaRecordHeadForUpdate n_updateRecord(e_updateRecord.table_id_, e_updateRecord.table_path_,
                                               e_updateRecord.field_count_, n_load_num);
@@ -128,66 +104,37 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
 
       for (uint i = 0; i < updateRecord.field_count_; i++) {
         // this field length
-        n_updateRecord.field_head_[i] =
-            updateRecord.field_head_[i] > 0 ? updateRecord.field_head_[i] : e_updateRecord.field_head_[i];
+        n_updateRecord.field_len_[i] =
+            updateRecord.field_len_[i] > 0 ? updateRecord.field_len_[i] : e_updateRecord.field_len_[i];
 
-        // for debug
-        if (n_updateRecord.field_head_[i] > 1000) {
-          TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d", n_updateRecord.field_head_[i]);
-        }
-
-        {  // resize buff
-          size_t used = n_ptr - value_buff.get();
-          if (value_buff_size - used < n_updateRecord.field_head_[i]) {
-            while (value_buff_size - used < n_updateRecord.field_head_[i]) {
-              value_buff_size *= 2;
-              if (value_buff_size > 300) {
-                TIANMU_LOG(LogCtl_Level::DEBUG, "value_buff_size error: %d",value_buff_size);
-              }
-              if (value_buff_size > utils::MappedCircularBuffer::MAX_BUF_SIZE)
-                throw common::Exception(e_updateRecord.table_path_ + " INSERT data exceeds max buffer size " +
-                                        std::to_string(utils::MappedCircularBuffer::MAX_BUF_SIZE));
-            }
-            auto old_value_buff = std::move(value_buff);
-            value_buff = std::make_unique<char[]>(value_buff_size);
-            std::memcpy(value_buff.get(), old_value_buff.get(), used);
-            n_ptr = value_buff.get() + used;
-          }
-        }
         if (updateRecord.null_mask_[i]) {
           n_updateRecord.null_mask_.set(i);
-//          n_updateRecord.field_head_[i] = 0;
           n_updateRecord.update_mask_.set(i);
           if (e_updateRecord.update_mask_[i]) {
-            e_ptr += e_updateRecord.field_head_[i];
+            e_ptr += e_updateRecord.field_len_[i];
           }
         } else if (updateRecord.update_mask_[i]) {
-          std::memcpy(n_ptr, ptr, updateRecord.field_head_[i]);
-          //          n_updateRecord.field_head_[i] = updateRecord.field_head_[i];
-          n_ptr += updateRecord.field_head_[i];
-          ptr += updateRecord.field_head_[i];
-
+          std::memcpy(n_ptr, ptr, updateRecord.field_len_[i]);
+          n_ptr += updateRecord.field_len_[i];
+          ptr += updateRecord.field_len_[i];
           n_updateRecord.update_mask_.set(i);
 
           if (e_updateRecord.update_mask_[i]) {
-            //            n_updateRecord.field_head_[i] = 0;
-            e_ptr += e_updateRecord.field_head_[i];
+            e_ptr += e_updateRecord.field_len_[i];
           }
         } else if (e_updateRecord.null_mask_[i]) {
-//          n_updateRecord.field_head_[i] = 0;
           n_updateRecord.null_mask_.set(i);
           n_updateRecord.update_mask_.set(i);
         } else if (e_updateRecord.update_mask_[i]) {
-          std::memcpy(n_ptr, e_ptr, e_updateRecord.field_head_[i]);
-          //          n_updateRecord.field_head_[i] = e_updateRecord.field_head_[i];
-          n_ptr += n_updateRecord.field_head_[i];
-          e_ptr += e_updateRecord.field_head_[i];
+          std::memcpy(n_ptr, e_ptr, e_updateRecord.field_len_[i]);
+          n_ptr += e_updateRecord.field_len_[i];
+          e_ptr += e_updateRecord.field_len_[i];
         }
       }
-      std::memcpy(value_buff.get() + n_updateRecord.update_offset_,
-                  n_updateRecord.update_mask_.data(),
+      std::memcpy(value_buff.get() + n_updateRecord.update_offset_, n_updateRecord.update_mask_.data(),
                   n_updateRecord.update_mask_.data_size());
-      std::memcpy(value_buff.get() + n_updateRecord.null_offset_, n_updateRecord.null_mask_.data(), n_updateRecord.null_mask_.data_size());
+      std::memcpy(value_buff.get() + n_updateRecord.null_offset_, n_updateRecord.null_mask_.data(),
+                  n_updateRecord.null_mask_.data_size());
       *new_value = std::string(value_buff.get(), n_ptr - value_buff.get());
       return true;
     } else if (type == RecordType::kDelete) {

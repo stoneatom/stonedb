@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include <cstring>
 #include "core/delta_record_head.h"
+#include <cstring>
 
 namespace Tianmu {
 namespace core {
@@ -27,24 +27,23 @@ DeltaRecordHeadForInsert::DeltaRecordHeadForInsert(char is_deleted, int32_t &tab
       table_id_(table_id),
       table_path_(table_path),
       field_count_(field_count),
-      null_mask_(field_count) {
-
-}
+      null_mask_(field_count) {}
 
 char *DeltaRecordHeadForInsert::record_encode(char *ptr) {
-  if (ptr == nullptr) return ptr;
+  if (ptr == nullptr)
+    return ptr;
   char *ptr_begin = ptr;
   // RecordType
-  *(RecordType *) ptr = record_type_;
+  *(RecordType *)ptr = record_type_;
   ptr += sizeof(RecordType);
   // load num
-  *(uint32_t *) ptr = load_num_;
+  *(uint32_t *)ptr = load_num_;
   ptr += sizeof(uint32_t);
   // isDeleted
   *ptr = is_deleted_;
   ptr++;
   // table id
-  *(int32_t *) ptr = table_id_;
+  *(int32_t *)ptr = table_id_;
   ptr += sizeof(int32_t);
   // table path
   int32_t path_len = table_path_.size();
@@ -52,67 +51,69 @@ char *DeltaRecordHeadForInsert::record_encode(char *ptr) {
   ptr += path_len;
   *ptr++ = 0;  // end with \0
   // field count
-  *(size_t *) ptr = field_count_;
+  *(size_t *)ptr = field_count_;
   ptr += sizeof(size_t);
   // null mask
   null_offset_ = ptr - ptr_begin;
   ptr += null_mask_.data_size();
   // field head
-  field_head_ = (uint32_t *) ptr;
-  std::memset(ptr,0,sizeof(uint32_t) * field_count_);
+  field_len_ = (uint32_t *)ptr;
+  std::memset(ptr, 0, sizeof(uint32_t) * field_count_);
   ptr += sizeof(uint32_t) * field_count_;
   field_offset_ = ptr - ptr_begin;
   return ptr;
 }
 
 const char *DeltaRecordHeadForInsert::record_decode(const char *ptr) {
-  if (ptr == nullptr) return ptr;
-  record_type_ = *(RecordType *) (ptr);
+  if (ptr == nullptr)
+    return ptr;
+  record_type_ = *(RecordType *)(ptr);
   ptr += sizeof(RecordType);
   // load num
-  load_num_ = *(uint32_t *) ptr;
+  load_num_ = *(uint32_t *)ptr;
   ptr += sizeof(uint32_t);
   // is delete
   is_deleted_ = *ptr;
   ptr++;
   // table id
-  table_id_ = *(int32_t *) ptr;
+  table_id_ = *(int32_t *)ptr;
   ptr += sizeof(int32_t);
   // table path
   table_path_ = std::string(ptr);
   ptr += table_path_.length() + sizeof(char);
   // get existing field count
-  field_count_ = *(size_t *) ptr;
+  field_count_ = *(size_t *)ptr;
   ptr += sizeof(size_t);
   // get existing null mask
   null_mask_.Init(field_count_, const_cast<char *>(ptr));
   ptr += null_mask_.data_size();
   // get existing field_head
-  field_head_ = (uint32_t *) ptr;
+  field_len_ = (uint32_t *)ptr;
   ptr += sizeof(uint32_t) * field_count_;
   return ptr;
 }
 
-DeltaRecordHeadForUpdate::DeltaRecordHeadForUpdate(int32_t &table_id, const std::string &table_path, size_t &field_count, uint32_t load_num)
+DeltaRecordHeadForUpdate::DeltaRecordHeadForUpdate(int32_t &table_id, const std::string &table_path,
+                                                   size_t &field_count, uint32_t load_num)
     : load_num_(load_num),
       table_id_(table_id),
       table_path_(table_path),
       field_count_(field_count),
       update_mask_(field_count),
-      null_mask_(field_count) {
-}
+      null_mask_(field_count) {}
 
 char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
-  if (ptr == nullptr) return ptr;
+  if (ptr == nullptr)
+    return ptr;
   char *ptr_begin = ptr;
   // RecordType
-  *(RecordType *) ptr = record_type_;
+  *(RecordType *)ptr = record_type_;
   ptr += sizeof(RecordType);
   // load num
-  *(uint32_t *) ptr = load_num_;
+  *(uint32_t *)ptr = load_num_;
   ptr += sizeof(uint32_t);
   // table id
-  *(int32_t *) ptr = table_id_;
+  *(int32_t *)ptr = table_id_;
   ptr += sizeof(int32_t);
   // table path
   int32_t path_len = table_path_.size();
@@ -120,7 +121,7 @@ char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
   ptr += path_len;
   *ptr++ = 0;  // end with \0
   // field count
-  *(size_t *) ptr = field_count_;
+  *(size_t *)ptr = field_count_;
   ptr += sizeof(size_t);
   // update mask
   update_offset_ = ptr - ptr_begin;
@@ -129,30 +130,31 @@ char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
   null_offset_ = ptr - ptr_begin;
   ptr += null_mask_.data_size();
   // field head
-  field_head_ = (uint32_t *) ptr;
-  std::memset(ptr,0,sizeof(uint32_t) * field_count_);
+  field_len_ = (uint32_t *)ptr;
+  std::memset(ptr, 0, sizeof(uint32_t) * field_count_);
   ptr += sizeof(uint32_t) * field_count_;
   field_offset_ = ptr - ptr_begin;
   return ptr;
 }
 
 const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
-  if (ptr == nullptr) return ptr;
+  if (ptr == nullptr)
+    return ptr;
   const char *ptr_begin = ptr;
   // type
-  record_type_ = *(RecordType *) (ptr);
+  record_type_ = *(RecordType *)(ptr);
   ptr += sizeof(RecordType);
   // load num
-  load_num_ = *(uint32_t *) ptr;
+  load_num_ = *(uint32_t *)ptr;
   ptr += sizeof(uint32_t);
   // table id
-  table_id_ = *(int32_t *) ptr;
+  table_id_ = *(int32_t *)ptr;
   ptr += sizeof(int32_t);
   // table path
   table_path_ = std::string(ptr);
   ptr += table_path_.length() + sizeof(char);
   // get existing field count
-  field_count_ = *(size_t *) ptr;
+  field_count_ = *(size_t *)ptr;
   ptr += sizeof(size_t);
   // update mask
   update_offset_ = ptr - ptr_begin;
@@ -163,7 +165,7 @@ const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
   null_mask_.Init(field_count_, const_cast<char *>(ptr));
   ptr += null_mask_.data_size();
   // get existing field_head
-  field_head_ = (uint32_t *) ptr;
+  field_len_ = (uint32_t *)ptr;
   ptr += sizeof(uint32_t) * field_count_;
   field_offset_ = ptr - ptr_begin;
   return ptr;
@@ -173,16 +175,17 @@ DeltaRecordHeadForDelete::DeltaRecordHeadForDelete(int32_t &table_id, const std:
     : load_num_(load_num), table_id_(table_id), table_path_(table_path) {}
 
 char *DeltaRecordHeadForDelete::record_encode(char *ptr) {
-  if (ptr == nullptr) return ptr;
+  if (ptr == nullptr)
+    return ptr;
   char *ptr_begin = ptr;
   // RecordType
-  *(RecordType *) ptr = record_type_;
+  *(RecordType *)ptr = record_type_;
   ptr += sizeof(RecordType);
   // load id
-  *(uint32_t *) ptr = load_num_;
+  *(uint32_t *)ptr = load_num_;
   ptr += sizeof(uint32_t);
   // table id
-  *(int32_t *) ptr = table_id_;
+  *(int32_t *)ptr = table_id_;
   ptr += sizeof(int32_t);
   // table path
   int32_t path_len = table_path_.size();
@@ -193,14 +196,15 @@ char *DeltaRecordHeadForDelete::record_encode(char *ptr) {
 }
 
 const char *DeltaRecordHeadForDelete::record_decode(const char *ptr) {
-  if (ptr == nullptr) return ptr;
-  record_type_ = *(RecordType *) (ptr);
+  if (ptr == nullptr)
+    return ptr;
+  record_type_ = *(RecordType *)(ptr);
   ptr += sizeof(RecordType);
   // load id
-  load_num_ = *(uint32_t *) ptr;
+  load_num_ = *(uint32_t *)ptr;
   ptr += sizeof(uint32_t);
   // parse existing value table id and table path
-  table_id_ = *(int32_t *) ptr;
+  table_id_ = *(int32_t *)ptr;
   ptr += sizeof(int32_t);
   // table path
   table_path_ = std::string(ptr);

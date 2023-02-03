@@ -440,7 +440,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         int64_t v = f->val_int();
         common::PushWarningIfOutOfRange(thd, std::string(f->field_name), v, f->type(), f->flags & UNSIGNED_FLAG);
         *reinterpret_cast<int64_t *>(ptr) = v;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_BIT: {
@@ -449,7 +449,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
           v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
         *reinterpret_cast<int64_t *>(ptr) = v;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
@@ -457,13 +457,13 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
         *reinterpret_cast<int64_t *>(ptr) = *reinterpret_cast<int64_t *>(&v);
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_NEWDECIMAL: {
         auto dec_f = dynamic_cast<Field_new_decimal *>(f);
         *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_TIME:
@@ -478,7 +478,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         f->get_time(&my_time);
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
 
@@ -496,7 +496,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         my_time.second_part = saved;
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_YEAR:  // what the hell?
@@ -504,7 +504,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         types::DT dt = {};
         dt.year = f->val_int();
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_VARCHAR:
@@ -516,15 +516,9 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
       case MYSQL_TYPE_STRING: {
         String str;
         f->val_str(&str);
-        *(uint32_t *)ptr = str.length();
-        ptr += sizeof(uint32_t);
         std::memcpy(ptr, str.ptr(), str.length());
+        deltaRecord.field_len_[i] = str.length();
         ptr += str.length();
-        deltaRecord.field_head_[i] = sizeof(uint32_t) + str.length();
-        // for debug
-        if (deltaRecord.field_head_[i] > 1000) {
-          TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d", deltaRecord.field_head_[i]);
-        }
       } break;
       case MYSQL_TYPE_SET:
       case MYSQL_TYPE_ENUM:
@@ -620,12 +614,11 @@ void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
       case MYSQL_TYPE_TINY_BLOB:
       case MYSQL_TYPE_MEDIUM_BLOB:
       case MYSQL_TYPE_LONG_BLOB: {
-        uint32_t str_len = *(uint32_t *)ptr;
-        ptr += sizeof(uint32_t);
-        auto str = std::make_unique<char[]>(str_len);
-        std::memcpy(str.get(), ptr, str_len);
+        uint32_t str_len = deltaRecord.field_len_[i];
+        auto buf = std::make_unique<char[]>(str_len);
+        std::memcpy(buf.get(), ptr, str_len);
         ptr += str_len;
-        field->store(str.get(), str_len, field->charset());
+        field->store(buf.get(), str_len, field->charset());
       } break;
       default:
         // MYSQL_TYPE_BIT
@@ -647,7 +640,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
   for (uint i = 0; i < field_count; i++) {
     // field not update
     if (update_fields.find(i) == update_fields.end()) {
-      deltaRecord.field_head_[i] = 0;
+      deltaRecord.field_len_[i] = 0;
       continue;
     }
     deltaRecord.update_mask_.set(i);
@@ -655,7 +648,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
     Field *f = update_fields[i];
     if (f == nullptr) {
       deltaRecord.null_mask_.set(i);
-      deltaRecord.field_head_[i] = 0;
+      deltaRecord.field_len_[i] = 0;
       continue;
     }
     {  // resize
@@ -688,7 +681,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         int64_t v = f->val_int();
         common::PushWarningIfOutOfRange(thd, std::string(f->field_name), v, f->type(), f->flags & UNSIGNED_FLAG);
         *reinterpret_cast<int64_t *>(ptr) = v;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_BIT: {
@@ -697,7 +690,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
           v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
         *reinterpret_cast<int64_t *>(ptr) = v;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
@@ -705,13 +698,13 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
         *reinterpret_cast<int64_t *>(ptr) = *reinterpret_cast<int64_t *>(&v);
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_NEWDECIMAL: {
         auto dec_f = dynamic_cast<Field_new_decimal *>(f);
         *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_TIME:
@@ -726,7 +719,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         f->get_time(&my_time);
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
 
@@ -744,7 +737,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         my_time.second_part = saved;
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_YEAR:  // what the hell?
@@ -752,7 +745,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         types::DT dt = {};
         dt.year = f->val_int();
         *(int64_t *)ptr = dt.val;
-        deltaRecord.field_head_[i] = sizeof(int64_t);
+        deltaRecord.field_len_[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_VARCHAR:
@@ -764,15 +757,9 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
       case MYSQL_TYPE_STRING: {
         String str;
         f->val_str(&str);
-        *(uint32_t *)ptr = str.length();
-        ptr += sizeof(uint32_t);
         std::memcpy(ptr, str.ptr(), str.length());
         ptr += str.length();
-        deltaRecord.field_head_[i] = sizeof(uint32_t) + str.length();
-        // for debug
-        if (deltaRecord.field_head_[i] > 1000) {
-          TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d", deltaRecord.field_head_[i]);
-        }
+        deltaRecord.field_len_[i] = str.length();
       } break;
       case MYSQL_TYPE_SET:
       case MYSQL_TYPE_ENUM:
