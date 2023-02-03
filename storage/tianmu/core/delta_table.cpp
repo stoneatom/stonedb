@@ -90,7 +90,7 @@ void DeltaTable::Init(uint64_t base_row_num) {
   index::KVTransaction kv_trans;
   uchar entry_key[sizeof(uint32_t)];
   index::be_store_index(entry_key, delta_tid_);
-  rocksdb::Slice prefix((char *) entry_key, sizeof(uint32_t));
+  rocksdb::Slice prefix((char *)entry_key, sizeof(uint32_t));
   rocksdb::ReadOptions read_options;
   read_options.total_order_seek = true;
   std::unique_ptr<rocksdb::Iterator> iter(kv_trans.GetDataIterator(read_options, cf_handle_));
@@ -120,9 +120,10 @@ void DeltaTable::AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_p
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
 
-  rocksdb::Status status = kv_trans.PutData(cf_handle_, {(char *) key, key_pos}, {buf.get(), size});
+  rocksdb::Status status = kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
   if (!status.ok()) {
-    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) + " date:" + std::string(buf.get()));
+    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) +
+                            " date:" + std::string(buf.get()));
   }
   load_id++;
   stat.write_cnt++;
@@ -140,9 +141,10 @@ void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<cha
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
 
-  rocksdb::Status status = kv_trans.MergeData(cf_handle_, {(char *) key, key_pos}, {buf.get(), size});
+  rocksdb::Status status = kv_trans.MergeData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
   if (!status.ok()) {
-    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) + " date:" + std::string(buf.get()));
+    throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) +
+                            " date:" + std::string(buf.get()));
   }
   load_id++;
   stat.write_cnt++;
@@ -156,7 +158,7 @@ void DeltaTable::Truncate(Transaction *tx) {
   size_t key_pos = 0;
   index::be_store_index(entry_key + key_pos, delta_tid_);
   key_pos += sizeof(uint32_t);
-  rocksdb::Slice entry_slice((char *) entry_key, key_pos);
+  rocksdb::Slice entry_slice((char *)entry_key, key_pos);
   rocksdb::ReadOptions ropts;
   std::unique_ptr<rocksdb::Iterator> iter(tx->KVTrans().GetDataIterator(ropts, cf_handle_));
   iter->Seek(entry_slice);
@@ -189,7 +191,7 @@ DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) 
   uint32_t table_id = table_->GetDeltaTableID();
   index::be_store_index(entry_key + key_pos, table_id);
   key_pos += sizeof(uint32_t);
-  prefix_ = rocksdb::Slice((char *) entry_key, key_pos);
+  prefix_ = rocksdb::Slice((char *)entry_key, key_pos);
   it_->Seek(prefix_);
   while (RdbKeyValid() && !IsInsertType()) {
     it_->Next();
@@ -257,7 +259,7 @@ void DeltaIterator::MoveTo(int64_t row_id) {
   // row id
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
-  rocksdb::Slice prefix_key{(char *) key, key_pos};
+  rocksdb::Slice prefix_key{(char *)key, key_pos};
   it_->Seek(prefix_key);
   if (it_->Valid() && it_->key() == prefix_key) {  // need check valid
     position_ = CurrentRowId();
@@ -267,17 +269,11 @@ void DeltaIterator::MoveTo(int64_t row_id) {
   current_record_fetched_ = false;
 }
 
-bool DeltaIterator::IsInsertType() {
-  return CurrentType() == RecordType::kInsert && CurrentDeleteFlag() == 'n';
-}
+bool DeltaIterator::IsInsertType() { return CurrentType() == RecordType::kInsert && CurrentDeleteFlag() == 'n'; }
 
-bool DeltaIterator::RdbKeyValid() {
-  return it_->Valid() && it_->key().starts_with(prefix_);
-}
+bool DeltaIterator::RdbKeyValid() { return it_->Valid() && it_->key().starts_with(prefix_); }
 
-inline RecordType DeltaIterator::CurrentType() {
-  return static_cast<RecordType>(it_->value().data()[0]);
-}
+inline RecordType DeltaIterator::CurrentType() { return static_cast<RecordType>(it_->value().data()[0]); }
 
 inline uchar DeltaIterator::CurrentDeleteFlag() {
   return static_cast<uchar>((it_->value().data() + sizeof(RecordType) + sizeof(uint32))[0]);
