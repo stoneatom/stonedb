@@ -190,15 +190,6 @@ DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) 
   index::be_store_index(entry_key + key_pos, table_id);
   key_pos += sizeof(uint32_t);
   prefix_ = rocksdb::Slice((char *) entry_key, key_pos);
-  // ==== for debug ====
-//  it_->Seek(entry_slice);
-//  while (it_->Valid()) {
-//    auto row_id = GetCurrRowIdFromRecord();
-//    TIANMU_LOG(LogCtl_Level::DEBUG, " this table id: %d, row id: %d, type: %d, this record value: %s", table_id, row_id,
-//               static_cast<RecordType>(it_->value().data()[0]), it_->value());
-//    it_->Next();
-//  }
-  // ==== for debug ====
   it_->Seek(prefix_);
   while (RdbKeyValid() && !IsInsertType()) {
     it_->Next();
@@ -266,8 +257,9 @@ void DeltaIterator::MoveTo(int64_t row_id) {
   // row id
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
-  it_->Seek({(char *) key, key_pos});
-  if (it_->Valid() && it_->key().starts_with(prefix_)) {  // need check valid
+  rocksdb::Slice prefix_key{(char *) key, key_pos};
+  it_->Seek(prefix_key);
+  if (it_->Valid() && it_->key() == prefix_key) {  // need check valid
     position_ = CurrentRowId();
   } else {
     position_ = -1;

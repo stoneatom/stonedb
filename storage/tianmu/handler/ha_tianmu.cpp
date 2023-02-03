@@ -1138,7 +1138,6 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
       ret = index_read(buf, pos, ref_length, HA_READ_KEY_EXACT);
     } else {
       uint64_t position = my_get_ptr(pos, ref_length);
-      // todo(dfx): need check position is in base or delta?
       filter_ptr_ = std::make_unique<core::Filter>(position + 1, share_->PackSizeShift());
       filter_ptr_->Reset();
       filter_ptr_->Set(position);

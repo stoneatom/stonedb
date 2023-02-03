@@ -201,6 +201,9 @@ void PackStr::UpdateValue(size_t locationInPack, const Value &v) {
       SetPtrSize(locationInPack, nullptr, 0);
       return;
     }
+    if (str.size() > 1000) {
+      ASSERT(str.size() > 1000);
+    }
     SetPtrSize(locationInPack, Put(str.data(), str.size()), str.size());
     data_.sum_len += str.size();
   } else {
@@ -289,6 +292,9 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
     if (vc->NotNull(i)) {
       v = vc->GetDataBytesPointer(i);
       size = vc->Size(i);
+    }
+    if (size > 1000) {
+      ASSERT(size > 1000);
     }
     AppendValue(v, size);
   }
@@ -742,6 +748,10 @@ types::BString PackStr::GetValueBinary(int locationInPack) const {
     str_size = data_.lens32[locationInPack];
   if (str_size == 0)
     return ZERO_LENGTH_STRING;
+  // for debug
+  if (str_size > 1000) {
+    TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d",  str_size);
+  }
   return types::BString(data_.index[locationInPack], str_size);
 }
 
