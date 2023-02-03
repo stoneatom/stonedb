@@ -265,7 +265,7 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
   for (uint i = 0; i < total; i++) {
     if (vc->IsNull(i) && col_share_->ColType().IsNullable()) {
       SetNull(dpn_->numOfRecords);
-      SetPtr(dpn_->numOfRecords, nullptr);
+      SetPtrSize(dpn_->numOfRecords, nullptr, 0);
       dpn_->numOfRecords++;
       dpn_->numOfNulls++;
       if(vc->IsDelete(i)){
@@ -276,7 +276,7 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
     }
     if(vc->IsDelete(i)){
       SetNull(dpn_->numOfRecords);
-      SetPtr(dpn_->numOfRecords, nullptr);
+      SetPtrSize(dpn_->numOfRecords, nullptr, 0);
       dpn_->numOfNulls++;
       SetDeleted(dpn_->numOfRecords);
       dpn_->numOfDeleted++;
