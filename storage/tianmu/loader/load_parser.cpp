@@ -88,8 +88,10 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
   int errorinfo;
 
   bool cont = true;
+  bool eof = false;
+
   while (cont) {
-    switch (strategy_->GetOneRow(cur_ptr_, buf_end_ - cur_ptr_, value_buffers, rowsize, errorinfo)) {
+    switch (strategy_->GetOneRow(cur_ptr_, buf_end_ - cur_ptr_, value_buffers, rowsize, errorinfo, eof)) {
       case ParsingStrategy::ParseResult::EOB:
         if (mysql_bin_log.is_open())
           binlog_loaded_block(read_buffer_.Buf(), cur_ptr_);
@@ -98,10 +100,15 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
           buf_end_ = cur_ptr_ + read_buffer_.BufSize();
         } else {
           // reaching the end of the buffer
-          if (cur_ptr_ != buf_end_)
-            rejecter_.ConsumeBadRow(cur_ptr_, buf_end_ - cur_ptr_, cur_row_ + 1, errorinfo == -1 ? -1 : errorinfo + 1);
-          cur_row_++;
-          cont = false;
+          if (cur_ptr_ != buf_end_) {
+            // rejecter_.ConsumeBadRow(cur_ptr_, buf_end_ - cur_ptr_, cur_row_ + 1, errorinfo == -1 ? -1 : errorinfo +
+            // 1);
+            // do not cousume the row, take this as the normal line
+            eof = true;
+          } else {
+            cur_row_++;
+            cont = false;
+          }
         }
         break;
 
