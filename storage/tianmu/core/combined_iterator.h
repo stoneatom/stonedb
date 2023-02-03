@@ -21,7 +21,7 @@ class CombinedIterator {
   CombinedIterator &operator=(const CombinedIterator &) = delete;
   CombinedIterator(DeltaIterator delta, TianmuIterator base)
       : delta_iter_(std::move(delta)), base_iter_(std::move(base)) {
-    is_delta_ = base_iter_.Valid() ? false : true;
+    is_delta_ = delta_iter_.Valid() ? true : false;  // first read delta, then read base
   }
   CombinedIterator(CombinedIterator &&other) noexcept;
   CombinedIterator &operator=(CombinedIterator &&other) noexcept;
