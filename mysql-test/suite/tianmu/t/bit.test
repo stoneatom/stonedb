@@ -212,15 +212,16 @@ INSERT INTO t2 VALUES (3, 2, 'two'), (2, 3, 'three'), (2, 0, 'zero'),
 #bug928 SELECT COUNT(DISTINCT b,c) FROM t2 GROUP BY a;
 DROP TABLE t2;
 
+--error 3234
 CREATE TABLE t1(a BIT(13), KEY(a));
---disable_warnings
-INSERT IGNORE INTO t1(a) VALUES (65535),(65525),(65535),(65535),(65535),
-                                (65535),(65535),(65535),(65535),(65535),
-                                (65535),(65525),(65535),(65535),(65535),
-                                (65535),(65535),(65535),(65535),(65535);
---enable_warnings
-SELECT 1 FROM t1 GROUP BY a;
-DROP TABLE t1;
+#--disable_warnings
+#INSERT IGNORE INTO t1(a) VALUES (65535),(65525),(65535),(65535),(65535),
+#                                (65535),(65535),(65535),(65535),(65535),
+#                                (65535),(65525),(65535),(65535),(65535),
+#                                (65535),(65535),(65535),(65535),(65535);
+#--enable_warnings
+#SELECT 1 FROM t1 GROUP BY a;
+#DROP TABLE t1;
 
 #SELECT with a BIT column in WHERE clause returns unexpected result
 

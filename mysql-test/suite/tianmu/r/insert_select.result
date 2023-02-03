@@ -547,8 +547,7 @@ f2 varchar(100) NOT NULL default ''
 CREATE TABLE t2 (
 f1 varchar(10) NOT NULL default '',
 f2 char(3) NOT NULL default '',
-PRIMARY KEY  (`f1`),
-KEY `k1` (`f2`, `f1`)
+PRIMARY KEY  (`f1`)
 );
 INSERT INTO t1 values(NULL, '');
 INSERT INTO `t2` VALUES ('486878','WDT'),('486910','WDT');
