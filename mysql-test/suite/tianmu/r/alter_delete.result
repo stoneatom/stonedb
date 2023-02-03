@@ -1,0 +1,28 @@
+DROP DATABASE IF EXISTS alter_delete;
+CREATE DATABASE alter_delete;
+USE alter_delete;
+CREATE TABLE ttt1(id INT,name VARCHAR(5));
+INSERT INTO ttt1 VALUES(0,"XXX"),(1,'AAA'),(2,'BBB');
+SELECT * FROM ttt1;
+id	name
+0	XXX
+1	AAA
+2	BBB
+DELETE FROM ttt1 WHERE id=1;
+SELECT * FROM ttt1;
+id	name
+0	XXX
+2	BBB
+ALTER TABLE ttt1 CONVERT TO CHARACTER SET utf8;
+SELECT * FROM ttt1;
+id	name
+0	XXX
+2	BBB
+SHOW CREATE TABLE ttt1;
+Table	Create Table
+ttt1	CREATE TABLE `ttt1` (
+  `id` int(11) DEFAULT NULL,
+  `name` varchar(5) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8
+DROP TABLE ttt1;
+DROP DATABASE alter_delete;
