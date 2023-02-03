@@ -522,7 +522,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         ptr += str.length();
         deltaRecord.field_head_[i] = sizeof(uint32_t) + str.length();
         // for debug
-        if (deltaRecord.field_head_[i] > 10000) {
+        if (deltaRecord.field_head_[i] > 1000) {
           TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d", deltaRecord.field_head_[i]);
         }
       } break;
@@ -770,7 +770,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
         ptr += str.length();
         deltaRecord.field_head_[i] = sizeof(uint32_t) + str.length();
         // for debug
-        if (deltaRecord.field_head_[i] > 10000) {
+        if (deltaRecord.field_head_[i] > 1000) {
           TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d", deltaRecord.field_head_[i]);
         }
       } break;

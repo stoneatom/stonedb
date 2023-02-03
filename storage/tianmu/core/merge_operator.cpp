@@ -50,7 +50,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
             updateRecord.field_head_[i] > 0 ? updateRecord.field_head_[i] : e_insertRecord.field_head_[i];
 
         // for debug
-        if (insertRecord.field_head_[i] > 10000) {
+        if (insertRecord.field_head_[i] > 1000) {
           TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d", insertRecord.field_head_[i]);
         }
 
@@ -127,7 +127,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
             updateRecord.field_head_[i] > 0 ? updateRecord.field_head_[i] : e_updateRecord.field_head_[i];
 
         // for debug
-        if (n_updateRecord.field_head_[i] > 10000) {
+        if (n_updateRecord.field_head_[i] > 1000) {
           TIANMU_LOG(LogCtl_Level::DEBUG, "str_size error: %d", n_updateRecord.field_head_[i]);
         }
 
@@ -136,7 +136,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
           if (value_buff_size - used < n_updateRecord.field_head_[i]) {
             while (value_buff_size - used < n_updateRecord.field_head_[i]) {
               value_buff_size *= 2;
-              if (value_buff_size > 10000) {
+              if (value_buff_size > 1000) {
                 TIANMU_LOG(LogCtl_Level::DEBUG, "value_buff_size error: %d",value_buff_size);
               }
               if (value_buff_size > utils::MappedCircularBuffer::MAX_BUF_SIZE)
