@@ -1,0 +1,45 @@
+DROP DATABASE IF EXISTS issue1209_test;
+CREATE DATABASE issue1209_test;
+USE issue1209_test;
+CREATE TABLE `t1_tianmu` (
+`id` int(11) DEFAULT NULL,
+`a` char(20) DEFAULT NULL,
+`id2` int(11) DEFAULT NULL
+) ENGINE=tianmu DEFAULT CHARSET=utf8mb4;
+LOAD DATA LOCAL infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1209-1.txt' into table t1_tianmu FIELDS TERMINATED BY ',' LINES TERMINATED BY ';';
+Warnings:
+Warning	1262	Row 2 was truncated; it contained more data than there were input columns
+Warning	1261	Row 3 doesn't contain data for all columns
+Warning	1261	Row 4 doesn't contain data for all columns
+Warning	1261	Row 4 doesn't contain data for all columns
+Warning	1366	Incorrect integer value: '
+' for column 'id' at row 5
+Warning	1261	Row 5 doesn't contain data for all columns
+Warning	1261	Row 5 doesn't contain data for all columns
+select * from t1_tianmu;
+id	a	id2
+1	chai	6
+2	测试	3
+3	chayicha	NULL
+NULL	NULL	NULL
+0	NULL	NULL
+truncate table t1_tianmu;
+LOAD DATA LOCAL infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1209-2.txt' into table t1_tianmu FIELDS TERMINATED BY ',' enclosed by '"' LINES TERMINATED BY ';';
+Warnings:
+Warning	1262	Row 2 was truncated; it contained more data than there were input columns
+Warning	1261	Row 3 doesn't contain data for all columns
+Warning	1261	Row 4 doesn't contain data for all columns
+Warning	1261	Row 4 doesn't contain data for all columns
+Warning	1261	Row 5 doesn't contain data for all columns
+Warning	1261	Row 5 doesn't contain data for all columns
+Warning	1261	Row 6 doesn't contain data for all columns
+select * from t1_tianmu;
+id	a	id2
+1	chai	7
+2	测试	8
+3	chayicha	NULL
+NULL	NULL	NULL
+5	NULL	NULL
+4	";
+	NULL
+DROP DATABASE issue1209_test;
