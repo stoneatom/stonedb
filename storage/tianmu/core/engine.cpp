@@ -650,13 +650,14 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
       deltaRecord.field_head_[i] = 0;
       continue;
     }
+    deltaRecord.update_mask_.set(i);
+
     Field *f = update_fields[i];
     if (f == nullptr) {
       deltaRecord.null_mask_.set(i);
       deltaRecord.field_head_[i] = 0;
       continue;
     }
-    deltaRecord.update_mask_.set(i);
     {  // resize
       size_t length;
       if (f->flags & BLOB_FLAG)

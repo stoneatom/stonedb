@@ -93,8 +93,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
           e_ptr += e_insertRecord.field_head_[i];
         }
       }
-      std::memcpy(value_buff.get() + insertRecord.null_offset_, updateRecord.null_mask_.data(),
-                  updateRecord.null_mask_.data_size());
+      std::memcpy(value_buff.get() + insertRecord.null_offset_, insertRecord.null_mask_.data(), insertRecord.null_mask_.data_size());
       new_value->assign(value_buff.get(), n_ptr - value_buff.get());
       return true;
     } else if (type == RecordType::kDelete) {
@@ -152,7 +151,8 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
         }
         if (updateRecord.null_mask_[i]) {
           n_updateRecord.null_mask_.set(i);
-          //          n_updateRecord.field_head_[i] = 0;
+//          n_updateRecord.field_head_[i] = 0;
+          n_updateRecord.update_mask_.set(i);
           if (e_updateRecord.update_mask_[i]) {
             e_ptr += e_updateRecord.field_head_[i];
           }
@@ -161,12 +161,17 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
           //          n_updateRecord.field_head_[i] = updateRecord.field_head_[i];
           n_ptr += updateRecord.field_head_[i];
           ptr += updateRecord.field_head_[i];
+
+          n_updateRecord.update_mask_.set(i);
+
           if (e_updateRecord.update_mask_[i]) {
             //            n_updateRecord.field_head_[i] = 0;
             e_ptr += e_updateRecord.field_head_[i];
           }
         } else if (e_updateRecord.null_mask_[i]) {
+//          n_updateRecord.field_head_[i] = 0;
           n_updateRecord.null_mask_.set(i);
+          n_updateRecord.update_mask_.set(i);
         } else if (e_updateRecord.update_mask_[i]) {
           std::memcpy(n_ptr, e_ptr, e_updateRecord.field_head_[i]);
           //          n_updateRecord.field_head_[i] = e_updateRecord.field_head_[i];
@@ -174,10 +179,10 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
           e_ptr += e_updateRecord.field_head_[i];
         }
       }
-      std::memcpy(value_buff.get() + n_updateRecord.update_offset_, updateRecord.update_mask_.data(),
-                  updateRecord.update_mask_.data_size());
-      std::memcpy(value_buff.get() + n_updateRecord.null_offset_, updateRecord.null_mask_.data(),
-                  updateRecord.null_mask_.data_size());
+      std::memcpy(value_buff.get() + n_updateRecord.update_offset_,
+                  n_updateRecord.update_mask_.data(),
+                  n_updateRecord.update_mask_.data_size());
+      std::memcpy(value_buff.get() + n_updateRecord.null_offset_, n_updateRecord.null_mask_.data(), n_updateRecord.null_mask_.data_size());
       *new_value = std::string(value_buff.get(), n_ptr - value_buff.get());
       return true;
     } else if (type == RecordType::kDelete) {
