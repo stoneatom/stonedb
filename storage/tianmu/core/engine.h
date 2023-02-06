@@ -29,33 +29,33 @@
 #include "core/data_cache.h"
 #include "core/object_cache.h"
 #include "core/query.h"
-#include "core/rc_table.h"
 #include "core/table_share.h"
 #include "core/temp_table.h"
+#include "core/tianmu_table.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
-#include "index/rc_table_index.h"
+#include "index/tianmu_table_index.h"
 #include "log.h"
 #include "sql_table.h"
 #include "system/io_parameters.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "util/fs.h"
 #include "util/mapped_circular_buffer.h"
 #include "util/thread_pool.h"
 
-extern handlerton *rcbase_hton;
+extern handlerton *tianmu_hton;
 class Field;
 
 namespace Tianmu {
 namespace types {
-class RCDataType;
+class TianmuDataType;
 }  // namespace types
 namespace system {
 class ResourceManager;
 }  // namespace system
 
 namespace index {
-class RCTableIndex;
+class TianmuTableIndex;
 class KVStore;
 }  // namespace index
 
@@ -69,7 +69,7 @@ class TableShare;
 class Transaction;
 class RSIndex;
 class TaskExecutor;
-class RCMemTable;
+class TianmuMemTable;
 
 class Engine final {
  public:
@@ -78,9 +78,9 @@ class Engine final {
 
   int Init(uint engine_slot);
   void CreateTable(const std::string &table, TABLE *from);
-  void DeleteTable(const char *table, THD *thd);
+  int DeleteTable(const char *table, THD *thd);
   void TruncateTable(const std::string &table_path, THD *thd);
-  void RenameTable(Transaction *trans_, const std::string &from, const std::string &to, THD *thd);
+  int RenameTable(Transaction *trans_, const std::string &from, const std::string &to, THD *thd);
   void PrepareAlterTable(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                          THD *thd);
 
@@ -100,8 +100,9 @@ class Engine final {
   std::vector<AttrInfo> GetTableAttributesInfo(const std::string &table_path, TABLE_SHARE *table_share);
   void UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                    CHARSET_INFO *cs);
-  void GetTableIterator(const std::string &table_path, RCTable::Iterator &iter_begin, RCTable::Iterator &iter_end,
-                        std::shared_ptr<RCTable> &table, const std::vector<bool> &, THD *thd);
+  void GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin,
+                        TianmuTable::Iterator &iter_end, std::shared_ptr<TianmuTable> &table, const std::vector<bool> &,
+                        THD *thd);
   common::TianmuError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
   void CommitTx(THD *thd, bool all);
   void Rollback(THD *thd, bool all, bool force_error_message = false);
@@ -111,7 +112,7 @@ class Engine final {
   QueryRouteTo HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
                             int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
-  std::shared_ptr<RCTable> GetTableRD(const std::string &table_path);
+  std::shared_ptr<TianmuTable> GetTableRD(const std::string &table_path);
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
   void InsertDelayed(const std::string &table_path, int table_id, TABLE *table);
   void InsertMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
@@ -123,9 +124,11 @@ class Engine final {
   common::TX_ID MaxXID() const { return max_xid; }
   void DeferRemove(const fs::path &file, int32_t cookie);
   void HandleDeferredJobs();
-  // support for primary key
+  // add primary key
   void AddTableIndex(const std::string &table_path, TABLE *table, THD *thd);
-  std::shared_ptr<index::RCTableIndex> GetTableIndex(const std::string &table_path);
+  // delete primary key
+  bool DeleteTableIndex(const std::string &table_path, THD *thd);
+  std::shared_ptr<index::TianmuTableIndex> GetTableIndex(const std::string &table_path);
   bool has_pk(TABLE *table) const { return table->s->primary_key != MAX_INDEXES; }
   void RenameRdbTable(const std::string &from, const std::string &to);
   void DropSignal() { cv_drop_.notify_one(); }
@@ -138,20 +141,21 @@ class Engine final {
   utils::thread_pool delay_insert_thread_pool;
   utils::thread_pool load_thread_pool;
   utils::thread_pool query_thread_pool;
+  utils::thread_pool delete_or_update_thread_pool;
   DataCache cache;
   ObjectCache<FilterCoordinate, RSIndex, FilterCoordinate> filter_cache;
 
  public:
-  static common::CT GetCorrespondingType(const Field &field);
+  static common::ColumnType GetCorrespondingType(const Field &field);
   static AttributeTypeInfo GetCorrespondingATI(Field &field);
   static AttributeTypeInfo GetAttrTypeInfo(const Field &field);
-  static common::CT GetCorrespondingType(const enum_field_types &eft);
+  static common::ColumnType GetCorrespondingType(const enum_field_types &eft);
   static bool IsTianmuTable(TABLE *table);
-  static bool ConvertToField(Field *field, types::RCDataType &rcitem, std::vector<uchar> *blob_buf);
-  static int Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, int output_scale = -1);
-  static int Convert(int &is_null, int64_t &value, types::RCDataType &rcitem, enum_field_types f_type);
-  static int Convert(int &is_null, double &value, types::RCDataType &rcitem);
-  static int Convert(int &is_null, String *value, types::RCDataType &rcitem, enum_field_types f_type);
+  static bool ConvertToField(Field *field, types::TianmuDataType &tianmu_item, std::vector<uchar> *blob_buf);
+  static int Convert(int &is_null, my_decimal *value, types::TianmuDataType &tianmu_item, int output_scale = -1);
+  static int Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
+  static int Convert(int &is_null, double &value, types::TianmuDataType &tianmu_item);
+  static int Convert(int &is_null, String *value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
@@ -165,7 +169,7 @@ class Engine final {
   QueryRouteTo Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union = nullptr);
   int SetUpCacheFolder(const std::string &cachefolder_path);
 
-  static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
+  static bool AreConvertible(types::TianmuDataType &tianmu_item, enum_field_types my_type, uint length = 0);
   static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
                             int &in_case_of_failure_can_go_to_mysql, int with_insert);
   static const char *GetFilename(SELECT_LEX *selects_list, int &is_dumpfile);
@@ -178,7 +182,7 @@ class Engine final {
   void ProcessDelayedMerge();
   std::unique_ptr<char[]> GetRecord(size_t &len);
   void EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
-                    std::unique_ptr<char[]> &buf, uint32_t &size);
+                    std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd);
 
  private:
   struct TianmuStat {
@@ -246,8 +250,8 @@ class Engine final {
   unsigned long UPM = 0;   // Update per minute
   unsigned long UT = 0;    // Update total
 
-  std::unordered_map<std::string, std::shared_ptr<index::RCTableIndex>> m_table_keys;
-  std::unordered_map<std::string, std::shared_ptr<RCMemTable>> mem_table_map;
+  std::unordered_map<std::string, std::shared_ptr<index::TianmuTableIndex>> m_table_keys;
+  std::unordered_map<std::string, std::shared_ptr<TianmuMemTable>> mem_table_map;
   std::shared_mutex tables_keys_mutex;
   std::shared_mutex mem_table_mutex;
   std::thread m_drop_idx_thread;
@@ -263,7 +267,7 @@ class ResultSender {
 
   void Send(TempTable *t);
   void Send(TempTable::RecordIterator &iter);
-  void SendRow(const std::vector<std::unique_ptr<types::RCDataType>> &record, TempTable *owner);
+  void SendRow(const std::vector<std::unique_ptr<types::TianmuDataType>> &record, TempTable *owner);
 
   void SetLimits(int64_t *_offset, int64_t *_limit) {
     offset = _offset;
@@ -289,7 +293,7 @@ class ResultSender {
   int64_t affect_rows;
 
   virtual void Init(TempTable *t);
-  virtual void SendRecord(const std::vector<std::unique_ptr<types::RCDataType>> &record);
+  virtual void SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &record);
 };
 
 class ResultExportSender final : public ResultSender {
@@ -301,14 +305,15 @@ class ResultExportSender final : public ResultSender {
 
  protected:
   void Init(TempTable *t) override;
-  void SendRecord(const std::vector<std::unique_ptr<types::RCDataType>> &record) override;
+  void SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &record) override;
 
-  exporter::select_tianmu_export *export_res;
-  std::unique_ptr<exporter::DataExporter> rcde;
-  std::shared_ptr<system::LargeBuffer> rcbuffer;
+  exporter::select_tianmu_export *export_res_;
+  std::unique_ptr<exporter::DataExporter> tianmu_data_exp_;
+  std::shared_ptr<system::LargeBuffer> tiammu_buffer_;
 };
 
-enum class tianmu_var_name {
+enum class tianmu_param_name {
+  TIANMU_TIMEOUT = 0,
   TIANMU_DATAFORMAT,
   TIANMU_PIPEMODE,
   TIANMU_NULL,
@@ -327,18 +332,18 @@ static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT",        "T
                                                 "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
                                                 "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
 
-std::string get_parameter_name(enum tianmu_var_name vn);
+std::string get_parameter_name(enum tianmu_param_name vn);
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::string &s_result);
+int get_parameter(THD *thd, enum tianmu_param_name vn, longlong &result, std::string &s_result);
 
 // return 0 on success
 // 1 if parameter was not specified
 // 2 if was specified but with wrong type
-int get_parameter(THD *thd, enum tianmu_var_name vn, double &value);
-int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value);
-int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, double &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, int64_t &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, std::string &value);
 
-bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value);
+bool parameter_equals(THD *thd, enum tianmu_param_name vn, longlong value);
 
 /** The maximum length of an encode table name in bytes.  The max
 +table and database names are NAME_CHAR_LEN (64) characters. After the

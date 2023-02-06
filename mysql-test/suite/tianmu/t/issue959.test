@@ -1,0 +1,153 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue959_test;
+--enable_warnings
+
+CREATE DATABASE issue959_test;
+
+USE issue959_test;
+
+--disable_warnings
+
+# CHARACTER utf8mb4
+
+## DDL
+
+DROP TABLE IF EXISTS device_delta_collect;
+
+CREATE TABLE device_delta_collect
+(
+    reportTime VARCHAR(255) DEFAULT NULL,
+    deviceId   VARCHAR(255) DEFAULT NULL,
+    multiple   VARCHAR(255) DEFAULT NULL,
+    deltaJgs   VARCHAR(255) DEFAULT NULL
+) ENGINE = TIANMU;
+
+## insert data
+
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-20 22:33:58', '1547034559760195585', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '15.9.', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '15..9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '+15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '+15.9.', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '+15..9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '++++15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '++++15..9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '-15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '----15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '-15..9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '-15..9.', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-22 22:33:58', 'abcd', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-22 22:33:58', '0', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-22 22:33:58', '+0', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-22 22:33:58', '-0', '1', '1');
+
+## query
+
+### query str
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '1547034559760195585';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != '1547034559760195585';
+
+#### Instead of an orthopedic comparison, you use a string type here
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '1547034559760195587';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != '1547034559760195587';
+
+#### equal
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '15.9';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != '15.9';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '+15.9';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != '+15.9';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '-15.9';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != '-15.9';
+
+#### only char
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = 'abcd';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != 'abcd';
+
+#### for char '0'
+ 
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '0';
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != '0';
+
+### query big int
+
+#### equal 1547034559760195585
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = 1547034559760195587;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != 1547034559760195587;
+
+### query float
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = 15.9;
+
+### query float with a plus sign
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = +15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != +15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = -15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != -15.9;
+
+### query zero
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = 0;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = +0;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId = -0;
+
+### query not zero
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != 0;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != +0;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId != -0;
+
+## between
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN 14.9 AND 15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN +14.9 AND 15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN 14.9 AND +15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN +14.9 AND +15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN '14.9' AND '15.9';
+
+## not between
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId NOT BETWEEN 14.9 AND 15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId NOT BETWEEN +14.9 AND 15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId NOT BETWEEN 14.9 AND +15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId NOT BETWEEN +14.9 AND +15.9;
+
+SELECT * FROM device_delta_collect a WHERE a.deviceId NOT BETWEEN '14.9' AND '15.9';
+
+## clean test table
+
+DROP TABLE device_delta_collect;
+
+DROP DATABASE issue959_test;

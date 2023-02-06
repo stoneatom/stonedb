@@ -1,5 +1,16 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue222_test;
+--enable_warnings
+
+CREATE DATABASE issue222_test;
+
+USE issue222_test;
+
 create table $tt (a$1 int, $b int, c$ int) engine=tianmu;
 insert into $tt values (1,2,3);
 select a$1, $b, c$ from $tt;
 drop table $tt;
+
+DROP DATABASE issue222_test;

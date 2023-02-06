@@ -108,24 +108,25 @@ void GroupTable::AddGroupingColumn(vcolumn::VirtualColumn *vc) {
 }
 
 void GroupTable::AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation operation, bool distinct,
-                                     common::CT type, int size, int precision, DTCollation in_collation, SI si) {
+                                     common::ColumnType type, int size, int precision, DTCollation in_collation,
+                                     SI si) {
   GroupTable::ColTempDesc desc;
   desc.type = type;  // put defaults first, then check in Initialize() what will
                      // be actual result definition
   // Overwriting size in some cases:
   switch (type) {
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
-    case common::CT::BYTEINT:
-    case common::CT::SMALLINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
+    case common::ColumnType::BYTEINT:
+    case common::ColumnType::SMALLINT:
       size = 4;
       break;  // minimal field is one int (4 bytes)
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
       // left as is
       break;
     // Note: lookup strings will have type common::CT::STRING or similar, and
@@ -198,7 +199,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
           if (desc.operation == GT_Aggregation::GT_AVG) {
         if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
           aggregator[i] = new AggregatorAvgD;
-        else if (desc.type == common::CT::YEAR)
+        else if (desc.type == common::ColumnType::YEAR)
           aggregator[i] = new AggregatorAvgYear;
         else
           aggregator[i] = new AggregatorAvg64(desc.precision);
@@ -383,7 +384,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
   size_mb =
       (size_mb > 1024 ? (size_mb > 1024 * 1024 ? int64_t(size_mb / 1024 * 1024) : int64_t(size_mb / 1024) / 1024.0)
                       : 0.001);
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "GroupTable begin, initialized for up to " << max_no_groups << " groups, " << grouping_buf_width << "+"
       << total_width - grouping_buf_width << " bytes (" << size_mb << " MB)" << system::unlock;
   ClearAll();
@@ -571,8 +572,6 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64
   if (as_string) {
     types::BString v;
     vc[col]->GetValueString(v, mit);
-    if (v.IsNull() && cur_aggr->IgnoreNulls())
-      return true;  // null omitted
     cur_aggr->PutAggregatedValue(vm_tab->GetAggregationRow(row) + aggregated_col_offset[col], v, factor);
   } else {
     // note: it is too costly to check nulls separately (e.g. for complex

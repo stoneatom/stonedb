@@ -21,13 +21,13 @@
 #include <unordered_set>
 
 #include "common/common_definitions.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 
 namespace types {
-class RCDataType;
-class RCValueObject;
+class TianmuDataType;
+class TianmuValueObject;
 class TextStat;
 }  // namespace types
 
@@ -54,23 +54,23 @@ class ValueSet {
   ValueSet(ValueSet &sec);
   ~ValueSet();
 
-  void Add64(int64_t v);  // add as RCNum, scale 0
-  void Add(std::unique_ptr<types::RCDataType> rcdt);
-  void Add(const types::RCValueObject &rcv);
+  void Add64(int64_t v);  // add as TianmuNum, scale 0
+  void Add(std::unique_ptr<types::TianmuDataType> tianmu_dt);
+  void Add(const types::TianmuValueObject &rcv);
   void AddNull() { contains_nulls = true; }
   void ForcePreparation() { prepared = false; }
-  void Prepare(common::CT at, int scale, DTCollation);
+  void Prepare(common::ColumnType at, int scale, DTCollation);
   bool Contains(int64_t v);          // easy case, for non-null integers
   bool Contains(types::BString &v);  // easy case, for strings
   bool EasyMode() { return (use_easy_table || easy_vals != nullptr || easy_hash != nullptr) && prepared; }
-  bool Contains(const types::RCValueObject &v, DTCollation);
-  bool Contains(const types::RCDataType &v, DTCollation);
+  bool Contains(const types::TianmuValueObject &v, DTCollation);
+  bool Contains(const types::TianmuDataType &v, DTCollation);
   void Clear();
 
   bool IsEmpty() const { return (NoVals() == 0 && !contains_nulls); }
   bool ContainsNulls() const { return contains_nulls; }
-  types::RCDataType *Min() const { return min; }
-  types::RCDataType *Max() const { return max; }
+  types::TianmuDataType *Min() const { return min; }
+  types::TianmuDataType *Max() const { return max; }
   int NoVals() const {
     if (values.empty())
       return no_obj;
@@ -86,26 +86,26 @@ class ValueSet {
   auto end() { return values.cend(); }
 
   bool CopyCondition(types::CondArray &condition, DTCollation coll);
-  bool CopyCondition(common::CT at, std::shared_ptr<utils::Hash64> &condition, DTCollation coll);
+  bool CopyCondition(common::ColumnType at, std::shared_ptr<utils::Hash64> &condition, DTCollation coll);
 
  private:
-  bool isContains(const types::RCDataType &v, DTCollation coll);
-  bool IsPrepared(common::CT at, int scale, DTCollation);
+  bool isContains(const types::TianmuDataType &v, DTCollation coll);
+  bool IsPrepared(common::ColumnType at, int scale, DTCollation);
 
  protected:
   bool contains_nulls;
   int no_obj;  // number of values added
   bool prepared;
-  common::CT prep_type;  // type to which it is prepared
-  int prep_scale;        // scale to which it is prepared
+  common::ColumnType prep_type;  // type to which it is prepared
+  int prep_scale;                // scale to which it is prepared
   DTCollation prep_collation;
 
-  std::unordered_set<types::RCDataType *, types::rc_hash_compare<types::RCDataType *>,
-                     types::rc_hash_compare<types::RCDataType *>>
+  std::unordered_set<types::TianmuDataType *, types::tianmu_hash_compare<types::TianmuDataType *>,
+                     types::tianmu_hash_compare<types::TianmuDataType *>>
       values;
 
-  types::RCDataType *min;
-  types::RCDataType *max;
+  types::TianmuDataType *min;
+  types::TianmuDataType *max;
 
   // easy implementation for numerical values
   int64_t easy_min;

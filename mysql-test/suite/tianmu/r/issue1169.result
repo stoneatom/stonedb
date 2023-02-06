@@ -1,0 +1,47 @@
+DROP DATABASE IF EXISTS issue1169_test;
+CREATE DATABASE issue1169_test CHARACTER SET = utf8mb4;
+USE issue1169_test;
+select @@character_set_database;
+@@character_set_database
+utf8mb4
+CREATE TABLE `customer_branch_account` (
+`id` bigint(20) NOT NULL AUTO_INCREMENT,
+`branch_org_name` varchar(255) DEFAULT NULL COMMENT '',
+`branch_org_code` varchar(50) NOT NULL COMMENT '',
+`customer_name` varchar(255) DEFAULT NULL COMMENT '',
+`customer_code` varchar(50) NOT NULL COMMENT '',
+`agency_org_code` varchar(50) NOT NULL COMMENT '',
+`agency_org_name` varchar(255) DEFAULT NULL COMMENT '',
+`shop` varchar(20) DEFAULT NULL COMMENT '',
+`shop_name` varchar(50) DEFAULT NULL COMMENT '',
+`draw_category` varchar(50) NOT NULL COMMENT '',
+`transfer_course` int(11) NOT NULL COMMENT '',
+`acc_id` bigint(20) DEFAULT NULL COMMENT '',
+`extension` varchar(255) DEFAULT NULL,
+`instance_id` bigint(20) DEFAULT NULL,
+`create_person` varchar(20) DEFAULT NULL,
+`create_time` datetime DEFAULT NULL,
+`update_person` varchar(20) DEFAULT NULL,
+`update_time` datetime DEFAULT NULL,
+`tenant_id` tinyint(1) DEFAULT '0',
+`dr` tinyint(1) DEFAULT '0',
+`type` tinyint(4) NOT NULL COMMENT '',
+`change_sign` varchar(50) DEFAULT NULL COMMENT '',
+`rebate_item` varchar(30) DEFAULT NULL COMMENT '',
+`rebate_subitem` varchar(30) DEFAULT NULL COMMENT '',
+PRIMARY KEY (`id`) USING BTREE
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='关系表';
+INSERT INTO `customer_branch_account` VALUES (1294275002876649148,x'E6998BE89299E58886E585ACE58FB8','RGB03-210597',x'E9A298E79BAE36E38090E5BCA0E694B9E78EB2E4B8ADE58FB0E5AD98E9878FE8A1A5E58585E5AEA2E688B7E38091','2120954','RGB03-210608',x'E995BFE6B2BB','3000252',x'E9A298E79BAE36E38090E5BCA0E694B9E78EB2E4B8ADE58FB0E5AD98E9878FE8A1A5E58585E5AEA2E688B7E38091E997A8E5BA97E4B880','PL01',0,1471413534935126016,NULL,-1,'','2021-12-16 17:34:59','','2021-12-16 17:34:59',-1,0,0,NULL,NULL,NULL);
+select * from customer_branch_account into outfile "MYSQLTEST_VARDIR/tmp/issue1169_out_1.txt" fields terminated by ',' enclosed by '"' lines terminated by '\n' ;
+set @TIANMU_LOAD_NULL='\\\N';
+select * from customer_branch_account into outfile "MYSQLTEST_VARDIR/tmp/issue1169_out_2.txt" fields terminated by ',' enclosed by '"' lines terminated by '\n' ;
+truncate table customer_branch_account;
+LOAD DATA local INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1169.txt' Into TABLE customer_branch_account fields terminated by ',' enclosed by '"' lines terminated by '\n' ;
+select hex(branch_org_name), hex(customer_name), hex(shop_name) from customer_branch_account;
+hex(branch_org_name)	hex(customer_name)	hex(shop_name)
+E6998BE89299E58886E585ACE58FB8	E9A298E79BAE36E38090E5BCA0E694B9E78EB2E4B8ADE58FB0E5AD98E9878FE8A1A5E58585E5AEA2E688B7E38091	E9A298E79BAE36E38090E5BCA0E694B9E78EB2E4B8ADE58FB0E5AD98E9878FE8A1A5E58585E5AEA2E688B7E38091E997A8E5BA97E4B880
+#
+# Clean Resource
+#
+drop table customer_branch_account;
+DROP DATABASE issue1169_test;

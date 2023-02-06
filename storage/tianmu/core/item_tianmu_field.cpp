@@ -83,19 +83,19 @@ void Item_tianmufield::SetType(DataType t) {
 
     case DataType::ValueType::VT_DATETIME:
       switch (tianmu_type.attrtype) {
-        case common::CT::DATETIME:
+        case common::ColumnType::DATETIME:
           ivalue = new Item_tianmudatetime();
           break;
-        case common::CT::TIMESTAMP:
+        case common::ColumnType::TIMESTAMP:
           ivalue = new Item_tianmutimestamp();
           break;
-        case common::CT::DATE:
+        case common::ColumnType::DATE:
           ivalue = new Item_tianmudate();
           break;
-        case common::CT::TIME:
+        case common::ColumnType::TIME:
           ivalue = new Item_tianmutime();
           break;
-        case common::CT::YEAR:
+        case common::ColumnType::YEAR:
           ivalue = new Item_tianmuyear(tianmu_type.precision);
           break;
         default:
@@ -140,14 +140,6 @@ void Item_tianmufield::FeedValue() {
   }
 }
 
-double Item_tianmufield::val_real() {
-  // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null))
-    return 0.0;
-  FeedValue();
-  return ivalue->val_real();
-}
-
 longlong Item_tianmufield::val_int() {
   // DBUG_ASSERT(fixed == 1);
   if ((null_value = buf->null))
@@ -177,20 +169,33 @@ String *Item_tianmufield::val_str(String *str) {
   return str;
 }
 
+double Item_tianmufield::val_real() {
+  // DBUG_ASSERT(fixed == 1);
+  if ((null_value = buf->null))
+    return 0.0;
+  FeedValue();
+  if (unsigned_flag)
+    return static_cast<ulonglong>(ivalue->val_real());
+  else
+    return ivalue->val_real();
+}
+
 bool Item_tianmufield::get_date(MYSQL_TIME *ltime, uint fuzzydate) {
   if ((null_value = buf->null) ||
       ((!(fuzzydate & TIME_FUZZY_DATE) &&
-        (tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) && buf->x == 0)))
+        (tianmu_type.attrtype == common::ColumnType::DATETIME || tianmu_type.attrtype == common::ColumnType::DATE) &&
+        buf->x == 0)))
     return 1;  // like in Item_field::get_date - return 1 on null value.
   FeedValue();
   return ivalue->get_date(ltime, fuzzydate);
 }
 
 bool Item_tianmufield::get_time(MYSQL_TIME *ltime) {
-  if ((null_value = buf->null) ||
-      ((tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) &&
-       buf->x == 0))  // zero date is illegal
-    return 1;         // like in Item_field::get_time - return 1 on null value.
+  // Consider zero date is legal , not consider the sql_mode NO_ZERO_DATE/NO_ZERO_IN_DATE.
+  // Because NO_ZERO_DATE/NO_ZERO_IN_DATE is deprecated; expect it to be removed in a future
+  // release of MySQL as a separate mode name and its effect included in the effects of strict SQL mode.
+  if ((null_value = buf->null))
+    return 1;  // like in Item_field::get_time - return 1 on null value.
   FeedValue();
   return ivalue->get_time(ltime);
 }

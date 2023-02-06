@@ -52,6 +52,7 @@ CompiledQuery::CQStep::CQStep(const CompiledQuery::CQStep &s)
       e2(s.e2),
       e3(s.e3),
       op(s.op),
+      ex_op(s.ex_op),
       tmpar(s.tmpar),
       jt(s.jt),
       cop(s.cop),
@@ -93,6 +94,7 @@ void CompiledQuery::CQStep::swap(CQStep &s) {
     std::swap(e2, s.e2);
     std::swap(e3, s.e3);
     std::swap(op, s.op);
+    std::swap(ex_op, s.ex_op);
     std::swap(tmpar, s.tmpar);
     std::swap(jt, s.jt);
     std::swap(cop, s.cop);
@@ -450,7 +452,7 @@ void CompiledQuery::TmpTable(TabID &t_out, const TabID &t1, bool for_subq_in_whe
 }
 
 void CompiledQuery::CreateConds(CondID &c_out, const TabID &t1, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3,
-                                bool is_or_subtree, char like_esc) {
+                                bool is_or_subtree, char like_esc, bool is_cond_push) {
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_CONDS;
   s.c1 = c_out = NextCondID();
@@ -461,16 +463,19 @@ void CompiledQuery::CreateConds(CondID &c_out, const TabID &t1, CQTerm e1, commo
   s.e3 = e3;
   s.n1 = is_or_subtree ? static_cast<int64_t>(CondType::OR_SUBTREE) : 0;
   s.n2 = like_esc;
+  s.ex_op = is_cond_push ? common::ExtraOperation::EX_COND_PUSH : common::ExtraOperation::EX_DO_NOTHING;
   steps.push_back(s);
 }
 
-void CompiledQuery::CreateConds(CondID &c_out, const TabID &t1, const CondID &c1, bool is_or_subtree) {
+void CompiledQuery::CreateConds(CondID &c_out, const TabID &t1, const CondID &c1, bool is_or_subtree,
+                                bool is_cond_push) {
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_CONDS;
   s.c2 = c1;
   s.c1 = c_out = NextCondID();
   s.t1 = t1;
   s.n1 = is_or_subtree ? static_cast<int64_t>(CondType::OR_SUBTREE) : 0;
+  s.ex_op = is_cond_push ? common::ExtraOperation::EX_COND_PUSH : common::ExtraOperation::EX_DO_NOTHING;
   steps.push_back(s);
 }
 
@@ -528,7 +533,7 @@ void CompiledQuery::Mode(const TabID &t1, TMParameter mode, int64_t n1, int64_t 
     size_t const alias_ct(100);
     s.type = StepType::STEP_ERROR;
     s.alias = new char[alias_ct];
-    std::strcpy(s.alias, "T_MODE: can't be applied to RCTable");
+    std::strcpy(s.alias, "T_MODE: can't be applied to TianmuTable");
     return;
   }
   s.type = StepType::T_MODE;

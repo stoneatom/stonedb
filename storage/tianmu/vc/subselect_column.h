@@ -62,25 +62,25 @@ class SubSelectColumn : public MultiValColumn {
       return std::unique_ptr<LazyValueInterface>(new LazyValueImpl(record_, expected_type_));
     }
     types::BString DoGetString() const override { return record_[0].ToBString(); }
-    types::RCNum DoGetRCNum() const override {
+    types::TianmuNum DoGetRCNum() const override {
       if (record_[0].GetValueType() == types::ValueTypeEnum::NUMERIC_TYPE ||
           record_[0].GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE)
-        return static_cast<types::RCNum &>(record_[0]);
-      TIANMU_ERROR("Bad cast in RCValueObject::RCNum&()");
-      return static_cast<types::RCNum &>(record_[0]);
+        return static_cast<types::TianmuNum &>(record_[0]);
+      TIANMU_ERROR("Bad cast in TianmuValueObject::TianmuNum&()");
+      return static_cast<types::TianmuNum &>(record_[0]);
     }
-    types::RCValueObject DoGetValue() const override {
-      types::RCValueObject val = record_[0];
+    types::TianmuValueObject DoGetValue() const override {
+      types::TianmuValueObject val = record_[0];
       if (expected_type_.IsString())
         val = val.ToBString();
       else if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
-        types::RCNum rc;
-        types::RCNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
-        val = rc;
+        types::TianmuNum tn;
+        types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), tn, expected_type_.GetTypeName());
+        val = tn;
       }
       return val;
     }
-    int64_t DoGetInt64() const override { return (static_cast<types::RCNum &>(record_[0])).GetValueInt64(); }
+    int64_t DoGetInt64() const override { return (static_cast<types::TianmuNum &>(record_[0])).GetValueInt64(); }
     bool DoIsNull() const override { return record_[0].IsNull(); }
     LazyValueImpl(core::TempTable::Record const &r_, core::ColumnType const &expected_type_)
         : record_(r_), expected_type_(expected_type_) {}
@@ -113,7 +113,7 @@ class SubSelectColumn : public MultiValColumn {
   bool IsSubSelect() const override { return true; }
   bool IsThreadSafe() override { return IsConst() && MakeParallelReady(); }
   void PrepareAndFillCache();
-  bool IsSetEncoded(common::CT at,
+  bool IsSetEncoded(common::ColumnType at,
                     int scale) override;  // checks whether the set is constant and fixed size
                                           // equal to the given one
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return GetValueInt64Impl(mit); }
@@ -129,14 +129,14 @@ class SubSelectColumn : public MultiValColumn {
                   // be 0 in case of hidden columns.
   std::shared_ptr<core::TempTableForSubquery> tmp_tab_subq_ptr_;
   int parent_tt_alias_;
-  types::RCValueObject min_;
-  types::RCValueObject max_;
+  types::TianmuValueObject min_;
+  types::TianmuValueObject max_;
   bool check_min_max_uptodate_;
   void CalculateMinMax();
 
   std::unique_ptr<IteratorInterface> BeginImpl(core::MIIterator const &) override;
   std::unique_ptr<IteratorInterface> EndImpl(core::MIIterator const &) override;
-  common::Tribool ContainsImpl(core::MIIterator const &, types::RCDataType const &) override;
+  common::Tribool ContainsImpl(core::MIIterator const &, types::TianmuDataType const &) override;
   common::Tribool Contains64Impl(const core::MIIterator &mit, int64_t val) override;
   bool CopyCondImpl([[maybe_unused]] const core::MIIterator &mit, [[maybe_unused]] types::CondArray &condition,
                     [[maybe_unused]] DTCollation coll) override {
@@ -150,13 +150,13 @@ class SubSelectColumn : public MultiValColumn {
   common::Tribool ContainsStringImpl(const core::MIIterator &mit, types::BString &val) override;
   bool IsNullImpl(core::MIIterator const &mit) override;
 
-  types::RCValueObject GetValueImpl(core::MIIterator const &mit, bool lookup_to_num) override;
+  types::TianmuValueObject GetValueImpl(core::MIIterator const &mit, bool lookup_to_num) override;
   int64_t NumOfValuesImpl(core::MIIterator const &mit) override;
   int64_t AtLeastNoDistinctValuesImpl(core::MIIterator const &mit, int64_t const at_least) override;
   bool ContainsNullImpl(core::MIIterator const &mit) override;
   void SetExpectedTypeImpl(core::ColumnType const &) override;
-  types::RCValueObject GetSetMinImpl(core::MIIterator const &mit) override;
-  types::RCValueObject GetSetMaxImpl(core::MIIterator const &mit) override;
+  types::TianmuValueObject GetSetMinImpl(core::MIIterator const &mit) override;
+  types::TianmuValueObject GetSetMaxImpl(core::MIIterator const &mit) override;
   bool IsEmptyImpl(core::MIIterator const &) override;
   int64_t GetValueInt64Impl(core::MIIterator const &) override;
   double GetValueDoubleImpl(core::MIIterator const &) override;

@@ -18,7 +18,7 @@
 #include "expr_column.h"
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 
 namespace Tianmu {
 namespace vcolumn {
@@ -133,7 +133,7 @@ void ExpressionColumn::GetValueStringImpl(types::BString &s, const core::MIItera
     last_val_ = expr_->Evaluate();
   if (core::ATI::IsDateTimeType(TypeName())) {
     int64_t tmp;
-    types::RCDateTime vd(last_val_->Get64(), TypeName());
+    types::TianmuDateTime vd(last_val_->Get64(), TypeName());
     vd.ToInt64(tmp);
     last_val_->SetFixed(tmp);
   }
@@ -154,8 +154,8 @@ double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   else if (core::ATI::IsRealType(TypeName())) {
     val = last_val_->GetDouble();
   } else if (core::ATI::IsDateTimeType(TypeName())) {
-    types::RCDateTime vd(last_val_->Get64(),
-                         TypeName());  // 274886765314048  ->  2000-01-01
+    types::TianmuDateTime vd(last_val_->Get64(),
+                             TypeName());  // 274886765314048  ->  2000-01-01
     int64_t vd_conv = 0;
     vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
     val = (double)vd_conv;
@@ -169,22 +169,22 @@ double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   return val;
 }
 
-types::RCValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) {
+types::TianmuValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) {
   if (core::ATI::IsStringType((TypeName()))) {
     types::BString s;
     GetValueString(s, mit);
     return s;
   }
   if (core::ATI::IsIntegerType(TypeName()))
-    return types::RCNum(GetValueInt64(mit), -1, false, TypeName());
+    return types::TianmuNum(GetValueInt64(mit), -1, false, TypeName());
   if (core::ATI::IsDateTimeType(TypeName()))
-    return types::RCDateTime(GetValueInt64(mit), TypeName());
+    return types::TianmuDateTime(GetValueInt64(mit), TypeName());
   if (core::ATI::IsRealType(TypeName()))
-    return types::RCNum(GetValueInt64(mit), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::CT::NUM)
-    return types::RCNum(GetValueInt64(mit), Type().GetScale());
+    return types::TianmuNum(GetValueInt64(mit), 0, true, TypeName());
+  if (lookup_to_num || TypeName() == common::ColumnType::NUM || TypeName() == common::ColumnType::BIT)
+    return types::TianmuNum(GetValueInt64(mit), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
-  return types::RCValueObject();
+  return types::TianmuValueObject();
 }
 
 int64_t ExpressionColumn::GetSumImpl([[maybe_unused]] const core::MIIterator &mit, bool &nonnegative) {
@@ -269,7 +269,7 @@ bool ExpressionColumn::ExactlyOneLookup() {
   if (!deterministic_)
     return false;
   auto iter = var_map_.begin();
-  if (iter == var_map_.end() || !iter->GetTabPtr()->GetColumnType(iter->col_ndx).IsLookup())
+  if (iter == var_map_.end() || !iter->GetTabPtr()->GetColumnType(iter->col_ndx).Lookup())
     return false;  // not a lookup
   iter++;
   if (iter != var_map_.end())  // more than one column
@@ -284,7 +284,7 @@ VirtualColumnBase::VarMap ExpressionColumn::GetLookupCoordinates() {
 
 void ExpressionColumn::FeedLookupArguments(core::MILookupIterator &mit) {
   auto iter = var_map_.begin();
-  core::RCAttr *col = (core::RCAttr *)(iter->GetTabPtr()->GetColumn(iter->col_ndx));
+  core::TianmuAttr *col = (core::TianmuAttr *)(iter->GetTabPtr()->GetColumn(iter->col_ndx));
   core::ValueOrNull v = types::BString();
   if (mit.IsValid() && mit[0] != common::NULL_VALUE_64 && mit[0] < col->Cardinality())
     v = col->DecodeValue_S(mit[0]);

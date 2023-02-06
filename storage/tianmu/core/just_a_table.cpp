@@ -29,7 +29,7 @@ ValueOrNull JustATable::GetComplexValue(const int64_t obj, const int attr) {
     return ValueOrNull();
 
   ColumnType ct = GetColumnType(attr);
-  if (ct.GetTypeName() == common::CT::TIMESTAMP) {
+  if (ct.GetTypeName() == common::ColumnType::TIMESTAMP) {
     // needs to convert UTC/GMT time stored on server to time zone of client
     types::BString s;
     GetTable_S(s, obj, attr);
@@ -37,7 +37,7 @@ ValueOrNull JustATable::GetComplexValue(const int64_t obj, const int attr) {
     MYSQL_TIME_STATUS not_used;
     // convert UTC timestamp given in string into TIME structure
     str_to_datetime(s.GetDataBytesPointer(), s.len_, &myt, TIME_DATETIME_ONLY, &not_used);
-    return ValueOrNull(types::RCDateTime(myt, common::CT::TIMESTAMP).GetInt64());
+    return ValueOrNull(types::TianmuDateTime(myt, common::ColumnType::TIMESTAMP).GetInt64());
   }
   if (ct.IsFixed() || ct.IsFloat() || ct.IsDateTime())
     return ValueOrNull(GetTable64(obj, attr));

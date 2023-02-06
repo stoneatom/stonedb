@@ -20,8 +20,8 @@ ERROR 23000: Column 'b' cannot be null
 create table if not exists t1 (b char(0) not null)ENGINE=tianmu;
 Warnings:
 Note	1050	Table 't1' already exists
-create table t1 (b char(0) not null, index(b))engine=tianmu;
-ERROR 42000: The used storage engine can't index column 'b'
+create table t1 (b char(0) not null)engine=tianmu;
+ERROR 42S01: Table 't1' already exists
 drop table t1;
 create table `a/a` (a int)engine=tianmu;
 show create table `a/a`;
@@ -75,8 +75,6 @@ ERROR 42000: Incorrect table name ''
 use test;
 create table t1 (`` int)engine=tianmu;
 ERROR 42000: Incorrect column name ''
-create table t1 (i int, index `` (i))engine=tianmu;
-ERROR 42000: Incorrect index name ''
 create table t1 (i int)engine=tianmu;
 drop table t1;
 #
@@ -96,83 +94,6 @@ drop table t1;
 #
 # Test of primary key with 32 index
 #
-create table t1 (a int not null, b int, primary key(a),
-key (b), key (b), key (b), key (b), key (b), key (b),
-key (b), key (b), key (b), key (b), key (b), key (b),
-key (b), key (b), key (b), key (b), key (b), key (b), 
-key (b), key (b), key (b), key (b), key (b), key (b), 
-key (b), key (b), key (b), key (b), key (b), key (b),
-key (b))engine=tianmu;
-Warnings:
-Warning	1831	Duplicate index 'b_2' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_3' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_4' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_5' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_6' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_7' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_8' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_9' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_10' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_11' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_12' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_13' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_14' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_15' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_16' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_17' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_18' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_19' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_20' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_21' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_22' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_23' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_24' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_25' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_26' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_27' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_28' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_29' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_30' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-Warning	1831	Duplicate index 'b_31' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
-show create table t1;
-Table	Create Table
-t1	CREATE TABLE `t1` (
-  `a` int(11) NOT NULL,
-  `b` int(11) DEFAULT NULL,
-  PRIMARY KEY (`a`),
-  KEY `b` (`b`),
-  KEY `b_2` (`b`),
-  KEY `b_3` (`b`),
-  KEY `b_4` (`b`),
-  KEY `b_5` (`b`),
-  KEY `b_6` (`b`),
-  KEY `b_7` (`b`),
-  KEY `b_8` (`b`),
-  KEY `b_9` (`b`),
-  KEY `b_10` (`b`),
-  KEY `b_11` (`b`),
-  KEY `b_12` (`b`),
-  KEY `b_13` (`b`),
-  KEY `b_14` (`b`),
-  KEY `b_15` (`b`),
-  KEY `b_16` (`b`),
-  KEY `b_17` (`b`),
-  KEY `b_18` (`b`),
-  KEY `b_19` (`b`),
-  KEY `b_20` (`b`),
-  KEY `b_21` (`b`),
-  KEY `b_22` (`b`),
-  KEY `b_23` (`b`),
-  KEY `b_24` (`b`),
-  KEY `b_25` (`b`),
-  KEY `b_26` (`b`),
-  KEY `b_27` (`b`),
-  KEY `b_28` (`b`),
-  KEY `b_29` (`b`),
-  KEY `b_30` (`b`),
-  KEY `b_31` (`b`)
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
-drop table t1;
 #
 # Test default table type
 #
@@ -236,9 +157,9 @@ ERROR 42000: You have an error in your SQL syntax; check the manual that corresp
 #
 # Test create with foreign keys
 #
-create table t1 (a int, key(a))engine=tianmu;
-create table t2 (b int, foreign key(b) references t1(a), key(b))engine=tianmu;
-drop table if exists t1,t2;
+drop table if exists t1;
+Warnings:
+Note	1051	Unknown table 'test.t1'
 #
 # Test for create table .. LIKE ..
 #
@@ -339,36 +260,10 @@ create table t1(name varchar(10), age smallint default -1);
 describe t2;
 Field	Type	Null	Key	Default	Extra
 id	int(11)	NO		NULL	
+drop table t1,t2;
 #
 # 'Naming a key "Primary" causes trouble'
 #
-create table t1 (a int, index `primary` (a))engine=tianmu;
-ERROR 42000: Incorrect index name 'primary'
-create table t1 (a int, index `PRIMARY` (a))engine=tianmu;
-ERROR 42000: Incorrect index name 'PRIMARY'
-drop table t1;
-create table t1 (`primary` int, index(`primary`))engine=tianmu;
-show create table t1;
-Table	Create Table
-t1	CREATE TABLE `t1` (
-  `primary` int(11) DEFAULT NULL,
-  KEY `primary_2` (`primary`)
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
-drop table t2;
-create table t2 (`PRIMARY` int, index(`PRIMARY`))engine=tianmu;
-show create table t2;
-Table	Create Table
-t2	CREATE TABLE `t2` (
-  `PRIMARY` int(11) DEFAULT NULL,
-  KEY `PRIMARY_2` (`PRIMARY`)
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
-create table t3 (a int);
-alter table t3 add index `primary` (a);
-ERROR 42000: Incorrect index name 'primary'
-alter table t3 add index `PRIMARY` (a);
-ERROR 42000: Incorrect index name 'PRIMARY'
-create table t4 (`primary` int)engine=tianmu;
-drop table t1,t2,t3,t4;
 #
 #Can't use 'DEFAULT FALSE' for column of type bool
 #
@@ -490,7 +385,7 @@ drop tables t1,t2;
 #
 # Creating a base table in presence of an updatable view.
 # 
-create table t2 (a int unique);
+create table t2 (a int primary key);
 create view t1 as select a from t2;
 insert into t1 (a) values (1);
 create table t1 (a int);
@@ -573,3 +468,35 @@ t1	CREATE TABLE `t1` (
   `fld1` int(11) DEFAULT NULL,
   `fld2` datetime DEFAULT '1211-01-01 00:00:00'
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
+# error of support type
+create table t_unsupport_type (a2 json DEFAULT NULL);
+ERROR HY000: Unsupported data type[json]
+drop table if exists bittypes;
+Warnings:
+Note	1051	Unknown table 'test.bittypes'
+create table bittypes (
+id int not null primary key,
+bit1 bit(1),
+bit2 bit(2),
+bit4 bit(4),
+bit8 bit(8),
+bit16 bit(16),
+bit32 bit(32),
+bit63 bit(63)
+) ENGINE=tianmu DEFAULT CHARSET=utf8mb4;
+show create table bittypes;
+Table	Create Table
+bittypes	CREATE TABLE `bittypes` (
+  `id` int(11) NOT NULL,
+  `bit1` bit(1) DEFAULT NULL,
+  `bit2` bit(2) DEFAULT NULL,
+  `bit4` bit(4) DEFAULT NULL,
+  `bit8` bit(8) DEFAULT NULL,
+  `bit16` bit(16) DEFAULT NULL,
+  `bit32` bit(32) DEFAULT NULL,
+  `bit63` bit(63) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4
+drop table bittypes;
+create table tc(a bit(64)) engine=tianmu;
+ERROR HY000: The bit(M) type, M must be less than or equal to 63 in tianmu engine.

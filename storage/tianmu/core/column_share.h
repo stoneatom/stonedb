@@ -33,10 +33,10 @@ class TableShare;
 
 struct COL_META {
   uint32_t magic;
-  uint32_t ver;         // file version
-  uint8_t pss;          // pack size shift
-  common::CT type;      // type
-  common::PackFmt fmt;  // data format: LZ4, snappy, lookup, raw, etc
+  uint32_t ver;             // file version
+  uint8_t pss;              // pack size shift
+  common::ColumnType type;  // type
+  common::PackFmt fmt;      // data format: LZ4, snappy, lookup, raw, etc
   uint8_t flag;
   uint32_t precision;
   uint32_t scale;
@@ -61,18 +61,19 @@ struct alignas(128) COL_VER_HDR_V3 {
 using COL_VER_HDR = COL_VER_HDR_V3;
 
 class ColumnShare final {
-  friend class RCAttr;
+  friend class TianmuAttr;
 
  public:
   ColumnShare() = delete;
   ~ColumnShare();
   ColumnShare(ColumnShare const &) = delete;
   void operator=(ColumnShare const &x) = delete;
-  ColumnShare(TableShare *owner, common::TX_ID ver, uint32_t i, const fs::path &p, const Field *f)
-      : owner(owner), m_path(p), col_id(i) {
-    ct.SetCollation({f->charset(), f->derivation()});
-    ct.SetAutoInc(f->flags & AUTO_INCREMENT_FLAG);
-    Init(ver);
+  ColumnShare(TableShare *owner_, common::TX_ID xid_, uint32_t col_id_, const fs::path &path_, const Field *field_)
+      : owner(owner_), m_path(path_), col_id(col_id_), field_name_(field_->field_name) {
+    ct.SetCollation({field_->charset(), field_->derivation()});
+    ct.SetAutoInc(field_->flags & AUTO_INCREMENT_FLAG);
+    ct.SetUnsigned(field_->flags & UNSIGNED_FLAG);
+    Init(xid_);
   }
 
   DPN *get_dpn_ptr(common::PACK_INDEX i) {
@@ -97,6 +98,7 @@ class ColumnShare final {
     ASSERT(i >= 0 && size_t(i) < capacity, "bad index " + std::to_string(i));
     return i;
   }
+  std::string GetFieldName() const { return field_name_; }
 
  private:
   void Init(common::TX_ID xid);
@@ -112,7 +114,7 @@ class ColumnShare final {
   size_t capacity{0};  // current capacity of the dn array
   common::PackType pt;
   uint32_t col_id;
-
+  std::string field_name_;
   struct seg {
     uint64_t offset;
     uint64_t len;

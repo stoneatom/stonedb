@@ -235,20 +235,20 @@ void JoinerHash::ExecuteJoin() {
     while (tr_mit.IsValid()) {
       traversed_tuples += TraverseDim(new_mind, tr_mit, outer_tuples);
       if (tr_mit.IsValid())
-        rc_control_.lock(m_conn->GetThreadID())
+        tianmu_control_.lock(m_conn->GetThreadID())
             << "Traversed " << traversed_tuples << "/" << dim1_size << " rows." << system::unlock;
       else
-        rc_control_.lock(m_conn->GetThreadID()) << "Traversed all " << dim1_size << " rows." << system::unlock;
+        tianmu_control_.lock(m_conn->GetThreadID()) << "Traversed all " << dim1_size << " rows." << system::unlock;
 
       if (too_many_conflicts) {
-        rc_control_.lock(m_conn->GetThreadID()) << "Too many hash conflicts: restarting join." << system::unlock;
+        tianmu_control_.lock(m_conn->GetThreadID()) << "Too many hash conflicts: restarting join." << system::unlock;
         return;  // without committing new_mind
       }
       joined_tuples += MatchDim(new_mind, match_mit);
       if (watch_traversed)
         outer_tuples += SubmitOuterTraversed(new_mind);
 
-      rc_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
+      tianmu_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
       if (!outer_nulls_only) {
         if (tips.limit != -1 && tips.limit <= joined_tuples)
           break;
@@ -260,12 +260,12 @@ void JoinerHash::ExecuteJoin() {
     outer_tuples_matched = SubmitOuterMatched(match_mit, new_mind);
   outer_tuples += outer_tuples_matched;
   if (outer_tuples > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Added " << outer_tuples << " null tuples by outer join." << system::unlock;
   joined_tuples += outer_tuples;
   // revert multiindex to the updated tables
   if (packrows_omitted > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
   if (tips.count_only)
@@ -387,8 +387,8 @@ int64_t JoinerHash::MatchDim(MINewContents &new_mind, MIIterator &mit) {
       packrow_uniform = true;
       for (int i = 0; i < cond_hashed; i++) {
         if (jhash.StringEncoder(i)) {
-          if (!vc2[i]->Type().IsLookup()) {  // lookup treated as string, when the
-                                             // dictionaries aren't convertible
+          if (!vc2[i]->Type().Lookup()) {  // lookup treated as string, when the
+                                           // dictionaries aren't convertible
             types::BString local_min = vc2[i]->GetMinString(mit);
             types::BString local_max = vc2[i]->GetMaxString(mit);
             if (!local_min.IsNull() && !local_max.IsNull() && jhash.ImpossibleValues(i, local_min, local_max)) {
@@ -670,8 +670,8 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
       packrow_uniform = true;
       for (int i = 0; i < cond_hashed; i++) {
         if (tmp_jhash.StringEncoder(i)) {
-          if (!vc2[i]->Type().IsLookup()) {  // lookup treated as string, when the
-                                             // dictionaries aren't convertible
+          if (!vc2[i]->Type().Lookup()) {  // lookup treated as string, when the
+                                           // dictionaries aren't convertible
             types::BString local_min = vc2[i]->GetMinString(task_mit);
             types::BString local_max = vc2[i]->GetMaxString(task_mit);
             if (!local_min.IsNull() && !local_max.IsNull() && tmp_jhash.ImpossibleValues(i, local_min, local_max)) {

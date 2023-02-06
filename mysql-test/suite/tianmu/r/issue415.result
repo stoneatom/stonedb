@@ -1,7 +1,9 @@
+DROP DATABASE IF EXISTS issue415_test;
+CREATE DATABASE issue415_test;
+USE issue415_test;
 #
 # fix issue415
 #
-use test;
 CREATE TABLE `select_base_with_primary_key` (
 `pk` bigint(11) NOT NULL AUTO_INCREMENT,
 `varchar_test` varchar(255) DEFAULT NULL,
@@ -28,3 +30,4 @@ aa	0	1	0
 Warnings:
 Warning	1287	'GROUP BY with ASC/DESC' is deprecated and will be removed in a future release. Please use GROUP BY ... ORDER BY ... ASC/DESC instead
 drop table select_base_with_primary_key;
+DROP DATABASE issue415_test;

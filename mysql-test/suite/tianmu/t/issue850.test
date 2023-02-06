@@ -1,0 +1,87 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue850_test;
+--enable_warnings
+
+CREATE DATABASE issue850_test;
+
+USE issue850_test;
+
+CREATE TABLE IF NOT EXISTS `lineorder` (
+  `lo_orderkey` int NOT NULL COMMENT "",
+  `lo_linenumber` int NOT NULL COMMENT "",
+  `lo_custkey` int NOT NULL COMMENT "",
+  `lo_partkey` int NOT NULL COMMENT "",
+  `lo_suppkey` int NOT NULL COMMENT "",
+  `lo_orderdate` int NOT NULL COMMENT "",
+  `lo_orderpriority` varchar(16) NOT NULL COMMENT "",
+  `lo_shippriority` int NOT NULL COMMENT "",
+  `lo_quantity` int NOT NULL COMMENT "",
+  `lo_extendedprice` int NOT NULL COMMENT "",
+  `lo_ordtotalprice` int NOT NULL COMMENT "",
+  `lo_discount` int NOT NULL COMMENT "",
+  `lo_revenue` int NOT NULL COMMENT "",
+  `lo_supplycost` int NOT NULL COMMENT "",
+  `lo_tax` int NOT NULL COMMENT "",
+  `lo_commitdate` int NOT NULL COMMENT "",
+  `lo_shipmode` varchar(11) NOT NULL COMMENT ""
+)engine = tianmu;
+
+CREATE TABLE IF NOT EXISTS `customer` (
+  `c_custkey` int(11) NOT NULL COMMENT "",
+  `c_name` varchar(26) NOT NULL COMMENT "",
+  `c_address` varchar(41) NOT NULL COMMENT "",
+  `c_city` varchar(11) NOT NULL COMMENT "",
+  `c_nation` varchar(16) NOT NULL COMMENT "",
+  `c_region` varchar(13) NOT NULL COMMENT "",
+  `c_phone` varchar(16) NOT NULL COMMENT "",
+  `c_mktsegment` varchar(11) NOT NULL COMMENT ""
+)engine = tianmu;
+
+CREATE TABLE IF NOT EXISTS `supplier` (
+  `s_suppkey` int(11) NOT NULL COMMENT "",
+  `s_name` varchar(26) NOT NULL COMMENT "",
+  `s_address` varchar(26) NOT NULL COMMENT "",
+  `s_city` varchar(11) NOT NULL COMMENT "",
+  `s_nation` varchar(16) NOT NULL COMMENT "",
+  `s_region` varchar(13) NOT NULL COMMENT "",
+  `s_phone` varchar(16) NOT NULL COMMENT ""
+)engine = tianmu;
+
+CREATE TABLE IF NOT EXISTS `part` (
+  `p_partkey` int(11) NOT NULL COMMENT "",
+  `p_name` varchar(23) NOT NULL COMMENT "",
+  `p_mfgr` varchar(7) NOT NULL COMMENT "",
+  `p_category` varchar(8) NOT NULL COMMENT "",
+  `p_brand` varchar(10) NOT NULL COMMENT "",
+  `p_color` varchar(12) NOT NULL COMMENT "",
+  `p_type` varchar(26) NOT NULL COMMENT "",
+  `p_size` int(11) NOT NULL COMMENT "",
+  `p_container` varchar(11) NOT NULL COMMENT ""
+) engine = tianmu;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue850_customer.txt' into table customer fields terminated by '|';
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue850_lineorder.txt' into table lineorder fields terminated by '|';
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue850_part.txt' into table part fields terminated by '|';
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue850_supplier.txt' into table supplier fields terminated by '|';
+
+--replace_result $MYSQLTEST_VARDIR MYSQLTEST_VARDIR
+eval select `LO_ORDERDATE` , `LO_ORDERKEY` , `LO_LINENUMBER` , `LO_CUSTKEY` , `LO_PARTKEY` , `LO_SUPPKEY` , `LO_ORDERPRIORITY` , `LO_SHIPPRIORITY` , `LO_QUANTITY` , `LO_EXTENDEDPRICE` , `LO_ORDTOTALPRICE` , `LO_DISCOUNT` , `LO_REVENUE` , `LO_SUPPLYCOST` , `LO_TAX` , `LO_COMMITDATE` , `LO_SHIPMODE` , `C_NAME` , `C_ADDRESS` , `C_CITY` , `C_NATION` , `C_REGION` , `C_PHONE` , `C_MKTSEGMENT` , `S_NAME` , `S_ADDRESS` , `S_CITY` , `S_NATION` , `S_REGION` , `S_PHONE` , `P_NAME` , `P_MFGR` , `P_CATEGORY` , `P_BRAND` , `P_COLOR` , `P_TYPE` , `P_SIZE` , `P_CONTAINER` from lineorder l INNER JOIN customer c ON (c.C_CUSTKEY = l.LO_CUSTKEY)  INNER JOIN supplier s ON (s.S_SUPPKEY = l.LO_SUPPKEY)  INNER JOIN part p ON  (p.P_PARTKEY = l.LO_PARTKEY) where lo_orderdate >=19980101 and lo_orderdate <19990101 INTO OUTFILE "$MYSQLTEST_VARDIR/tmp/issue850_out.txt" fields terminated by ',' optionally enclosed by '"' escaped by '"' lines terminated by '\r\n';
+--diff_files $MYSQL_TEST_DIR/suite/tianmu/std_data/issue850_out.txt $MYSQLTEST_VARDIR/tmp/issue850_out.txt
+
+--remove_file $MYSQLTEST_VARDIR/tmp/issue850_out.txt
+
+drop table customer;
+drop table lineorder;
+drop table part;
+drop table supplier;
+
+DROP DATABASE issue850_test;

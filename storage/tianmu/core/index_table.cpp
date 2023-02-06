@@ -19,7 +19,7 @@
 
 #include "core/filter.h"
 #include "core/transaction.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
@@ -121,15 +121,15 @@ void IndexTable::LoadBlock(int b) {
   block_changed = false;
 }
 
-void IndexTable::ExpandTo(int64_t new_size) {
+void IndexTable::ExpandTo(uint64_t new_size) {
   DEBUG_ASSERT(IsLocked());
-  if (new_size <= (int64_t)size)
+  if (new_size <= (uint64_t)size)
     return;
   if (size * bytes_per_value == buffer_size_in_bytes) {  // the whole table was in one buffer
     if (buffer_size_in_bytes < 32_MB && size_t(new_size * bytes_per_value) > 32_MB) {
       max_buffer_size_in_bytes =
-          int(mm::TraceableObject::MaxBufferSize(-1));   // recalculate, as it might not be done earlier
-      CI_SetDefaultSize((int)max_buffer_size_in_bytes);  // redefine disk block sized
+          uint64_t(mm::TraceableObject::MaxBufferSize(-1));   // recalculate, as it might not be done earlier
+      CI_SetDefaultSize((uint64_t)max_buffer_size_in_bytes);  // redefine disk block sized
       uint values_per_block = uint(max_buffer_size_in_bytes / bytes_per_value);
       block_shift =
           CalculateBinSize(values_per_block) - 1;  // e.g. BinSize(16)==5, but shift by 4. WARNING: should it be
@@ -137,9 +137,9 @@ void IndexTable::ExpandTo(int64_t new_size) {
       block_mask = (uint64_t(1) << block_shift) - 1;
     }
 
-    int new_buffer_size_in_bytes;
-    if (new_size * bytes_per_value < (int64_t)max_buffer_size_in_bytes)
-      new_buffer_size_in_bytes = int(new_size * bytes_per_value);
+    uint64_t new_buffer_size_in_bytes;
+    if (new_size * bytes_per_value < (uint64_t)max_buffer_size_in_bytes)
+      new_buffer_size_in_bytes = uint64_t(new_size * bytes_per_value);
     else
       new_buffer_size_in_bytes = max_buffer_size_in_bytes;
     // TODO: check the rc_alloc status

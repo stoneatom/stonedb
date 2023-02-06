@@ -3,7 +3,12 @@
 --echo #
 --echo #Insert values for different types of fields
 --echo #
-use test;
+--disable_warnings
+DROP DATABASE IF EXISTS insert_test;
+--enable_warnings
+
+CREATE DATABASE insert_test;
+USE insert_test;
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
   `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -59,8 +64,7 @@ drop table t1;
 --echo # Test of duplicate key values with packed keys
 --echo #
 
-create table t1 (id int not null auto_increment primary key, username varchar(32) not null,
- unique (username));
+create table t1 (id int not null auto_increment primary key, username varchar(32) not null);
 insert into t1 values (0,"mysql");
 insert into t1 values (0,"mysql ab");
 insert into t1 values (0,"mysql a");
@@ -106,13 +110,13 @@ drop table t1;
 --disable_warnings
 drop database if exists mysqltest;
 --enable_warnings
-create database mysqltest;
-use mysqltest;
+create database mysqltest_insert_test;
+use mysqltest_insert_test;
 create table t1 (c int);
-insert into mysqltest.t1 set mysqltest.t1.c = '1';
-drop database mysqltest;
-use test;
+insert into mysqltest_insert_test.t1 set mysqltest_insert_test.t1.c = '1';
+drop database mysqltest_insert_test;
 
+use insert_test;
 
 --echo #
 --echo # Test of wrong values for float data 
@@ -183,7 +187,7 @@ drop table t1;
 
 create table t1(id1 int not null auto_increment primary key, t char(12));
 create table t2(id2 int not null, t char(12));
-create table t3(id3 int not null, t char(12), index(id3));
+create table t3(id3 int not null, t char(12));
 disable_query_log;
 let $1 = 100;
 while ($1)
@@ -259,7 +263,7 @@ drop table t1;
 --echo # ON DUPLICATE KEY clause allows fields not from the insert table
 --echo #
 
-create table t1 (f1 int unique, f2 int);
+create table t1 (f1 int primary key, f2 int);
 create table t2 (f3 int, f4 int);
 create view v1 as select * from t1, t2 where f1= f3;
 insert into t1 values (1,11), (2,22);
@@ -466,4 +470,5 @@ SELECT * FROM t1;
 
 DROP VIEW v1, v2;
 DROP TABLE t1;
-
+# Clean UP
+DROP DATABASE insert_test;

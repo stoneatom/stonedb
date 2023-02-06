@@ -39,7 +39,7 @@
 #include "mm/tcm_heap_policy.h"
 #include "mm/traceable_object.h"
 #include "system/fet.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "tcm/page_heap.h"
 
 namespace Tianmu {
@@ -213,7 +213,7 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
       if (res == nullptr) {
         if (nothrow)
           return res;
-        rc_control_.lock(current_txn_->GetThreadID())
+        tianmu_control_.lock(current_txn_->GetThreadID())
             << "Failed to alloc block of size " << static_cast<int>(size) << system::unlock;
         throw common::OutOfMemoryException(size);
       } else {

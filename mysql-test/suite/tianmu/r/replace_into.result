@@ -1,0 +1,109 @@
+#
+# Test replace into
+#
+DROP DATABASE IF EXISTS replace_into_test;
+CREATE DATABASE replace_into_test;
+USE replace_into_test;
+CREATE TABLE test (
+id INT NOT NULL,
+test VARCHAR(64) DEFAULT NULL,
+name TIMESTAMP NOT NULL,
+PRIMARY KEY (id)
+);
+insert into test values(1,'old','2014-08-20 18:47:00');
+insert into test values(2,'old','2014-08-20 18:47:00');
+REPLACE INTO test VALUES (1, 'New', '2014-08-20 18:47:42');
+REPLACE INTO test VALUES (2, 'New', '2014-08-20 18:47:42');
+delete from test where id=1;
+REPLACE INTO test VALUES (2, 'Newnew', '2014-08-20 18:47:42');
+REPLACE INTO test VALUES (1, 'New', '2014-08-20 18:47:42');
+REPLACE INTO test VALUES (1, 'Newnew', '2014-08-20 18:47:42');
+select * from test;
+id	test	name
+2	Newnew	2014-08-20 18:47:42
+1	Newnew	2014-08-20 18:47:42
+CREATE TABLE test1 (
+id INT NOT NULL,
+test VARCHAR(64) DEFAULT NULL,
+id1 int NOT NULL,
+PRIMARY KEY (id,id1)
+);
+insert into test1 values(1,'old',1);
+insert into test1 values(2,'old',2);
+REPLACE INTO test1 VALUES (1, 'New', '8');
+REPLACE INTO test1 VALUES (1, 'New', '1');
+REPLACE INTO test1 VALUES (8, 'New', '2');
+select * from test1;
+id	test	id1
+1	New	1
+2	old	2
+1	New	8
+8	New	2
+CREATE TABLE `insert_relpace_into_test` (
+`id` int(10),
+`uniq_id` varchar(32),
+`filed_a` varchar(32) DEFAULT '' ,
+`filed_b` varchar(32) DEFAULT '',
+`version` int(10) DEFAULT '0',
+PRIMARY KEY (`id`)
+);
+CREATE TABLE `insert_relpace_into_test2` (
+`id` int(10),
+`uniq_id` varchar(32) DEFAULT NULL,
+`filed_a` varchar(32) DEFAULT '',
+`filed_b` varchar(32) DEFAULT '',
+`version` int(10) DEFAULT '0',
+PRIMARY KEY (`id`)
+);
+REPLACE INTO insert_relpace_into_test2 
+VALUES
+( 1,'1003', 'ziduan a', 'ziduan b', 1 ), 
+( 2,'1005', 'ziduan _2_2', 'ziduan b_2', 1 );
+REPLACE INTO insert_relpace_into_test 
+VALUES
+( 3,'1003', 'ziduan a', 'ziduan b', 1 ), 
+( 4,'1005', 'ziduan _2_2', 'ziduan b_2', 1 );
+REPLACE INTO insert_relpace_into_test ( id,uniq_id, filed_a, filed_b, version )
+SELECT id,uniq_id, filed_a, filed_b, version FROM  insert_relpace_into_test2;
+select * from insert_relpace_into_test;
+id	uniq_id	filed_a	filed_b	version
+3	1003	ziduan a	ziduan b	1
+4	1005	ziduan _2_2	ziduan b_2	1
+1	1003	ziduan a	ziduan b	1
+2	1005	ziduan _2_2	ziduan b_2	1
+REPLACE INTO insert_relpace_into_test 
+SET id=5,uniq_id='1003',filed_a='ziduan _2_2',filed_b='ziduan b_2';
+select * from insert_relpace_into_test;
+id	uniq_id	filed_a	filed_b	version
+3	1003	ziduan a	ziduan b	1
+4	1005	ziduan _2_2	ziduan b_2	1
+1	1003	ziduan a	ziduan b	1
+2	1005	ziduan _2_2	ziduan b_2	1
+5	1003	ziduan _2_2	ziduan b_2	0
+REPLACE INTO insert_relpace_into_test 
+VALUES
+( 3,'1003new', 'ziduan a', 'ziduan b', 1 ), 
+( 4,'1005new', 'ziduan _2_2', 'ziduan b_2', 1 );
+select * from insert_relpace_into_test;
+id	uniq_id	filed_a	filed_b	version
+3	1003new	ziduan a	ziduan b	1
+4	1005new	ziduan _2_2	ziduan b_2	1
+1	1003	ziduan a	ziduan b	1
+2	1005	ziduan _2_2	ziduan b_2	1
+5	1003	ziduan _2_2	ziduan b_2	0
+REPLACE INTO insert_relpace_into_test ( id,uniq_id, filed_a, filed_b, version )
+SELECT id,uniq_id, filed_a, filed_b, version FROM  insert_relpace_into_test2;
+REPLACE INTO insert_relpace_into_test 
+SET id=5,uniq_id='1003new',filed_a='ziduan _2_2',filed_b='ziduan b_2';
+select * from insert_relpace_into_test;
+id	uniq_id	filed_a	filed_b	version
+3	1003new	ziduan a	ziduan b	1
+4	1005new	ziduan _2_2	ziduan b_2	1
+1	1003	ziduan a	ziduan b	1
+2	1005	ziduan _2_2	ziduan b_2	1
+5	1003new	ziduan _2_2	ziduan b_2	0
+drop table insert_relpace_into_test;
+drop table insert_relpace_into_test2;
+drop table test;
+drop table test1;
+DROP DATABASE replace_into_test;

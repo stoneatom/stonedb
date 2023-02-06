@@ -30,7 +30,7 @@
 #include "my_bit.h"
 
 #include "core/engine.h"
-#include "core/rc_mem_table.h"
+#include "core/tianmu_mem_table.h"
 #include "index/kv_store.h"
 #include "index/rdb_utils.h"
 
@@ -102,7 +102,7 @@ void RdbKey::get_key_cols(std::vector<uint> &cols) {
   }
 }
 
-void RdbKey::pack_field_number(StringWriter &key, std::string_view &field, uchar flag) {
+void RdbKey::pack_field_number(StringWriter &key, std::string &field, uchar flag) {
   uchar tuple[INTSIZE] = {0};
   copy_integer<false>(tuple, INTSIZE, (const uchar *)field.data(), INTSIZE, flag);
   key.write(tuple, sizeof(tuple));
@@ -125,7 +125,7 @@ common::ErrorCode RdbKey::unpack_field_number(StringReader &key, std::string &fi
   return common::ErrorCode::SUCCESS;
 }
 
-void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::string_view &field) {
+void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::string &field) {
   // version compatible
   if (index_ver_ == static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL)) {
     key.write((const uchar *)field.data(), field.length());
@@ -210,7 +210,7 @@ common::ErrorCode RdbKey::unpack_field_string(StringReader &key, StringReader &i
 }
 
 // cmp packed
-void RdbKey::pack_key(StringWriter &key, std::vector<std::string_view> &fields, StringWriter &info) {
+void RdbKey::pack_key(StringWriter &key, std::vector<std::string> &fields, StringWriter &info) {
   ASSERT(cols_.size() >= fields.size(), "fields size larger than keyparts size");
   key.clear();
   info.clear();
@@ -505,7 +505,8 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
                  max_index_id, memtable_id);
       return false;
     }
-    std::shared_ptr<core::RCMemTable> tb_mem = std::make_shared<core::RCMemTable>(table_name, memtable_id, cf_id);
+    std::shared_ptr<core::TianmuMemTable> tb_mem =
+        std::make_shared<core::TianmuMemTable>(table_name, memtable_id, cf_id);
     mem_hash_[table_name] = tb_mem;
   }
 
@@ -606,7 +607,7 @@ void DDLManager::cleanup() {
   }
 }
 
-std::shared_ptr<core::RCMemTable> DDLManager::find_mem(const std::string &table_name) {
+std::shared_ptr<core::TianmuMemTable> DDLManager::find_mem(const std::string &table_name) {
   std::scoped_lock guard(mem_lock_);
 
   auto iter = mem_hash_.find(table_name);
@@ -616,7 +617,7 @@ std::shared_ptr<core::RCMemTable> DDLManager::find_mem(const std::string &table_
   return nullptr;
 }
 
-void DDLManager::put_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
+void DDLManager::put_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
   std::scoped_lock guard(mem_lock_);
 
   StringWriter key;
@@ -633,7 +634,7 @@ void DDLManager::put_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::Writ
   mem_hash_[table_name] = tb_mem;
 }
 
-void DDLManager::remove_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
+void DDLManager::remove_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
   std::scoped_lock guard(mem_lock_);
 
   StringWriter key;

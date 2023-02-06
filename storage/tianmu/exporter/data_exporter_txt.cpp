@@ -17,16 +17,17 @@
 
 #include "data_exporter_txt.h"
 
-#include "types/rc_num.h"
+#include "types/tianmu_num.h"
 
 namespace Tianmu {
 namespace exporter {
 
 DEforTxt::DEforTxt(const system::IOParameters &iop)
-    : delimiter_(iop.Delimiter()[0]),
+    : opt_enclosed_(iop.OptionallyEnclosed()),
       str_qualifier_(iop.StringQualifier()),
       escape_character_(iop.EscapeCharacter()),
-      line_terminator_(iop.LineTerminator()[0]),
+      delimiter_(iop.Delimiter()),
+      line_terminator_(iop.LineTerminator()),
       nulls_str_(iop.NullsStr()),
       destination_charset_(iop.CharsetInfoNumber() ? get_charset(iop.CharsetInfoNumber(), 0) : 0) {}
 
@@ -34,9 +35,9 @@ void DEforTxt::PutText(const types::BString &str) {
   WriteStringQualifier();
   size_t char_len = attr_infos_[cur_attr_].GetCollation().collation->cset->numchars(
       attr_infos_[cur_attr_].GetCollation().collation, str.val_,
-      str.val_ + str.len_);    // len in chars
-  WriteString(str, str.len_);  // len in bytes
-  if ((attr_infos_[cur_attr_].Type() == common::CT::STRING) && (char_len < attr_infos_[cur_attr_].CharLen()))
+      str.val_ + str.len_);          // len in chars
+  WriteString(str, str.len_, true);  // len in bytes
+  if ((attr_infos_[cur_attr_].Type() == common::ColumnType::STRING) && (char_len < attr_infos_[cur_attr_].CharLen()))
 // it can be necessary to change the WritePad implementation to something like:
 // collation->cset->fill(cs, copy->to_ptr+copy->from_length,
 // copy->to_length-copy->from_length, '
@@ -56,46 +57,54 @@ void DEforTxt::PutText(const types::BString &str) {
 
 void DEforTxt::PutBin(const types::BString &str) {
   int len = str.size();
-  // if((rcdea[cur_attr_].attrt == common::CT::BYTE) && (len <
-  // rcdea[cur_attr_].size))
-  //	len = rcdea[cur_attr_].size;
   if (len > 0) {
     char *hex = new char[len * 2];
     system::Convert2Hex((const unsigned char *)str.val_, len, hex, len * 2, false);
-    WriteString(types::BString(hex, len * 2));
+    WriteString(types::BString(hex, len * 2), true);
     delete[] hex;
   }
   WriteValueEnd();
 }
 
 void DEforTxt::PutNumeric(int64_t num) {
-  types::RCNum rcn(num, source_attr_infos_[cur_attr_].Scale(),
-                   core::ATI::IsRealType(source_attr_infos_[cur_attr_].Type()), source_attr_infos_[cur_attr_].Type());
-  types::BString rcs = rcn.ToBString();
-  WriteString(rcs);
+  types::TianmuNum tianmu_n(num, source_attr_infos_[cur_attr_].Scale(),
+                            core::ATI::IsRealType(source_attr_infos_[cur_attr_].Type()),
+                            source_attr_infos_[cur_attr_].Type());
+  types::BString tianmu_s = tianmu_n.ToBString();
+  WriteString(tianmu_s, false);
   WriteValueEnd();
 }
 
 void DEforTxt::PutDateTime(int64_t dt) {
-  types::RCDateTime rcdt(dt, attr_infos_[cur_attr_].Type());
-  types::BString rcs = rcdt.ToBString();
-  WriteString(rcs);
+  types::TianmuDateTime tianmu_dt(dt, attr_infos_[cur_attr_].Type());
+  types::BString tianmu_s = tianmu_dt.ToBString();
+  WriteString(tianmu_s, false);
   WriteValueEnd();
 }
 
 void DEforTxt::PutRowEnd() {
-  if (line_terminator_ == 0)
-    WriteString("\r\n", 2);
+  if (line_terminator_.empty())
+    WriteChars("\r\n");
   else
-    data_exporter_buf_->WriteIfNonzero(line_terminator_);
+    WriteChars(line_terminator_);
 }
 
-size_t DEforTxt::WriteString(const types::BString &str, int len) {
+size_t DEforTxt::WriteString(const types::BString &str, int len, bool text_or_bin, bool is_null) {
   int res_len = 0;
+  bool enclose_output{false};
+
+  // If you omit the word OPTIONALLY, all fields are enclosed by the ENCLOSED BY character.
+  // If you specify OPTIONALLY, the ENCLOSED BY character is used only to enclose values from columns that
+  // have a string data type (such as CHAR, BINARY, TEXT, or ENUM):
+  if (str_qualifier_ && !is_null && (text_or_bin || !opt_enclosed_)) {
+    enclose_output = true;
+    WriteChar(str_qualifier_, 1);
+  }
+
   if (escape_character_) {
     escaped_.erase();
     for (size_t i = 0; i < str.size(); i++) {
-      if (str[i] == str_qualifier_ || (!str_qualifier_ && str[i] == delimiter_))
+      if (str[i] == str_qualifier_ || (!str_qualifier_ && !delimiter_.empty() && str[i] == delimiter_[0]))
         escaped_.append(1, escape_character_);
       escaped_.append(1, str[i]);
     }
@@ -126,6 +135,13 @@ size_t DEforTxt::WriteString(const types::BString &str, int len) {
       res_len = len;
     }
   }
+
+  // check whether to output the enclose char
+  if (enclose_output) {
+    WriteChar(str_qualifier_, 1);
+    res_len += sizeof(char) + sizeof(char);  // enclose char + result len + enclose char
+  }
+
   return res_len;
 }
 

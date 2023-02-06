@@ -8,7 +8,9 @@
 
 </br>
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/stoneatom/stonedb/Compile%20&%20MTR)](https://github.com/stoneatom/stonedb/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/stoneatom/stonedb/pull_requests.yml?branch=stonedb-5.7-dev)](https://github.com/stoneatom/stonedb/actions)
+[![codecov](https://codecov.io/gh/stoneatom/stonedb/branch/stonedb-5.7-dev/graph/badge.svg?token=NWJYOOZ2S5)](https://codecov.io/gh/stoneatom/stonedb)
+[![Docker Pulls](https://img.shields.io/docker/pulls/stoneatom/stonedb)](https://hub.docker.com/r/stoneatom/stonedb)
 [![GitHub license](https://img.shields.io/github/license/stoneatom/stonedb)](https://github.com/stoneatom/stonedb/blob/stonedb-5.6/LICENSE)
 [![slack badge](https://img.shields.io/badge/Slack-Join%20StoneDB-blueviolet?logo=slack&amp)](https://stonedb.slack.com/join/shared_invite/zt-1ba2lpvbo-Vqq62DJcxViyxCZmp7Rimw#/shared-invite/email)
 [![WeChat badge](https://img.shields.io/badge/Wechat-join-green?logo=wechat&amp)](https://cms.stoneatom.com/assets/8f44fbdf-b987-44fb-8b8d-c65a37da9221.jpg)
@@ -55,7 +57,7 @@ For more information about StoneDB, see [stonedb.io](https://stonedb.io/).
 
 # Contribution
 
-StoneDB welcomes all kinds of contributions, such as contributing code to the code base, sharing your experience on how to use StoneDB, and providing insights in the community on the Forums, or contributing to projects that make StoneDB a better project. For more specifics, see the [contributing guide](https://stonedb.io/community/main) for more specifics.
+StoneDB welcomes all kinds of contributions, such as contributing code to the code base, sharing your experience on how to use StoneDB, and providing insights in the community on the Forums, or contributing to projects that make StoneDB a better project. For more specifics, see the [contributing guide](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CONTRIBUTING.md) for more specifics.
 
 # Getting Started
 
@@ -148,7 +150,7 @@ CREATE TABLE `example_table` (
 The example shows some important features and limitations in StoneDB. For more information about limitations, please see [StoneDB Limitations](https://stonedb.io/docs/about-stonedb/limits). 
 
 - StoneDB data is stored in Column format and persist to RocksDB. All data is compressed, and the compression ratio can be 10:1 to 40:1. 
-- StoneDB can achieve a competitive performance when processing ad-hoc queries, even without any indexes created. For more details, click [here.](http://stonedb.io/)
+- StoneDB can achieve a competitive performance when processing ad-hoc queries, even without any indexes created. For more details, click [here.](https://stonedb.io/docs/about-stonedb/architecture)
 
 --- 
 
@@ -178,8 +180,8 @@ The [GitHub Discussions](https://github.com/stoneatom/stonedb/discussions) is th
 # Join StoneDB Wechat Group
 You can add our little assistant's WeChat and join StoneDB's user group:
 
-![logo](Docs/stonedb_wecaht_group.jpg)
+<img src="Docs/stonedb_wecaht_group.png" width="50%">
 
 # Code of Conduct
-When participating in the StoneDB project, please ensure all your behavior complies with the [Code of Conduct](https://stonedb.io/community/main).
+When participating in the StoneDB project, please ensure all your behavior complies with the [Code of Conduct](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CODE_OF_CONDUCT.md).
 

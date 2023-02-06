@@ -1,0 +1,141 @@
+#
+# Test alter
+#
+DROP DATABASE IF EXISTS alter_table1_test;
+CREATE DATABASE alter_table1_test;
+USE alter_table1_test;
+CREATE TABLE st1
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT
+);
+alter table st1 add column test varchar(4);
+alter table st1 add column test1 varchar(4) after test;
+alter table st1 add column test3 varchar(4);
+alter table st1 add primary key(id);
+alter table st1 alter column id set default 3;
+alter table st1 alter column name drop default;
+alter table st1 alter column name set default NULL;
+alter table st1 alter column id set 'unknown';
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''unknown'' at line 1
+alter table st1 alter column id set default;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 1
+alter table st1 drop primary key;
+alter table st1 drop name;
+desc st1;
+Field	Type	Null	Key	Default	Extra
+id	int(11)	NO		3	
+deptId	int(11)	YES		NULL	
+salary	float	YES		NULL	
+test	varchar(4)	YES		NULL	
+test1	varchar(4)	YES		NULL	
+test3	varchar(4)	YES		NULL	
+CREATE TABLE st2
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT
+);
+insert into st2 values(3,'haha1',45,4.5);
+insert into st2 values(1,'haha2',12,1.2);
+insert into st2 values(4,'haha3',31,3.2);
+insert into st2 values(2,'haha4',55,3.5);
+alter table st2 order by id;
+select * from st2;
+id	name	deptId	salary
+1	haha2	12	1.2
+2	haha4	55	3.5
+3	haha1	45	4.5
+4	haha3	31	3.2
+alter table st2 order by id,deptId;
+select * from st2;
+id	name	deptId	salary
+1	haha2	12	1.2
+2	haha4	55	3.5
+3	haha1	45	4.5
+4	haha3	31	3.2
+alter table st2 order by deptId,id;
+select * from st2;
+id	name	deptId	salary
+1	haha2	12	1.2
+4	haha3	31	3.2
+3	haha1	45	4.5
+2	haha4	55	3.5
+CREATE TABLE st3
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT,
+PRIMARY KEY(id)
+);
+ALTER TABLE st3 RENAME to st4 ;
+ALTER TABLE st4 RENAME as st3 ;
+ALTER TABLE st3 RENAME to st4 ;
+desc st4;
+Field	Type	Null	Key	Default	Extra
+id	int(11)	NO	PRI	NULL	
+name	varchar(25)	YES		NULL	
+deptId	int(11)	YES		NULL	
+salary	float	YES		NULL	
+alter table st4  change name name1 varchar(20);
+alter table st4  change column name1 name varchar(25);
+alter table st4 change name name2 varchar(20) after salary;
+CREATE TABLE st5
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT,
+PRIMARY KEY(id)
+);
+alter table st5 modify name varchar(20);
+alter table st5 modify column name varchar(24);
+alter table st5 modify column name varchar(15) after salary;
+ALTER TABLE st5 modify id varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci;
+CREATE TABLE st6
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT,
+PRIMARY KEY(id)
+);
+alter table st6 rename to st7,add name1 varchar(10);
+desc st7;
+Field	Type	Null	Key	Default	Extra
+id	int(11)	NO	PRI	NULL	
+name	varchar(25)	YES		NULL	
+deptId	int(11)	YES		NULL	
+salary	float	YES		NULL	
+name1	varchar(10)	YES		NULL	
+alter table st7 rename to st8,drop name1;
+desc st8;
+Field	Type	Null	Key	Default	Extra
+id	int(11)	NO	PRI	NULL	
+name	varchar(25)	YES		NULL	
+deptId	int(11)	YES		NULL	
+salary	float	YES		NULL	
+alter table st8 add name1 varchar(10),drop name;
+desc st8;
+Field	Type	Null	Key	Default	Extra
+id	int(11)	NO	PRI	NULL	
+deptId	int(11)	YES		NULL	
+salary	float	YES		NULL	
+name1	varchar(10)	YES		NULL	
+alter table st8 add name2 varchar(10),change name1 name varchar(10);
+desc st8;
+Field	Type	Null	Key	Default	Extra
+id	int(11)	NO	PRI	NULL	
+deptId	int(11)	YES		NULL	
+salary	float	YES		NULL	
+name	varchar(10)	YES		NULL	
+name2	varchar(10)	YES		NULL	
+alter table st8 add name3 varchar(10),modify name varchar(20);
+desc st8;
+Field	Type	Null	Key	Default	Extra
+id	int(11)	NO	PRI	NULL	
+deptId	int(11)	YES		NULL	
+salary	float	YES		NULL	
+name	varchar(20)	YES		NULL	
+name2	varchar(10)	YES		NULL	
+name3	varchar(10)	YES		NULL	
+drop database alter_table1_test;

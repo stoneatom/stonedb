@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue906_test;
+--enable_warnings
+
+CREATE DATABASE issue906_test;
+
+USE issue906_test;
 
 --disable_warnings
 
@@ -116,3 +122,4 @@ WHERE
 
 DROP TABLE shop;
 
+DROP DATABASE issue906_test;

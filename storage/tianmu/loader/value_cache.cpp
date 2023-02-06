@@ -20,7 +20,7 @@
 #include <algorithm>
 
 #include "common/assert.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace loader {

@@ -1,0 +1,48 @@
+DROP DATABASE IF EXISTS issue971_test;
+CREATE DATABASE issue971_test;
+USE issue971_test;
+set global tianmu_index_search=on;
+DROP TABLE IF EXISTS tt1,tt2;
+CREATE TABLE tt1(id INT PRIMARY KEY,name VARCHAR(5),copy_id INT) ENGINE=TIANMU;
+CREATE TABLE tt2(id INT PRIMARY KEY,name VARCHAR(5),copy_id INT) ENGINE=TIANMU;
+INSERT INTO tt1 VALUES(1,'AAA',1),(2,'AAA',2),(3,'BBB',3),(4,'BBB',4),(5,'CCC',5);
+INSERT INTO tt2 VALUES(1,'BBB',1),(2,'BBB',2),(3,'CCC',3),(4,'CCC',4),(5,'DDD',5);
+SELECT * FROM tt1 WHERE EXISTS (SELECT 1 FROM tt2 WHERE tt1.id = tt2.id AND name = 'BBB');
+id	name	copy_id
+1	AAA	1
+2	AAA	2
+SELECT * FROM tt1 WHERE EXISTS (SELECT 1 FROM tt2 WHERE tt1.id = tt2.id AND tt2.id = 2);
+id	name	copy_id
+2	AAA	2
+SELECT * FROM tt1 WHERE EXISTS (SELECT 1 FROM tt2 WHERE tt1.id = tt2.id AND tt2.id > 2);
+id	name	copy_id
+3	BBB	3
+4	BBB	4
+5	CCC	5
+SELECT * FROM tt1 WHERE EXISTS (SELECT 1 FROM tt2 WHERE tt1.id = tt2.id AND tt2.id < 2);
+id	name	copy_id
+1	AAA	1
+SELECT * FROM tt1 WHERE NOT EXISTS (SELECT 1 FROM tt2 WHERE tt1.id = tt2.id AND name = 'BBB');
+id	name	copy_id
+3	BBB	3
+4	BBB	4
+5	CCC	5
+SELECT * FROM tt1 WHERE NOT EXISTS (SELECT 1 FROM tt2 WHERE tt1.id = tt2.id AND tt2.id = 2);
+id	name	copy_id
+1	AAA	1
+3	BBB	3
+4	BBB	4
+5	CCC	5
+SELECT * FROM tt1 WHERE NOT EXISTS (SELECT 1 FROM tt2 WHERE tt1.id = tt2.id AND tt2.id > 2);
+id	name	copy_id
+1	AAA	1
+2	AAA	2
+SELECT * FROM tt1 WHERE NOT EXISTS (SELECT 1 FROM tt2 WHERE tt1.id = tt2.id AND tt2.id < 2);
+id	name	copy_id
+2	AAA	2
+3	BBB	3
+4	BBB	4
+5	CCC	5
+set global tianmu_index_search=off;
+DROP TABLE tt1,tt2;
+DROP DATABASE issue971_test;

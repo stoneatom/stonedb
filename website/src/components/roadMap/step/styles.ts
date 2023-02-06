@@ -123,6 +123,7 @@ export const StepItemWrap: StyledComponent<"div", any, {active?: boolean;disable
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    overflow-y: auto;
     p {
       font-size: 18px;
       font-weight: 400;
@@ -149,10 +150,11 @@ export const StepContext = styled(Context)`
   padding: 0;
   z-index: 0;
   .wrap{
-    width: 200%;
+    min-width: 100%;
     height: 100%;
-    ${({scroll}: any) => `
-      transform: translateX(-${scroll}px);
+    ${({scroll, counts}: any) => `
+      width: ${counts*320}px;
+      transform: translateX(-${scroll <=0 ? 0 : scroll}px);
     `}
   }
 `

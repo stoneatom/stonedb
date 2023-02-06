@@ -21,7 +21,7 @@
 #include <optional>
 
 #include "common/common_definitions.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace core {
@@ -31,9 +31,9 @@ class ValueOrNull final {
  public:
   ValueOrNull() : x(common::NULL_VALUE_64), null(true) {}
   explicit ValueOrNull(int64_t x) : x(x), null(false) { DEBUG_ASSERT(x != common::NULL_VALUE_64); }
-  ValueOrNull(types::RCNum const &rcn);
-  ValueOrNull(types::RCDateTime const &rcdt);
-  ValueOrNull(types::BString const &rcs);
+  ValueOrNull(types::TianmuNum const &tianmu_n);
+  ValueOrNull(types::TianmuDateTime const &tianmu_dt);
+  ValueOrNull(types::BString const &tianmu_s);
   ValueOrNull(ValueOrNull const &von);
 
   ~ValueOrNull() { Clear(); }
@@ -79,21 +79,21 @@ class ValueOrNull final {
   }
 
   //! assign a string from BString
-  //! \param rcs may be null, if is persistent, then create a string copy and
+  //! \param tianmu_s may be null, if is persistent, then create a string copy and
   //! become string owner
-  void SetBString(const types::BString &rcs);
+  void SetBString(const types::BString &tianmu_s);
 
   //! create a local copy of the string pointed by sp
   void MakeStringOwner();
 
   /*! Get a string in the form of RSBString
-   * \param rcs is given the string value from this
-   * Warning 1: the string pointed to by 'rcs' should be copied as soon as
+   * \param tianmu_s is given the string value from this
+   * Warning 1: the string pointed to by 'tianmu_s' should be copied as soon as
    * possible and not used later on (it may point to an internal buffer of MySQL
-   * String object ). Warning 2: 'rcs' must NOT be persistent, otherwise memory
+   * String object ). Warning 2: 'tianmu_s' must NOT be persistent, otherwise memory
    * leaks may occur
    */
-  void GetBString(types::BString &rcs) const;
+  void GetBString(types::BString &tianmu_s) const;
   std::optional<std::string> ToString() const;
 
  private:

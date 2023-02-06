@@ -1,0 +1,59 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue767_test;
+--enable_warnings
+
+CREATE DATABASE issue767_test;
+
+USE issue767_test;
+
+create table t1(val int) ENGINE=tianmu;
+create table t2(val2 int) ENGINE=tianmu;
+
+insert into t1 values(0);
+insert into t1 values(1);
+insert into t1 values(10);
+insert into t1 values(11);
+insert into t1 values(20);
+insert into t1 values(21);
+insert into t1 values(42);
+insert into t1 values(43);
+insert into t2 values(0);
+insert into t2 values(1);
+insert into t2 values(10);
+insert into t2 values(11);
+insert into t2 values(20);
+insert into t2 values(21);
+insert into t2 values(42);
+insert into t2 values(43);
+
+#original case(just test not in)
+select * from t1 where 42 not in (select * from t1 where val > 42);
+select * from t1 where 42 not in (select * from t1 where val < 10);
+select * from t1 where 42 not in (select * from t1 where val >= 42);
+select * from t1 where 42 not in (select * from t1 where val <= 10);
+
+#independent subquery
+insert into t2 values(10);
+select * from t1 where val not in (select * from t2 where val2 > 10);
+select * from t1 where val not in (select * from t2 where val2 >= 10);
+select * from t1 where val not in (select * from t2 where val2 < 10);
+select * from t1 where val not in (select * from t2 where val2 <=10);
+
+#dependent subquery
+select * from t1 where val not in (select * from t2 where val2 > t1.val);
+select * from t1 where val not in (select * from t2 where val2 >= t1.val);
+select * from t1 where val not in (select * from t2 where val2 < t1.val);
+select * from t1 where val not in (select * from t2 where val2 <= t1.val);
+
+select * from t1 where val not in (select * from t2 where val2 > t1.val and val2 >t1.val +10);
+select * from t1 where val not in (select * from t2 where val2 >= t1.val and val2 >= t1.val +10);
+select * from t1 where val not in (select * from t2 where val2 < t1.val and val2 <t1.val +10);
+select * from t1 where val not in (select * from t2 where val2 <= t1.val and val2 >= t1.val +10);
+select * from t1 where val not in (select * from t2 where val2 > t1.val);
+
+drop table t1;
+drop table t2;
+
+DROP DATABASE issue767_test;

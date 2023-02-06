@@ -18,7 +18,7 @@
 #define TIANMU_INDEX_KV_TRANSACTION_H_
 #pragma once
 
-#include "index/rc_table_index.h"
+#include "index/tianmu_table_index.h"
 #include "rocksdb/db.h"
 #include "rocksdb/utilities/transaction_db.h"
 #include "rocksdb/utilities/write_batch_with_index.h"

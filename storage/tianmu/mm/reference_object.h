@@ -31,8 +31,8 @@ class ReferenceObject : public TraceableObject {
     m_coord.ID = core::COORD_TYPE::PACK;
     m_coord.co.pack = r;
   }
-  ReferenceObject(core::RCAttrCoordinate &r) : TraceableObject() {
-    m_coord.ID = core::COORD_TYPE::RCATTR;
+  ReferenceObject(core::TianmuAttrCoordinate &r) : TraceableObject() {
+    m_coord.ID = core::COORD_TYPE::kTianmuAttr;
     m_coord.co.rcattr = r;
   }
   ReferenceObject(core::TOCoordinate &r) : TraceableObject() { m_coord = r; }

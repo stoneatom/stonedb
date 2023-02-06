@@ -28,7 +28,7 @@ low-level mechanisms
 #include "core/pack_guardian.h"
 #include "core/transaction.h"
 #include "system/fet.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
@@ -104,7 +104,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
 
       if (cur_a.term.vc) {
         if (!has_lookup)
-          has_lookup = cur_a.term.vc->Type().IsLookup();
+          has_lookup = cur_a.term.vc->Type().Lookup();
         max_size = cur_a.term.vc->MaxStringSize();
         min_v = cur_a.term.vc->RoughMin();
         max_v = cur_a.term.vc->RoughMax();
@@ -112,9 +112,10 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
           cur_a.distinct = false;  // "distinct" not needed, as values are distinct anyway
         else if (cur_a.distinct) {
           max_no_of_distinct = cur_a.term.vc->GetApproxDistVals(false);  // no nulls included
-          if (rc_control_.isOn())
-            rc_control_.lock(m_conn->GetThreadID()) << "Adding dist. column, min = " << min_v << ",  max = " << max_v
-                                                    << ",  dist = " << max_no_of_distinct << system::unlock;
+          if (tianmu_control_.isOn())
+            tianmu_control_.lock(m_conn->GetThreadID())
+                << "Adding dist. column, min = " << min_v << ",  max = " << max_v << ",  dist = " << max_no_of_distinct
+                << system::unlock;
         }
       }
       if (max_no_of_distinct == 0)
@@ -265,13 +266,13 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
   bool rewind_needed = false;
   try {
     do {
-      if (rc_control_.isOn()) {
+      if (tianmu_control_.isOn()) {
         if (gbw.UpperApproxOfGroups() == 1 || first_pass)
-          rc_control_.lock(m_conn->GetThreadID())
+          tianmu_control_.lock(m_conn->GetThreadID())
               << "Aggregating: " << mit.NumOfTuples() << " tuples left." << system::unlock;
         else
-          rc_control_.lock(m_conn->GetThreadID()) << "Aggregating: " << gbw.TuplesNoOnes() << " tuples left, "
-                                                  << displayed_no_groups << " gr. found so far" << system::unlock;
+          tianmu_control_.lock(m_conn->GetThreadID()) << "Aggregating: " << gbw.TuplesNoOnes() << " tuples left, "
+                                                      << displayed_no_groups << " gr. found so far" << system::unlock;
       }
       cur_tuple = 0;
       gbw.ClearNoGroups();         // count groups locally created in this pass
@@ -333,7 +334,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         MIDummyIterator m(1);
         for (uint i = 0; i < t->NumOfAttrs(); i++) {
           if (t->GetAttrP(i)->mode == common::ColOperation::GROUP_CONCAT) {
-            t->GetAttrP(i)->SetTypeName(common::CT::VARCHAR);
+            t->GetAttrP(i)->SetTypeName(common::ColumnType::VARCHAR);
             t->GetAttrP(i)->OverrideStringSize(tianmu_group_concat_max_len);
           }
           t->GetAttrP(i)->CreateBuffer(upper_groups);  // note: may be more than needed
@@ -341,9 +342,9 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
             t->GetAttrP(i)->term.vc->LockSourcePacks(m);
         }
       }
-      rc_control_.lock(m_conn->GetThreadID()) << "Group/Aggregate end. Begin generating output." << system::unlock;
-      rc_control_.lock(m_conn->GetThreadID()) << "Output rows: " << gbw.NumOfGroups() + gbw.TuplesNoOnes()
-                                              << ", output table row limit: " << t->GetPageSize() << system::unlock;
+      tianmu_control_.lock(m_conn->GetThreadID()) << "Group/Aggregate end. Begin generating output." << system::unlock;
+      tianmu_control_.lock(m_conn->GetThreadID()) << "Output rows: " << gbw.NumOfGroups() + gbw.TuplesNoOnes()
+                                                  << ", output table row limit: " << t->GetPageSize() << system::unlock;
       int64_t output_size = (gbw.NumOfGroups() + gbw.TuplesNoOnes()) * t->GetOneOutputRecordSize();
       gbw.RewindRows();
       if (t->GetPageSize() >= (gbw.NumOfGroups() + gbw.TuplesNoOnes()) && output_size > (1L << 29) &&
@@ -352,7 +353,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         // 1. output page is large enough to hold all output rows
         // 2. output result is larger than 512MB
         // 3. no have condition
-        rc_control_.lock(m_conn->GetThreadID()) << "Start parallel output" << system::unlock;
+        tianmu_control_.lock(m_conn->GetThreadID()) << "Start parallel output" << system::unlock;
         ParallelFillOutputWrapper(gbw, offset, limit, mit);
       } else {
         while (gbw.RowValid()) {
@@ -394,8 +395,8 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
     ag_worker.Commit(false);
     throw;
   }
-  if (rc_control_.isOn())
-    rc_control_.lock(m_conn->GetThreadID())
+  if (tianmu_control_.isOn())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Generating output end. "
         << "Aggregated (" << displayed_no_groups << " group). Omitted packrows: " << gbw.packrows_omitted << " + "
         << gbw.packrows_part_omitted << " partially, out of " << packrows_found << " total." << system::unlock;
@@ -413,7 +414,7 @@ void AggregationAlgorithm::MultiDimensionalDistinctScan(GroupByWrapper &gbw, MII
       if (gbw.distinct_watch.OmittedFilter(i) &&
           gbw.distinct_watch.OmittedFilter(i)->NumOfOnes() > max_size_for_display)
         max_size_for_display = gbw.distinct_watch.OmittedFilter(i)->NumOfOnes();
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Next distinct pass: " << max_size_for_display << " rows left" << system::unlock;
 
     gbw.RewindDistinctBuffers();  // reset buffers for a new contents, rewind
@@ -667,15 +668,15 @@ void AggregationAlgorithm::AggregateFillOutput(GroupByWrapper &gbw, int64_t gt_p
       continue;
     vcolumn::VirtualColumn *vc = a->term.vc;
     switch (a->TypeName()) {
-      case common::CT::STRING:
-      case common::CT::VARCHAR:
+      case common::ColumnType::STRING:
+      case common::ColumnType::VARCHAR:
         vc->GetValueString(vals, it);
         a->SetValueString(cur_output_tuple, vals);
         break;
-      case common::CT::BIN:
-      case common::CT::BYTE:
-      case common::CT::VARBYTE:
-      case common::CT::LONGTEXT:
+      case common::ColumnType::BIN:
+      case common::ColumnType::BYTE:
+      case common::ColumnType::VARBYTE:
+      case common::ColumnType::LONGTEXT:
         if (!vc->IsNull(it))
           vc->GetNotNullValueString(vals, it);
         else
@@ -837,8 +838,8 @@ void AggregationAlgorithm::ParallelFillOutputWrapper(GroupByWrapper &gbw, int64_
 
   utils::result_set<void> res;
   for (auto &gb : vgbw) {
-    res.insert(ha_rcengine_->query_thread_pool.add_task(&AggregationAlgorithm::TaskFillOutput, this, &gb, conn, offset,
-                                                        limit));
+    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&AggregationAlgorithm::TaskFillOutput, this, &gb, conn,
+                                                             offset, limit));
   }
   res.get_all_with_except();
 }
@@ -900,8 +901,8 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
   std::vector<std::unique_ptr<GroupByWrapper>> vGBW;
   vGBW.reserve(m_threads);
   vTask.reserve(m_threads);
-  if (rc_control_.isOn())
-    rc_control_.lock(conn->GetThreadID()) << "Prepare data for parallel aggreation" << system::unlock;
+  if (tianmu_control_.isOn())
+    tianmu_control_.lock(conn->GetThreadID()) << "Prepare data for parallel aggreation" << system::unlock;
 
   int packnum = 0;
   int curtuple_index = 0;
@@ -922,8 +923,8 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
 
   utils::result_set<void> res;
   for (int i = 0; i < loopcnt; ++i) {
-    res.insert(
-        ha_rcengine_->query_thread_pool.add_task(&AggregationWorkerEnt::PrepShardingCopy, this, &mit, gb_main, &vGBW));
+    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&AggregationWorkerEnt::PrepShardingCopy, this, &mit,
+                                                             gb_main, &vGBW));
 
     int pack_start = i * num;
     int pack_end = 0;
@@ -969,8 +970,8 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
 
   for (size_t i = 0; i < vTask.size(); ++i) {
     GroupByWrapper *gbw = i == 0 ? gb_main : vGBW[i].get();
-    res1.insert(ha_rcengine_->query_thread_pool.add_task(&AggregationWorkerEnt::TaskAggrePacks, this, &taskIterator[i],
-                                                         &dims, &mit, &vTask[i], gbw, conn));
+    res1.insert(ha_tianmu_engine_->query_thread_pool.add_task(&AggregationWorkerEnt::TaskAggrePacks, this,
+                                                              &taskIterator[i], &dims, &mit, &vTask[i], gbw, conn));
   }
   res1.get_all_with_except();
 

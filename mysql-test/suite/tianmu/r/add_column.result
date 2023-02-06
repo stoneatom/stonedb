@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS add_column_test;
+CREATE DATABASE add_column_test;
+USE add_column_test;
 CREATE TABLE `column_type_test` (
 `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -17,7 +20,7 @@ CREATE TABLE `column_type_test` (
 `c_text` text COMMENT 'text',
 `c_longblob` longblob COMMENT 'longblob'
 ) ENGINE=TIANMU;
-load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
+load data infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/bigdata4load.txt' into table column_type_test fields terminated by '|';
 select count(*) from column_type_test;
 count(*)
 100000
@@ -50,3 +53,4 @@ select count(*) from column_type_test;
 count(*)
 100001
 drop table column_type_test;
+DROP DATABASE add_column_test;

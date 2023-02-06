@@ -18,10 +18,11 @@
 #include <cmath>
 
 #include "core/bin_tools.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
+
 const int bin_sums[256] = {0, 1, 1, 2, 1, 2, 2, 3,   // 00000***
                            1, 2, 2, 3, 2, 3, 3, 4,   // 00001***
                            1, 2, 2, 3, 2, 3, 3, 4,   // 00010***
@@ -106,20 +107,20 @@ int64_t SafeMultiplication(int64_t x,
   return x * y;
 }
 
-common::RSValue Or(common::RSValue f, common::RSValue s) {
-  if (f == common::RSValue::RS_ALL || s == common::RSValue::RS_ALL)
-    return common::RSValue::RS_ALL;
-  if (f == common::RSValue::RS_SOME || s == common::RSValue::RS_SOME)
-    return common::RSValue::RS_SOME;
-  return common::RSValue::RS_NONE;
+common::RoughSetValue Or(common::RoughSetValue f, common::RoughSetValue s) {
+  if (f == common::RoughSetValue::RS_ALL || s == common::RoughSetValue::RS_ALL)
+    return common::RoughSetValue::RS_ALL;
+  if (f == common::RoughSetValue::RS_SOME || s == common::RoughSetValue::RS_SOME)
+    return common::RoughSetValue::RS_SOME;
+  return common::RoughSetValue::RS_NONE;
 }
 
-common::RSValue And(common::RSValue f, common::RSValue s) {
-  if (f == common::RSValue::RS_ALL && s == common::RSValue::RS_ALL)
-    return common::RSValue::RS_ALL;
-  if (f == common::RSValue::RS_NONE || s == common::RSValue::RS_NONE)
-    return common::RSValue::RS_NONE;
-  return common::RSValue::RS_SOME;
+common::RoughSetValue And(common::RoughSetValue f, common::RoughSetValue s) {
+  if (f == common::RoughSetValue::RS_ALL && s == common::RoughSetValue::RS_ALL)
+    return common::RoughSetValue::RS_ALL;
+  if (f == common::RoughSetValue::RS_NONE || s == common::RoughSetValue::RS_NONE)
+    return common::RoughSetValue::RS_NONE;
+  return common::RoughSetValue::RS_SOME;
 }
 
 int64_t MonotonicDouble2Int64(int64_t d)  // encode double value (bitwise stored as int64_t) into

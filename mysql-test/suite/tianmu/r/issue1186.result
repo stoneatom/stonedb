@@ -1,0 +1,131 @@
+include/master-slave.inc
+[connection master]
+DROP DATABASE IF EXISTS issue1186_test;
+include/sync_slave_sql_with_master.inc
+# on master:
+CREATE DATABASE issue1186_test;
+USE issue1186_test;
+include/sync_slave_sql_with_master.inc
+# on master:
+show databases;
+Database
+information_schema
+cache
+issue1186_test
+mtr
+mysql
+performance_schema
+sys
+sys_tianmu
+test
+#
+# Secondary INDEX
+# 
+# on master:
+CREATE TABLE tb_stu_info1 (id int(11) NOT NULL, height int(11) DEFAULT NULL,KEY height (height)) ENGINE=INNODB;
+CREATE TABLE tb_stu_info2 (id int(11) NOT NULL, height int(11) DEFAULT NULL,INDEX height (height)) ENGINE=INNODB;
+CREATE TABLE tb_stu_info3 (id int, col_name varchar(10)) ENGINE=INNODB;
+CREATE INDEX index_name ON tb_stu_info3(col_name);
+ALTER TABLE tb_stu_info3 DROP INDEX index_name;
+ALTER TABLE  tb_stu_info3  add INDEX  index_name  (col_name) ;
+ALTER TABLE tb_stu_info3 RENAME INDEX index_name TO index_name1;
+ALTER TABLE tb_stu_info3 DROP INDEX index_name1;
+ALTER TABLE  tb_stu_info3  add KEY  index_name  (col_name) ;
+ALTER TABLE tb_stu_info3 RENAME KEY index_name TO index_name2;
+ALTER TABLE tb_stu_info3 DROP KEY index_name2;
+include/sync_slave_sql_with_master.inc
+# on slave:
+show tables;
+Tables_in_test
+#
+# UNIQUE INDEX
+#
+# on master:
+CREATE TABLE tb_stu_info_1 (id int(11) NOT NULL, height int(11) DEFAULT NULL,UNIQUE KEY height (height)) ENGINE=INNODB;
+CREATE TABLE tb_stu_info_2 (id int(11) NOT NULL, height int(11) DEFAULT NULL,UNIQUE INDEX height (height)) ENGINE=INNODB;
+CREATE TABLE tb_stu_info_3 (id int(11) NOT NULL, height int(11) DEFAULT NULL) ENGINE=INNODB;
+ALTER TABLE tb_stu_info_3 ADD CONSTRAINT constraint_name UNIQUE INDEX(height);
+ALTER TABLE tb_stu_info_3  RENAME INDEX constraint_name TO constraint_name1;
+ALTER TABLE tb_stu_info_3 DROP INDEX constraint_name1;
+ALTER TABLE tb_stu_info_3 ADD CONSTRAINT constraint_name UNIQUE KEY(height);
+ALTER TABLE tb_stu_info_3  RENAME KEY constraint_name TO constraint_name2;
+ALTER TABLE tb_stu_info_3 DROP KEY constraint_name2;
+CREATE UNIQUE INDEX index_name ON tb_stu_info_3(height);
+include/sync_slave_sql_with_master.inc
+# on slave:
+show tables;
+Tables_in_test
+#
+# FULL INDEX
+#
+# on master:
+CREATE TABLE tb_posts1 (id int(4) NOT NULL AUTO_INCREMENT,
+title varchar(255) NOT NULL,
+post_content text,
+PRIMARY KEY (id),
+FULLTEXT KEY post_content (post_content)
+)ENGINE=INNODB;
+CREATE TABLE tb_posts2 (id int(4) NOT NULL AUTO_INCREMENT,
+title varchar(255) NOT NULL,
+post_content text,
+PRIMARY KEY (id)
+)ENGINE=INNODB;
+ALTER TABLE tb_posts2 ADD FULLTEXT INDEX  index_name (post_content);
+Warnings:
+Warning	124	InnoDB rebuilding table to add column FTS_DOC_ID
+ALTER TABLE tb_posts2 DROP INDEX index_name;
+CREATE FULLTEXT INDEX index_name ON tb_posts2 (post_content);
+DROP INDEX index_name ON tb_posts2;
+include/sync_slave_sql_with_master.inc
+# on slave:
+show tables;
+Tables_in_test
+#
+# TRIGGER
+#
+# on master:
+CREATE TABLE employees(
+id INT auto_increment PRIMARY KEY,
+employeeNumber INT NOT NULL,
+lastname VARCHAR(50) NOT NULL,
+action VARCHAR(50) DEFAULT NULL) ENGINE=INNODB;
+CREATE TABLE employees_audit(
+id INT auto_increment PRIMARY KEY,
+employeeNumber INT NOT NULL,
+lastname VARCHAR(50) NOT NULL,
+action VARCHAR(50) DEFAULT NULL) ENGINE=INNODB;
+CREATE TABLE employees_audit2(
+id INT auto_increment PRIMARY KEY,
+employeeNumber INT NOT NULL,
+lastname VARCHAR(50) NOT NULL,
+action VARCHAR(50) DEFAULT NULL) ENGINE=INNODB;
+CREATE TRIGGER before_employee_update 
+BEFORE UPDATE ON employees 
+FOR EACH ROW
+BEGIN
+INSERT INTO employees_audit 
+SET action = 'update',
+employeeNumber = 1,
+lastname = "nihao",
+new_lastname = "niyehao";
+END |
+include/sync_slave_sql_with_master.inc
+# on slave:
+show triggers;
+Trigger	Event	Table	Statement	Timing	Created	sql_mode	Definer	character_set_client	collation_connection	Database Collation
+# on master:
+DROP DATABASE issue1186_test;
+include/sync_slave_sql_with_master.inc
+# on slave:
+show databases;
+Database
+information_schema
+cache
+mtr
+mysql
+performance_schema
+sys
+sys_tianmu
+test
+tianmu_data
+stop slave;

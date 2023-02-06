@@ -38,7 +38,7 @@ class ConstColumn : public VirtualColumn {
    * \param ct - type of const column.
    */
   ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c, bool shift_to_UTC = false);
-  ConstColumn(const types::RCValueObject &v, const core::ColumnType &c);
+  ConstColumn(const types::TianmuValueObject &v, const core::ColumnType &c);
   ConstColumn(ConstColumn const &cc) : VirtualColumn(cc.ct, cc.multi_index_), value_or_null_(cc.value_or_null_) {}
   ~ConstColumn() {}
   bool IsConst() const override { return true; }
@@ -61,7 +61,7 @@ class ConstColumn : public VirtualColumn {
   bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return value_or_null_.IsNull(); }
   void GetValueStringImpl(types::BString &s, const core::MIIterator &mit) override;
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
 
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return value_or_null_.IsNull() || value_or_null_.IsString() ? common::MINUS_INF_64 : value_or_null_.Get64();

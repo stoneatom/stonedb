@@ -1,3 +1,13 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS flow_control_function_test;
+--enable_warnings
+
+CREATE DATABASE flow_control_function_test;
+
+USE flow_control_function_test;
+
 --echo #
 --echo # Flow control function,Based on the test
 --echo #
@@ -32,3 +42,5 @@ SELECT IFNULL(1,0);
 --echo #nullif
 SELECT NULLIF (2,1);
 SELECT NULLIF (2,2);
+
+DROP DATABASE flow_control_function_test;

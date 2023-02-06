@@ -1,0 +1,169 @@
+DROP DATABASE IF EXISTS issue271_test;
+CREATE DATABASE issue271_test;
+USE issue271_test;
+DROP TABLE IF EXISTS test1;
+CREATE TABLE test1(a varchar(100)) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+INSERT INTO test1 VALUES ('hakan%'), ('hakank'), ("ha%an");
+SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	
+SELECT * FROM test1 WHERE a LIKE 'hakan*%' ESCAPE '*';
+a
+hakan%
+SELECT * FROM test1 WHERE a LIKE 'ha|%an' ESCAPE '|';
+a
+ha%an
+SELECT * FROM test1 WHERE a LIKE 'hakan%' ESCAPE '';
+a
+hakan%
+hakank
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '\\';
+a
+hakan%
+SELECT * FROM test1 WHERE a LIKE 'hakan\n%' ESCAPE '\n';
+a
+hakan%
+SET @@SQL_MODE='NO_BACKSLASH_ESCAPES';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	NO_BACKSLASH_ESCAPES
+SELECT * FROM test1 WHERE a LIKE 'hakan%' ESCAPE ' ';
+a
+hakan%
+hakank
+SELECT * FROM test1 WHERE a LIKE 'hakan\n%' ESCAPE 'n';
+a
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '%';
+a
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '*';
+a
+SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	
+DROP TABLE test1;
+CREATE TABLE test1(a varchar(100)) ENGINE=TIANMU DEFAULT CHARSET=ascii;
+INSERT INTO test1 VALUES ('hakan%'), ('hakank'), ("ha%an");
+SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	
+SELECT * FROM test1 WHERE a LIKE 'hakan*%' ESCAPE '*';
+a
+hakan%
+SELECT * FROM test1 WHERE a LIKE 'ha|%an' ESCAPE '|';
+a
+ha%an
+SELECT * FROM test1 WHERE a LIKE 'hakan%' ESCAPE '';
+a
+hakan%
+hakank
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '\\';
+a
+hakan%
+SELECT * FROM test1 WHERE a LIKE 'hakan\n%' ESCAPE '\n';
+a
+hakan%
+SET @@SQL_MODE='NO_BACKSLASH_ESCAPES';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	NO_BACKSLASH_ESCAPES
+SELECT * FROM test1 WHERE a LIKE 'hakan%' ESCAPE ' ';
+a
+hakan%
+hakank
+SELECT * FROM test1 WHERE a LIKE 'hakan\n%' ESCAPE 'n';
+a
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '%';
+a
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '*';
+a
+SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	
+DROP TABLE test1;
+CREATE TABLE test1(a varchar(100)) ENGINE=TIANMU DEFAULT CHARSET=gb18030;
+INSERT INTO test1 VALUES ('hakan%'), ('hakank'), ("ha%an");
+SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	
+SELECT * FROM test1 WHERE a LIKE 'hakan*%' ESCAPE '*';
+a
+hakan%
+SELECT * FROM test1 WHERE a LIKE 'ha|%an' ESCAPE '|';
+a
+ha%an
+SELECT * FROM test1 WHERE a LIKE 'hakan%' ESCAPE '';
+a
+hakan%
+hakank
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '\\';
+a
+hakan%
+SELECT * FROM test1 WHERE a LIKE 'hakan\n%' ESCAPE '\n';
+a
+hakan%
+SET @@SQL_MODE='NO_BACKSLASH_ESCAPES';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	NO_BACKSLASH_ESCAPES
+SELECT * FROM test1 WHERE a LIKE 'hakan%' ESCAPE ' ';
+a
+hakan%
+hakank
+SELECT * FROM test1 WHERE a LIKE 'hakan\n%' ESCAPE 'n';
+a
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '%';
+a
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '*';
+a
+SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	
+DROP TABLE test1;
+CREATE TABLE test1(a varchar(100)) ENGINE=TIANMU DEFAULT CHARSET=gb2312;
+INSERT INTO test1 VALUES ('hakan%'), ('hakank'), ("ha%an");
+SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	
+SELECT * FROM test1 WHERE a LIKE 'hakan*%' ESCAPE '*';
+a
+hakan%
+SELECT * FROM test1 WHERE a LIKE 'ha|%an' ESCAPE '|';
+a
+ha%an
+SELECT * FROM test1 WHERE a LIKE 'hakan%' ESCAPE '';
+a
+hakan%
+hakank
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '\\';
+a
+hakan%
+SELECT * FROM test1 WHERE a LIKE 'hakan\n%' ESCAPE '\n';
+a
+hakan%
+SET @@SQL_MODE='NO_BACKSLASH_ESCAPES';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	NO_BACKSLASH_ESCAPES
+SELECT * FROM test1 WHERE a LIKE 'hakan%' ESCAPE ' ';
+a
+hakan%
+hakank
+SELECT * FROM test1 WHERE a LIKE 'hakan\n%' ESCAPE 'n';
+a
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '%';
+a
+SELECT * FROM test1 WHERE a LIKE 'hakan\%' ESCAPE '*';
+a
+SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
+SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
+Variable_name	Value
+sql_mode	
+DROP TABLE test1;
+DROP DATABASE issue271_test;

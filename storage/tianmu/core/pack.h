@@ -22,7 +22,7 @@
 #include "core/tools.h"
 #include "mm/mm_guard.h"
 #include "mm/traceable_object.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace system {
@@ -123,6 +123,7 @@ class Pack : public mm::TraceableObject {
   void ResetModeCompressed() {
     dpn_->null_compressed = 0;
     dpn_->data_compressed = 0;
+    dpn_->delete_compressed = 0;
   }
   void SetModeNoCompression() {
     ResetModeCompressed();

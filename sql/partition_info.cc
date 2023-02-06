@@ -1212,7 +1212,11 @@ bool partition_info::check_engine_mix(handlerton *engine_type,
     engine_type= old_engine_type;
   if (engine_type->flags & HTON_NO_PARTITION)
   {
-    my_error(ER_PARTITION_MERGE_ERROR, MYF(0));
+    if (engine_type == tianmu_hton) {
+      my_error(ER_TIANMU_NOT_SUPPORTED_PARTITION, MYF(0));
+    } else {
+      my_error(ER_PARTITION_MERGE_ERROR, MYF(0));
+    }
     DBUG_RETURN(TRUE);
   }
   DBUG_PRINT("info", ("out: engine_type = %s",

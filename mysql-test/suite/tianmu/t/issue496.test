@@ -1,4 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue496_test;
+--enable_warnings
+
+CREATE DATABASE issue496_test;
+
+USE issue496_test;
+
 create table t1 (id int, name varchar(10) comment "LOOKUP") ENGINE=TIANMU;
 insert into t1 values (1, 'one');
 insert into t1 values (2, 'one');
@@ -7,3 +16,5 @@ insert into t1 values (4, 'one');
 update t1 set name='two' where id=2;
 select * from t1;
 drop table t1;
+
+DROP DATABASE issue496_test;

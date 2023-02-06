@@ -1,4 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue502_test;
+--enable_warnings
+
+CREATE DATABASE issue502_test;
+
+USE issue502_test;
+
 CREATE TABLE `auto_20` (
     `pk` bigint(11) NOT NULL AUTO_INCREMENT,
     `varchar_test` varchar(255) DEFAULT NULL,
@@ -9,3 +18,5 @@ insert into auto_20(varchar_test) values('aaaa');
 insert into auto_20(varchar_test) values('bbb');
 select * from auto_20;
 drop table auto_20;
+
+DROP DATABASE issue502_test;

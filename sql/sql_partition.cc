@@ -5010,7 +5010,11 @@ uint prep_alter_part_table(THD *thd, TABLE *table, Alter_info *alter_info,
 
     if (!table->part_info)
     {
-      my_error(ER_PARTITION_MGMT_ON_NONPARTITIONED, MYF(0));
+      if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+        my_error(ER_TIANMU_NOT_SUPPORTED_PARTITION, MYF(0));
+      } else {
+        my_error(ER_PARTITION_MGMT_ON_NONPARTITIONED, MYF(0));
+      }
       DBUG_RETURN(TRUE);
     }
     if (!part_handler)

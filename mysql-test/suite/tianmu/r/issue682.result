@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue682_test;
+CREATE DATABASE issue682_test;
+USE issue682_test;
 set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 Warnings:
 Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
@@ -227,3 +229,4 @@ Warnings:
 Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
 Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
 drop table t1;
+DROP DATABASE issue682_test;

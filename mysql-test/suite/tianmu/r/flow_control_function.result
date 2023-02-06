@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS flow_control_function_test;
+CREATE DATABASE flow_control_function_test;
+USE flow_control_function_test;
 #
 # Flow control function,Based on the test
 #
@@ -51,3 +54,4 @@ NULLIF (2,1)
 SELECT NULLIF (2,2);
 NULLIF (2,2)
 NULL
+DROP DATABASE flow_control_function_test;

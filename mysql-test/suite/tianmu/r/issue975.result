@@ -1,0 +1,30 @@
+DROP DATABASE IF EXISTS issue975_test;
+CREATE DATABASE issue975_test;
+USE issue975_test;
+CREATE TABLE t1 (date CHAR(30), format CHAR(30)) engine=tianmu default CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO t1 VALUES
+('10:20:10', '%H:%i:%s'),
+('10:20:10', '%h:%i:%s.%f'),
+('10:20:10', '%T'),
+('10:20:10AM', '%h:%i:%s%p'),
+('10:20:10AM', '%r'),
+('10:20:10.44AM', '%h:%i:%s.%f%p'),
+('10:20:10PM', '%h:%i:%s%p'),
+('10:20:10PM', '%r'),
+('10:20:10.44PM', '%h:%i:%s.%f%p');
+SELECT date, format, STR_TO_DATE(date, format) as str_to_date FROM t1;
+date	format	str_to_date
+10:20:10	%H:%i:%s	0000-00-00 10:20:10.000000
+10:20:10	%h:%i:%s.%f	0000-00-00 10:20:10.000000
+10:20:10	%T	0000-00-00 10:20:10.000000
+10:20:10AM	%h:%i:%s%p	0000-00-00 10:20:10.000000
+10:20:10AM	%r	0000-00-00 10:20:10.000000
+10:20:10.44AM	%h:%i:%s.%f%p	0000-00-00 10:20:10.440000
+10:20:10PM	%h:%i:%s%p	0000-00-00 22:20:10.000000
+10:20:10PM	%r	0000-00-00 22:20:10.000000
+10:20:10.44PM	%h:%i:%s.%f%p	0000-00-00 22:20:10.440000
+show variables like '%sql_mode%';
+Variable_name	Value
+sql_mode	NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+drop table t1;
+DROP DATABASE issue975_test;

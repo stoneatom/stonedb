@@ -19,7 +19,7 @@
 #include <limits>
 
 #include "core/transaction.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
@@ -89,10 +89,10 @@ void AggregatorSumD::Merge(unsigned char *buf, unsigned char *src_buf) {
 
 void AggregatorSumD::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::REAL);
+  types::TianmuNum val(common::ColumnType::REAL);
   double d_val = 0.0;
   if (!v.IsEmpty()) {
-    auto r = types::RCNum::ParseReal(v, val, common::CT::REAL);
+    auto r = types::TianmuNum::ParseReal(v, val, common::ColumnType::REAL);
     if ((r == common::ErrorCode::SUCCESS || r == common::ErrorCode::OUT_OF_RANGE) && !val.IsNull()) {
       d_val = double(val);
     }
@@ -152,9 +152,9 @@ void AggregatorAvgD::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t f
 
 void AggregatorAvgD::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::REAL);
+  types::TianmuNum val(common::ColumnType::REAL);
   if (!v.IsEmpty()) {
-    auto r = types::RCNum::ParseReal(v, val, common::CT::REAL);
+    auto r = types::TianmuNum::ParseReal(v, val, common::ColumnType::REAL);
     if ((r == common::ErrorCode::SUCCESS || r == common::ErrorCode::OUT_OF_RANGE) && !val.IsNull()) {
       double d_val = double(val);
       PutAggregatedValue(buf, *((int64_t *)(&d_val)), factor);
@@ -199,8 +199,8 @@ void AggregatorAvgYear::Merge(unsigned char *buf, unsigned char *src_buf) {
 
 void AggregatorAvgYear::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::INT);
-  if (!v.IsEmpty() && types::RCNum::ParseNum(v, val, 0) == common::ErrorCode::SUCCESS && !val.IsNull()) {
+  types::TianmuNum val(common::ColumnType::INT);
+  if (!v.IsEmpty() && types::TianmuNum::ParseNum(v, val, 0) == common::ErrorCode::SUCCESS && !val.IsNull()) {
     *((double *)buf) += double(val.GetValueInt64()) * factor;
     *((int64_t *)(buf + sizeof(int64_t))) += factor;
   }
@@ -538,13 +538,19 @@ int64_t AggregatorList32::GetValue64(unsigned char *buf) {
 
 void AggregatorListT::PutAggregatedValue(unsigned char *buf, const types::BString &v, [[maybe_unused]] int64_t factor) {
   DEBUG_ASSERT((uint)val_len >= v.len_);
-  if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
+  if (*(reinterpret_cast<unsigned short *>(buf)) == 0 && buf[AggregatedValue_LEN_SIZE] == 0) {  // still null
     stats_updated = false;
-    *((unsigned short *)buf) = v.len_;
+    *(reinterpret_cast<unsigned short *>(buf)) = v.len_;
     if (v.len_ > 0)
-      std::memcpy(buf + 2, v.val_, v.len_);
-    else
-      buf[2] = 1;  // empty string indicator (non-null)
+      std::memcpy(buf + AggregatedValue_LEN_SIZE, v.val_, v.len_);
+    else {
+      if (v.IsNull() && IgnoreNulls()) {
+        buf[AggregatedValue_LEN_SIZE] = static_cast<char>(AggregatedValue_Mark::AM_STRING_NULL);  // null omitted
+      } else {
+        buf[AggregatedValue_LEN_SIZE] =
+            static_cast<char>(AggregatedValue_Mark::AM_STRING_ZERO);  // empty string indicator (non-null)
+      }
+    }
     value_set = true;
   }
 }
@@ -558,12 +564,14 @@ void AggregatorListT::Merge(unsigned char *buf, unsigned char *src_buf) {
 }
 
 types::BString AggregatorListT::GetValueT(unsigned char *buf) {
-  int len = *((unsigned short *)(buf));
-  char *p = (char *)(buf + 2);
+  int len = *(reinterpret_cast<unsigned short *>(buf));
+  char *p = reinterpret_cast<char *>(buf + AggregatedValue_LEN_SIZE);
   if (len == 0) {
-    if (*p != 0)                           // empty string indicator: len==0 and nontrivial character
-      return types::BString("", 0, true);  // empty string
-    return types::BString();               // null value
+    if ((*p != static_cast<char>(AggregatedValue_Mark::AM_NOT_FILL)) &&
+        (*p != static_cast<char>(
+                   AggregatedValue_Mark::AM_STRING_NULL)))  // empty string indicator: len==0 and nontrivial character
+      return types::BString("", 0, true);                   // empty string
+    return types::BString();                                // null value
   }
   types::BString res(p, len);
   return res;

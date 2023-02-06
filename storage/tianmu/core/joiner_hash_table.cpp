@@ -134,7 +134,7 @@ void JoinerHashTable::Initialize(int64_t max_table_size, bool easy_roughable) {
   // initialize everything
   ClearAll();
   Transaction *m_conn = current_txn_;
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "Hash join buffer initialized for up to " << no_rows << " rows, " << key_buf_width << "+"
       << total_width - key_buf_width << " bytes." << system::unlock;
   initialized = true;

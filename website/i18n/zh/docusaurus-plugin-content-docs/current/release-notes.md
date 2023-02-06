@@ -5,7 +5,73 @@ sidebar_position: 11.0
 
 # 发版日志
 
-## StoneDB_5.7_v1.0.1的发行日志 (2022-10-21, RC)
+## StoneDB_5.7_v1.0.2 的发行日志 (2023-01-15, GA)
+发布日期： 2023 年 01 月 15 日
+### 功能开发
+
+- 支持自定义函数。
+- 支持转义功能。
+- 支持主键，语法上支持索引。
+- 支持修改表/字段的字符集。
+- 支持BIT数据类型
+   - 建表时允许指定字段类型为 BIT，也允许修改表字段类型为 BIT(需要满足类型转换条件)。
+   - BIT 数据类型逻辑运算
+- 支持replace into 功能。
+- 支持(语法上)支持unsigned 和zerofill。
+- SQL MODE 中增加参数 MANDATORY TIANMU，用于指定表的默认存储引擎为 TIANMU。
+   - 语法举例：
+```sql
+# 全局级别
+mysql>set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+
+# 会话级别
+mysql>set session sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+
+# my.cnf 配置文件
+[mysqld] 
+sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU'
+```
+
+### 易用性
+
+- 安装包自动检测识别能力。
+- 快速部署StoneDB为MySQL的从库能力。
+
+### 稳定性
+
+- 做为从库的稳定性增强。
+
+### 问题修复
+修复了如下 Bug：
+
+- GROUP_CONCAT() 函数返回错误。[#938](https://github.com/stoneatom/stonedb/issues/938)
+- 模糊匹配LIKE 查询问题。[#1162](https://github.com/stoneatom/stonedb/issues/1162) [#1157](https://github.com/stoneatom/stonedb/issues/1157) [#763](https://github.com/stoneatom/stonedb/issues/763)
+- 主键AUTO_INCREMENT问题。 [#1144](https://github.com/stoneatom/stonedb/pull/1144) [#1142](https://github.com/stoneatom/stonedb/issues/1142)
+- 增加NUMERIC 类型字段返回错误。[#1140](https://github.com/stoneatom/stonedb/issues/1140)
+- CI/CD 执行clang-format失败。[#973](https://github.com/stoneatom/stonedb/issues/973)
+- INSERT INTO 兼容性。[#965](https://github.com/stoneatom/stonedb/issues/965)
+- UNION ALL 返回错误。[#854](https://github.com/stoneatom/stonedb/issues/854)
+- EXTRACT() 函数返回错误。[#845](https://github.com/stoneatom/stonedb/issues/845)
+- DATE类型select 显示错误。[#829](https://github.com/stoneatom/stonedb/issues/829)
+- UPDATE 更改多列不生效。[#781](https://github.com/stoneatom/stonedb/issues/781)
+- 子查询场景。[#732](https://github.com/stoneatom/stonedb/issues/732)
+- MTR binlog.binlog_unsafe Crash。[#341](https://github.com/stoneatom/stonedb/issues/341)
+- 其它BUG。[#682](https://github.com/stoneatom/stonedb/issues/682) [#553](https://github.com/stoneatom/stonedb/issues/553) [#508](https://github.com/stoneatom/stonedb/issues/508)
+
+### 行为变更
+使用快速部署StoneDB为MySQL的从库Shell脚本，默认 sql_mode 开启强制 Tianmu 引擎参数：MANDATORY_TIANMU。
+
+### 支持平台
+
+- CentOS 7.6以上。
+- Ubuntu 20。
+
+### 其他
+
+- 添加一些MTR测试用例。
+
+
+## StoneDB_5.7_v1.0.1 的发行日志 (2022-10-21, RC;2022-10-24,GA)
 - 功能添加或改变
 - 编译相关改动
 - 文档变更

@@ -1,10 +1,17 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS delete_all_rows_test;
+--enable_warnings
+
+CREATE DATABASE delete_all_rows_test;
+
+USE delete_all_rows_test;
+
 --echo #
 --echo # DELETE FROM TABLE_NAME
 --echo #
 
-use test;
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
   `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -29,7 +36,8 @@ CREATE TABLE `column_type_test` (
 --echo # DELETE FROM TABLE_NAME for Large amount of data
 --echo #
 
-load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/bigdata4load.txt' into table column_type_test fields terminated by '|';
 select count(*) from column_type_test;
 select max(c_int) from column_type_test;
 select min(c_int) from column_type_test;
@@ -98,7 +106,6 @@ DELETE from t1;
 SET AUTOCOMMIT=1;
 drop table t1;
 
-
 --echo #
 --echo # Adds some test cases for unicode. such as insert unicode chars, in values, table name, or etc.
 --echo #
@@ -119,3 +126,5 @@ SET AUTOCOMMIT=0;
 DELETE from t1;
 SET AUTOCOMMIT=1;
 drop table t1;
+
+DROP DATABASE delete_all_rows_test;

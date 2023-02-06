@@ -1,0 +1,60 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue947_test;
+--enable_warnings
+
+CREATE DATABASE issue947_test;
+
+USE issue947_test;
+
+--disable_warnings
+
+DROP TABLE IF EXISTS test1,test2;
+
+## DDL
+
+CREATE TABLE test1 (a int) ENGINE=TIANMU;
+CREATE TABLE test2 (b int, c int) ENGINE=TIANMU;
+
+## insert data
+
+INSERT INTO test1 VALUES (1), (2), (3), (4), (null);
+INSERT INTO test2 VALUES (1, 100), (1, 101), (2, 200),
+(3, 300), (3, 301), (3, 302), (null, null);
+
+## The predicate is NOT IN
+
+### Subquery single layer
+
+SELECT * FROM test1 WHERE a NOT IN (SELECT b FROM test2 WHERE b = 7);
+
+SELECT * FROM test1 WHERE a NOT IN ( SELECT b FROM test2 WHERE b=1);
+
+### Deep nesting of subqueries
+
+SELECT * FROM test1 WHERE a NOT IN ( SELECT b FROM test2 WHERE b NOT IN ( SELECT a FROM test1));
+
+SELECT * FROM test1 WHERE a NOT IN ( SELECT b FROM test2 WHERE b IN ( SELECT a FROM test1));
+
+## The predicate is IN
+
+### is null
+
+SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b is null);
+
+### equal
+
+SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b=1);
+
+### Multiple layers nested IN
+
+SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b IN ( SELECT a FROM test1));
+
+SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b NOT IN ( SELECT a FROM test1));
+
+## clean test table
+
+DROP TABLE test1,test2;
+
+DROP DATABASE issue947_test;

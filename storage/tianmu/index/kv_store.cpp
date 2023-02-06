@@ -226,7 +226,7 @@ common::ErrorCode KVStore::KVRenameTableMeta(const std::string &s_name, const st
   return dict_manager_.commit(batch) ? common::ErrorCode::SUCCESS : common::ErrorCode::FAILED;
 }
 
-common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable> tb_mem) {
+common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::TianmuMemTable> tb_mem) {
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict_manager_.begin();
   rocksdb::WriteBatch *const batch = wb.get();
 
@@ -244,7 +244,7 @@ common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable>
 }
 
 common::ErrorCode KVStore::KVDelMemTableMeta(std::string table_name) {
-  std::shared_ptr<core::RCMemTable> tb_mem = ddl_manager_.find_mem(table_name);
+  std::shared_ptr<core::TianmuMemTable> tb_mem = ddl_manager_.find_mem(table_name);
   if (!tb_mem)
     return common::ErrorCode::FAILED;
 

@@ -18,13 +18,14 @@
 #include "parsing_strategy.h"
 
 #include <limits>
+#include <map>
 #include <vector>
-
 #include "core/tools.h"
 #include "core/transaction.h"
+#include "item_timefunc.h"
 #include "loader/value_cache.h"
 #include "system/io_parameters.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "types/value_parser4txt.h"
 
 namespace Tianmu {
@@ -42,6 +43,8 @@ static inline void PrepareKMP(ParsingStrategy::kmp_next_t &kmp_next, std::string
 
 ParsingStrategy::ParsingStrategy(const system::IOParameters &iop, std::vector<uchar> columns_collations)
     : attr_infos_(iop.ATIs()),
+      thd_(iop.GetTHD()),
+      table_(iop.GetTable()),
       prepared_(false),
       terminator_(iop.LineTerminator()),
       delimiter_(iop.Delimiter()),
@@ -266,6 +269,119 @@ void ParsingStrategy::GetEOL(const char *const buf, const char *const buf_end) {
   }
 }
 
+// copy from sql_load.cc
+class Field_tmp_nullability_guard {
+ public:
+  explicit Field_tmp_nullability_guard(Item *item) : m_field(NULL) {
+    if (item->type() == Item::FIELD_ITEM) {
+      m_field = ((Item_field *)item)->field;
+
+      m_field->set_tmp_nullable();
+    }
+  }
+
+  ~Field_tmp_nullability_guard() {
+    if (m_field)
+      m_field->reset_tmp_nullable();
+  }
+
+ private:
+  Field *m_field;
+};
+
+void ParsingStrategy::ReadField(const char *&ptr, const char *&val_beg, Item *&item, uint &index_of_field,
+                                std::vector<std::pair<const char *, size_t>> &vec_ptr_field,
+                                uint &field_index_in_field_list, const CHARSET_INFO *char_info) {
+  bool is_enclosed = false;
+  char *val_start{nullptr};
+  size_t val_len{0};
+
+  if (string_qualifier_ && *val_beg == string_qualifier_) {
+    // first char is enclose char, skip it
+    val_start = const_cast<char *>(val_beg) + 1;
+    // skip the first and the last char which is encolose char
+    val_len = ptr - val_beg - 2;
+    is_enclosed = true;
+  } else {
+    val_start = const_cast<char *>(val_beg);
+    val_len = ptr - val_beg;
+  }
+
+  // check for null
+  bool isnull = false;
+  switch (val_len) {
+    case 0:
+      if (!is_enclosed)
+        isnull = true;
+      break;
+    case 2:
+      if (*val_start == '\\' && (val_start[1] == 'N' || (!is_enclosed && val_start[1] == 'n')))
+        isnull = true;
+      break;
+    case 4:
+      if (string_qualifier_ && !is_enclosed && strncasecmp(val_start, "nullptr", 4) == 0)
+        isnull = true;
+      break;
+    default:
+      break;
+  }
+
+  Item *real_item = item->real_item();
+  Field_tmp_nullability_guard fld_tmp_nullability_guard(real_item);
+  if (isnull) {
+    if (real_item->type() == Item::FIELD_ITEM) {
+      Field *field = ((Item_field *)real_item)->field;
+      if (field->reset())  // Set to 0
+      {
+        my_error(ER_WARN_NULL_TO_NOTNULL, MYF(0), field->field_name, thd_->get_stmt_da()->current_row_for_condition());
+        return;
+      }
+      if (!field->real_maybe_null() && field->type() == FIELD_TYPE_TIMESTAMP) {
+        // Specific of TIMESTAMP NOT NULL: set to CURRENT_TIMESTAMP.
+        Item_func_now_local::store_in(field);
+      } else {
+        field->set_null();
+      }
+      if (!first_row_prepared_) {
+        std::string field_name(field->field_name);
+        index_of_field = map_field_name_to_index_[field_name];
+        vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+      } else {
+        index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+      }
+
+      vec_ptr_field[index_of_field] = std::make_pair(nullptr, 0);  // nullptr indicates null
+      ++field_index_in_field_list;
+    } else if (item->type() == Item::STRING_ITEM) {
+      auto tmp_item = dynamic_cast<Item_user_var_as_out_param *>(item);
+      assert(NULL != tmp_item);
+      tmp_item->set_null_value(char_info);
+    }
+    return;
+  } else {
+    if (real_item->type() == Item::FIELD_ITEM) {
+      Field *field = ((Item_field *)real_item)->field;
+      field->set_notnull();
+      field->store(val_start, val_len, char_info);
+      if (!first_row_prepared_) {
+        std::string field_name(field->field_name);
+        index_of_field = map_field_name_to_index_[field_name];
+        vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+      } else {
+        index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+      }
+
+      vec_ptr_field[index_of_field] = std::make_pair(val_start, val_len);
+      ++field_index_in_field_list;
+
+    } else if (item->type() == Item::STRING_ITEM) {
+      ((Item_user_var_as_out_param *)item)->set_value((char *)val_start, val_len, char_info);
+    }
+  }
+
+  return;
+}
+
 ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, size_t size,
                                                         std::vector<ValueCache> &record, uint &rowsize,
                                                         int &errorinfo) {
@@ -278,10 +394,57 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
   if (buf == buf_end)
     return ParsingStrategy::ParseResult::EOB;
 
+  std::vector<std::pair<const char *, size_t>> vec_ptr_field;
+  // default values;
+  uint n_fields = table_->s->fields;
+  uint i = 0;
+
+  // step1, initial field to defaut value
+  restore_record(table_, s->default_values);
+  for (i = 0; i < n_fields; i++) {
+    Field *field = table_->field[i];
+
+    String *str{nullptr};
+    if (!first_row_prepared_) {
+      std::string field_name(field->field_name);
+
+      str = new (thd_->mem_root) String(MAX_FIELD_WIDTH);
+      String *res = field->val_str(str);
+      DEBUG_ASSERT(res);
+      vec_field_Str_list_.push_back(str);
+      vec_field_num_to_index_.push_back(0);
+      map_field_name_to_index_[field_name] = i;
+    } else {
+      str = vec_field_Str_list_[i];
+    }
+    vec_ptr_field.emplace_back(str->ptr(), str->length());
+  }
+
   const char *ptr = buf;
   bool row_incomplete = false;
+  bool row_data_error = false;
   errorinfo = -1;
-  for (uint col = 0; col < attr_infos_.size() - 1; ++col) {
+
+  List<Item> &fields_vars = thd_->lex->load_field_list;
+  List<Item> &fields = thd_->lex->load_update_list;
+  List<Item> &values = thd_->lex->load_value_list;
+  Item *fld{nullptr};
+  List_iterator_fast<Item> f(fields), v(values);
+  sql_exchange *ex = thd_->lex->exchange;
+  const CHARSET_INFO *char_info = ex->cs ? ex->cs : thd_->variables.collation_database;
+
+  List_iterator_fast<Item> it(fields_vars);
+  Item *item{nullptr};
+  uint index{0};
+  uint field_index_in_field_list{0};
+  uint index_of_field{0};
+
+  // step2, fill the field list with data file content;
+  while ((item = it++)) {
+    index++;
+
+    if (index == fields_vars.elements)
+      break;
     const char *val_beg = ptr;
     if (string_qualifier_ && *ptr == string_qualifier_) {
       row_incomplete = !SearchUnescapedPattern(++ptr, buf_end, enclose_delimiter_, kmp_next_enclose_delimiter_);
@@ -289,28 +452,25 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     } else {
       SearchResult res = SearchUnescapedPatternNoEOL(ptr, buf_end, delimiter_, kmp_next_delimiter_);
       if (res == SearchResult::END_OF_LINE) {
-        GetValue(val_beg, ptr - val_beg, col, record[col]);
+        ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
         continue;
       }
       row_incomplete = (res == SearchResult::END_OF_BUFFER);
     }
 
     if (row_incomplete) {
-      errorinfo = col;
-      break;
+      errorinfo = index;
+      goto end;
     }
 
-    try {
-      GetValue(val_beg, ptr - val_beg, col, record[col]);
-    } catch (...) {
-      if (errorinfo == -1)
-        errorinfo = col;
-    }
+    ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
+
     ptr += delimiter_.size();
   }
 
   if (!row_incomplete) {
     // the last column
+    index++;
     const char *val_beg = ptr;
     if (string_qualifier_ && *ptr == string_qualifier_) {
       row_incomplete = !SearchUnescapedPattern(++ptr, buf_end, enclose_terminator_, kmp_next_enclose_terminator_);
@@ -319,23 +479,80 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       row_incomplete = !SearchUnescapedPattern(ptr, buf_end, terminator_, kmp_next_terminator_);
 
     if (!row_incomplete) {
-      try {
-        GetValue(val_beg, ptr - val_beg, attr_infos_.size() - 1, record[attr_infos_.size() - 1]);
-      } catch (...) {
-        if (errorinfo == -1)
-          errorinfo = attr_infos_.size() - 1;
-      }
-      ptr += terminator_.size();
+      ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
+    } else {
+      errorinfo = index;
+      goto end;
     }
+
+    ptr += terminator_.size();
   }
 
+  if (thd_->killed) {
+    row_data_error = true;
+    goto end;
+  }
+  it.rewind();
+  while ((item = it++)) {
+    Item *real_item = item->real_item();
+    if (real_item->type() == Item::FIELD_ITEM)
+      ((Item_field *)real_item)->field->check_constraints(ER_WARN_NULL_TO_NOTNULL);
+  }
+  // step3,field in the set clause
+  while ((fld = f++)) {
+    Item_field *const field = fld->field_for_view_update();
+    DEBUG_ASSERT(field != NULL);
+    Field *const rfield = field->field;
+
+    Item *const value = v++;
+
+    if (value->save_in_field(rfield, false) < 0) {
+      DEBUG_ASSERT(0);
+    }
+
+    rfield->check_constraints(ER_BAD_NULL_ERROR);
+    String *str{nullptr};
+
+    if (!first_row_prepared_) {
+      std::string field_name(field->field_name);
+      str = new (thd_->mem_root) String(MAX_FIELD_WIDTH);
+      index_of_field = map_field_name_to_index_[field_name];
+      vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+      vec_field_Str_list_[index_of_field] = str;
+    } else {
+      index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+      str = vec_field_Str_list_[index_of_field];
+    }
+
+    String *res = field->str_result(str);
+    if (!res) {
+      vec_ptr_field[index_of_field] = std::make_pair(nullptr, 0);
+    } else {
+      if (res != str) {
+        str->copy(*res);
+      }
+      vec_ptr_field[index_of_field] = std::make_pair(str->ptr(), str->length());
+    }
+
+    ++field_index_in_field_list;
+  }
+
+  // step4,row is completed, to make the whole row
+  for (uint col = 0; col < attr_infos_.size(); ++col) {
+    auto &ptr_field = vec_ptr_field[col];
+    GetValue(ptr_field.first, ptr_field.second, col, record[col]);
+  }
+
+end:
   if (row_incomplete) {
     if (errorinfo == -1)
-      errorinfo = attr_infos_.size() - 1;
+      errorinfo = index;
     return ParsingStrategy::ParseResult::EOB;
   }
+  first_row_prepared_ = true;
   rowsize = uint(ptr - buf);
-  return errorinfo == -1 ? ParseResult::OK : ParseResult::ERROR;
+
+  return !row_data_error ? ParseResult::OK : ParseResult::ERROR;
 }
 
 char TranslateEscapedChar(char c) {
@@ -351,41 +568,15 @@ char TranslateEscapedChar(char c) {
 void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort col, ValueCache &buffer) {
   core::AttributeTypeInfo &ati = GetATI(col);
 
-  bool is_enclosed = false;
-  if (string_qualifier_ && *value_ptr == string_qualifier_) {
-    // trim quotes
-    ++value_ptr;
-    value_size -= 2;
-    is_enclosed = true;
-  }
-
-  if (core::ATI::IsCharType(ati.Type())) {
-    // trim spaces
-    while (value_size > 0 && value_ptr[value_size - 1] == ' ') --value_size;
-  }
-
   // check for null
   bool isnull = false;
-  switch (value_size) {
-    case 0:
-      if (!is_enclosed)
-        isnull = true;
-      break;
-    case 2:
-      if (*value_ptr == '\\' && (value_ptr[1] == 'N' || (!is_enclosed && value_ptr[1] == 'n')))
-        isnull = true;
-      break;
-    case 4:
-      if (!is_enclosed && strncasecmp(value_ptr, "nullptr", 4) == 0)
-        isnull = true;
-      break;
-    default:
-      break;
+  // null scenario
+  if (nullptr == value_ptr) {
+    isnull = true;
   }
 
   if (isnull)
     buffer.ExpectedNull(true);
-
   else if (core::ATI::IsBinType(ati.Type())) {
     // convert hexadecimal format to binary
     if (value_size % 2)
@@ -415,9 +606,10 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
 
   } else if (core::ATI::IsTxtType(ati.Type())) {
     // process escape characters
-    if (ati.CharLen() < (uint)value_size) {
+    if (ati.Precision() < static_cast<uint>(value_size)) {
       std::string valueStr(value_ptr, value_size);
-      value_size = ati.CharLen();
+
+      value_size = ati.Precision();
       TIANMU_LOG(LogCtl_Level::DEBUG, "Data format error. DbName:%s ,TableName:%s ,Col %d, value:%s", dbname_.c_str(),
                  tablename_.c_str(), col, valueStr.c_str());
       std::stringstream err_msg;
@@ -431,8 +623,6 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
     for (size_t j = 0; j < value_size; j++) {
       if (value_ptr[j] == escape_char_)
         buf[new_size] = TranslateEscapedChar(value_ptr[++j]);
-      else if (value_ptr[j] == *delimiter_.c_str())
-        break;
       else
         buf[new_size] = value_ptr[j];
       new_size++;

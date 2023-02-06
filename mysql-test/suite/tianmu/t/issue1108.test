@@ -1,0 +1,3 @@
+--source include/have_tianmu.inc
+
+show variables like "%delete_or_update_thread%";

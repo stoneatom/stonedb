@@ -1,3 +1,5 @@
+DROP DATABASE IF EXISTS trigger_test;
+CREATE DATABASE trigger_test;
 #writer:shangyanwen
 #
 # Trigger is not activated by LOAD DATA"
@@ -259,7 +261,7 @@ drop table t1;
 #
 # Triggers with string literals
 #
-create table t1 (x1col char)engine=innodb;
+create table t1 (x1col char)engine=tianmu;
 create trigger tx1 before insert on t1 for each row set new.x1col = 'x';
 insert into t1 values ('y');
 select * from t1;
@@ -270,7 +272,7 @@ drop table t1;
 #
 # DROP TABLE ，drop triggers
 #
-create table t1 (a int)engine=innodb;
+create table t1 (a int)engine=tianmu;
 create trigger trg1 before insert on t1 for each row set new.a= 10;
 drop table t1;
 create table t1 (a int)engine=tianmu;
@@ -360,7 +362,7 @@ drop table t1, t2|
 #
 # trigger...SELECT .union... INTO var_name
 #
-create table t1 (id int, data int, username varchar(16))engine=innodb;
+create table t1 (id int, data int, username varchar(16))engine=tianmu;
 insert into t1 (id, data) values (1, 0);
 create trigger t1_whoupdated before update on t1 for each row
 begin
@@ -707,12 +709,25 @@ END|
 UPDATE IGNORE t1 SET a=2 WHERE a=1;
 Warnings:
 Warning	1062	Duplicate entry '2' for key 'PRIMARY'
+SHOW WARNINGS;
+Level	Code	Message
+Warning	1062	Duplicate entry '2' for key 'PRIMARY'
 SELECT * FROM t2;
 after_update
 UPDATE IGNORE t1,t3 SET t1.a=2 WHERE t1.a=1;
+Warnings:
+Warning	1062	Duplicate entry '2' for key 'PRIMARY'
+SHOW WARNINGS;
+Level	Code	Message
+Warning	1062	Duplicate entry '2' for key 'PRIMARY'
 SELECT * FROM t2;
 after_update
 UPDATE IGNORE t3,t1 SET t1.a=2 WHERE t1.a=1;
+Warnings:
+Warning	1062	Duplicate entry '2' for key 'PRIMARY'
+SHOW WARNINGS;
+Level	Code	Message
+Warning	1062	Duplicate entry '2' for key 'PRIMARY'
 SELECT * FROM t1;
 a
 1
@@ -949,7 +964,7 @@ drop table t1;
 #
 #bug 570:Before delete trigger
 #
-create table t1 (i int)engine=innodb;
+create table t1 (i int)engine=tianmu;
 insert into t1 values (1),(2),(3),(4);
 create trigger trg before delete on t1 for each row
 set @del_sum:= @del_sum + old.i;
@@ -963,7 +978,7 @@ drop table t1;
 #
 #bug 571:After delete trigger
 #
-create table t1 (i int)engine=innodb;
+create table t1 (i int)engine=tianmu;
 insert into t1 values (1),(2),(3),(4);
 create trigger trg after delete on t1 for each row set @del:= 1;
 set @del:= 0;
@@ -1020,3 +1035,4 @@ a	b
 1000	150
 DROP TABLE t1;
 DROP TEMPORARY TABLE t2;
+DROP DATABASE trigger_test;

@@ -24,8 +24,8 @@
 #include "mm/release_tracker.h"
 
 #include "system/fet.h"
-#include "system/rc_system.h"
 #include "system/res_manager.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace mm {
@@ -153,7 +153,7 @@ void TraceableObject::Lock() {
   if (m_lock_count == 32766) {
     std::string message =
         "TraceableObject locked too many times. Object type: " + std::to_string((int)this->TraceableType());
-    rc_control_ << system::lock << message << system::unlock;
+    tianmu_control_ << system::lock << message << system::unlock;
     TIANMU_ERROR(message.c_str());
   }
 }
@@ -177,7 +177,7 @@ void TraceableObject::SetNumOfLocks(int n) {
   if (m_lock_count == 32766) {
     std::string message =
         "TraceableObject locked too many times. Object type: " + std::to_string((int)this->TraceableType());
-    rc_control_ << system::lock << message << system::unlock;
+    tianmu_control_ << system::lock << message << system::unlock;
     TIANMU_ERROR(message.c_str());
   }
 }
@@ -226,7 +226,7 @@ void TraceableObject::DestructionLock() {
   m_lock_count++;
 }
 
-int TraceableObject::MemorySettingsScale() { return ha_rcengine_->getResourceManager()->GetMemoryScale(); }
+int TraceableObject::MemorySettingsScale() { return ha_tianmu_engine_->getResourceManager()->GetMemoryScale(); }
 
 void TraceableObject::deinitialize(bool detect_leaks) {
   if (TraceableType() != TO_TYPE::TO_INITIALIZER) {

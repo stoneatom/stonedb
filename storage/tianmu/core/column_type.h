@@ -19,7 +19,7 @@
 #pragma once
 
 #include "common/common_definitions.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr_typeinfo.h"
 
 namespace Tianmu {
 namespace core {
@@ -28,13 +28,13 @@ struct DataType;
 struct ColumnType {
   enum class enumCT {
     NOT_NULL = 0,
-    AUTO_INC = 1,
-    BLOOM_FILTER = 2,
+    AUTO_INC,
+    BLOOM_FILTER,
   };
 
  public:
-  ColumnType() : type(common::CT::INT), internal_size(4), display_size(11) {}
-  ColumnType(common::CT t, bool notnull = false, common::PackFmt fmt = common::PackFmt::DEFAULT, int prec = 0,
+  ColumnType() : type(common::ColumnType::INT), internal_size(4), display_size(11) {}
+  ColumnType(common::ColumnType t, bool notnull = false, common::PackFmt fmt = common::PackFmt::DEFAULT, int prec = 0,
              int sc = 0, DTCollation collation = DTCollation())
       : type(t),
         precision(prec),
@@ -46,7 +46,7 @@ struct ColumnType {
     internal_size = InternalSize();
   }
 
-  void Initialize(common::CT t, bool notnull, common::PackFmt f, uint prec, int sc,
+  void Initialize(common::ColumnType t, bool notnull, common::PackFmt f, uint prec, int sc,
                   DTCollation collation = DTCollation()) {
     type = t;
     flag[static_cast<int>(enumCT::NOT_NULL)] = notnull;
@@ -61,8 +61,8 @@ struct ColumnType {
 
   bool operator==(const ColumnType &) const;
 
-  common::CT GetTypeName() const { return type; }
-  void SetTypeName(common::CT t) { type = t; }
+  common::ColumnType GetTypeName() const { return type; }
+  void SetTypeName(common::ColumnType t) { type = t; }
   // column width, as X in CHAR(X) or DEC(X,*)
   uint GetPrecision() const { return precision; }
   /*! \brief Set column width, as X in DEC(X,*)
@@ -95,24 +95,24 @@ struct ColumnType {
   // materialization of Attr
   void OverrideInternalSize(uint size) { internal_size = size; };
   int GetDisplaySize() const { return display_size; }
-  bool IsLookup() const { return fmt == common::PackFmt::LOOKUP; }
+  bool Lookup() const { return fmt == common::PackFmt::LOOKUP; }
   ColumnType RemovedLookup() const;
 
   bool IsNumeric() const {
     switch (type) {
-      case common::CT::BIN:
-      case common::CT::BYTE:
-      case common::CT::VARBYTE:
-      case common::CT::STRING:
-      case common::CT::VARCHAR:
-      case common::CT::LONGTEXT:
+      case common::ColumnType::BIN:
+      case common::ColumnType::BYTE:
+      case common::ColumnType::VARBYTE:
+      case common::ColumnType::STRING:
+      case common::ColumnType::VARCHAR:
+      case common::ColumnType::LONGTEXT:
         return false;
       default:
         return true;
     }
   }
 
-  bool IsKnown() const { return type != common::CT::UNK; };
+  bool IsKnown() const { return type != common::ColumnType::UNK; };
   bool IsFixed() const { return ATI::IsFixedNumericType(type); };
   bool IsFloat() const { return ATI::IsRealType(type); };
   bool IsInt() const { return IsFixed() && scale == 0; }
@@ -121,7 +121,7 @@ struct ColumnType {
   const DTCollation &GetCollation() const { return collation; }
   void SetCollation(DTCollation _collation) { collation = _collation; }
   bool IsNumComparable(const ColumnType &sec) const {
-    if (IsLookup() || sec.IsLookup() || IsString() || sec.IsString())
+    if (Lookup() || sec.Lookup() || IsString() || sec.IsString())
       return false;
     if (scale != sec.scale)
       return false;
@@ -142,9 +142,12 @@ struct ColumnType {
   bool GetAutoInc() const { return flag[static_cast<int>(enumCT::AUTO_INC)]; }
   void SetAutoInc(bool inc) { flag[static_cast<int>(enumCT::AUTO_INC)] = inc; }
   bool HasFilter() const { return flag[static_cast<int>(enumCT::BLOOM_FILTER)]; }
+  bool GetUnsigned() const { return is_unsigned; }
+  void SetUnsigned(bool unsigned_) { is_unsigned = unsigned_; }
 
  private:
-  common::CT type;
+  common::ColumnType type;
+  bool is_unsigned = false;
   uint precision = 0;
   int scale = 0;
   uint internal_size;

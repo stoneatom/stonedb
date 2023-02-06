@@ -1,0 +1,520 @@
+#
+# Test bit
+#
+DROP DATABASE IF EXISTS type_bit_test;
+CREATE DATABASE type_bit_test;
+USE type_bit_test;
+select 0 + b'1';
+0 + b'1'
+1
+select 0 + b'0';
+0 + b'0'
+0
+select 0 + b'000001';
+0 + b'000001'
+1
+select 0 + b'000011';
+0 + b'000011'
+3
+select 0 + b'000101';
+0 + b'000101'
+5
+select 0 + b'000000';
+0 + b'000000'
+0
+select 0 + b'10000000';
+0 + b'10000000'
+128
+select 0 + b'11111111';
+0 + b'11111111'
+255
+select 0 + b'10000001';
+0 + b'10000001'
+129
+select 0 + b'1000000000000000';
+0 + b'1000000000000000'
+32768
+select 0 + b'1111111111111111';
+0 + b'1111111111111111'
+65535
+select 0 + b'1000000000000001';
+0 + b'1000000000000001'
+32769
+drop table if exists t1,t2;
+create table t1 (a bit(65));
+ERROR 42000: Display width out of range for column 'a' (max = 64)
+create table t1 (a bit(0));
+ERROR HY000: Invalid size for column 'a'.
+create table t1 (a bit(63));
+insert into t1 values 
+(b'111111111111111111111111111111111111111111111111111111111111111'),
+(b'100000000000000000000000000000000000000000000000000000000000000'),
+(b'000000000000000000000000000000000000000000000000000000000000001'),
+(b'010101010101010101010101010101010101010101010101010101010101010'),
+(b'101010101010101010101010101010101010101010101010101010101010101');
+select hex(a) from t1;
+hex(a)
+7FFFFFFFFFFFFFFF
+4000000000000000
+1
+2AAAAAAAAAAAAAAA
+5555555555555555
+drop table t1;
+create table t1 (a bit(5));
+insert into t1 values (b'0'), (b'1'), (b'000'), (b'100'), (b'001');
+select hex(a) from t1;
+hex(a)
+0
+1
+0
+4
+1
+drop table t1;
+create table t1 (a bit(5));
+insert into t1 values (b'00'), (b'01'), (b'10'), (b'100');
+select a+0 from t1;
+a+0
+0
+1
+2
+4
+drop table t1;
+create table t1 (a bit(7), b bit(9));
+insert into t1 values 
+(94, 46), (31, 438), (61, 152), (78, 123), (88, 411), (122, 118), (0, 177),    
+(75, 42), (108, 67), (79, 349), (59, 188), (68, 206), (49, 345), (118, 380),   
+(111, 368), (94, 468), (56, 379), (77, 133), (29, 399), (9, 363), (23, 36),    
+(116, 390), (119, 368), (87, 351), (123, 411), (24, 398), (34, 202), (28, 499),
+(30, 83), (5, 178), (60, 343), (4, 245), (104, 280), (106, 446), (127, 403),   
+(44, 307), (68, 454), (57, 135);
+select a+0, b+0 from t1;
+a+0	b+0
+94	46
+31	438
+61	152
+78	123
+88	411
+122	118
+0	177
+75	42
+108	67
+79	349
+59	188
+68	206
+49	345
+118	380
+111	368
+94	468
+56	379
+77	133
+29	399
+9	363
+23	36
+116	390
+119	368
+87	351
+123	411
+24	398
+34	202
+28	499
+30	83
+5	178
+60	343
+4	245
+104	280
+106	446
+127	403
+44	307
+68	454
+57	135
+select a+0, b+0 from t1 where a > 40 and b > 200 order by 1;
+a+0	b+0
+44	307
+49	345
+56	379
+60	343
+68	206
+68	454
+79	349
+87	351
+88	411
+94	468
+104	280
+106	446
+111	368
+116	390
+118	380
+119	368
+123	411
+127	403
+select a+0, b+0 from t1 where a > 40 and a < 70 order by 2;
+a+0	b+0
+57	135
+61	152
+59	188
+68	206
+44	307
+60	343
+49	345
+56	379
+68	454
+select hex(min(a)) from t1;
+hex(min(a))
+0
+select hex(min(b)) from t1;
+hex(min(b))
+24
+select hex(min(a)), hex(max(a)), hex(min(b)), hex(max(b)) from t1;
+hex(min(a))	hex(max(a))	hex(min(b))	hex(max(b))
+0	7F	24	1F3
+drop table t1;
+create table t1 (a int not null, b bit, c bit(9));
+insert into t1 values
+(4, NULL, 1), (4, 0, 3), (2, 1, 4), (1, 1, 100), (4, 0, 23), (4, 0, 54),
+(56, 0, 22), (4, 1, 100), (23, 0, 1), (4, 0, 34);
+select a+0, b+0, c+0 from t1;
+a+0	b+0	c+0
+4	NULL	1
+4	0	3
+2	1	4
+1	1	100
+4	0	23
+4	0	54
+56	0	22
+4	1	100
+23	0	1
+4	0	34
+select hex(min(b)) from t1 where a = 4;
+hex(min(b))
+0
+select hex(min(c)) from t1 where a = 4 and b = 0;
+hex(min(c))
+3
+select hex(max(b)) from t1;
+hex(max(b))
+1
+select a+0, b+0, c+0 from t1 where a = 4 and b = 0 limit 2;
+a+0	b+0	c+0
+4	0	3
+4	0	23
+select a+0, b+0, c+0 from t1 where a = 4 and b = 1;
+a+0	b+0	c+0
+4	1	100
+select a+0, b+0, c+0 from t1 where a = 4 and b = 1 and c=100;
+a+0	b+0	c+0
+4	1	100
+select a+0, b+0, c+0 from t1 order by b desc;
+a+0	b+0	c+0
+2	1	4
+1	1	100
+4	1	100
+4	0	3
+4	0	23
+4	0	54
+56	0	22
+23	0	1
+4	0	34
+4	NULL	1
+select a+0, b+0, c+0 from t1 order by c;
+a+0	b+0	c+0
+4	NULL	1
+23	0	1
+4	0	3
+2	1	4
+56	0	22
+4	0	23
+4	0	34
+4	0	54
+1	1	100
+4	1	100
+drop table t1;
+create table t1(a bit(2), b bit(2));
+insert into t1 (a) values (0x01), (0x03), (0x02);
+update t1 set b= concat(a);
+select a+0, b+0 from t1;
+a+0	b+0
+1	1
+3	3
+2	2
+drop table t1;
+create table t1 (a bit(3), b bit(12));
+insert into t1 values (7,(1<<12)-2), (0x01,0x01ff);
+select hex(a),hex(b) from t1;
+hex(a)	hex(b)
+7	FFE
+1	1FF
+drop table t1;
+create table t1(a int, b bit not null);
+alter table t1 add primary key (a);
+drop table t1;
+create table t1 (a int, b time, c tinyint, d bool, e char(10), f bit(1), 
+g bit(1) NOT NULL default 1, h char(1) default 'a');
+insert into t1 set a=1;
+select hex(g), h from t1;
+hex(g)	h
+1	a
+drop table t1;
+create table t1 (a bit(7));
+insert into t1 values (120), (0), (111);
+select a+0 from t1 union select a+0 from t1;
+a+0
+120
+0
+111
+drop table t1;
+create table t1 (id1 int(11), b1 bit(1));
+create table t2 (id2 int(11), b2 bit(1));
+insert into t1 values (1, 1), (2, 0), (3, 1);
+insert into t2 values (2, 1), (3, 0), (4, 0);
+create view v1 as 
+select b1+0, b2+0 from t1, t2 where id1 = id2 and b1 = 0
+union
+select b1+0, b2+0 from t1, t2 where id1 = id2 and b2 = 1;
+select * from v1;
+b1+0	b2+0
+0	1
+drop table t1, t2;
+drop view v1;
+create table t1(a bit(4));
+insert into t1(a) values (1), (2), (5), (4), (3);
+insert into t1 select * from t1;
+select a+0 from t1;
+a+0
+1
+2
+5
+4
+3
+1
+2
+5
+4
+3
+drop table t1;
+create table t1 (a1 int(11), b1 bit(2));
+create table t2 (a2 int(11), b2 bit(2));
+insert into t1 values (1, 1), (2, 0), (3, 1), (4, 2);
+insert into t2 values (2, 1), (3, 0), (4, 1), (5, 2);
+select a1, a2, b1+0, b2+0 from t1 join t2 on a1 = a2;
+a1	a2	b1+0	b2+0
+2	2	0	1
+3	3	1	0
+4	4	2	1
+select a1, a2, b1+0, b2+0 from t1 join t2 on a1 = a2 order by a1;
+a1	a2	b1+0	b2+0
+2	2	0	1
+3	3	1	0
+4	4	2	1
+select a1, a2, b1+0, b2+0 from t1 join t2 on b1 = b2 order by a1;
+a1	a2	b1+0	b2+0
+1	2	1	1
+1	4	1	1
+2	3	0	0
+3	2	1	1
+3	4	1	1
+4	5	2	2
+select sum(a1), b1+0, b2+0 from t1 join t2 on b1 = b2 group by b1 order by 1;
+sum(a1)	b1+0	b2+0
+2	0	0
+4	2	2
+8	1	1
+select 1 from t1 join t2 on b1 = b2 group by b1 order by 1;
+1
+1
+1
+1
+select b1+0,sum(b1), sum(b2) from t1 join t2 on b1 = b2 group by b1 order by 1;
+b1+0	sum(b1)	sum(b2)
+0	0	0
+1	4	4
+2	2	2
+drop table t1, t2;
+create table st(b BIT(8), n INT);
+insert into st values(128, 128);
+insert into st values(null, null);
+insert into st values(0, 0);
+insert into st values(255, 255);
+select hex(b), bin(b), oct(b), hex(n), bin(n), oct(n) from st;
+hex(b)	bin(b)	oct(b)	hex(n)	bin(n)	oct(n)
+80	10000000	200	80	10000000	200
+NULL	NULL	NULL	NULL	NULL	NULL
+0	0	0	0	0	0
+FF	11111111	377	FF	11111111	377
+select hex(b)=hex(n) as should_be_onetrue, bin(b)=bin(n) as should_be_onetrue, oct(b)=oct(n) as should_be_onetrue from st;
+should_be_onetrue	should_be_onetrue	should_be_onetrue
+1	1	1
+NULL	NULL	NULL
+1	1	1
+1	1	1
+select hex(b + 0), bin(b + 0), oct(b + 0), hex(n), bin(n), oct(n) from st;
+hex(b + 0)	bin(b + 0)	oct(b + 0)	hex(n)	bin(n)	oct(n)
+80	10000000	200	80	10000000	200
+NULL	NULL	NULL	NULL	NULL	NULL
+0	0	0	0	0	0
+FF	11111111	377	FF	11111111	377
+select conv(b, 10, 2), conv(b + 0, 10, 2) from st;
+conv(b, 10, 2)	conv(b + 0, 10, 2)
+10000000	10000000
+NULL	NULL
+0	0
+11111111	11111111
+drop table st;
+create table t1(a bit(1), b smallint unsigned);
+insert ignore into t1 (b, a) values ('2', '1');
+Warnings:
+Warning	1406	Data too long for column 'a' at row 1
+select hex(a), b from t1;
+hex(a)	b
+1	2
+drop table t1;
+CREATE TABLE t1 (b BIT(2), a VARCHAR(5));
+INSERT INTO t1 (b, a) VALUES (1, "x"), (3, "zz"), (0, "y"), (3, "z");
+SELECT b+0, COUNT(DISTINCT a) FROM t1 GROUP BY b;
+b+0	COUNT(DISTINCT a)
+1	1
+3	2
+0	1
+DROP TABLE t1;
+CREATE TABLE t1 (a CHAR(5), b BIT(2));
+INSERT INTO t1 (b, a) VALUES (1, "x"), (3, "zz"), (0, "y"), (3, "z");
+SELECT b+0, COUNT(DISTINCT a) FROM t1 GROUP BY b;
+b+0	COUNT(DISTINCT a)
+1	1
+3	2
+0	1
+DROP TABLE t1;
+CREATE TABLE t1 (a INT, b BIT(2));
+INSERT INTO t1 (b, a) VALUES (1, 1), (3, 2), (0, 3), (3, 4);
+SELECT b+0, COUNT(DISTINCT a) FROM t1 GROUP BY b;
+b+0	COUNT(DISTINCT a)
+1	1
+3	2
+0	1
+DROP TABLE t1;
+CREATE TABLE t1 (a int, b bit(2));
+INSERT INTO t1 VALUES (3, 2), (2, 3), (2, 0), (3, 2), (3, 1);
+SELECT COUNT(DISTINCT b) FROM t1 GROUP BY a;
+COUNT(DISTINCT b)
+2
+2
+DROP TABLE t1;
+create table t2 (a int, b bit(2), c char(10));
+INSERT INTO t2 VALUES (3, 2, 'two'), (2, 3, 'three'), (2, 0, 'zero'), 
+(3, 2, 'two'), (3, 1, 'one');
+DROP TABLE t2;
+CREATE TABLE t1(a BIT(13), KEY(a));
+ERROR HY000: Tianmu engine does not support secondary index.
+CREATE TABLE t1 (b BIT NOT NULL, i2 INTEGER NOT NULL, s VARCHAR(255) NOT NULL);
+INSERT INTO t1 VALUES(0x01,100,''), (0x00,300,''), (0x01,200,''), (0x00,100,'');
+SELECT HEX(b), i2 FROM t1 WHERE (i2>=100 AND i2<201) AND b=TRUE;
+HEX(b)	i2
+1	100
+1	200
+CREATE TABLE t2 (b1 BIT NOT NULL, b2 BIT NOT NULL, i2 INTEGER NOT NULL,
+s VARCHAR(255) NOT NULL);
+INSERT INTO t2 VALUES (0x01,0x00,100,''), (0x00,0x01,300,''),
+(0x01,0x00,200,''), (0x00,0x01,100,'');
+SELECT HEX(b1), i2 FROM t2 WHERE (i2>=100 AND i2<201) AND b1=TRUE;
+HEX(b1)	i2
+1	100
+1	200
+SELECT HEX(b2), i2 FROM t2 WHERE (i2>=100 AND i2<201) AND b2=FALSE;
+HEX(b2)	i2
+0	100
+0	200
+SELECT HEX(b1), HEX(b2), i2 FROM t2 WHERE (i2>=100 AND i2<201) AND b1=TRUE AND b2=FALSE;
+HEX(b1)	HEX(b2)	i2
+1	0	100
+1	0	200
+DROP TABLE t1, t2;
+CREATE TABLE IF NOT EXISTS t1 (
+f1 bit(2) NOT NULL default b'10',
+f2 bit(14) NOT NULL default b'11110000111100'
+)DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+SHOW CREATE TABLE t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `f1` bit(2) NOT NULL DEFAULT b'10',
+  `f2` bit(14) NOT NULL DEFAULT b'11110000111100'
+) ENGINE=TIANMU DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci
+INSERT INTO t1 (f1) VALUES (DEFAULT);
+INSERT INTO t1 VALUES (b'', b'');
+SELECT HEX(f1), HEX(f2) FROM t1;
+HEX(f1)	HEX(f2)
+2	3C3C
+0	0
+DROP TABLE t1;
+create table t1bit7 (a1 bit(7) not null) ;
+create table t2bit7 (b1 bit(7)) ;
+insert into t1bit7 values (b'1100000');
+insert into t1bit7 values (b'1100001');
+insert into t1bit7 values (b'1100010');
+insert into t2bit7 values (b'1100001');
+insert into t2bit7 values (b'1100010');
+insert into t2bit7 values (b'1100110');
+select bin(a1) from t1bit7, t2bit7 where t1bit7.a1=t2bit7.b1;
+bin(a1)
+1100001
+1100010
+drop table t1bit7, t2bit7;
+create table t1bit7 (a1 bit(15) not null) ;
+create table t2bit7 (b1 bit(15)) ;
+insert into t1bit7 values (b'110000011111111');
+insert into t1bit7 values (b'110000111111111');
+insert into t1bit7 values (b'110001011111111');
+insert into t2bit7 values (b'110000111111111');
+insert into t2bit7 values (b'110001011111111');
+insert into t2bit7 values (b'110011011111111');
+select bin(a1) from t1bit7, t2bit7 where t1bit7.a1=t2bit7.b1;
+bin(a1)
+110000111111111
+110001011111111
+drop table t1bit7, t2bit7;
+CREATE TABLE t1 (a BIT(7), b BIT(9));
+INSERT INTO t1 VALUES(0, 0), (5, 3), (5, 6), (6, 4), (7, 0);
+SELECT a+0, b+0 FROM t1 WHERE a > 4 and b < 7 ORDER BY 2;
+a+0	b+0
+7	0
+5	3
+6	4
+5	6
+DROP TABLE t1;
+create table t1(a bit(7));
+insert into t1 values(0x40);
+alter table t1 modify column a bit(8);
+select hex(a) from t1;
+hex(a)
+40
+insert into t1 values(0x80);
+select hex(a) from t1;
+hex(a)
+40
+80
+insert into t1 values(0x81);
+select hex(a) from t1;
+hex(a)
+40
+80
+81
+drop table t1;
+CREATE TABLE t1(a INT, b BIT(7) NOT NULL);
+INSERT INTO t1 VALUES (NULL, 0),(NULL, 0);
+SELECT SUM(a) FROM t1 GROUP BY b, a;
+SUM(a)
+NULL
+DROP TABLE t1;
+CREATE TABLE t1(a INT, b BIT(7) NOT NULL, c BIT(8) NOT NULL);
+INSERT INTO t1 VALUES (NULL, 0, 0),(NULL, 0, 0);
+SELECT SUM(a) FROM t1 GROUP BY c, b, a;
+SUM(a)
+NULL
+DROP TABLE t1;
+CREATE TABLE IF NOT EXISTS t1 (
+f1 bit(2) NOT NULL
+)  DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;
+INSERT INTO t1 VALUES (b'');
+SELECT bin(f1) FROM t1;
+bin(f1)
+0
+DROP TABLE t1;
+drop database type_bit_test;

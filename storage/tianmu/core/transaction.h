@@ -32,8 +32,8 @@ class Transaction final {
  private:
   common::TX_ID txn_id_;
 
-  std::unordered_map<std::string, std::shared_ptr<RCTable>> modified_tables_;
-  std::unordered_map<std::string, std::shared_ptr<RCTable>> readonly_tables_;
+  std::unordered_map<std::string, std::shared_ptr<TianmuTable>> modified_tables_;
+  std::unordered_map<std::string, std::shared_ptr<TianmuTable>> readonly_tables_;
 
   std::atomic_int display_lock_{0};  // if >0 disable messages e.g. in subqueries
 
@@ -69,8 +69,8 @@ class Transaction final {
 
   common::TX_ID GetID() const { return txn_id_; }
   common::LoadSource LoadSource() const { return load_source_; }
-  std::shared_ptr<RCTable> GetTableByPathIfExists(const std::string &table_path);
-  std::shared_ptr<RCTable> GetTableByPath(const std::string &table_path);
+  std::shared_ptr<TianmuTable> GetTableByPathIfExists(const std::string &table_path);
+  std::shared_ptr<TianmuTable> GetTableByPath(const std::string &table_path);
 
   void SetLoadSource(common::LoadSource ls) { load_source_ = ls; }
   void ExplicitLockTables() { explicit_lock_tables_ = true; }

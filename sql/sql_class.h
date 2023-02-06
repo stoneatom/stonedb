@@ -179,6 +179,8 @@ enum enum_binlog_format {
 #define MODE_HIGH_NOT_PRECEDENCE        (MODE_NO_AUTO_CREATE_USER*2)
 #define MODE_NO_ENGINE_SUBSTITUTION     (MODE_HIGH_NOT_PRECEDENCE*2)
 #define MODE_PAD_CHAR_TO_FULL_LENGTH    (1ULL << 31)
+//Force the engine to be tianmu when acting as a slave library
+#define MODE_MANDATORY_TIANMU    (1ULL << 32)
 
 /*
   Replication uses 8 bytes to store SQL_MODE in the binary log. The day you
@@ -4924,6 +4926,7 @@ public:
   const char *file_name;
   bool dumpfile;
   ulong skip_lines;
+  int tab_id;
   const CHARSET_INFO *cs;
   sql_exchange(const char *name, bool dumpfile_flag,
                enum_filetype filetype_arg= FILETYPE_CSV);

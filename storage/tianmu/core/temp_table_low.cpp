@@ -30,7 +30,7 @@
 #include "exporter/data_exporter.h"
 #include "system/fet.h"
 #include "system/io_parameters.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"
 #include "util/thread_pool.h"
@@ -39,38 +39,40 @@
 
 namespace Tianmu {
 namespace core {
-bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t limit, int64_t offset,
-                                      ResultSender *sender)  // Sort MultiIndex using some (existing) attributes
-                                                             // in some tables
+
+bool TempTable::OrderByAndMaterialize(
+    std::vector<SortDescriptor> &ord, int64_t limit, int64_t offset,
+    ResultSender *sender)  // Sort MultiIndex using some (existing) attributes in some tables
 {
-  // "limit=10; offset=20" means that the first 10 positions of sorted table
-  // will contain objects 21...30.
+  // "limit=10; offset=20" means that the first 10 positions of sorted table will contain objects 21...30.
   MEASURE_FET("TempTable::OrderBy(...)");
   thd_proc_info(m_conn->Thd(), "order by");
   DEBUG_ASSERT(limit >= 0 && offset >= 0);
   no_obj = limit;
-  if ((int)ord.size() == 0 || filter.mind->NumOfTuples() < 2 || limit == 0) {
+  if ((int)ord.size() == 0 || filter.mind_->NumOfTuples() < 2 || limit == 0) {
     ord.clear();
     return false;
   }
 
   int task_num = 1;
   int total_limit = limit + offset;
-  DimensionVector all_dims(filter.mind->NumOfDimensions());
+  DimensionVector all_dims(filter.mind_->NumOfDimensions());
   all_dims.SetAll();
   int one_dim = -1;
   int no_dims = all_dims.NoDimsUsed();
+
   if (no_dims == 1) {
-    for (int i = 0; i < filter.mind->NumOfDimensions(); i++) {
+    for (int i = 0; i < filter.mind_->NumOfDimensions(); i++) {
       if (all_dims[i]) {
-        if (filter.mind->GetFilter(i))
+        if (filter.mind_->GetFilter(i))
           one_dim = i;  // exactly one filter (non-join or join with forgotten dims)
         break;
       }
     }
   }
-  int packs_no =
-      (int)((filter.mind->OrigSize(one_dim) + ((1 << filter.mind->ValueOfPower()) - 1)) >> filter.mind->ValueOfPower());
+
+  int packs_no = (int)((filter.mind_->OrigSize(one_dim) + ((1 << filter.mind_->ValueOfPower()) - 1)) >>
+                       filter.mind_->ValueOfPower());
   // Fixme: single thread control logic based on the following assumption:
   // 1. Single thread is enough for cases with pack num less than 20
   //   A rough statistic is it takes about 1 secs handle 20 packs - Intel(R)
@@ -80,7 +82,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   if (tianmu_sysvar_orderby_speedup && packs_no > 20 && no_dims == 1) {
     task_num = 8;
     // recheck the up threashold for each SortLimit sub-sortedtable
-    if (((packs_no - 1) * ((1 << filter.mind->ValueOfPower()) - 1)) / task_num < (limit + offset)) {
+    if (((packs_no - 1) * ((1 << filter.mind_->ValueOfPower()) - 1)) / task_num < (limit + offset)) {
       task_num = 1;
       TIANMU_LOG(LogCtl_Level::INFO, "Beyond uplimit of limit sort, switch to single thread logic. ");
     }
@@ -89,18 +91,18 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
   // Prepare sorter
   std::vector<vcolumn::VirtualColumn *> vc_for_prefetching;
-  SorterWrapper sorted_table(*(filter.mind), total_limit);
+  SorterWrapper sorted_table(*(filter.mind_), total_limit);
   // Fixme: make task_num configurable or auto assigned.
   SorterWrapper subsorted_table[8] = {
-      SorterWrapper(*(filter.mind), limit + offset), SorterWrapper(*(filter.mind), limit + offset),
-      SorterWrapper(*(filter.mind), limit + offset), SorterWrapper(*(filter.mind), limit + offset),
-      SorterWrapper(*(filter.mind), limit + offset), SorterWrapper(*(filter.mind), limit + offset),
-      SorterWrapper(*(filter.mind), limit + offset), SorterWrapper(*(filter.mind), limit + offset)};
+      SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset),
+      SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset),
+      SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset),
+      SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset)};
   /*
       std::vector<SorterWrapper> v_sw;
       if(task_num != 1) {
           for(int i = 0; i < task_num; i++) {
-              SorterWrapper tmpsubsorted_table(*(filter.mind), limit + offset);
+              SorterWrapper tmpsubsorted_table(*(filter.mind_), limit + offset);
               v_sw.push_back(tmpsubsorted_table);
           }
       }
@@ -141,20 +143,20 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     }
   }
   if (task_num == 1)
-    sorted_table.InitSorter(*(filter.mind), true);
+    sorted_table.InitSorter(*(filter.mind_), true);
   else
-    sorted_table.InitSorter(*(filter.mind), false);
+    sorted_table.InitSorter(*(filter.mind_), false);
   if (sorted_table.GetSorter() && std::strcmp(sorted_table.GetSorter()->Name(), "Heap Sort") != 0) {
     TIANMU_LOG(LogCtl_Level::DEBUG, "Multi-thread order by is not supported for %s table.",
                sorted_table.GetSorter()->Name());
     task_num = 1;
   }
   // Put data
-  std::vector<PackOrderer> po(filter.mind->NumOfDimensions());
+  std::vector<PackOrderer> po(filter.mind_->NumOfDimensions());
   if (task_num == 1) {
     sorted_table.SortRoughly(po);
   }
-  MIIterator it(filter.mind, all_dims, po);
+  MIIterator it(filter.mind_, all_dims, po);
   int64_t local_row = 0;
   bool continue_now = true;
 
@@ -175,8 +177,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
       local_row++;
       if (local_row % 10000000 == 0)
-        rc_control_.lock(m_conn->GetThreadID())
-            << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
+        tianmu_control_.lock(m_conn->GetThreadID())
+            << "Preparing values to sort (" << int(local_row / double(filter.mind_->NumOfTuples()) * 100) << "% done)."
             << system::unlock;
     }
   } else {
@@ -193,7 +195,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       int pend = mod + (i + 1) * num - 1;
       TIANMU_LOG(LogCtl_Level::INFO, "create new MIIterator: start pack %d, endpack %d", pstart, pend);
 
-      auto &mi = mis.emplace_back(*filter.mind, true);
+      auto &mi = mis.emplace_back(*filter.mind_, true);
 
       auto &mii = taskIterator.emplace_back(&mi, all_dims, po);
       mii.SetTaskNum(task_num);
@@ -207,13 +209,13 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     // Note: Don't RoughSort them as it would impact initPack logic
     // and some rows would be skipped from adding in the sort table
 
-    for (int i = 0; i < task_num; i++) subsorted_table[i].InitSorter(*(filter.mind), false);
+    for (int i = 0; i < task_num; i++) subsorted_table[i].InitSorter(*(filter.mind_), false);
 
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
-                                                          current_txn_, &subsorted_table[i]));
-    if (filter.mind->m_conn->Killed())
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
+                                                               current_txn_, &subsorted_table[i]));
+    if (filter.mind_->m_conn->Killed())
       throw common::KilledException("Query killed by user");
 
     for (int i = 0; i < task_num; ++i) {
@@ -256,12 +258,12 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
         for (auto &attr : attrs) {
           if (attr->alias != nullptr) {
             switch (attr->TypeName()) {
-              case common::CT::STRING:
-              case common::CT::VARCHAR:
-              case common::CT::BIN:
-              case common::CT::BYTE:
-              case common::CT::VARBYTE:
-              case common::CT::LONGTEXT:
+              case common::ColumnType::STRING:
+              case common::ColumnType::VARCHAR:
+              case common::ColumnType::BIN:
+              case common::ColumnType::BYTE:
+              case common::ColumnType::VARBYTE:
+              case common::ColumnType::LONGTEXT:
                 val_s = sorted_table.GetValueT(col);
                 attr->SetValueString(local_row, val_s);
                 break;
@@ -279,7 +281,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
         local_row++;
         ++produced_rows;
         if ((global_row - offset + 1) % 10000000 == 0)
-          rc_control_.lock(m_conn->GetThreadID())
+          tianmu_control_.lock(m_conn->GetThreadID())
               << "Retrieving sorted rows (" << int((global_row - offset) / double(limit - offset) * 100) << "% done)."
               << system::unlock;
       } else if (valid)
@@ -299,7 +301,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       local_row = 0;
     }
   } while (valid && global_row < limit + offset);
-  rc_control_.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
 
   // TIANMU_LOG(LogCtl_Level::INFO, "OrderByAndMaterialize complete global_row %d, limit %d,
   // offset %d", global_row, limit, offset);
@@ -308,7 +310,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
 void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offset, ResultSender *sender,
                                         bool pagewise) {
-  if (filter.mind->ZeroTuples())
+  if (filter.mind_->ZeroTuples())
     return;
 
   if (sender) {
@@ -343,7 +345,7 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
   if (!has_intresting_columns)
     return;
 
-  MIIterator it(filter.mind, filter.mind->ValueOfPower());
+  MIIterator it(filter.mind_, filter.mind_->ValueOfPower());
   if (pagewise && local_offset < no_materialized)
     local_offset = no_materialized;  // continue filling
 
@@ -405,8 +407,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     utils::result_set<void> res;
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
-        res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
-                                                            &page_start, start_row, page_end));
+        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i],
+                                                                 current_txn_, &page_start, start_row, page_end));
       }
     }
     res.get_all_with_except();
@@ -444,7 +446,7 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
   if (!has_intresting_columns)
     return;
 
-  MIIterator it(filter.mind, filter.mind->ValueOfPower());
+  MIIterator it(filter.mind_, filter.mind_->ValueOfPower());
   if (pagewise && offset < no_materialized)
     offset = no_materialized;  // continue filling
 
@@ -459,29 +461,30 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
       first_row_for_vc = false;
     }
 
-    std::vector<std::unique_ptr<types::RCDataType>> record;
+    std::vector<std::unique_ptr<types::TianmuDataType>> record;
     for (uint att = 0; att < NumOfDisplaybleAttrs(); ++att) {
       Attr *col = GetDisplayableAttrP(att);
-      common::CT ct = col->TypeName();
+      common::ColumnType ct = col->TypeName();
 
       auto vc = col->term.vc;
-      if (ct == common::CT::INT || ct == common::CT::MEDIUMINT || ct == common::CT::SMALLINT ||
-          ct == common::CT::BYTEINT || ct == common::CT::NUM || ct == common::CT::BIGINT) {
-        auto data_ptr = new types::RCNum();
+      if (ct == common::ColumnType::INT || ct == common::ColumnType::MEDIUMINT || ct == common::ColumnType::SMALLINT ||
+          ct == common::ColumnType::BYTEINT || ct == common::ColumnType::NUM || ct == common::ColumnType::BIGINT ||
+          ct == common::ColumnType::BIT) {
+        auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
           data_ptr->Assign(vc->GetValueInt64(it), col->Type().GetScale(), false, ct);
         record.emplace_back(data_ptr);
       } else if (ATI::IsRealType(ct)) {
-        auto data_ptr = new types::RCNum();
+        auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
           data_ptr->Assign(vc->GetValueDouble(it));
         record.emplace_back(data_ptr);
       } else if (ATI::IsDateTimeType(ct)) {
-        auto data_ptr = new types::RCDateTime();
+        auto data_ptr = new types::TianmuDateTime();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
@@ -551,11 +554,12 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
     }
 }
 
-void TempTable::FillbufferTask(Attr *attr, Transaction *ci, MIIterator *page_start, int64_t start_row,
+void TempTable::FillbufferTask(Attr *attr, Transaction *txn, MIIterator *page_start, int64_t start_row,
                                int64_t page_end) {
   // save TLS for mysql function
   common::SetMySQLTHD(m_conn->Thd());
-  current_txn_ = ci;
+  current_txn_ = txn;
+
   if (attr->NeedFill()) {
     MIIterator i(*page_start);
     attr->FillValues(i, start_row, page_end - start_row);
@@ -569,6 +573,7 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
   while (it->IsValid() && continue_now) {
     if (m_conn->Killed())
       throw common::KilledException();
+
     if (it->PackrowStarted()) {
       if (st->InitPackrow(*it)) {
         local_row += it->GetPackSizeLeft();
@@ -578,16 +583,19 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
         continue;
       }
     }
+
     continue_now = st->PutValues(*it);  // return false if a limit is already reached (min. values only)
     ++(*it);
 
     local_row++;
     if (local_row % 10000000 == 0)
-      rc_control_.lock(m_conn->GetThreadID())
-          << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
+      tianmu_control_.lock(m_conn->GetThreadID())
+          << "Preparing values to sort (" << int(local_row / double(filter.mind_->NumOfTuples()) * 100) << "% done)."
           << system::unlock;
   }
+
   return local_row;
 }
+
 }  // namespace core
 }  // namespace Tianmu

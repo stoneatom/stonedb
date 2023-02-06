@@ -196,10 +196,10 @@ void posix_server_socket_impl<Transport>::abort_accept() {
 
 template <transport Transport>
 future<connected_socket, socket_address> posix_ap_server_socket_impl<Transport>::accept() {
-  auto conni = conn_q.find(_sa.as_posix_sockaddr_in());
-  if (conni != conn_q.end()) {
+  auto conni = GetConn().find(_sa.as_posix_sockaddr_in());
+  if (conni != GetConn().end()) {
     connection c = std::move(conni->second);
-    conn_q.erase(conni);
+    GetConn().erase(conni);
     try {
       std::unique_ptr<connected_socket_impl> csi(
           new posix_connected_socket_impl<Transport>(make_lw_shared(std::move(c.fd))));
@@ -209,8 +209,8 @@ future<connected_socket, socket_address> posix_ap_server_socket_impl<Transport>:
     }
   } else {
     try {
-      auto i =
-          sockets.emplace(std::piecewise_construct, std::make_tuple(_sa.as_posix_sockaddr_in()), std::make_tuple());
+      auto i = GetSockets().emplace(std::piecewise_construct, std::make_tuple(_sa.as_posix_sockaddr_in()),
+                                    std::make_tuple());
       assert(i.second);
       return i.first->second.get_future();
     } catch (...) {
@@ -221,11 +221,11 @@ future<connected_socket, socket_address> posix_ap_server_socket_impl<Transport>:
 
 template <transport Transport>
 void posix_ap_server_socket_impl<Transport>::abort_accept() {
-  conn_q.erase(_sa.as_posix_sockaddr_in());
-  auto i = sockets.find(_sa.as_posix_sockaddr_in());
-  if (i != sockets.end()) {
+  GetConn().erase(_sa.as_posix_sockaddr_in());
+  auto i = GetSockets().find(_sa.as_posix_sockaddr_in());
+  if (i != GetSockets().end()) {
     i->second.set_exception(std::system_error(ECONNABORTED, std::system_category()));
-    sockets.erase(i);
+    GetSockets().erase(i);
   }
 }
 
@@ -246,8 +246,8 @@ void posix_reuseport_server_socket_impl<Transport>::abort_accept() {
 template <transport Transport>
 void posix_ap_server_socket_impl<Transport>::move_connected_socket(socket_address sa, pollable_fd fd,
                                                                    socket_address addr, conntrack::handle cth) {
-  auto i = sockets.find(sa.as_posix_sockaddr_in());
-  if (i != sockets.end()) {
+  auto i = GetSockets().find(sa.as_posix_sockaddr_in());
+  if (i != GetSockets().end()) {
     try {
       std::unique_ptr<connected_socket_impl> csi(
           new posix_connected_socket_impl<Transport>(make_lw_shared(std::move(fd)), std::move(cth)));
@@ -255,10 +255,10 @@ void posix_ap_server_socket_impl<Transport>::move_connected_socket(socket_addres
     } catch (...) {
       i->second.set_exception(std::current_exception());
     }
-    sockets.erase(i);
+    GetSockets().erase(i);
   } else {
-    conn_q.emplace(std::piecewise_construct, std::make_tuple(sa.as_posix_sockaddr_in()),
-                   std::make_tuple(std::move(fd), std::move(addr)));
+    GetConn().emplace(std::piecewise_construct, std::make_tuple(sa.as_posix_sockaddr_in()),
+                      std::make_tuple(std::move(fd), std::move(addr)));
   }
 }
 
@@ -329,13 +329,6 @@ server_socket posix_network_stack::listen(socket_address sa, listen_options opt)
 }
 
 base::socket posix_network_stack::socket() { return base::socket(std::make_unique<posix_socket_impl>()); }
-
-template <transport Transport>
-thread_local std::unordered_map<::sockaddr_in, promise<connected_socket, socket_address>>
-    posix_ap_server_socket_impl<Transport>::sockets;
-template <transport Transport>
-thread_local std::unordered_multimap<::sockaddr_in, typename posix_ap_server_socket_impl<Transport>::connection>
-    posix_ap_server_socket_impl<Transport>::conn_q;
 
 server_socket posix_ap_network_stack::listen(socket_address sa, listen_options opt) {
   if (opt.proto == transport::TCP) {

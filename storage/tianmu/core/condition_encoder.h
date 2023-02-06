@@ -20,7 +20,7 @@
 
 #include "common/common_definitions.h"
 #include "core/column_type.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 
 namespace Tianmu {
 namespace vcolumn {
@@ -58,7 +58,7 @@ class ConditionEncoder {
   void TransformOtherThanINsOnNumerics();
   void LookupExpressionTransformation();
 
-  inline common::CT AttrTypeName() const { return attr->TypeName(); }
+  inline common::ColumnType AttrTypeName() const { return attr->TypeName(); }
 
  public:
   static void EncodeIfPossible(Descriptor &desc, bool for_rough_query, bool additional_nulls);
@@ -68,7 +68,7 @@ class ConditionEncoder {
   ColumnType in_type;
   bool sharp;
   bool encoding_done;
-  RCAttr *attr;
+  TianmuAttr *attr;
   Descriptor *desc;
   uint32_t pack_power;
 };

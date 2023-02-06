@@ -143,7 +143,7 @@ class VirtualColumnBase : public core::Column {
    * \param mit points to a row in an Multiindex, requested column value comes
    * from this row \param lookup_to_num legacy meaning (?)
    */
-  inline types::RCValueObject GetValue(const core::MIIterator &mit, bool lookup_to_num = false) {
+  inline types::TianmuValueObject GetValue(const core::MIIterator &mit, bool lookup_to_num = false) {
     return (GetValueImpl(mit, lookup_to_num));
   }
 
@@ -355,7 +355,9 @@ class VirtualColumnBase : public core::Column {
     return EvaluateOnIndexImpl(mit, desc, limit);
   }
   //! check whether any value from the pack may meet the condition
-  inline common::RSValue RoughCheck(const core::MIIterator &it, core::Descriptor &d) { return RoughCheckImpl(it, d); }
+  inline common::RoughSetValue RoughCheck(const core::MIIterator &it, core::Descriptor &d) {
+    return RoughCheckImpl(it, d);
+  }
   //! is a datapack pointed by \e mit NULLS_ONLY, UNIFORM, UNIFORM_AND_NULLS or
   //! NORMAL
   core::PackOntologicalStatus GetPackOntologicalStatus(const core::MIIterator &mit) {
@@ -493,7 +495,7 @@ class VirtualColumnBase : public core::Column {
   virtual bool IsNullImpl(const core::MIIterator &) = 0;
   virtual void GetValueStringImpl(types::BString &, const core::MIIterator &) = 0;
   virtual double GetValueDoubleImpl(const core::MIIterator &) = 0;
-  virtual types::RCValueObject GetValueImpl(const core::MIIterator &, bool) = 0;
+  virtual types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool) = 0;
 
   virtual int64_t GetMinInt64Impl(const core::MIIterator &) = 0;
   virtual int64_t GetMinInt64ExactImpl(const core::MIIterator &) { return common::NULL_VALUE_64; }
@@ -516,7 +518,7 @@ class VirtualColumnBase : public core::Column {
   virtual size_t MaxStringSizeImpl() = 0;  // maximal byte string length in column
 
   virtual core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &) = 0;
-  virtual common::RSValue RoughCheckImpl(const core::MIIterator &, core::Descriptor &);
+  virtual common::RoughSetValue RoughCheckImpl(const core::MIIterator &, core::Descriptor &);
   virtual void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &) = 0;
   virtual common::ErrorCode EvaluateOnIndexImpl(core::MIUpdatingIterator &mit, core::Descriptor &, int64_t limit) = 0;
 

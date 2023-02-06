@@ -20,8 +20,8 @@
 #include "core/descriptor.h"
 #include "core/just_a_table.h"
 #include "core/query.h"
-#include "core/rc_attr.h"
-#include "core/rc_table.h"
+#include "core/tianmu_attr.h"
+#include "core/tianmu_table.h"
 #include "core/value_set.h"
 #include "vc/const_column.h"
 #include "vc/expr_column.h"
@@ -33,7 +33,7 @@ namespace Tianmu {
 namespace core {
 ConditionEncoder::ConditionEncoder(bool additional_nulls, uint32_t power)
     : additional_nulls(additional_nulls),
-      in_type(ColumnType(common::CT::UNK)),
+      in_type(ColumnType(common::ColumnType::UNK)),
       sharp(false),
       encoding_done(false),
       attr(nullptr),
@@ -65,7 +65,7 @@ void ConditionEncoder::operator()(Descriptor &desc) {
   if (desc.encoded)
     return;
 
-  auto tab = std::static_pointer_cast<RCTable>(desc.attr.vc->GetVarMap()[0].GetTabPtr());
+  auto tab = std::static_pointer_cast<TianmuTable>(desc.attr.vc->GetVarMap()[0].GetTabPtr());
   attr = tab->GetAttr(desc.attr.vc->GetVarMap()[0].col_ndx);
   attr->LoadPackInfo(current_txn_);
   in_type = attr->Type();
@@ -218,7 +218,7 @@ void ConditionEncoder::EncodeConditionOnStringColumn() {
 
   if (desc->op == common::Operator::O_IN || desc->op == common::Operator::O_NOT_IN)
     TransformINs();
-  else if (!attr->Type().IsLookup())
+  else if (!attr->Type().Lookup())
     TransformOtherThanINsOnNotLookup();
   else
     TransformOtherThanINsOnNumerics();
@@ -252,10 +252,10 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
       v1 = attr->EncodeValue64(mvc->GetSetMin(mit).Get(),
                                v1_rounded);  // 1-level values
   } else if (desc->val1.vc->IsConst()) {
-    common::ErrorCode tianmu_rc = common::ErrorCode::SUCCESS;
+    common::ErrorCode tianmu_err_code = common::ErrorCode::SUCCESS;
     v1 = attr->EncodeValue64(desc->val1.vc->GetValue(mit), v1_rounded,
-                             &tianmu_rc);  // 1-level values
-    if (tianmu_rc != common::ErrorCode::SUCCESS) {
+                             &tianmu_err_code);  // 1-level values
+    if (tianmu_err_code != common::ErrorCode::SUCCESS) {
       desc->encoded = false;
       throw common::DataTypeConversionException(common::ErrorCode::DATACONVERSION);
     }
@@ -273,11 +273,11 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
       v2 = attr->EncodeValue64(mvc->GetSetMin(mit).Get(),
                                v2_rounded);  // 1-level values
   } else {
-    common::ErrorCode tianmu_rc = common::ErrorCode::SUCCESS;
+    common::ErrorCode tianmu_err_code = common::ErrorCode::SUCCESS;
     if (!desc->val2.IsNull() && desc->val2.vc && desc->val2.vc->IsConst()) {
       v2 = attr->EncodeValue64(desc->val2.vc->GetValue(mit), v2_rounded,
-                               &tianmu_rc);  // 1-level values
-      if (tianmu_rc != common::ErrorCode::SUCCESS) {
+                               &tianmu_err_code);  // 1-level values
+      if (tianmu_err_code != common::ErrorCode::SUCCESS) {
         desc->encoded = false;
         throw common::DataTypeConversionException(common::ErrorCode::DATACONVERSION);
       }
@@ -331,7 +331,7 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
       v1 = common::MINUS_INF_64;
     } else {
       if (*(double *)&v1 > common::MINUS_INF_DBL)
-        v2 = (AttrTypeName() == common::CT::REAL) ? DoubleMinusEpsilon(v1) : FloatMinusEpsilon(v1);
+        v2 = (AttrTypeName() == common::ColumnType::REAL) ? DoubleMinusEpsilon(v1) : FloatMinusEpsilon(v1);
       v1 = *(int64_t *)&common::MINUS_INF_DBL;
     }
   }
@@ -343,7 +343,7 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
       v2 = common::PLUS_INF_64;
     } else {
       if (*(double *)&(v1) != common::PLUS_INF_DBL)
-        v1 = (AttrTypeName() == common::CT::REAL) ? DoublePlusEpsilon(v1) : FloatPlusEpsilon(v1);
+        v1 = (AttrTypeName() == common::ColumnType::REAL) ? DoublePlusEpsilon(v1) : FloatPlusEpsilon(v1);
       v2 = *(int64_t *)&common::PLUS_INF_DBL;
     }
   }
@@ -371,13 +371,13 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
 
   desc->val1 = CQTerm();
   desc->val1.vc = new vcolumn::ConstColumn(
-      ValueOrNull(types::RCNum(v1, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
+      ValueOrNull(types::TianmuNum(v1, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
       attr->Type());
   desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
 
   desc->val2 = CQTerm();
   desc->val2.vc = new vcolumn::ConstColumn(
-      ValueOrNull(types::RCNum(v2, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
+      ValueOrNull(types::TianmuNum(v2, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
       attr->Type());
   desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
 }
@@ -413,7 +413,7 @@ void ConditionEncoder::TransformLIKEsPattern() {
       desc->op = common::Operator::O_FALSE;
     else
       desc->op = common::Operator::O_NOT_NULL;
-  } else if (attr->Type().IsLookup())
+  } else if (attr->Type().Lookup())
     TransformLIKEsIntoINsOnLookup();
   else
     encoding_done = true;
@@ -421,7 +421,7 @@ void ConditionEncoder::TransformLIKEsPattern() {
 
 void ConditionEncoder::TransformLIKEsIntoINsOnLookup() {
   MEASURE_FET("ConditionEncoder::TransformLIKEsIntoINsOnLookup(...)");
-  DEBUG_ASSERT(attr->Type().IsLookup());
+  DEBUG_ASSERT(attr->Type().Lookup());
 
   if (desc->op == common::Operator::O_LIKE)
     desc->op = common::Operator::O_IN;
@@ -430,7 +430,7 @@ void ConditionEncoder::TransformLIKEsIntoINsOnLookup() {
 
   ValueSet valset(desc->table->Getpackpower());
   static MIIterator mid(nullptr, pack_power);
-  in_type = ColumnType(common::CT::NUM);
+  in_type = ColumnType(common::ColumnType::NUM);
   types::BString pattern;
   desc->val1.vc->GetValueString(pattern, mid);
   for (int i = 0; i < attr->Cardinality(); i++) {
@@ -460,7 +460,7 @@ void ConditionEncoder::TransformLIKEs() {
   if (!IsTransformationNeeded())
     return;
 
-  if (attr->Type().IsLookup() && (desc->op == common::Operator::O_LIKE || desc->op == common::Operator::O_NOT_LIKE))
+  if (attr->Type().Lookup() && (desc->op == common::Operator::O_LIKE || desc->op == common::Operator::O_NOT_LIKE))
     TransformLIKEsIntoINsOnLookup();
 }
 
@@ -474,7 +474,7 @@ void ConditionEncoder::TransformINsOnLookup() {
     if ((static_cast<vcolumn::MultiValColumn *>(desc->val1.vc))->Contains(mid, s) == true)
       valset.Add64(i);
   }
-  in_type = ColumnType(common::CT::NUM);
+  in_type = ColumnType(common::ColumnType::NUM);
   desc->val1.vc = new vcolumn::InSetColumn(in_type, nullptr, valset);
   desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
   if (static_cast<vcolumn::InSetColumn &>(*desc->val1.vc).IsEmpty(mid)) {
@@ -491,7 +491,7 @@ void ConditionEncoder::TransformIntoINsOnLookup() {
   ValueSet vset_positive(desc->table->Getpackpower());
   ValueSet vset_negative(desc->table->Getpackpower());
   types::BString s, vs1, vs2;
-  types::RCValueObject vo;
+  types::TianmuValueObject vo;
   if (desc->val1.vc->IsMultival() && static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc).NumOfValues(mit) > 0) {
     if ((desc->op == common::Operator::O_LESS_ALL || desc->op == common::Operator::O_LESS_EQ_ALL) ||
         (desc->op == common::Operator::O_MORE_ANY || desc->op == common::Operator::O_MORE_EQ_ANY))
@@ -516,7 +516,7 @@ void ConditionEncoder::TransformIntoINsOnLookup() {
   if (vs1.IsNull() && vs2.IsNull()) {
     desc->op = common::Operator::O_FALSE;
   } else {
-    in_type = ColumnType(common::CT::NUM);
+    in_type = ColumnType(common::ColumnType::NUM);
     int cmp1 = 0, cmp2 = 0;
     int count1 = 0, count0 = 0;
     bool utf = types::RequiresUTFConversions(desc->GetCollation());
@@ -579,7 +579,7 @@ void ConditionEncoder::TextTransformation() {
   }
   if (desc->op == common::Operator::O_LIKE || desc->op == common::Operator::O_NOT_LIKE) {
     TransformLIKEs();
-  } else if (attr->Type().IsLookup()) {  // lookup - transform into IN (numbers)
+  } else if (attr->Type().Lookup()) {  // lookup - transform into IN (numbers)
     if (desc->op == common::Operator::O_IN || desc->op == common::Operator::O_NOT_IN)
       TransformINsOnLookup();
     else
@@ -609,11 +609,11 @@ void ConditionEncoder::TransformINs() {
       desc->op = common::Operator::O_FALSE;
   } else {
     if (no_dis_values == 1 && !mvc.ContainsNull(mit)) {
-      if (attr->GetPackType() == common::PackType::INT && !attr->Type().IsLookup()) {
+      if (attr->GetPackType() == common::PackType::INT && !attr->Type().Lookup()) {
         desc->val2 = CQTerm();
         desc->val2.vc =
-            new vcolumn::ConstColumn(ValueOrNull(types::RCNum(attr->EncodeValue64(mvc.GetSetMin(mit), sharp),
-                                                              static_cast<short>(in_type.GetTypeName()))),
+            new vcolumn::ConstColumn(ValueOrNull(types::TianmuNum(attr->EncodeValue64(mvc.GetSetMin(mit), sharp),
+                                                                  static_cast<short>(in_type.GetTypeName()))),
                                      in_type);
         desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
       } else {
@@ -638,9 +638,9 @@ void ConditionEncoder::TransformINs() {
       }
     } else if (attr->GetPackType() == common::PackType::INT && !mvc.ContainsNull(mit)) {
       int64_t val_min, val_max;
-      if (attr->Type().IsLookup()) {
-        val_min = int64_t((types::RCNum &)mvc.GetSetMin(mit));
-        val_max = int64_t((types::RCNum &)mvc.GetSetMax(mit));
+      if (attr->Type().Lookup()) {
+        val_min = int64_t((types::TianmuNum &)mvc.GetSetMin(mit));
+        val_max = int64_t((types::TianmuNum &)mvc.GetSetMax(mit));
       } else {
         val_min = attr->EncodeValue64(mvc.GetSetMin(mit), sharp);
         val_max = attr->EncodeValue64(mvc.GetSetMax(mit), sharp);
@@ -649,13 +649,13 @@ void ConditionEncoder::TransformINs() {
       if (attr->Type().GetScale() < 1 && span > 0 && span < 65536  // otherwise AtLeast... will be too costly
           && span == mvc.AtLeastNoDistinctValues(mit, span + 1)) {
         desc->val2.vc = new vcolumn::ConstColumn(
-            ValueOrNull(types::RCNum(val_max, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
-                                     in_type.GetTypeName())),
+            ValueOrNull(types::TianmuNum(val_max, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
+                                         in_type.GetTypeName())),
             in_type);
         desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
         desc->val1.vc = new vcolumn::ConstColumn(
-            ValueOrNull(types::RCNum(val_min, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
-                                     in_type.GetTypeName())),
+            ValueOrNull(types::TianmuNum(val_min, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
+                                         in_type.GetTypeName())),
             in_type);
         desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
         if (desc->op == common::Operator::O_IN)
@@ -758,6 +758,10 @@ void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, 
   if (!desc.attr.vc || desc.attr.vc->GetDim() == -1)
     return;
 
+  if (desc.IsType_In()) {
+    return;
+  }
+
   vcolumn::SingleColumn *vcsc =
       (static_cast<int>(desc.attr.vc->IsSingleColumn()) ? static_cast<vcolumn::SingleColumn *>(desc.attr.vc) : nullptr);
 
@@ -770,11 +774,11 @@ void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, 
     if (vcsc2 == nullptr || vcsc->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE ||
         vcsc2->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE)
       return;
-    if (vcsc->Type().IsString() || vcsc->Type().IsLookup() || vcsc2->Type().IsString() ||
-        vcsc2->Type().IsLookup())  // excluding strings
+    if (vcsc->Type().IsString() || vcsc->Type().Lookup() || vcsc2->Type().IsString() ||
+        vcsc2->Type().Lookup())  // excluding strings
       return;
-    bool is_timestamp1 = (vcsc->Type().GetTypeName() == common::CT::TIMESTAMP);
-    bool is_timestamp2 = (vcsc2->Type().GetTypeName() == common::CT::TIMESTAMP);
+    bool is_timestamp1 = (vcsc->Type().GetTypeName() == common::ColumnType::TIMESTAMP);
+    bool is_timestamp2 = (vcsc2->Type().GetTypeName() == common::ColumnType::TIMESTAMP);
     // excluding timestamps compared with something else
     if (is_timestamp1 || (is_timestamp2 && !(is_timestamp1 && is_timestamp2)))
       return;
@@ -818,7 +822,7 @@ void ConditionEncoder::LookupExpressionTransformation() {
   desc->encoded = false;
   bool null_positive = desc->CheckCondition(mit);
   ValueSet valset(desc->table->Getpackpower());
-  in_type = ColumnType(common::CT::NUM);
+  in_type = ColumnType(common::ColumnType::NUM);
   int code = 0;
   do {
     mit.Set(code);

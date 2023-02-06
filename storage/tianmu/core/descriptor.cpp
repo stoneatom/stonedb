@@ -34,6 +34,7 @@
 
 namespace Tianmu {
 namespace core {
+
 inline bool IsVirtualColumnEqual(vcolumn::VirtualColumn *vc_left, vcolumn::VirtualColumn *vc_right) {
   if (vc_left && vc_left->IsTypeCastColumn() && vc_right && vc_right->IsTypeCastColumn()) {
     return vc_left->GetChildren() == vc_right->GetChildren();
@@ -57,7 +58,7 @@ Descriptor::Descriptor()
       tree(nullptr),
       left_dims(0),
       right_dims(0),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       like_esc('\\'),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
@@ -78,7 +79,7 @@ Descriptor::Descriptor(TempTable *t, int no_dims)  // no_dims is a destination n
       tree(nullptr),
       left_dims(no_dims),
       right_dims(no_dims),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       like_esc('\\'),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
@@ -124,7 +125,7 @@ Descriptor::Descriptor(CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3, Tem
       tree(nullptr),
       left_dims(no_dims),
       right_dims(no_dims),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
       null_after_simplify(false) {
@@ -146,7 +147,7 @@ Descriptor::Descriptor(DescTree *sec_tree, TempTable *t, int no_dims)
       table(t),
       left_dims(no_dims),
       right_dims(no_dims),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       like_esc('\\'),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
@@ -169,7 +170,7 @@ Descriptor::Descriptor(TempTable *t, vcolumn::VirtualColumn *v1, common::Operato
       tree(nullptr),
       left_dims(0),
       right_dims(0),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       like_esc('\\'),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
@@ -262,29 +263,32 @@ bool Descriptor::operator<=(const Descriptor &sec) const {
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ ||
              sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ ||
              sec.op == common::Operator::O_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         break;
       case common::Operator::O_LESS_EQ:
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         break;
       case common::Operator::O_MORE_EQ:
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         break;
       case common::Operator::O_LESS:
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
-                                          common::Operator::O_LESS_EQ, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
+                                              common::Operator::O_LESS_EQ, '\\'))
           return true;
         break;
       case common::Operator::O_MORE:
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
-                                          common::Operator::O_MORE_EQ, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
+                                              common::Operator::O_MORE_EQ, '\\'))
           return true;
         break;
       case common::Operator::O_BETWEEN:
@@ -292,10 +296,12 @@ bool Descriptor::operator<=(const Descriptor &sec) const {
             val2.vc->GetValue(dummy_mit) <= sec.val2.vc->GetValue(dummy_mit))
           return true;
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
-            types::RCValueObject::compare(val2.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val2.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         break;
       case common::Operator::O_IN: {
@@ -433,18 +439,18 @@ bool Descriptor::IsType_JoinComplex() const {
   return desc_t == DescriptorJoinType::DT_COMPLEX_JOIN;
 }
 
-common::RSValue Descriptor::EvaluateRoughlyPack(const MIIterator &mit) {
+common::RoughSetValue Descriptor::EvaluateRoughlyPack(const MIIterator &mit) {
   if (IsType_OrTree())
     return tree->root->EvaluateRoughlyPack(mit);
-  common::RSValue r = common::RSValue::RS_SOME;
+  common::RoughSetValue r = common::RoughSetValue::RS_SOME;
   if (attr.vc /*&& !attr.vc->IsConst()*/)
     r = attr.vc->RoughCheck(mit, *this);
-  if (rv == common::RSValue::RS_UNKNOWN)
+  if (rv == common::RoughSetValue::RS_UNKNOWN)
     rv = r;
-  else if (rv == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
-    rv = common::RSValue::RS_SOME;
-  else if (rv == common::RSValue::RS_ALL && r != common::RSValue::RS_ALL)
-    rv = common::RSValue::RS_SOME;
+  else if (rv == common::RoughSetValue::RS_NONE && r != common::RoughSetValue::RS_NONE)
+    rv = common::RoughSetValue::RS_SOME;
+  else if (rv == common::RoughSetValue::RS_ALL && r != common::RoughSetValue::RS_ALL)
+    rv = common::RoughSetValue::RS_SOME;
   return r;
 }
 
@@ -543,11 +549,11 @@ void Descriptor::Simplify(bool in_having) {
         v2cc->GetValueString(s3, mit);
         res = (s1.CompareWith(s2) >= 0 && s1.CompareWith(s3) <= 0);
       } else {
-        types::RCValueObject rv1 = acc->GetValue(mit);
-        types::RCValueObject rv2 = v1cc->GetValue(mit);
-        types::RCValueObject rv3 = v2cc->GetValue(mit);
-        res = types::RCValueObject::compare(rv1, rv2, common::Operator::O_MORE_EQ, '\\') &&
-              types::RCValueObject::compare(rv1, rv3, common::Operator::O_LESS_EQ, '\\');
+        types::TianmuValueObject rv1 = acc->GetValue(mit);
+        types::TianmuValueObject rv2 = v1cc->GetValue(mit);
+        types::TianmuValueObject rv3 = v2cc->GetValue(mit);
+        res = types::TianmuValueObject::compare(rv1, rv2, common::Operator::O_MORE_EQ, '\\') &&
+              types::TianmuValueObject::compare(rv1, rv3, common::Operator::O_LESS_EQ, '\\');
       }
 
       if (op == common::Operator::O_NOT_BETWEEN && !acc->IsNull(mit))
@@ -555,9 +561,9 @@ void Descriptor::Simplify(bool in_having) {
       break;
     }
     default: {
-      types::RCValueObject rv1 = acc->GetValue(mit);
-      types::RCValueObject rv2 = v1cc->GetValue(mit);
-      res = types::RCValueObject::compare(rv1, rv2, op, like_esc);
+      types::TianmuValueObject rv1 = acc->GetValue(mit);
+      types::TianmuValueObject rv2 = v1cc->GetValue(mit);
+      res = types::TianmuValueObject::compare(rv1, rv2, op, like_esc);
       if (res == false && (rv1.IsNull() || rv2.IsNull()))
         null_after_simplify = true;
     }
@@ -912,7 +918,7 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
     return;
   }
   attr.vc->SetLocalNullsPossible(false);
-  if ((attr.vc->Type().IsNumeric() || attr.vc->Type().IsLookup()) &&
+  if ((attr.vc->Type().IsNumeric() || attr.vc->Type().Lookup()) &&
       encoded) {  // if not encoded, we may have an incompatible comparison here
                   // (e.g. double between int and int)
     int64_t v1 = common::NULL_VALUE_64;
@@ -937,8 +943,8 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
     }
     int v1_scale = val1.vc ? val1.vc->Type().GetScale() : 0;
     int v2_scale = val2.vc ? val2.vc->Type().GetScale() : v1_scale;
-    types::RCNum v1_conv(v1, v1_scale);
-    types::RCNum v2_conv(v2, v2_scale);
+    types::TianmuNum v1_conv(v1, v1_scale);
+    types::TianmuNum v2_conv(v2, v2_scale);
     if (v1 != common::NULL_VALUE_64 && v1 != common::PLUS_INF_64 && v1 != common::MINUS_INF_64)
       v1_conv = v1_conv.ToDecimal(attr.vc->Type().GetScale());
     if (v2 != common::NULL_VALUE_64 && v2 != common::PLUS_INF_64 && v2 != common::MINUS_INF_64)
@@ -966,7 +972,7 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
 
   bool result = true;
 
-  if (encoded && attr.vc->Type().IsLookup())  // encoded to numerical comparison
+  if (encoded && attr.vc->Type().Lookup())  // encoded to numerical comparison
     return CheckCondition(mit);
 
   // Assumption: LockSourcePack externally done.
@@ -1080,7 +1086,7 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
     // need to consider three value logic
     common::Tribool val1_res, val2_res;
     if (encoded) {
-      if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
+      if (attr.vc->Type().IsString() && !attr.vc->Type().Lookup()) {
         types::BString val, v1, v2;
         attr.vc->GetNotNullValueString(val, mit);
         val1.vc->GetValueString(v1, mit);
@@ -1094,20 +1100,20 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
         val2_res =
             val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(val <= val2.vc->GetNotNullValueInt64(mit));
       } else {  // Rare case: for encoded conditions treat nullptr as +/- inf.
-        types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
+        types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
         val1_res = val1.vc->IsNull(mit) ? true
-                                        : (sharp ? common::Tribool(rcvo1 > val1.vc->GetValue(mit, false))
-                                                 : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false)));
+                                        : (sharp ? common::Tribool(tianmu_value_obj1 > val1.vc->GetValue(mit, false))
+                                                 : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false)));
         val2_res = val2.vc->IsNull(mit) ? true
-                                        : (sharp ? common::Tribool(rcvo1 < val2.vc->GetValue(mit, false))
-                                                 : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false)));
+                                        : (sharp ? common::Tribool(tianmu_value_obj1 < val2.vc->GetValue(mit, false))
+                                                 : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false)));
       }
     } else {
-      types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
-      val1_res =
-          val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false));
-      val2_res =
-          val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false));
+      types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
+      val1_res = val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
+                                      : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
+      val2_res = val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
+                                      : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false));
     }
     if (op == common::Operator::O_BETWEEN) {
       if (val1_res != true || val2_res != true)
@@ -1126,7 +1132,7 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
     DEBUG_ASSERT(attr.vc && val1.vc);
     if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit))
       return false;
-    if (!types::RCValueObject::compare(attr.vc->GetValue(mit), val1.vc->GetValue(mit), op, like_esc))
+    if (!types::TianmuValueObject::compare(attr.vc->GetValue(mit), val1.vc->GetValue(mit), op, like_esc))
       return false;
   }
   return result;
@@ -1154,7 +1160,7 @@ bool Descriptor::IsNull(const MIIterator &mit) {
     // need to consider three value logic
     common::Tribool val1_res, val2_res;
     if (encoded) {
-      if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
+      if (attr.vc->Type().IsString() && !attr.vc->Type().Lookup()) {
         types::BString val, v1, v2;
         attr.vc->GetNotNullValueString(val, mit);
         val1.vc->GetValueString(v1, mit);
@@ -1168,20 +1174,20 @@ bool Descriptor::IsNull(const MIIterator &mit) {
         val2_res =
             val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(val <= val2.vc->GetNotNullValueInt64(mit));
       } else {  // Rare case: for encoded conditions treat nullptr as +/- inf.
-        types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
+        types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
         val1_res = val1.vc->IsNull(mit) ? true
-                                        : (sharp ? common::Tribool(rcvo1 > val1.vc->GetValue(mit, false))
-                                                 : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false)));
+                                        : (sharp ? common::Tribool(tianmu_value_obj1 > val1.vc->GetValue(mit, false))
+                                                 : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false)));
         val2_res = val2.vc->IsNull(mit) ? true
-                                        : (sharp ? common::Tribool(rcvo1 < val2.vc->GetValue(mit, false))
-                                                 : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false)));
+                                        : (sharp ? common::Tribool(tianmu_value_obj1 < val2.vc->GetValue(mit, false))
+                                                 : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false)));
       }
     } else {
-      types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
-      val1_res =
-          val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false));
-      val2_res =
-          val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false));
+      types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
+      val1_res = val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
+                                      : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
+      val2_res = val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
+                                      : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false));
     }
     if (common::Tribool::And(val1_res, val2_res) == common::TRIBOOL_UNKNOWN)
       return true;
@@ -1208,9 +1214,9 @@ common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSel
   else if (op == common::Operator::O_FALSE)
     return false;
 
-  common::CT attr_t = attr.vc ? attr.vc->TypeName() : common::CT();
-  common::CT val1_t = val1.vc ? val1.vc->TypeName() : common::CT();
-  common::CT val2_t = val2.vc ? val2.vc->TypeName() : common::CT();
+  common::ColumnType attr_t = attr.vc ? attr.vc->TypeName() : common::ColumnType();
+  common::ColumnType val1_t = val1.vc ? val1.vc->TypeName() : common::ColumnType();
+  common::ColumnType val2_t = val2.vc ? val2.vc->TypeName() : common::ColumnType();
   if ((attr.vc && ATI::IsStringType(attr_t)) || (val1.vc && ATI::IsStringType(val1_t)) ||
       (val2.vc && ATI::IsStringType(val2_t)))
     return common::TRIBOOL_UNKNOWN;
@@ -1235,12 +1241,12 @@ common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSel
     // TODO: to be implemented
     // if(attr.vc->IsNull(mit))
     //	return false;
-    // types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
+    // types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
     // need to consider three value logic
     // common::Tribool val1_res = val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
-    // : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false));
+    // : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
     // common::Tribool val2_res = val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
-    // : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false)); if(op ==
+    // : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false)); if(op ==
     // common::Operator::O_BETWEEN) {
     //	if(val1_res != true || val2_res != true)
     //		return false;
@@ -1268,15 +1274,15 @@ common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSel
     return common::TRIBOOL_UNKNOWN;
 
   RoughValue rv = sub->RoughGetValue(mit, sot);
-  std::shared_ptr<types::RCDataType> rv_min, rv_max;
+  std::shared_ptr<types::TianmuDataType> rv_min, rv_max;
   if (sub->Type().IsDateTime()) {
-    rv_min.reset(new types::RCDateTime(rv.GetMin(), sub->TypeName()));
-    rv_max.reset(new types::RCDateTime(rv.GetMax(), sub->TypeName()));
+    rv_min.reset(new types::TianmuDateTime(rv.GetMin(), sub->TypeName()));
+    rv_max.reset(new types::TianmuDateTime(rv.GetMax(), sub->TypeName()));
   } else {
-    rv_min.reset(new types::RCNum(rv.GetMin(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
-    rv_max.reset(new types::RCNum(rv.GetMax(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
+    rv_min.reset(new types::TianmuNum(rv.GetMin(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
+    rv_max.reset(new types::TianmuNum(rv.GetMax(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
   }
-  types::RCValueObject v = val->GetValue(mit);
+  types::TianmuValueObject v = val->GetValue(mit);
   DEBUG_ASSERT(attr.vc);
   // NULLs are checked within operators
   if (op == common::Operator::O_EQ) {
@@ -1319,7 +1325,7 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
   vcolumn::MultiValColumn *mvc = static_cast<vcolumn::MultiValColumn *>(val1.vc);
   types::BString s1;
   attr.vc->GetValueString(s1, mit);
-  types::RCValueObject aggr;
+  types::TianmuValueObject aggr;
   switch (op) {
     case common::Operator::O_EQ_ALL:
       for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit); it != end; ++it) {
@@ -1418,7 +1424,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       return true;
     }
     common::Tribool res;
-    if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
+    if (attr.vc->Type().IsString() && !attr.vc->Type().Lookup()) {
       types::BString val;
       attr.vc->GetNotNullValueString(val, mit);
       res = mvc->ContainsString(mit, val);
@@ -1430,13 +1436,13 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       res = !res;
     return (res == true);
   }
-  types::RCValueObject val = attr.vc->GetValue(mit);
-  types::RCValueObject aggr;
+  types::TianmuValueObject val = attr.vc->GetValue(mit);
+  types::TianmuValueObject aggr;
   switch (op) {
     case common::Operator::O_EQ_ALL:
       for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit); it != end; ++it) {
         if (val.IsNull() || it->IsNull() ||
-            !types::RCValueObject::compare(val, it->GetValue(), common::Operator::O_EQ, '\\'))
+            !types::TianmuValueObject::compare(val, it->GetValue(), common::Operator::O_EQ, '\\'))
           return false;
       }
       break;
@@ -1462,7 +1468,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       result = false;
       if (!val.IsNull()) {
         for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit); it != end; ++it) {
-          if (!it->IsNull() && types::RCValueObject::compare(val, it->GetValue(), common::Operator::O_NOT_EQ, '\\'))
+          if (!it->IsNull() && types::TianmuValueObject::compare(val, it->GetValue(), common::Operator::O_NOT_EQ, '\\'))
             return true;
         }
       }
@@ -1474,7 +1480,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       if (mvc->NumOfValues(mit) == 0)
         result = true;  // op ALL (empty_set) is TRUE
       else if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit) ||
-               !types::RCValueObject::compare(val, aggr, op, '\\'))
+               !types::TianmuValueObject::compare(val, aggr, op, '\\'))
         result = false;
       break;
     case common::Operator::O_MORE_ANY:
@@ -1483,7 +1489,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       aggr = mvc->GetSetMin(mit);
       if (mvc->NumOfValues(mit) == 0)
         result = false;  // op ANY (empty_set) is FALSE
-      else if (val.IsNull() || aggr.IsNull() || !types::RCValueObject::compare(val, aggr, op, '\\'))
+      else if (val.IsNull() || aggr.IsNull() || !types::TianmuValueObject::compare(val, aggr, op, '\\'))
         result = false;
       break;
     case common::Operator::O_LESS_ANY:
@@ -1492,7 +1498,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       aggr = mvc->GetSetMax(mit);
       if (mvc->NumOfValues(mit) == 0)
         result = false;  // op ANY (empty_set) is FALSE
-      else if (val.IsNull() || aggr.IsNull() || !types::RCValueObject::compare(val, aggr, op, '\\'))
+      else if (val.IsNull() || aggr.IsNull() || !types::TianmuValueObject::compare(val, aggr, op, '\\'))
         result = false;
       break;
     case common::Operator::O_MORE_ALL:
@@ -1502,7 +1508,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       if (mvc->NumOfValues(mit) == 0)
         result = true;  // op ALL (empty_set) is TRUE
       else if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit) ||
-               !types::RCValueObject::compare(val, aggr, op, '\\'))
+               !types::TianmuValueObject::compare(val, aggr, op, '\\'))
         result = false;
       break;
     default:
@@ -1521,7 +1527,7 @@ bool Descriptor::IsNull_Set(const MIIterator &mit, common::Operator op) {
     if (attr.vc->IsNull(mit))
       return true;
     common::Tribool res;
-    if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
+    if (attr.vc->Type().IsString() && !attr.vc->Type().Lookup()) {
       types::BString val;
       attr.vc->GetNotNullValueString(val, mit);
       res = mvc->ContainsString(mit, val);
@@ -1531,8 +1537,8 @@ bool Descriptor::IsNull_Set(const MIIterator &mit, common::Operator op) {
     }
     return (res == common::TRIBOOL_UNKNOWN);
   }
-  types::RCValueObject val = attr.vc->GetValue(mit);
-  types::RCValueObject aggr;
+  types::TianmuValueObject val = attr.vc->GetValue(mit);
+  types::TianmuValueObject aggr;
   switch (op) {
     case common::Operator::O_EQ_ALL:
     case common::Operator::O_NOT_EQ_ALL:
@@ -1587,15 +1593,15 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
     return common::TRIBOOL_UNKNOWN;
 
   RoughValue rv = sub->RoughGetValue(mit, sot);
-  std::shared_ptr<types::RCDataType> rv_min, rv_max;
+  std::shared_ptr<types::TianmuDataType> rv_min, rv_max;
   if (sub->Type().IsDateTime()) {
-    rv_min.reset(new types::RCDateTime(rv.GetMin(), sub->TypeName()));
-    rv_max.reset(new types::RCDateTime(rv.GetMax(), sub->TypeName()));
+    rv_min.reset(new types::TianmuDateTime(rv.GetMin(), sub->TypeName()));
+    rv_max.reset(new types::TianmuDateTime(rv.GetMax(), sub->TypeName()));
   } else {
-    rv_min.reset(new types::RCNum(rv.GetMin(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
-    rv_max.reset(new types::RCNum(rv.GetMax(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
+    rv_min.reset(new types::TianmuNum(rv.GetMin(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
+    rv_max.reset(new types::TianmuNum(rv.GetMax(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
   }
-  types::RCValueObject v = attr.vc->GetValue(mit);
+  types::TianmuValueObject v = attr.vc->GetValue(mit);
   common::Tribool rough_is_empty = sub->RoughIsEmpty(mit, sot);
 
   switch (op) {
@@ -1636,7 +1642,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
     //= mvc->end(mit); it !=
     // end; ++it) {
     //			if(!it->IsNull() &&
-    // types::RCValueObject::compare(val, it->GetValue(),
+    // types::TianmuValueObject::compare(val, it->GetValue(),
     // common::Operator::O_NOT_EQ))
     //				return true;
     //		}
@@ -1647,7 +1653,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       Query::UnmarkAllAny(op);
       if (rough_is_empty == true)
         return true;  // op ALL (empty_set) is TRUE
-      else if (rough_is_empty == false && !types::RCValueObject::compare(v, *rv_max, op, '\\'))
+      else if (rough_is_empty == false && !types::TianmuValueObject::compare(v, *rv_max, op, '\\'))
         return false;
       break;
     case common::Operator::O_MORE_ANY:
@@ -1655,7 +1661,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       Query::UnmarkAllAny(op);
       if (rough_is_empty == true)
         return false;  // op ANY (empty_set) is FALSE
-      else if (rough_is_empty == false && !types::RCValueObject::compare(v, *rv_min, op, '\\'))
+      else if (rough_is_empty == false && !types::TianmuValueObject::compare(v, *rv_min, op, '\\'))
         return false;
       break;
     case common::Operator::O_LESS_ANY:
@@ -1663,7 +1669,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       Query::UnmarkAllAny(op);
       if (rough_is_empty == true)
         return false;  // op ANY (empty_set) is FALSE
-      else if (rough_is_empty == false && !types::RCValueObject::compare(v, *rv_max, op, '\\'))
+      else if (rough_is_empty == false && !types::TianmuValueObject::compare(v, *rv_max, op, '\\'))
         return false;
       break;
     case common::Operator::O_MORE_ALL:
@@ -1671,7 +1677,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       Query::UnmarkAllAny(op);
       if (rough_is_empty == true)
         return true;  // op ALL (empty_set) is TRUE
-      else if (rough_is_empty == false && !types::RCValueObject::compare(v, *rv_min, op, '\\'))
+      else if (rough_is_empty == false && !types::TianmuValueObject::compare(v, *rv_min, op, '\\'))
         return false;
       break;
     default:
@@ -1695,7 +1701,7 @@ void Descriptor::CoerceColumnType(vcolumn::VirtualColumn *&for_typecast) {
       tcc = new vcolumn::String2DateTimeCastColumn(for_typecast, vc->Type());
     else if (ATI::IsNumericType(for_typecast->TypeName()))
       tcc = new vcolumn::Num2DateTimeCastColumn(for_typecast, vc->Type());
-    else if (vc->TypeName() == common::CT::TIMESTAMP &&
+    else if (vc->TypeName() == common::ColumnType::TIMESTAMP &&
              !(ATI::IsDateTimeType(for_typecast->TypeName()))) {  // for_typecast->TypeName() !=
                                                                   // common::CT::TIMESTAMP	{
       tcc = new vcolumn::TimeZoneConversionCastColumn(vc);
@@ -1710,8 +1716,8 @@ void Descriptor::CoerceColumnType(vcolumn::VirtualColumn *&for_typecast) {
     return;
 
   if (tcc) {
-    if (rc_control_.isOn()) {
-      rc_control_.lock(current_txn_->GetThreadID())
+    if (tianmu_control_.isOn()) {
+      tianmu_control_.lock(current_txn_->GetThreadID())
           << "Type conversion for VC:"
           << (for_typecast == val1.vc ? val1.vc_id : for_typecast == val2.vc ? val2.vc_id : val1.vc_id)
           << system::unlock;
@@ -1827,7 +1833,7 @@ void Descriptor::ClearRoughValues() {
   if (IsType_OrTree())
     tree->root->ClearRoughValues();
   else
-    rv = common::RSValue::RS_UNKNOWN;
+    rv = common::RoughSetValue::RS_UNKNOWN;
 }
 
 void Descriptor::RoughAccumulate(MIIterator &mit) {
@@ -1840,9 +1846,9 @@ void Descriptor::SimplifyAfterRoughAccumulate() {
     if (tree->UseRoughAccumulated())
       Simplify(false);
   } else {
-    if (rv == common::RSValue::RS_NONE)
+    if (rv == common::RoughSetValue::RS_NONE)
       op = common::Operator::O_FALSE;
-    else if (rv == common::RSValue::RS_ALL)
+    else if (rv == common::RoughSetValue::RS_ALL)
       op = common::Operator::O_TRUE;
   }
 }
@@ -1851,9 +1857,9 @@ void Descriptor::SimplifyAfterRoughAccumulate() {
 bool Descriptor::CopyDesCond(MIUpdatingIterator &mit) {
   common::PackType pack_type;
   if (IsType_AttrValOrAttrValVal()) {
-    common::CT column_type = attr.vc->Type().GetTypeName();
-    bool is_lookup = attr.vc->Type().IsLookup();
-    if (((column_type == common::CT::VARCHAR || column_type == common::CT::STRING) && is_lookup) ||
+    common::ColumnType column_type = attr.vc->Type().GetTypeName();
+    bool is_lookup = attr.vc->Type().Lookup();
+    if (((column_type == common::ColumnType::VARCHAR || column_type == common::ColumnType::STRING) && is_lookup) ||
         ATI::IsNumericType(column_type) || ATI::IsDateTimeType(column_type))
       pack_type = common::PackType::INT;
     else
@@ -1901,15 +1907,15 @@ bool Descriptor::ExsitTmpTable() const {
 }
 
 bool Descriptor::IsleftIndexSearch() const {
-  if (!tianmu_sysvar_index_search || IsType_OrTree())
+  if (!tianmu_sysvar_index_search || IsType_OrTree() || IsType_Between())
     return false;
   if (IsType_AttrValOrAttrValVal() && encoded) {
     auto col = static_cast<vcolumn::SingleColumn *>(attr.vc);
     if (table && table->NumOfTables() == 1 && table->GetTableP(0)->TableType() == TType::TABLE &&
-        col->GetPhysical()->ColType() == PhysicalColumn::phys_col_t::RCATTR) {
-      auto path = (static_cast<RCTable *>(table->GetTableP(0))->Path());
-      auto indextab = ha_rcengine_->GetTableIndex(path.replace_extension().string());
-      uint32_t colid = static_cast<RCAttr *>(col->GetPhysical())->ColId();
+        col->GetPhysical()->ColType() == PhysicalColumn::phys_col_t::kTianmuAttr) {
+      auto path = (static_cast<TianmuTable *>(table->GetTableP(0))->Path());
+      auto indextab = ha_tianmu_engine_->GetTableIndex(path.replace_extension().string());
+      uint32_t colid = static_cast<TianmuAttr *>(col->GetPhysical())->ColId();
 
       if (indextab) {
         std::vector<uint> keycols = indextab->KeyCols();
@@ -2154,21 +2160,21 @@ common::Tribool DescTreeNode::Simplify(DescTreeNode *&root, bool in_having) {
                                              : (desc.op == common::Operator::O_FALSE ? false : common::TRIBOOL_UNKNOWN);
 }
 
-common::RSValue DescTreeNode::EvaluateRoughlyPack(const MIIterator &mit) {
+common::RoughSetValue DescTreeNode::EvaluateRoughlyPack(const MIIterator &mit) {
   if (desc.op == common::Operator::O_OR_TREE) {
-    common::RSValue left_res = left->EvaluateRoughlyPack(mit);
-    common::RSValue right_res = right->EvaluateRoughlyPack(mit);
-    common::RSValue r;
+    common::RoughSetValue left_res = left->EvaluateRoughlyPack(mit);
+    common::RoughSetValue right_res = right->EvaluateRoughlyPack(mit);
+    common::RoughSetValue r;
     if (desc.lop == common::LogicalOperator::O_AND)
       r = And(left_res, right_res);
     else
       r = Or(left_res, right_res);
-    if (desc.rv == common::RSValue::RS_UNKNOWN)
+    if (desc.rv == common::RoughSetValue::RS_UNKNOWN)
       desc.rv = r;
-    else if (desc.rv == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
-      desc.rv = common::RSValue::RS_SOME;
-    else if (desc.rv == common::RSValue::RS_ALL && r != common::RSValue::RS_ALL)
-      desc.rv = common::RSValue::RS_SOME;
+    else if (desc.rv == common::RoughSetValue::RS_NONE && r != common::RoughSetValue::RS_NONE)
+      desc.rv = common::RoughSetValue::RS_SOME;
+    else if (desc.rv == common::RoughSetValue::RS_ALL && r != common::RoughSetValue::RS_ALL)
+      desc.rv = common::RoughSetValue::RS_SOME;
     return r;
   }
   return desc.EvaluateRoughlyPack(mit);
@@ -2246,35 +2252,35 @@ void DescTreeNode::EvaluatePack(MIUpdatingIterator &mit) {
   if (left) {             // i.e., not a leaf
     DEBUG_ASSERT(right);  // if left is not empty so should be right
     if (desc.lop == common::LogicalOperator::O_AND) {
-      if (left->desc.rv == common::RSValue::RS_NONE || right->desc.rv == common::RSValue::RS_NONE) {
+      if (left->desc.rv == common::RoughSetValue::RS_NONE || right->desc.rv == common::RoughSetValue::RS_NONE) {
         mit.ResetCurrentPack();
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rv == common::RSValue::RS_ALL && right->desc.rv == common::RSValue::RS_ALL) {
+      if (left->desc.rv == common::RoughSetValue::RS_ALL && right->desc.rv == common::RoughSetValue::RS_ALL) {
         mit.NextPackrow();
         return;
       }
       int pack_start = mit.GetCurPackrow(single_dim);
-      if (left->desc.rv != common::RSValue::RS_ALL && mit.IsValid())
+      if (left->desc.rv != common::RoughSetValue::RS_ALL && mit.IsValid())
         left->EvaluatePack(mit);
-      if (right->desc.rv != common::RSValue::RS_ALL && mit.RewindToPack(pack_start) &&
+      if (right->desc.rv != common::RoughSetValue::RS_ALL && mit.RewindToPack(pack_start) &&
           mit.IsValid())  // otherwise the pack is already empty
         right->EvaluatePack(mit);
       return;
     } else {
-      if (left->desc.rv == common::RSValue::RS_NONE && right->desc.rv == common::RSValue::RS_NONE) {
+      if (left->desc.rv == common::RoughSetValue::RS_NONE && right->desc.rv == common::RoughSetValue::RS_NONE) {
         mit.ResetCurrentPack();
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rv == common::RSValue::RS_ALL || right->desc.rv == common::RSValue::RS_ALL) {
+      if (left->desc.rv == common::RoughSetValue::RS_ALL || right->desc.rv == common::RoughSetValue::RS_ALL) {
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rv == common::RSValue::RS_NONE)
+      if (left->desc.rv == common::RoughSetValue::RS_NONE)
         right->EvaluatePack(mit);
-      else if (right->desc.rv == common::RSValue::RS_NONE)
+      else if (right->desc.rv == common::RoughSetValue::RS_NONE)
         left->EvaluatePack(mit);
       else {
         int pack_start = mit.GetCurPackrow(single_dim);
@@ -2503,7 +2509,7 @@ void DescTreeNode::RoughAccumulate(MIIterator &mit) {
     left->RoughAccumulate(mit);
     right->RoughAccumulate(mit);
   } else {
-    if (desc.rv == common::RSValue::RS_SOME)
+    if (desc.rv == common::RoughSetValue::RS_SOME)
       return;
     desc.EvaluateRoughlyPack(mit);  // updating desc.rv inside
   }
@@ -2516,10 +2522,10 @@ bool DescTreeNode::UseRoughAccumulated() {
     return (res1 || res2);
   } else {
     bool res = false;
-    if (desc.rv == common::RSValue::RS_NONE) {
+    if (desc.rv == common::RoughSetValue::RS_NONE) {
       desc.op = common::Operator::O_FALSE;
       res = true;
-    } else if (desc.rv == common::RSValue::RS_ALL) {
+    } else if (desc.rv == common::RoughSetValue::RS_ALL) {
       desc.op = common::Operator::O_TRUE;
       res = true;
     }
@@ -2609,7 +2615,7 @@ void Descriptor::MClearRoughValues(int taskid) {
   if (IsType_OrTree())
     tree->root->MClearRoughValues(taskid);
   else
-    rvs[taskid] = common::RSValue::RS_UNKNOWN;
+    rvs[taskid] = common::RoughSetValue::RS_UNKNOWN;
 }
 
 void DescTreeNode::MClearRoughValues(int taskid) {
@@ -2620,36 +2626,36 @@ void DescTreeNode::MClearRoughValues(int taskid) {
     desc.MClearRoughValues(taskid);
 }
 
-common::RSValue Descriptor::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
+common::RoughSetValue Descriptor::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
   if (IsType_OrTree())
     return tree->root->MEvaluateRoughlyPack(mit, taskid);
-  common::RSValue r = common::RSValue::RS_SOME;
+  common::RoughSetValue r = common::RoughSetValue::RS_SOME;
   if (attr.vc /*&& !attr.vc->IsConst()*/)
     r = attr.vc->RoughCheck(mit, *this);
-  if (rvs[taskid] == common::RSValue::RS_UNKNOWN)
+  if (rvs[taskid] == common::RoughSetValue::RS_UNKNOWN)
     rvs[taskid] = r;
-  else if (rvs[taskid] == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
-    rvs[taskid] = common::RSValue::RS_SOME;
-  else if (rvs[taskid] == common::RSValue::RS_ALL && r != common::RSValue::RS_ALL)
-    rvs[taskid] = common::RSValue::RS_SOME;
+  else if (rvs[taskid] == common::RoughSetValue::RS_NONE && r != common::RoughSetValue::RS_NONE)
+    rvs[taskid] = common::RoughSetValue::RS_SOME;
+  else if (rvs[taskid] == common::RoughSetValue::RS_ALL && r != common::RoughSetValue::RS_ALL)
+    rvs[taskid] = common::RoughSetValue::RS_SOME;
   return r;
 }
 
-common::RSValue DescTreeNode::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
+common::RoughSetValue DescTreeNode::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
   if (desc.op == common::Operator::O_OR_TREE) {
-    common::RSValue left_res = left->MEvaluateRoughlyPack(mit, taskid);
-    common::RSValue right_res = right->MEvaluateRoughlyPack(mit, taskid);
-    common::RSValue r;
+    common::RoughSetValue left_res = left->MEvaluateRoughlyPack(mit, taskid);
+    common::RoughSetValue right_res = right->MEvaluateRoughlyPack(mit, taskid);
+    common::RoughSetValue r;
     if (desc.lop == common::LogicalOperator::O_AND)
       r = And(left_res, right_res);
     else
       r = Or(left_res, right_res);
-    if (desc.rvs[taskid] == common::RSValue::RS_UNKNOWN)
+    if (desc.rvs[taskid] == common::RoughSetValue::RS_UNKNOWN)
       desc.rvs[taskid] = r;
-    else if (desc.rvs[taskid] == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
-      desc.rvs[taskid] = common::RSValue::RS_SOME;
-    else if (desc.rvs[taskid] == common::RSValue::RS_ALL && r != common::RSValue::RS_ALL)
-      desc.rvs[taskid] = common::RSValue::RS_SOME;
+    else if (desc.rvs[taskid] == common::RoughSetValue::RS_NONE && r != common::RoughSetValue::RS_NONE)
+      desc.rvs[taskid] = common::RoughSetValue::RS_SOME;
+    else if (desc.rvs[taskid] == common::RoughSetValue::RS_ALL && r != common::RoughSetValue::RS_ALL)
+      desc.rvs[taskid] = common::RoughSetValue::RS_SOME;
     return r;
   }
   return desc.MEvaluateRoughlyPack(mit, taskid);
@@ -2677,7 +2683,7 @@ void DescTreeNode::MPrepareToLock(int locked_by, int taskid) {
 void Descriptor::InitRvs(int value) {
   parallsize = value;
   for (int i = 0; i < parallsize + 1; i++) {
-    rvs.push_back(common::RSValue::RS_UNKNOWN);
+    rvs.push_back(common::RoughSetValue::RS_UNKNOWN);
   }
 }
 
@@ -2703,7 +2709,7 @@ void DescTreeNode::InitLocks(int value) {
 void Descriptor::InitParallel(int value, MIIterator &mit) {
   parallsize = value;
   for (int i = 0; i < parallsize + 1; i++) {
-    rvs.push_back(common::RSValue::RS_UNKNOWN);
+    rvs.push_back(common::RoughSetValue::RS_UNKNOWN);
   }
   if (encoded) {
     PrepareValueSet(mit);
@@ -2733,35 +2739,39 @@ void DescTreeNode::MEvaluatePack(MIUpdatingIterator &mit, int taskid) {
   if (left) {             // i.e., not a leaf
     DEBUG_ASSERT(right);  // if left is not empty so should be right
     if (desc.lop == common::LogicalOperator::O_AND) {
-      if (left->desc.rvs[taskid] == common::RSValue::RS_NONE || right->desc.rvs[taskid] == common::RSValue::RS_NONE) {
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_NONE ||
+          right->desc.rvs[taskid] == common::RoughSetValue::RS_NONE) {
         mit.ResetCurrentPack();
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rvs[taskid] == common::RSValue::RS_ALL && right->desc.rvs[taskid] == common::RSValue::RS_ALL) {
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_ALL &&
+          right->desc.rvs[taskid] == common::RoughSetValue::RS_ALL) {
         mit.NextPackrow();
         return;
       }
       int pack_start = mit.GetCurPackrow(single_dim);
-      if (left->desc.rvs[taskid] != common::RSValue::RS_ALL && mit.IsValid())
+      if (left->desc.rvs[taskid] != common::RoughSetValue::RS_ALL && mit.IsValid())
         left->MEvaluatePack(mit, taskid);
-      if (right->desc.rvs[taskid] != common::RSValue::RS_ALL && mit.RewindToPack(pack_start) &&
+      if (right->desc.rvs[taskid] != common::RoughSetValue::RS_ALL && mit.RewindToPack(pack_start) &&
           mit.IsValid())  // otherwise the pack is already empty
         right->MEvaluatePack(mit, taskid);
       return;
     } else {
-      if (left->desc.rvs[taskid] == common::RSValue::RS_NONE && right->desc.rvs[taskid] == common::RSValue::RS_NONE) {
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_NONE &&
+          right->desc.rvs[taskid] == common::RoughSetValue::RS_NONE) {
         mit.ResetCurrentPack();
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rvs[taskid] == common::RSValue::RS_ALL || right->desc.rvs[taskid] == common::RSValue::RS_ALL) {
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_ALL ||
+          right->desc.rvs[taskid] == common::RoughSetValue::RS_ALL) {
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rvs[taskid] == common::RSValue::RS_NONE)
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_NONE)
         right->MEvaluatePack(mit, taskid);
-      else if (right->desc.rvs[taskid] == common::RSValue::RS_NONE)
+      else if (right->desc.rvs[taskid] == common::RoughSetValue::RS_NONE)
         left->MEvaluatePack(mit, taskid);
       else {
         int pack_start = mit.GetCurPackrow(single_dim);
@@ -2785,5 +2795,6 @@ void DescTreeNode::MEvaluatePack(MIUpdatingIterator &mit, int taskid) {
     desc.EvaluatePackImpl(mit);
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu

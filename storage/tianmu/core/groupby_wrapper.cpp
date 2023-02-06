@@ -17,7 +17,7 @@
 
 #include "groupby_wrapper.h"
 
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 
 namespace Tianmu {
 namespace core {
@@ -126,8 +126,8 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
 {
   // MEASURE_FET("GroupByWrapper::AddAggregatedColumn(...)");
   GT_Aggregation ag_oper;
-  common::CT ag_type = a.TypeName();  // original type, not the output one (it
-                                      // is important e.g. for AVG)
+  common::ColumnType ag_type = a.TypeName();  // original type, not the output one (it
+                                              // is important e.g. for AVG)
   int ag_size = max_size;
   int ag_prec = a.Type().GetScale();
   bool ag_distinct = a.distinct;
@@ -220,14 +220,14 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
       throw common::NotImplementedException("Aggregation not implemented");
   }
 
-  if (virt_col[attr_no] && virt_col[attr_no]->Type().IsLookup() &&
+  if (virt_col[attr_no] && virt_col[attr_no]->Type().Lookup() &&
       !types::RequiresUTFConversions(virt_col[attr_no]->GetCollation()) &&
       (ag_oper == GT_Aggregation::GT_COUNT || ag_oper == GT_Aggregation::GT_COUNT_NOT_NULL ||
        ag_oper == GT_Aggregation::GT_LIST)) {
     // lookup for these operations may use codes
     ag_size = 4;  // integer
     ag_prec = 0;
-    ag_type = common::CT::INT;
+    ag_type = common::ColumnType::INT;
     is_lookup[attr_no] = true;
   }
   if (ag_oper == GT_Aggregation::GT_COUNT)

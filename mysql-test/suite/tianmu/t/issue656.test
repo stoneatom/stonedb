@@ -1,0 +1,22 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue656_test;
+--enable_warnings
+
+CREATE DATABASE issue656_test;
+
+USE issue656_test;
+
+CREATE TABLE `test` (
+  `id` int(11) DEFAULT NULL,
+  `t` timestamp NULL DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue656.txt' into table test fields terminated by ',';
+show warnings;
+
+drop table test;
+
+DROP DATABASE issue656_test;

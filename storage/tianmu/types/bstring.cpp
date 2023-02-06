@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 #include "common/assert.h"
 #include "core/tools.h"
@@ -53,15 +53,16 @@ BString::BString(const char *v, size_t length, bool persistent) : persistent_(pe
   }
 }
 
-BString::BString(const BString &rcbs) : ValueBasic<BString>(rcbs), pos_(rcbs.pos_), persistent_(rcbs.persistent_) {
-  null_ = rcbs.null_;
+BString::BString(const BString &tianmu_s)
+    : ValueBasic<BString>(tianmu_s), pos_(tianmu_s.pos_), persistent_(tianmu_s.persistent_) {
+  null_ = tianmu_s.null_;
   if (!null_) {
-    len_ = rcbs.len_;
+    len_ = tianmu_s.len_;
     if (persistent_) {
       val_ = new char[len_ + pos_];
-      std::memcpy(val_, rcbs.val_, len_ + pos_);
+      std::memcpy(val_, tianmu_s.val_, len_ + pos_);
     } else
-      val_ = rcbs.val_;
+      val_ = tianmu_s.val_;
   } else {
     len_ = 0;
     val_ = 0;
@@ -75,12 +76,12 @@ BString::~BString() {
     delete[] val_;
 }
 
-BString &BString::operator=(const RCDataType &rcdt) {
-  if (this == &rcdt)
+BString &BString::operator=(const TianmuDataType &tianmu_dt) {
+  if (this == &tianmu_dt)
     return *this;
 
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    *this = reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt));
+  if (tianmu_dt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    *this = reinterpret_cast<BString &>(const_cast<TianmuDataType &>(tianmu_dt));
   else
     TIANMU_ERROR("bad cast");
 
@@ -92,7 +93,7 @@ bool BString::Parse(BString &in, BString &out) {
   return true;
 }
 
-common::CT BString::Type() const { return common::CT::STRING; }
+common::ColumnType BString::Type() const { return common::ColumnType::STRING; }
 
 void BString::PutString(char *&dest, ushort len, bool move_ptr) const {
   ASSERT(this->len_ <= len, "should be 'this->len_ <= len'");
@@ -133,11 +134,11 @@ void BString::PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const {
   }
 }
 
-BString &BString::operator=(const BString &rcbs) {
-  if (this == &rcbs)
+BString &BString::operator=(const BString &tianmu_s) {
+  if (this == &tianmu_s)
     return *this;
 
-  null_ = rcbs.null_;
+  null_ = tianmu_s.null_;
   if (null_) {
     if (persistent_)
       delete[] val_;
@@ -145,50 +146,50 @@ BString &BString::operator=(const BString &rcbs) {
     len_ = 0;
     pos_ = 0;
   } else {
-    if (rcbs.persistent_) {
-      uint tmp_len = rcbs.len_ + rcbs.pos_;
+    if (tianmu_s.persistent_) {
+      uint tmp_len = tianmu_s.len_ + tianmu_s.pos_;
       if (!persistent_ || tmp_len > len_ + pos_) {
         if (persistent_)
           delete[] val_;
         val_ = new char[tmp_len];
       }
-      len_ = rcbs.len_;
-      pos_ = rcbs.pos_;
-      std::memcpy(val_, rcbs.val_, len_ + pos_);
+      len_ = tianmu_s.len_;
+      pos_ = tianmu_s.pos_;
+      std::memcpy(val_, tianmu_s.val_, len_ + pos_);
     } else {
       if (persistent_)
         delete[] val_;
-      len_ = rcbs.len_;
-      pos_ = rcbs.pos_;
-      val_ = rcbs.val_;
+      len_ = tianmu_s.len_;
+      pos_ = tianmu_s.pos_;
+      val_ = tianmu_s.val_;
     }
   }
-  persistent_ = rcbs.persistent_;
+  persistent_ = tianmu_s.persistent_;
   return *this;
 }
 
-void BString::PersistentCopy(const BString &rcbs) {
-  if (this == &rcbs) {
+void BString::PersistentCopy(const BString &tianmu_s) {
+  if (this == &tianmu_s) {
     MakePersistent();
     return;
   }
 
-  null_ = rcbs.null_;
+  null_ = tianmu_s.null_;
   if (null_) {
     delete[] val_;
     val_ = 0;
     len_ = 0;
     pos_ = 0;
   } else {
-    uint tmp_len = rcbs.len_ + rcbs.pos_;
+    uint tmp_len = tianmu_s.len_ + tianmu_s.pos_;
     if (!persistent_ || tmp_len > len_ + pos_) {
       if (persistent_)
         delete[] val_;
       val_ = new char[tmp_len];
     }
-    len_ = rcbs.len_;
-    pos_ = rcbs.pos_;
-    std::memcpy(val_, rcbs.val_, len_ + pos_);
+    len_ = tianmu_s.len_;
+    pos_ = tianmu_s.pos_;
+    std::memcpy(val_, tianmu_s.val_, len_ + pos_);
   }
   persistent_ = true;
 }
@@ -407,58 +408,58 @@ bool BString::IsEmpty() const {
 
 bool BString::IsNullOrEmpty() const { return ((len_ == 0 || null_) ? true : false); }
 
-bool BString::operator==(const RCDataType &rcdt) const {
-  if (null_ || rcdt.IsNull())
+bool BString::operator==(const TianmuDataType &tianmu_dt) const {
+  if (null_ || tianmu_dt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) == 0;
-  return CompareWith(rcdt.ToBString()) == 0;
+  if (tianmu_dt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<TianmuDataType &>(tianmu_dt))) == 0;
+  return CompareWith(tianmu_dt.ToBString()) == 0;
 }
 
-bool BString::operator==(const BString &rcs) const {
-  if (null_ || rcs.IsNull())
+bool BString::operator==(const BString &tianmu_s) const {
+  if (null_ || tianmu_s.IsNull())
     return false;
-  return CompareWith(rcs) == 0;
+  return CompareWith(tianmu_s) == 0;
 }
 
-bool BString::operator<(const RCDataType &rcdt) const {
-  if (null_ || rcdt.IsNull())
+bool BString::operator<(const TianmuDataType &tianmu_dt) const {
+  if (null_ || tianmu_dt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) < 0;
-  return CompareWith(rcdt.ToBString()) < 0;
+  if (tianmu_dt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<TianmuDataType &>(tianmu_dt))) < 0;
+  return CompareWith(tianmu_dt.ToBString()) < 0;
 }
 
-bool BString::operator>(const RCDataType &rcdt) const {
-  if (null_ || rcdt.IsNull())
+bool BString::operator>(const TianmuDataType &tianmu_dt) const {
+  if (null_ || tianmu_dt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) > 0;
-  return CompareWith(rcdt.ToBString()) > 0;
+  if (tianmu_dt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<TianmuDataType &>(tianmu_dt))) > 0;
+  return CompareWith(tianmu_dt.ToBString()) > 0;
 }
 
-bool BString::operator>=(const RCDataType &rcdt) const {
-  if (null_ || rcdt.IsNull())
+bool BString::operator>=(const TianmuDataType &tianmu_dt) const {
+  if (null_ || tianmu_dt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) >= 0;
-  return CompareWith(rcdt.ToBString()) >= 0;
+  if (tianmu_dt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<TianmuDataType &>(tianmu_dt))) >= 0;
+  return CompareWith(tianmu_dt.ToBString()) >= 0;
 }
 
-bool BString::operator<=(const RCDataType &rcdt) const {
-  if (null_ || rcdt.IsNull())
+bool BString::operator<=(const TianmuDataType &tianmu_dt) const {
+  if (null_ || tianmu_dt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) <= 0;
-  return CompareWith(rcdt.ToBString()) <= 0;
+  if (tianmu_dt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<TianmuDataType &>(tianmu_dt))) <= 0;
+  return CompareWith(tianmu_dt.ToBString()) <= 0;
 }
 
-bool BString::operator!=(const RCDataType &rcdt) const {
-  if (null_ || rcdt.IsNull())
+bool BString::operator!=(const TianmuDataType &tianmu_dt) const {
+  if (null_ || tianmu_dt.IsNull())
     return true;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) != 0;
-  return CompareWith(rcdt.ToBString()) != 0;
+  if (tianmu_dt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<TianmuDataType &>(tianmu_dt))) != 0;
+  return CompareWith(tianmu_dt.ToBString()) != 0;
 }
 
 uint BString::GetHashCode() const {
@@ -470,8 +471,8 @@ uint BString::GetHashCode() const {
   return hc;
 }
 
-std::ostream &operator<<(std::ostream &out, const BString &rcbs) {
-  out.write(rcbs.val_ + rcbs.pos_, rcbs.len_);
+std::ostream &operator<<(std::ostream &out, const BString &tianmu_s) {
+  out.write(tianmu_s.val_ + tianmu_s.pos_, tianmu_s.len_);
   return out;
 }
 
@@ -482,10 +483,10 @@ void BString::CopyTo(void *dest, size_t count) const {
     std::memset((char *)dest + l, 0, count - l);
 }
 
-bool operator!=(const BString &rcbs1, const BString &rcbs2) {
-  if (rcbs1.IsNull() || rcbs2.IsNull())
+bool operator!=(const BString &tianmu_s1, const BString &tianmu_s2) {
+  if (tianmu_s1.IsNull() || tianmu_s2.IsNull())
     return true;
-  return rcbs1.CompareWith(rcbs2) != 0;
+  return tianmu_s1.CompareWith(tianmu_s2) != 0;
 }
 
 size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {

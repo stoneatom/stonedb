@@ -1,0 +1,49 @@
+DROP DATABASE IF EXISTS issue947_test;
+CREATE DATABASE issue947_test;
+USE issue947_test;
+DROP TABLE IF EXISTS test1,test2;
+CREATE TABLE test1 (a int) ENGINE=TIANMU;
+CREATE TABLE test2 (b int, c int) ENGINE=TIANMU;
+INSERT INTO test1 VALUES (1), (2), (3), (4), (null);
+INSERT INTO test2 VALUES (1, 100), (1, 101), (2, 200),
+(3, 300), (3, 301), (3, 302), (null, null);
+SELECT * FROM test1 WHERE a NOT IN (SELECT b FROM test2 WHERE b = 7);
+a
+1
+2
+3
+4
+NULL
+SELECT * FROM test1 WHERE a NOT IN ( SELECT b FROM test2 WHERE b=1);
+a
+2
+3
+4
+SELECT * FROM test1 WHERE a NOT IN ( SELECT b FROM test2 WHERE b NOT IN ( SELECT a FROM test1));
+a
+1
+2
+3
+4
+NULL
+SELECT * FROM test1 WHERE a NOT IN ( SELECT b FROM test2 WHERE b IN ( SELECT a FROM test1));
+a
+4
+SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b is null);
+a
+SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b=1);
+a
+1
+1
+SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b IN ( SELECT a FROM test1));
+a
+1
+1
+2
+3
+3
+3
+SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b NOT IN ( SELECT a FROM test1));
+a
+DROP TABLE test1,test2;
+DROP DATABASE issue947_test;

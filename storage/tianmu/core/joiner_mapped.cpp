@@ -47,7 +47,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
   vcolumn::VirtualColumn *vc2 = desc.val1.vc;
 
   if (!vc1->Type().IsFixed() || !vc2->Type().IsFixed() || vc1->Type().GetScale() != vc2->Type().GetScale() ||
-      vc1->Type().IsLookup() || vc2->Type().IsLookup())
+      vc1->Type().Lookup() || vc2->Type().Lookup())
     return;
 
   vc1->MarkUsedDims(traversed_dims);  // "traversed" is unique now (a "dimension" table)
@@ -187,9 +187,9 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
   vc2->UnlockSourcePacks();
 
   // Cleaning up
-  rc_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
   if (packrows_omitted > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
   if (tips.count_only)
@@ -216,7 +216,7 @@ std::unique_ptr<JoinerMapFunction> JoinerMapped::GenerateFunction(vcolumn::Virtu
   if (!map_function->Init(vc, mit))
     return nullptr;
 
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows." << system::unlock;
   return map_function;
 }
@@ -308,7 +308,7 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
   }
 
   if (packrows_omitted > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
 
@@ -328,7 +328,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   vcolumn::VirtualColumn *vc2 = desc.val1.vc;
 
   if (!vc1->Type().IsFixed() || !vc2->Type().IsFixed() || vc1->Type().GetScale() != vc2->Type().GetScale() ||
-      vc1->Type().IsLookup() || vc2->Type().IsLookup())
+      vc1->Type().Lookup() || vc2->Type().Lookup())
     return;
 
   vc1->MarkUsedDims(traversed_dims);  // "traversed" is unique now (a "dimension" table)
@@ -402,9 +402,9 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     task.dwTaskId = table_id;
     task.dwStartPackno = table_id * (packnums / tids);
     task.dwEndPackno = (table_id == tids - 1) ? packnums : (table_id + 1) * (packnums / tids);
-    res.insert(ha_rcengine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this,
-                                                        &indextable[table_id], packrows, &matched_tuples[table_id], vc2,
-                                                        task, map_function.get()));
+    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this,
+                                                             &indextable[table_id], packrows, &matched_tuples[table_id],
+                                                             vc2, task, map_function.get()));
   }
   res.get_all();
 
@@ -415,7 +415,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     joined_tuples += matched_tuples[i];
     new_mind->AddBuildItem(indextable[i]);
   }
-  rc_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
 
   new_mind->Commit(joined_tuples, tips.count_only);
 
@@ -521,7 +521,7 @@ bool MultiMapsFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
   int64_t span = key_table_max - key_table_min + 1;
   if (span < 0)
     return false;
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "MultiMapsFunction: constructing a multimap with " << mit.NumOfTuples() << " tuples." << system::unlock;
   while (mit.IsValid()) {
     if (mit.PackrowStarted())
@@ -538,7 +538,7 @@ bool MultiMapsFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
     ++mit;
   }
   vc->UnlockSourcePacks();
-  rc_control_.lock(m_conn->GetThreadID()) << "MultiMapsFunction: keys_value construction done. " << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "MultiMapsFunction: keys_value construction done. " << system::unlock;
   keys_value_maps.emplace_back(keys_value);
   return true;
 }

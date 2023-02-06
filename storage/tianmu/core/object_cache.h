@@ -22,7 +22,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {

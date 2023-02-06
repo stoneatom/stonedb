@@ -25,6 +25,7 @@
 
 namespace Tianmu {
 namespace core {
+
 void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   MEASURE_FET("JoinerGeneral::ExecuteJoinConditions(...)");
   int no_desc = cond.Size();
@@ -116,7 +117,7 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task [[maybe
     if (mii->PackrowStarted()) {
       bool omit_this_packrow = false;
       for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
-        if ((*cond)[i].EvaluateRoughlyPack(*mii) == common::RSValue::RS_NONE)
+        if ((*cond)[i].EvaluateRoughlyPack(*mii) == common::RoughSetValue::RS_NONE)
           omit_this_packrow = true;
       for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
       if (new_mind->NoMoreTuplesPossible())
@@ -205,7 +206,7 @@ void JoinerGeneral::TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Co
 void JoinerGeneral::ExecuteInnerJoinLoopSingleThread(MIIterator &mit, Condition &cond, MINewContents &new_mind,
                                                      DimensionVector &all_dims, std::vector<bool> &pack_desc_locked,
                                                      int64_t &tuples_in_output, int64_t limit, bool count_only) {
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
   bool stop_execution = false;
   bool loc_result = false;
@@ -217,7 +218,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopSingleThread(MIIterator &mit, Condition 
     if (mit.PackrowStarted()) {
       bool omit_this_packrow = false;
       for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
-        if (cond[i].EvaluateRoughlyPack(mit) == common::RSValue::RS_NONE)
+        if (cond[i].EvaluateRoughlyPack(mit) == common::RoughSetValue::RS_NONE)
           omit_this_packrow = true;
       for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
       if (new_mind.NoMoreTuplesPossible())
@@ -263,7 +264,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopSingleThread(MIIterator &mit, Condition 
   }
 
   if (rows_passed > 0 && rows_omitted > 0) {
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(rows_omitted / double(rows_passed) * 1000) / 10.0 << "% rows." << system::unlock;
   }
 }
@@ -274,7 +275,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopSingleThread(MIIterator &mit, Condition 
 void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &cond, MINewContents &new_mind,
                                                     DimensionVector &all_dims, std::vector<bool> &pack_desc_locked,
                                                     int64_t &tuples_in_output, int64_t limit, bool count_only) {
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
 
   int packnum = 0;
@@ -348,7 +349,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
 
   utils::result_set<void> res;
   for (size_t i = 0; i < vTask.size(); ++i) {
-    res.insert(ha_rcengine_->query_thread_pool.add_task(
+    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(
         &JoinerGeneral::TaskInnerJoinPacks, this, &taskIterator[i], &vTask[i], &cond, &new_mind, &all_dims,
         &pack_desc_locked, &tuples_in_output, limit, count_only, &stop_execution, &rows_passed, &rows_omitted));
   }
@@ -356,7 +357,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
   res.get_all_with_except();
 
   if (rows_passed > 0 && rows_omitted > 0) {
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(rows_omitted / double(rows_passed) * 1000) / 10.0 << "% rows." << system::unlock;
   }
 }
@@ -437,5 +438,6 @@ void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_min
     ++nout_mit;
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu

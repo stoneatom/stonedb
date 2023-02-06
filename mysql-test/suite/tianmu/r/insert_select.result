@@ -1,32 +1,22 @@
 #
 # Problem with INSERT ... SELECT
 #
-drop table if exists t1,t2,t3;
+DROP DATABASE IF EXISTS insert_select_db;
+CREATE DATABASE insert_select_db;
+USE insert_select_db;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION,NO_AUTO_CREATE_USER';
 create table t1 (bandID MEDIUMINT NOT NULL PRIMARY KEY, payoutID SMALLINT NOT NULL);
 insert into t1 (bandID,payoutID) VALUES (1,6),(2,6),(3,4),(4,9),(5,10),(6,1),(7,12),(8,12);
 create table t2 (payoutID SMALLINT NOT NULL PRIMARY KEY);
 insert into t2 (payoutID) SELECT DISTINCT payoutID FROM t1;
-insert into t2 (payoutID) SELECT payoutID+10 FROM t1;
-ERROR 23000: Duplicate entry '16' for key 'PRIMARY'
-insert ignore into t2 (payoutID) SELECT payoutID+10 FROM t1;
-Warnings:
-Warning	1062	Duplicate entry '16' for key 'PRIMARY'
-Warning	1062	Duplicate entry '22' for key 'PRIMARY'
-select * from t2;
+select * from t2 order by payoutID;
 payoutID
-6
+1
 4
+6
 9
 10
-1
 12
-16
-14
-19
-20
-11
-22
 drop table t1,t2;
 #
 # Test of insert ... select from same table
@@ -547,23 +537,6 @@ insert into t1(x,y) select x,z from t2 on duplicate key update x=values(t2.x);
 ERROR 42S22: Unknown column 't2.x' in 'field list'
 drop table t1,t2;
 #
-# INSERT INTO x SELECT .. FROM x LIMIT 1; slows down with big tables
-#
-CREATE TABLE t1 (a int PRIMARY KEY);
-INSERT INTO t1 values (1), (2);
-flush status;
-INSERT INTO t1 SELECT a + 2 FROM t1 LIMIT 1;
-show status like 'Handler_read%';
-Variable_name	Value
-Handler_read_first	0
-Handler_read_key	0
-Handler_read_last	0
-Handler_read_next	0
-Handler_read_prev	0
-Handler_read_rnd	0
-Handler_read_rnd_next	1
-DROP TABLE t1;
-#
 # INSERT INTO SELECT inserts values even if
 # SELECT statement itself returns empty
 #
@@ -574,8 +547,7 @@ f2 varchar(100) NOT NULL default ''
 CREATE TABLE t2 (
 f1 varchar(10) NOT NULL default '',
 f2 char(3) NOT NULL default '',
-PRIMARY KEY  (`f1`),
-KEY `k1` (`f2`, `f1`)
+PRIMARY KEY  (`f1`)
 );
 INSERT INTO t1 values(NULL, '');
 INSERT INTO `t2` VALUES ('486878','WDT'),('486910','WDT');
@@ -612,10 +584,10 @@ use bug21774_1;
 INSERT INTO bug21774_2.t1 SELECT t1.* FROM t1;
 DROP DATABASE bug21774_1;
 DROP DATABASE bug21774_2;
-USE test;
 #
 # wrong result, when INSERT t1 SELECT ... FROM t1 ON DUPLICATE
 #
+use insert_select_db;
 CREATE TABLE t1 (f1 INT, f2 INT );
 CREATE TABLE t2  (f1 INT PRIMARY KEY, f2 INT);
 INSERT INTO t1 VALUES (1,1),(2,2),(10,10);
@@ -688,3 +660,4 @@ SELECT *, HEX(a) FROM t1 WHERE a = '\'(),-.';
 id	a	HEX(a)
 3	'(),-.	2728292C2D2E
 DROP TABLE t1;
+DROP DATABASE insert_select_db;

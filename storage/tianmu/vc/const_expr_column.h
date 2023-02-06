@@ -69,12 +69,15 @@ class ConstExpressionColumn : public ExpressionColumn {
   }
 
   ~ConstExpressionColumn() {}
+
   bool IsConst() const override { return true; }
   void RequestEval(const core::MIIterator &mit, const int tta) override;
   int64_t GetNotNullValueInt64([[maybe_unused]] const core::MIIterator &mit) override { return last_val_->Get64(); }
+
   void GetNotNullValueString(types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
     last_val_->GetBString(s);
   }
+
   types::BString DecodeValue_S(int64_t code) override;  // lookup (physical) only
   int EncodeValue_S([[maybe_unused]] types::BString &v) override { return -1; }
   bool CanCopy() const override { return params_.size() == 0; }
@@ -83,7 +86,7 @@ class ConstExpressionColumn : public ExpressionColumn {
  protected:
   bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return last_val_->IsNull(); }
 
-  types::RCValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
 
   void GetValueStringImpl(types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
     last_val_->GetBString(s);
@@ -97,19 +100,24 @@ class ConstExpressionColumn : public ExpressionColumn {
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return last_val_->IsNull() ? common::MINUS_INF_64 : last_val_->Get64();
   }
+
   int64_t GetMaxInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return last_val_->IsNull() ? common::PLUS_INF_64 : last_val_->Get64();
   }
+
   int64_t RoughMinImpl() override {
     return (last_val_->IsNull() || last_val_->Get64() == common::NULL_VALUE_64) ? common::MINUS_INF_64
                                                                                 : last_val_->Get64();
   }
+
   int64_t RoughMaxImpl() override {
     return (last_val_->IsNull() || last_val_->Get64() == common::NULL_VALUE_64) ? common::PLUS_INF_64
                                                                                 : last_val_->Get64();
   }
+
   types::BString GetMaxStringImpl(const core::MIIterator &mit) override;
   types::BString GetMinStringImpl(const core::MIIterator &mit) override;
+
   int64_t GetNumOfNullsImpl(const core::MIIterator &mit, [[maybe_unused]] bool val_nulls_possible) override {
     return last_val_->IsNull() ? mit.GetPackSizeLeft() : (mit.NullsPossibleInPack() ? common::NULL_VALUE_64 : 0);
   }
@@ -117,14 +125,18 @@ class ConstExpressionColumn : public ExpressionColumn {
   bool IsRoughNullsOnlyImpl() const override { return last_val_->IsNull(); }
   bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override { return last_val_->IsNull(); }
   int64_t GetSumImpl(const core::MIIterator &mit, bool &nonnegative) override;
+
   bool IsDistinctImpl() override {
     return (multi_index_->TooManyTuples() || multi_index_->NumOfTuples() > 1) ? false : (!last_val_->IsNull());
   }
+
   int64_t GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
   size_t MaxStringSizeImpl() override;  // maximal byte string length in column
+
   core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &mit) override;
-  common::RSValue RoughCheckImpl(const core::MIIterator &it, core::Descriptor &d) override;
+  common::RoughSetValue RoughCheckImpl(const core::MIIterator &it, core::Descriptor &d) override;
   void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
+
   // comparison of a const with a const should be simplified earlier
   virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
                                                 [[maybe_unused]] int64_t limit) override {

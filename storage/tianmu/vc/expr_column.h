@@ -86,7 +86,7 @@ class ExpressionColumn : public VirtualColumn {
   bool IsNullImpl(const core::MIIterator &) override;
   void GetValueStringImpl(types::BString &, const core::MIIterator &) override;
   double GetValueDoubleImpl(const core::MIIterator &) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool) override;
 
   int64_t GetMinInt64Impl(const core::MIIterator &) override;
   int64_t GetMaxInt64Impl(const core::MIIterator &) override;

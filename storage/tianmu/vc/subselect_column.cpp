@@ -19,7 +19,7 @@
 
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 #include "core/value_set.h"
 #include "vc/const_column.h"
 
@@ -167,7 +167,7 @@ void SubSelectColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator
   DEBUG_ASSERT(0);
 }
 
-common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types::RCDataType const &v) {
+common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types::TianmuDataType const &v) {
   // If the sub-select is something like 'select null from xxx' then there
   // is no need to execute the sub-select, just return common::TRIBOOL_UNKNOWN.
   Tianmu::core::TempTable::Attr *attr = tmp_tab_subq_ptr_->GetAttrP(col_idx_);
@@ -216,7 +216,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
         cache_->AddNull();
         res = common::TRIBOOL_UNKNOWN;
       } else {
-        types::RCValueObject value;
+        types::TianmuValueObject value;
         if (Type().IsString()) {
           types::BString s;
           tmp_tab_subq_ptr_->GetTableString(s, i, col_idx_);
@@ -248,7 +248,7 @@ void SubSelectColumn::PrepareAndFillCache() {
     if (tmp_tab_subq_ptr_->IsNull(i, col_idx_)) {
       cache_->AddNull();
     } else {
-      types::RCValueObject value;
+      types::TianmuValueObject value;
       if (Type().IsString()) {
         types::BString s;
         tmp_tab_subq_ptr_->GetTableString(s, i, col_idx_);
@@ -263,7 +263,7 @@ void SubSelectColumn::PrepareAndFillCache() {
   cache_->Prepare(Type().GetTypeName(), Type().GetScale(), GetCollation());
 }
 
-bool SubSelectColumn::IsSetEncoded(common::CT at,
+bool SubSelectColumn::IsSetEncoded(common::ColumnType at,
                                    int scale)  // checks whether the set is constant and fixed size equal to
                                                // the given one
 {
@@ -287,7 +287,7 @@ common::Tribool SubSelectColumn::Contains64Impl(const core::MIIterator &mit, int
       contains = common::TRIBOOL_UNKNOWN;
     return contains;
   }
-  return ContainsImpl(mit, types::RCNum(val, ct.GetScale()));
+  return ContainsImpl(mit, types::TianmuNum(val, ct.GetScale()));
 }
 
 common::Tribool SubSelectColumn::ContainsStringImpl(const core::MIIterator &mit,
@@ -333,7 +333,7 @@ int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit
   } else {
     for (int64_t i = 0; vals.NoVals() < at_least && i < tmp_tab_subq_ptr_->NumOfObj(); i++) {
       if (!tmp_tab_subq_ptr_->IsNull(i, col_idx_)) {
-        types::RCValueObject val = tmp_tab_subq_ptr_->GetValueObject(i, col_idx_);
+        types::TianmuValueObject val = tmp_tab_subq_ptr_->GetValueObject(i, col_idx_);
         vals.Add(val);
       }
     }
@@ -444,15 +444,16 @@ bool SubSelectColumn::IsNullImpl(const core::MIIterator &mit) {
   return tmp_tab_subq_ptr_->IsNull(0, col_idx_);
 }
 
-types::RCValueObject SubSelectColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
+types::TianmuValueObject SubSelectColumn::GetValueImpl(const core::MIIterator &mit,
+                                                       [[maybe_unused]] bool lookup_to_num) {
   PrepareSubqResult(mit, false);
-  types::RCValueObject val = tmp_tab_subq_ptr_->GetValueObject(0, col_idx_);
+  types::TianmuValueObject val = tmp_tab_subq_ptr_->GetValueObject(0, col_idx_);
   if (expected_type_.IsString())
     return val.ToBString();
   if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
-    types::RCNum rc;
-    types::RCNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
-    val = rc;
+    types::TianmuNum tn;
+    types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), tn, expected_type_.GetTypeName());
+    val = tn;
   }
   return val;
 }
@@ -478,7 +479,7 @@ void SubSelectColumn::GetValueStringImpl(types::BString &s, core::MIIterator con
   tmp_tab_subq_ptr_->GetTable_S(s, 0, col_idx_);
 }
 
-types::RCValueObject SubSelectColumn::GetSetMinImpl(core::MIIterator const &mit) {
+types::TianmuValueObject SubSelectColumn::GetSetMinImpl(core::MIIterator const &mit) {
   // assert: this->params_ are all set
   PrepareSubqResult(mit, false);
   if (!check_min_max_uptodate_)
@@ -486,7 +487,7 @@ types::RCValueObject SubSelectColumn::GetSetMinImpl(core::MIIterator const &mit)
   return min_;
 }
 
-types::RCValueObject SubSelectColumn::GetSetMaxImpl(core::MIIterator const &mit) {
+types::TianmuValueObject SubSelectColumn::GetSetMaxImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   if (!check_min_max_uptodate_)
     CalculateMinMax();
@@ -511,12 +512,12 @@ void SubSelectColumn::CalculateMinMax() {
   if (!tmp_tab_subq_ptr_->IsMaterialized())
     tmp_tab_subq_ptr_->Materialize();
   if (tmp_tab_subq_ptr_->NumOfObj() == 0) {
-    min_ = max_ = types::RCValueObject();
+    min_ = max_ = types::TianmuValueObject();
     check_min_max_uptodate_ = true;
     return;
   }
 
-  min_ = max_ = types::RCValueObject();
+  min_ = max_ = types::TianmuValueObject();
   bool found_not_null = false;
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString() && expected_type_.IsString()) {
     types::BString val_s, min_s, max_s;
@@ -539,16 +540,16 @@ void SubSelectColumn::CalculateMinMax() {
     min_ = min_s;
     max_ = max_s;
   } else {
-    types::RCValueObject val;
+    types::TianmuValueObject val;
     for (int64_t i = 0; i < tmp_tab_subq_ptr_->NumOfObj(); i++) {
       val = tmp_tab_subq_ptr_->GetValueObject(i, col_idx_);
       if (expected_type_.IsString()) {
         val = val.ToBString();
         static_cast<types::BString *>(val.Get())->MakePersistent();
       } else if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
-        types::RCNum rc;
-        types::RCNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
-        val = rc;
+        types::TianmuNum tn;
+        types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), tn, expected_type_.GetTypeName());
+        val = tn;
       }
 
       if (!found_not_null && !val.IsNull()) {

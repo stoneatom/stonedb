@@ -17,7 +17,7 @@
 
 #include "rejecter.h"
 
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace loader {

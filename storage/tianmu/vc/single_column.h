@@ -25,6 +25,7 @@
 
 namespace Tianmu {
 namespace vcolumn {
+
 /*! \brief A column defined by an expression (including a subquery) or
  * encapsulating a PhysicalColumn SingleColumn is associated with an
  * core::MultiIndex object and cannot exist without it. Values contained in
@@ -77,7 +78,7 @@ class SingleColumn : public VirtualColumn {
     col_->GetValueString(mit[dim_], s);
   }
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
 
   int64_t GetMinInt64Impl(const core::MIIterator &mit) override;
   int64_t GetMaxInt64Impl(const core::MIIterator &mit) override;
@@ -124,7 +125,7 @@ class SingleColumn : public VirtualColumn {
   int64_t GetExactDistVals() override;
   size_t MaxStringSizeImpl() override;  // maximal byte string length in column
   core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &mit) override;
-  common::RSValue RoughCheckImpl(const core::MIIterator &it, core::Descriptor &d) override;
+  common::RoughSetValue RoughCheckImpl(const core::MIIterator &it, core::Descriptor &d) override;
   void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
   virtual common::ErrorCode EvaluateOnIndexImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc,
                                                 int64_t limit) override {
@@ -146,6 +147,7 @@ class SingleColumn : public VirtualColumn {
                                //	this an easily accessible copy
                                // var_map_[0].just_a_table->GetColumn(var_map_[0].)
 };
+
 }  // namespace vcolumn
 }  // namespace Tianmu
 

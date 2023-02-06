@@ -1,4 +1,6 @@
-USE test;
+DROP DATABASE IF EXISTS issue906_test;
+CREATE DATABASE issue906_test;
+USE issue906_test;
 DROP TABLE IF EXISTS shop;
 CREATE TABLE shop (
 article INT           DEFAULT '0000' NOT NULL,
@@ -116,3 +118,4 @@ article	dealer	price
 3	D	1.25
 4	D	19.95
 DROP TABLE shop;
+DROP DATABASE issue906_test;

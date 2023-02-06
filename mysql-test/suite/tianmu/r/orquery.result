@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS orquery_test;
+CREATE DATABASE orquery_test;
+USE orquery_test;
 CREATE TABLE `test_or` (
 `id` int(11) DEFAULT NULL,
 `age` int(11) DEFAULT NULL
@@ -9,3 +11,4 @@ select count(*) from test_or where id=1 or age=2;
 count(*)
 2
 drop table test_or;
+DROP DATABASE orquery_test;

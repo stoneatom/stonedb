@@ -38,11 +38,13 @@ constexpr size_t operator""_GB(unsigned long long v) { return 1024u * 1024u * 10
 namespace common {
 
 extern void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint code, const char *msg);
+extern void PushWarningIfOutOfRange(THD *thd, std::string col_name, int64_t v, int type, bool unsigned_flag);
+std::string getErrMsg(std::string col_name, int64_t min, int64_t max, bool unsigned_flag, int64_t v);
 
 // Column Type
 // NOTE: do not change the order of implemented data types! Stored as int(...)
 // on disk.
-enum class CT : unsigned char {
+enum class ColumnType : unsigned char {
   STRING,   // string treated either as dictionary value or "free" text
   VARCHAR,  // as above (discerned for compatibility with SQL)
   INT,      // integer 32-bit
@@ -70,8 +72,54 @@ enum class CT : unsigned char {
   MEDIUMINT,
   BIGINT,
   LONGTEXT,
+  BIT,
   UNK = 255
 };
+
+#define MYSQL_ENUM_FIELD_TYPE                    \
+  DISPOSE(MYSQL_TYPE_DECIMAL, "decimal")         \
+  DISPOSE(MYSQL_TYPE_TINY, "tiny")               \
+  DISPOSE(MYSQL_TYPE_SHORT, "short")             \
+  DISPOSE(MYSQL_TYPE_LONG, "long")               \
+  DISPOSE(MYSQL_TYPE_FLOAT, "float")             \
+  DISPOSE(MYSQL_TYPE_DOUBLE, "double")           \
+  DISPOSE(MYSQL_TYPE_NULL, "null")               \
+  DISPOSE(MYSQL_TYPE_TIMESTAMP, "timestamp")     \
+  DISPOSE(MYSQL_TYPE_LONGLONG, "longlong")       \
+  DISPOSE(MYSQL_TYPE_INT24, "int24")             \
+  DISPOSE(MYSQL_TYPE_DATE, "date")               \
+  DISPOSE(MYSQL_TYPE_TIME, "time")               \
+  DISPOSE(MYSQL_TYPE_DATETIME, "datetime")       \
+  DISPOSE(MYSQL_TYPE_YEAR, "year")               \
+  DISPOSE(MYSQL_TYPE_NEWDATE, "newdate")         \
+  DISPOSE(MYSQL_TYPE_VARCHAR, "varchar")         \
+  DISPOSE(MYSQL_TYPE_BIT, "bit")                 \
+  DISPOSE(MYSQL_TYPE_TIMESTAMP2, "timestamp2")   \
+  DISPOSE(MYSQL_TYPE_DATETIME2, "datetime2")     \
+  DISPOSE(MYSQL_TYPE_TIME2, "time2")             \
+  DISPOSE(MYSQL_TYPE_JSON, "json")               \
+  DISPOSE(MYSQL_TYPE_NEWDECIMAL, "newdecimal")   \
+  DISPOSE(MYSQL_TYPE_ENUM, "enum")               \
+  DISPOSE(MYSQL_TYPE_SET, "set")                 \
+  DISPOSE(MYSQL_TYPE_TINY_BLOB, "tiny_blob")     \
+  DISPOSE(MYSQL_TYPE_MEDIUM_BLOB, "medium_blob") \
+  DISPOSE(MYSQL_TYPE_LONG_BLOB, "long_blob")     \
+  DISPOSE(MYSQL_TYPE_BLOB, "blob")               \
+  DISPOSE(MYSQL_TYPE_VAR_STRING, "var_string")   \
+  DISPOSE(MYSQL_TYPE_STRING, "string")           \
+  DISPOSE(MYSQL_TYPE_GEOMETRY, "geometry")
+
+#define DISPOSE(mark, name) {mark, name},
+constexpr std::pair<int, const char *> enum_field_types_name[] = {MYSQL_ENUM_FIELD_TYPE};
+#undef DISPOSE
+
+constexpr const char *get_enum_field_types_name(int type) {
+  for (auto type_name : enum_field_types_name) {
+    if (type_name.first == type)
+      return type_name.second;
+  }
+  return "unkonwn type";
+}
 
 enum class PackType { INT, STR };
 
@@ -88,18 +136,26 @@ constexpr int64_t MAX_ROW_NUMBER = 0x00007FFFFFFFFFFFULL;  // 2^47 - 1
 
 constexpr int64_t TIANMU_BIGINT_MAX = PLUS_INF_64;
 constexpr int64_t TIANMU_BIGINT_MIN = NULL_VALUE_64;
+constexpr uint64_t TIANMU_BIGINT_UNSIGNED_MAX = 0xFFFFFFFFFFFFFFFFULL;  // 2^64 - 1
 
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_LARGE = 3072;
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
 
+constexpr uint32_t TIANMU_BIT_MAX_PREC = 63;  // in the future we'll expand to 64.
+
 #define NULL_VALUE_D (*(double *)("\x01\x00\x00\x00\x00\x00\x00\x80"))
+#define TIANMU_INT_MAX (2147483647)
 #define TIANMU_INT_MIN (-2147483647)
+#define TIANMU_INT_UNSIGNED_MAX (0xFFFFFFFFULL)
 #define TIANMU_MEDIUMINT_MAX ((1 << 23) - 1)
 #define TIANMU_MEDIUMINT_MIN (-((1 << 23)))
+#define TIANMU_MEDIUMINT_UNSIGNED_MAX ((1 << 24) - 1)
 #define TIANMU_TINYINT_MAX 127
 #define TIANMU_TINYINT_MIN (-128)
+#define TIANMU_TINYINT_UNSIGNED_MAX 255
 #define TIANMU_SMALLINT_MAX ((1 << 15) - 1)
 #define TIANMU_SMALLINT_MIN (-(1 << 15))
+#define TIANMU_SMALLINT_UNSIGNED_MAX ((1 << 16) - 1)
 
 #define PACK_INVALID 0
 #define FIELD_MAXLENGTH 65535
@@ -108,9 +164,9 @@ constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
 
 #define ZERO_LENGTH_STRING ""
 #define DEFAULT_DELIMITER ";"
-#define DEFAULT_LINE_TERMINATOR ""
+#define DEFAULT_LINE_TERMINATOR "\n"
 
-enum class RSValue : char {
+enum class RoughSetValue : char {
   RS_NONE = 0,    // the pack is empty
   RS_SOME = 1,    // the pack is suspected (but may be empty or full) (i.e.
                   // RSValue::RS_SOME & RSValue::RS_ALL = RSValue::RS_SOME)
@@ -199,6 +255,8 @@ enum class ColOperation {
   BIT_XOR,
   GROUP_CONCAT
 };
+
+enum class ExtraOperation { EX_DO_NOTHING, EX_COND_PUSH, EX_UNKNOWN };
 
 // pack data format, stored on disk so only append new ones at the end.
 enum class PackFmt : char { DEFAULT, PPM1, PPM2, RANGECODE, LZ4, LOOKUP, NOCOMPRESS, TRIE, ZLIB };

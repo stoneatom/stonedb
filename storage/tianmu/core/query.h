@@ -33,7 +33,7 @@ class CompiledQuery;
 class MysqlExpression;
 class ResultSender;
 class JustATable;
-class RCTable;
+class TianmuTable;
 class Transaction;
 
 enum class TableStatus {
@@ -51,13 +51,13 @@ class Query final {
   Query(Transaction *conn_info) : m_conn(conn_info) {}
   ~Query();
 
-  void AddTable(std::shared_ptr<RCTable> tab) { t.push_back(tab); }
-  /*! \brief Remove the given RCTable from the list of tables used in a query
+  void AddTable(std::shared_ptr<TianmuTable> tab) { t.push_back(tab); }
+  /*! \brief Remove the given TianmuTable from the list of tables used in a query
    */
-  void RemoveFromManagedList(const std::shared_ptr<RCTable> tab);
+  void RemoveFromManagedList(const std::shared_ptr<TianmuTable> tab);
 
   int NumOfTabs() const { return t.size(); };
-  std::shared_ptr<RCTable> Table(size_t table_num) const {
+  std::shared_ptr<TianmuTable> Table(size_t table_num) const {
     ASSERT(table_num < t.size(), "table_num out of range: " + std::to_string(table_num));
     return t[table_num];
   }
@@ -74,7 +74,7 @@ class Query final {
   TempTable *Preexecute(CompiledQuery &qu, ResultSender *sender, bool display_now = true);
   QueryRouteTo BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TabID &tmp_table,
                                CondType filter_type, bool is_zero_result = false,
-                               JoinType join_type = JoinType::JO_INNER);
+                               JoinType join_type = JoinType::JO_INNER, bool can_cond_push = false);
 
   std::multimap<std::string, std::pair<int, TABLE *>> table_alias2index_ptr;
 
@@ -94,10 +94,10 @@ class Query final {
   std::multimap<TabID, std::pair<int, TabID>> tab_id2subselect;
   std::map<Item_tianmufield *, int> tianmuitems_cur_var_ids;
 
-  // table aliases - sometimes point to TempTables (maybe to the same one), sometimes to RCTables
+  // table aliases - sometimes point to TempTables (maybe to the same one), sometimes to TIanmuTables
   std::vector<std::shared_ptr<JustATable>> ta;
 
-  std::vector<std::shared_ptr<RCTable>> t;
+  std::vector<std::shared_ptr<TianmuTable>> t;
 
   bool rough_query = false;  // set as true to enable rough execution
 
@@ -151,11 +151,13 @@ class Query final {
    * \return filter number (non-negative) or error indication (negative)
    */
   CondID ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
-                                  bool is_or_subtree = false);
+                                  bool is_or_subtree = false, bool can_cond_push = false);
   CondID ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
-                                             CondID *and_me_filter = 0, bool is_or_subtree = false);
+                                             CondID *and_me_filter = 0, bool is_or_subtree = false,
+                                             bool can_cond_push = false);
   CondID ConditionNumberFromComparison(Item *conds, const TabID &tmp_table, CondType filter_type,
-                                       CondID *and_me_filter = 0, bool is_or_subtree = false, bool negative = false);
+                                       CondID *and_me_filter = 0, bool is_or_subtree = false, bool negative = false,
+                                       bool can_cond_push = false);
 
   /*! \brief Checks type of operator involved in condition
    * \param conds - conditions
@@ -179,7 +181,7 @@ class Query final {
   static void MarkWithAll(common::Operator &op);
 
   CondID ConditionNumber(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter = 0,
-                         bool is_or_subtree = false);
+                         bool is_or_subtree = false, bool can_cond_push = false);
   QueryRouteTo BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type);
 
  public:

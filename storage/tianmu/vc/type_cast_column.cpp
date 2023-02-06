@@ -17,7 +17,7 @@
 
 #include "type_cast_column.h"
 #include "core/transaction.h"
-#include "types/rc_num.h"
+#include "types/tianmu_num.h"
 
 namespace Tianmu {
 namespace vcolumn {
@@ -37,22 +37,22 @@ String2NumCastColumn::String2NumCastColumn(VirtualColumn *from, core::ColumnType
   full_const_ = vc_->IsFullConst();
   if (full_const_) {
     types::BString rs;
-    types::RCNum rcn;
+    types::TianmuNum tianmu_n;
     vc_->GetValueString(rs, mit);
     if (rs.IsNull()) {
-      rc_value_obj_ = types::RCNum();
+      rc_value_obj_ = types::TianmuNum();
       val_ = common::NULL_VALUE_64;
     } else {
-      common::ErrorCode retc = ct.IsFixed() ? types::RCNum::ParseNum(rs, rcn, ct.GetScale())
-                                            : types::RCNum::Parse(rs, rcn, to.GetTypeName());
+      common::ErrorCode retc = ct.IsFixed() ? types::TianmuNum::ParseNum(rs, tianmu_n, ct.GetScale())
+                                            : types::TianmuNum::Parse(rs, tianmu_n, to.GetTypeName());
       if (retc != common::ErrorCode::SUCCESS) {
         std::string s = "Truncated incorrect numeric value: \'";
         s += rs.ToString();
         s += "\'";
       }
     }
-    rc_value_obj_ = rcn;
-    val_ = rcn.GetValueInt64();
+    rc_value_obj_ = tianmu_n;
+    val_ = tianmu_n.GetValueInt64();
   }
 }
 
@@ -60,24 +60,24 @@ int64_t String2NumCastColumn::GetNotNullValueInt64(const core::MIIterator &mit) 
   if (full_const_)
     return val_;
   types::BString rs;
-  types::RCNum rcn;
+  types::TianmuNum tianmu_n;
   vc_->GetValueString(rs, mit);
   if (ct.IsFixed()) {
-    if (types::RCNum::ParseNum(rs, rcn, ct.GetScale()) != common::ErrorCode::SUCCESS) {
+    if (types::TianmuNum::ParseNum(rs, tianmu_n, ct.GetScale()) != common::ErrorCode::SUCCESS) {
       std::string s = "Truncated incorrect numeric value: \'";
       s += rs.ToString();
       s += "\'";
       common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
     }
   } else {
-    if (types::RCNum::ParseReal(rs, rcn, ct.GetTypeName()) != common::ErrorCode::SUCCESS) {
+    if (types::TianmuNum::ParseReal(rs, tianmu_n, ct.GetTypeName()) != common::ErrorCode::SUCCESS) {
       std::string s = "Truncated incorrect numeric value: \'";
       s += rs.ToString();
       s += "\'";
       common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
     }
   }
-  return rcn.GetValueInt64();
+  return tianmu_n.GetValueInt64();
 }
 
 int64_t String2NumCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
@@ -85,24 +85,24 @@ int64_t String2NumCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
     return val_;
   else {
     types::BString rs;
-    types::RCNum rcn;
+    types::TianmuNum tianmu_n;
     vc_->GetValueString(rs, mit);
     if (rs.IsNull()) {
       return common::NULL_VALUE_64;
     } else {
       common::ErrorCode rc;
       if (ct.IsInt()) {  // distinction for convert function
-        rc = types::RCNum::Parse(rs, rcn, ct.GetTypeName());
+        rc = types::TianmuNum::Parse(rs, tianmu_n, ct.GetTypeName());
         if (rc != common::ErrorCode::SUCCESS) {
           std::string s = "Truncated incorrect numeric value: \'";
           s += rs.ToString();
           s += "\'";
           common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         }
-        if (rc == common::ErrorCode::OUT_OF_RANGE && rcn.GetValueInt64() > 0)
+        if (rc == common::ErrorCode::OUT_OF_RANGE && tianmu_n.GetValueInt64() > 0)
           return -1;
       } else if (ct.IsFixed()) {
-        rc = types::RCNum::ParseNum(rs, rcn, ct.GetScale());
+        rc = types::TianmuNum::ParseNum(rs, tianmu_n, ct.GetScale());
         if (rc != common::ErrorCode::SUCCESS) {
           std::string s = "Truncated incorrect numeric value: \'";
           s += rs.ToString();
@@ -110,14 +110,14 @@ int64_t String2NumCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
           common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         }
       } else {
-        if (types::RCNum::Parse(rs, rcn) != common::ErrorCode::SUCCESS) {
+        if (types::TianmuNum::Parse(rs, tianmu_n) != common::ErrorCode::SUCCESS) {
           std::string s = "Truncated incorrect numeric value: \'";
           s += rs.ToString();
           s += "\'";
           common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         }
       }
-      return rcn.GetValueInt64();
+      return tianmu_n.GetValueInt64();
     }
   }
 }
@@ -127,13 +127,13 @@ double String2NumCastColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
     return *(double *)&val_;
   else {
     types::BString rs;
-    types::RCNum rcn;
+    types::TianmuNum tianmu_n;
     vc_->GetValueString(rs, mit);
     if (rs.IsNull()) {
       return NULL_VALUE_D;
     } else {
-      types::RCNum::Parse(rs, rcn, common::CT::FLOAT);
-      // if(types::RCNum::Parse(rs, rcn, common::CT::FLOAT) !=
+      types::TianmuNum::Parse(rs, tianmu_n, common::ColumnType::FLOAT);
+      // if(types::TianmuNum::Parse(rs, tianmu_n, common::CT::FLOAT) !=
       // common::ErrorCode::SUCCESS) {
       //	std::string s = "Truncated incorrect numeric value: \'";
       //	s += (std::string)rs;
@@ -141,27 +141,27 @@ double String2NumCastColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
       //	PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING,
       // ER_TRUNCATED_WRONG_VALUE, s.c_str());
       //}
-      return (double)rcn;
+      return (double)tianmu_n;
     }
   }
 }
 
-types::RCValueObject String2NumCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject String2NumCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const_)
     return rc_value_obj_;
   else {
     types::BString rs;
-    types::RCNum rcn;
+    types::TianmuNum tianmu_n;
     vc_->GetValueString(rs, mit);
     if (rs.IsNull()) {
-      return types::RCNum();
-    } else if (types::RCNum::Parse(rs, rcn) != common::ErrorCode::SUCCESS) {
+      return types::TianmuNum();
+    } else if (types::TianmuNum::Parse(rs, tianmu_n) != common::ErrorCode::SUCCESS) {
       std::string s = "Truncated incorrect numeric value: \'";
       s += rs.ToString();
       s += "\'";
       common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
     }
-    return rcn;
+    return tianmu_n;
   }
 }
 
@@ -171,17 +171,17 @@ int64_t String2NumCastColumn::GetMinInt64Impl(const core::MIIterator &m) {
   else if (IsConst()) {
     // const with parameters
     types::BString rs;
-    types::RCNum rcn;
+    types::TianmuNum tianmu_n;
     vc_->GetValueString(rs, m);
     if (rs.IsNull()) {
       return common::NULL_VALUE_64;
-    } else if (types::RCNum::Parse(rs, rcn) != common::ErrorCode::SUCCESS) {
+    } else if (types::TianmuNum::Parse(rs, tianmu_n) != common::ErrorCode::SUCCESS) {
       std::string s = "Truncated incorrect numeric value: \'";
       s += rs.ToString();
       s += "\'";
       common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
     }
-    return rcn.GetValueInt64();
+    return tianmu_n.GetValueInt64();
   } else
     return common::MINUS_INF_64;
 }
@@ -200,10 +200,10 @@ String2DateTimeCastColumn::String2DateTimeCastColumn(VirtualColumn *from, core::
     vc_->GetValueString(rbs, mit);
     if (rbs.IsNull()) {
       val_ = common::NULL_VALUE_64;
-      rc_value_obj_ = types::RCDateTime();
+      rc_value_obj_ = types::TianmuDateTime();
     } else {
-      types::RCDateTime rcdt;
-      common::ErrorCode rc = types::RCDateTime::Parse(rbs, rcdt, TypeName());
+      types::TianmuDateTime tianmu_dt;
+      common::ErrorCode rc = types::TianmuDateTime::Parse(rbs, tianmu_dt, TypeName());
       if (common::IsWarning(rc) || common::IsError(rc)) {
         std::string s = "Incorrect datetime value: \'";
         s += rbs.ToString();
@@ -212,8 +212,8 @@ String2DateTimeCastColumn::String2DateTimeCastColumn(VirtualColumn *from, core::
         // PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING,
         // ER_TRUNCATED_WRONG_VALUE, s.c_str());
       }
-      val_ = rcdt.GetInt64();
-      rc_value_obj_ = rcdt;
+      val_ = tianmu_dt.GetInt64();
+      rc_value_obj_ = tianmu_dt;
     }
   }
 }
@@ -222,10 +222,10 @@ int64_t String2DateTimeCastColumn::GetNotNullValueInt64(const core::MIIterator &
   if (full_const_)
     return val_;
 
-  types::RCDateTime rcdt;
+  types::TianmuDateTime tianmu_dt;
   types::BString rbs;
   vc_->GetValueString(rbs, mit);
-  common::ErrorCode rc = types::RCDateTime::Parse(rbs, rcdt, TypeName());
+  common::ErrorCode rc = types::TianmuDateTime::Parse(rbs, tianmu_dt, TypeName());
   if (common::IsWarning(rc) || common::IsError(rc)) {
     std::string s = "Incorrect datetime value: \'";
     s += rbs.ToString();
@@ -233,20 +233,20 @@ int64_t String2DateTimeCastColumn::GetNotNullValueInt64(const core::MIIterator &
     common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
     return common::NULL_VALUE_64;
   }
-  return rcdt.GetInt64();
+  return tianmu_dt.GetInt64();
 }
 
 int64_t String2DateTimeCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
   if (full_const_)
     return val_;
   else {
-    types::RCDateTime rcdt;
+    types::TianmuDateTime tianmu_dt;
     types::BString rbs;
     vc_->GetValueString(rbs, mit);
     if (rbs.IsNull())
       return common::NULL_VALUE_64;
     else {
-      common::ErrorCode rc = types::RCDateTime::Parse(rbs, rcdt, TypeName());
+      common::ErrorCode rc = types::TianmuDateTime::Parse(rbs, tianmu_dt, TypeName());
       if (common::IsWarning(rc) || common::IsError(rc)) {
         std::string s = "Incorrect datetime value: \'";
         s += rbs.ToString();
@@ -260,7 +260,7 @@ int64_t String2DateTimeCastColumn::GetValueInt64Impl(const core::MIIterator &mit
            Sql_condition::SL_WARNING, ER_WARN_INVALID_TIMESTAMP,
            s.c_str());
                    }*/
-      return rcdt.GetInt64();
+      return tianmu_dt.GetInt64();
     }
   }
 }
@@ -269,12 +269,12 @@ void String2DateTimeCastColumn::GetValueStringImpl(types::BString &rbs, const co
   if (full_const_)
     rbs = rc_value_obj_.ToBString();
   else {
-    types::RCDateTime rcdt;
+    types::TianmuDateTime tianmu_dt;
     vc_->GetValueString(rbs, mit);
     if (rbs.IsNull())
       return;
     else {
-      common::ErrorCode rc = types::RCDateTime::Parse(rbs, rcdt, TypeName());
+      common::ErrorCode rc = types::TianmuDateTime::Parse(rbs, tianmu_dt, TypeName());
       if (common::IsWarning(rc) || common::IsError(rc)) {
         std::string s = "Incorrect datetime value: \'";
         s += rbs.ToString();
@@ -289,30 +289,30 @@ void String2DateTimeCastColumn::GetValueStringImpl(types::BString &rbs, const co
            Sql_condition::SL_WARNING, ER_WARN_INVALID_TIMESTAMP,
            s.c_str());
                    }*/
-      rbs = rcdt.ToBString();
+      rbs = tianmu_dt.ToBString();
     }
   }
 }
 
-types::RCValueObject String2DateTimeCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject String2DateTimeCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const_)
     return rc_value_obj_;
   else {
-    types::RCDateTime rcdt;
+    types::TianmuDateTime tianmu_dt;
     types::BString rbs;
     vc_->GetValueString(rbs, mit);
     if (rbs.IsNull())
-      return types::RCDateTime();
+      return types::TianmuDateTime();
     else {
-      common::ErrorCode rc = types::RCDateTime::Parse(rbs, rcdt, TypeName());
+      common::ErrorCode rc = types::TianmuDateTime::Parse(rbs, tianmu_dt, TypeName());
       if (common::IsWarning(rc) || common::IsError(rc)) {
         std::string s = "Incorrect datetime value: \'";
         s += rbs.ToString();
         s += "\'";
         common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
-        // return types::RCDateTime();
+        // return types::TianmuDateTime();
       }
-      return rcdt;
+      return tianmu_dt;
     }
   }
 }
@@ -322,7 +322,7 @@ int64_t String2DateTimeCastColumn::GetMinInt64Impl(const core::MIIterator &m) {
     return val_;
   else if (IsConst()) {
     // const with parameters
-    return ((types::RCDateTime *)GetValueImpl(m).Get())->GetInt64();
+    return ((types::TianmuDateTime *)GetValueImpl(m).Get())->GetInt64();
   } else
     return common::MINUS_INF_64;
 }
@@ -341,9 +341,9 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
     core::MIIterator mit(nullptr, PACK_INVALID);
     val_ = vc_->GetValueInt64(mit);
     // rc_value_obj_ = from->GetValue(mit);
-    types::RCDateTime rcdt;
+    types::TianmuDateTime tianmu_dt;
     if (val_ != common::NULL_VALUE_64) {
-      if (TypeName() == common::CT::TIME) {
+      if (TypeName() == common::ColumnType::TIME) {
         MYSQL_TIME ltime;
         short timehour;
         TIME_from_longlong_time_packed(&ltime, val_);
@@ -353,26 +353,26 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
           timehour = ltime.hour * -1;
         else
           timehour = ltime.hour;
-        types::RCDateTime rctime(timehour, minute, second, common::CT::TIME);
-        rcdt = rctime;
+        types::TianmuDateTime rctime(timehour, minute, second, common::ColumnType::TIME);
+        tianmu_dt = rctime;
       } else {
-        common::ErrorCode rc = types::RCDateTime::Parse(val_, rcdt, TypeName(), ct.GetPrecision());
+        common::ErrorCode rc = types::TianmuDateTime::Parse(val_, tianmu_dt, TypeName(), ct.GetPrecision());
         if (common::IsWarning(rc) || common::IsError(rc)) {
           std::string s = "Incorrect datetime value: \'";
           s += rc_value_obj_.ToBString().ToString();
           s += "\'";
           TIANMU_LOG(LogCtl_Level::WARN, "Num2DateTimeCast %s", s.c_str());
         }
-        if (TypeName() == common::CT::TIMESTAMP) {
+        if (TypeName() == common::ColumnType::TIMESTAMP) {
           // needs to convert value to UTC
           MYSQL_TIME myt;
           memset(&myt, 0, sizeof(MYSQL_TIME));
-          myt.year = rcdt.Year();
-          myt.month = rcdt.Month();
-          myt.day = rcdt.Day();
-          myt.hour = rcdt.Hour();
-          myt.minute = rcdt.Minute();
-          myt.second = rcdt.Second();
+          myt.year = tianmu_dt.Year();
+          myt.month = tianmu_dt.Month();
+          myt.day = tianmu_dt.Day();
+          myt.hour = tianmu_dt.Hour();
+          myt.minute = tianmu_dt.Minute();
+          myt.second = tianmu_dt.Second();
           myt.time_type = MYSQL_TIMESTAMP_DATETIME;
           if (!common::IsTimeStampZero(myt)) {
             my_bool myb;
@@ -381,35 +381,35 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
             // UTC seconds converted to UTC TIME
             common::GMTSec2GMTTime(&myt, secs_utc);
           }
-          rcdt = types::RCDateTime(myt, common::CT::TIMESTAMP);
+          tianmu_dt = types::TianmuDateTime(myt, common::ColumnType::TIMESTAMP);
         }
       }
 
-      val_ = rcdt.GetInt64();
+      val_ = tianmu_dt.GetInt64();
     }
-    rc_value_obj_ = rcdt;
+    rc_value_obj_ = tianmu_dt;
   }
 }
 
-types::RCValueObject Num2DateTimeCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject Num2DateTimeCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const_)
     return rc_value_obj_;
   else {
-    types::RCDateTime rcdt;
-    types::RCValueObject r(vc_->GetValue(mit));
+    types::TianmuDateTime tianmu_dt;
+    types::TianmuValueObject r(vc_->GetValue(mit));
 
     if (!r.IsNull()) {
       common::ErrorCode rc =
-          types::RCDateTime::Parse(((types::RCNum)r).GetIntPart(), rcdt, TypeName(), ct.GetPrecision());
+          types::TianmuDateTime::Parse(((types::TianmuNum)r).GetIntPart(), tianmu_dt, TypeName(), ct.GetPrecision());
       if (common::IsWarning(rc) || common::IsError(rc)) {
         std::string s = "Incorrect datetime value: \'";
         s += r.ToBString().ToString();
         s += "\'";
 
         common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
-        return types::RCDateTime();
+        return types::TianmuDateTime();
       }
-      return rcdt;
+      return tianmu_dt;
     } else
       return r;
   }
@@ -419,11 +419,11 @@ int64_t Num2DateTimeCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
   if (full_const_)
     return val_;
   else {
-    types::RCDateTime rcdt;
+    types::TianmuDateTime tianmu_dt;
     int64_t v = vc_->GetValueInt64(mit);
-    types::RCNum r(v, vc_->Type().GetScale(), vc_->Type().IsFloat(), vc_->Type().GetTypeName());
+    types::TianmuNum r(v, vc_->Type().GetScale(), vc_->Type().IsFloat(), vc_->Type().GetTypeName());
     if (v != common::NULL_VALUE_64) {
-      common::ErrorCode rc = types::RCDateTime::Parse(r.GetIntPart(), rcdt, TypeName(), ct.GetPrecision());
+      common::ErrorCode rc = types::TianmuDateTime::Parse(r.GetIntPart(), tianmu_dt, TypeName(), ct.GetPrecision());
       if (common::IsWarning(rc) || common::IsError(rc)) {
         std::string s = "Incorrect datetime value: \'";
         s += r.ToBString().ToString();
@@ -432,7 +432,7 @@ int64_t Num2DateTimeCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
         common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         return common::NULL_VALUE_64;
       }
-      return rcdt.GetInt64();
+      return tianmu_dt.GetInt64();
     } else
       return v;
   }
@@ -448,13 +448,14 @@ DateTime2VarcharCastColumn::DateTime2VarcharCastColumn(VirtualColumn *from, core
     if (i == common::NULL_VALUE_64) {
       rc_value_obj_ = types::BString();
     } else {
-      types::RCDateTime rcdt(i, vc_->TypeName());
-      rc_value_obj_ = rcdt.ToBString();
+      types::TianmuDateTime tianmu_dt(i, vc_->TypeName());
+      rc_value_obj_ = tianmu_dt.ToBString();
     }
   }
 }
 
-types::RCValueObject DateTime2VarcharCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject DateTime2VarcharCastColumn::GetValueImpl(const core::MIIterator &mit,
+                                                                  [[maybe_unused]] bool b) {
   if (full_const_)
     return rc_value_obj_;
   else {
@@ -482,11 +483,11 @@ Num2VarcharCastColumn::Num2VarcharCastColumn(VirtualColumn *from, core::ColumnTy
   }
 }
 
-types::RCValueObject Num2VarcharCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject Num2VarcharCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const_)
     return rc_value_obj_;
   else {
-    types::RCValueObject r(vc_->GetValue(mit));
+    types::TianmuValueObject r(vc_->GetValue(mit));
     if (r.IsNull()) {
       return types::BString();
     } else {
@@ -503,7 +504,7 @@ void Num2VarcharCastColumn::GetValueStringImpl(types::BString &s, const core::MI
     if (v == common::NULL_VALUE_64)
       s = types::BString();
     else {
-      types::RCNum rcd(v, vc_->Type().GetScale(), vc_->Type().IsFloat(), vc_->TypeName());
+      types::TianmuNum rcd(v, vc_->Type().GetScale(), vc_->Type().IsFloat(), vc_->TypeName());
       s = rcd.ToBString();
     }
   }
@@ -517,17 +518,17 @@ DateTime2NumCastColumn::DateTime2NumCastColumn(VirtualColumn *from, core::Column
   if (full_const_) {
     rc_value_obj_ = vc_->GetValue(mit);
     if (rc_value_obj_.IsNull()) {
-      rc_value_obj_ = types::RCNum();
+      rc_value_obj_ = types::TianmuNum();
       val_ = common::NULL_VALUE_64;
     } else {
-      ((types::RCDateTime *)rc_value_obj_.Get())->ToInt64(val_);
-      if (vc_->TypeName() == common::CT::YEAR && vc_->Type().GetPrecision() == 2)
+      ((types::TianmuDateTime *)rc_value_obj_.Get())->ToInt64(val_);
+      if (vc_->TypeName() == common::ColumnType::YEAR && vc_->Type().GetPrecision() == 2)
         val_ %= 100;
       if (to.IsFloat()) {
         double x = (double)val_;
         val_ = *(int64_t *)&x;
       }
-      rc_value_obj_ = types::RCNum(val_, ct.GetScale(), ct.IsFloat(), TypeName());
+      rc_value_obj_ = types::TianmuNum(val_, ct.GetScale(), ct.IsFloat(), TypeName());
     }
   }
 }
@@ -536,9 +537,9 @@ int64_t DateTime2NumCastColumn::GetNotNullValueInt64(const core::MIIterator &mit
   if (full_const_)
     return val_;
   int64_t v = vc_->GetNotNullValueInt64(mit);
-  if (vc_->TypeName() == common::CT::YEAR && vc_->Type().GetPrecision() == 2)
+  if (vc_->TypeName() == common::ColumnType::YEAR && vc_->Type().GetPrecision() == 2)
     v %= 100;
-  types::RCDateTime rdt(v, vc_->TypeName());
+  types::TianmuDateTime rdt(v, vc_->TypeName());
   int64_t r;
   rdt.ToInt64(r);
   if (Type().IsFloat()) {
@@ -555,10 +556,10 @@ int64_t DateTime2NumCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
     int64_t v = vc_->GetValueInt64(mit);
     if (v == common::NULL_VALUE_64)
       return v;
-    types::RCDateTime rdt(v, vc_->TypeName());
+    types::TianmuDateTime rdt(v, vc_->TypeName());
     int64_t r;
     rdt.ToInt64(r);
-    if (vc_->TypeName() == common::CT::YEAR && vc_->Type().GetPrecision() == 2)
+    if (vc_->TypeName() == common::ColumnType::YEAR && vc_->Type().GetPrecision() == 2)
       r = r % 100;
     if (Type().IsFloat()) {
       double x = (double)r;
@@ -571,54 +572,54 @@ int64_t DateTime2NumCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
 double DateTime2NumCastColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   if (full_const_) {
     int64_t v;
-    types::RCDateTime rdt(val_, vc_->TypeName());
+    types::TianmuDateTime rdt(val_, vc_->TypeName());
     rdt.ToInt64(v);
     return (double)v;
   } else {
     int64_t v = vc_->GetValueInt64(mit);
     if (v == common::NULL_VALUE_64)
       return NULL_VALUE_D;
-    types::RCDateTime rdt(v, vc_->TypeName());
+    types::TianmuDateTime rdt(v, vc_->TypeName());
     rdt.ToInt64(v);
     return (double)v;
   }
 }
 
-types::RCValueObject DateTime2NumCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject DateTime2NumCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const_)
     return rc_value_obj_;
   else {
-    types::RCValueObject v(vc_->GetValue(mit));
+    types::TianmuValueObject v(vc_->GetValue(mit));
     if (v.IsNull()) {
-      return types::RCNum();
+      return types::TianmuNum();
     } else {
       int64_t r;
-      ((types::RCDateTime *)v.Get())->ToInt64(r);
-      if (vc_->TypeName() == common::CT::YEAR && vc_->Type().GetPrecision() == 2)
+      ((types::TianmuDateTime *)v.Get())->ToInt64(r);
+      if (vc_->TypeName() == common::ColumnType::YEAR && vc_->Type().GetPrecision() == 2)
         r %= 100;
       if (Type().IsFloat()) {
         double x = (double)r;
         r = *(int64_t *)&x;
       }
-      return types::RCNum(r, ct.GetScale(), ct.IsFloat(), TypeName());
+      return types::TianmuNum(r, ct.GetScale(), ct.IsFloat(), TypeName());
     }
   }
 }
 
 TimeZoneConversionCastColumn::TimeZoneConversionCastColumn(VirtualColumn *from)
-    : TypeCastColumn(from, core::ColumnType(common::CT::DATETIME)) {
-  DEBUG_ASSERT(from->TypeName() == common::CT::TIMESTAMP);
+    : TypeCastColumn(from, core::ColumnType(common::ColumnType::DATETIME)) {
+  DEBUG_ASSERT(from->TypeName() == common::ColumnType::TIMESTAMP);
   core::MIIterator mit(nullptr, PACK_INVALID);
   full_const_ = vc_->IsFullConst();
   if (full_const_) {
     int64_t v = vc_->GetValueInt64(mit);
     if (v == common::NULL_VALUE_64) {
-      rc_value_obj_ = types::RCDateTime();
+      rc_value_obj_ = types::TianmuDateTime();
       val_ = common::NULL_VALUE_64;
     } else {
-      rc_value_obj_ = types::RCDateTime(v, vc_->TypeName());
-      types::RCDateTime::AdjustTimezone(rc_value_obj_);
-      val_ = ((types::RCDateTime *)rc_value_obj_.Get())->GetInt64();
+      rc_value_obj_ = types::TianmuDateTime(v, vc_->TypeName());
+      types::TianmuDateTime::AdjustTimezone(rc_value_obj_);
+      val_ = ((types::TianmuDateTime *)rc_value_obj_.Get())->GetInt64();
     }
   }
 }
@@ -627,8 +628,8 @@ int64_t TimeZoneConversionCastColumn::GetNotNullValueInt64(const core::MIIterato
   if (full_const_)
     return val_;
   int64_t v = vc_->GetNotNullValueInt64(mit);
-  types::RCDateTime rdt(v, vc_->TypeName());
-  types::RCDateTime::AdjustTimezone(rdt);
+  types::TianmuDateTime rdt(v, vc_->TypeName());
+  types::TianmuDateTime::AdjustTimezone(rdt);
   return rdt.GetInt64();
 }
 
@@ -639,13 +640,14 @@ int64_t TimeZoneConversionCastColumn::GetValueInt64Impl(const core::MIIterator &
     int64_t v = vc_->GetValueInt64(mit);
     if (v == common::NULL_VALUE_64)
       return v;
-    types::RCDateTime rdt(v, vc_->TypeName());
-    types::RCDateTime::AdjustTimezone(rdt);
+    types::TianmuDateTime rdt(v, vc_->TypeName());
+    types::TianmuDateTime::AdjustTimezone(rdt);
     return rdt.GetInt64();
   }
 }
 
-types::RCValueObject TimeZoneConversionCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject TimeZoneConversionCastColumn::GetValueImpl(const core::MIIterator &mit,
+                                                                    [[maybe_unused]] bool b) {
   if (full_const_) {
     if (Type().IsString())
       return rc_value_obj_.ToBString();
@@ -653,9 +655,9 @@ types::RCValueObject TimeZoneConversionCastColumn::GetValueImpl(const core::MIIt
   } else {
     int64_t v = vc_->GetValueInt64(mit);
     if (v == common::NULL_VALUE_64)
-      return types::RCDateTime();
-    types::RCDateTime rdt(v, vc_->TypeName());
-    types::RCDateTime::AdjustTimezone(rdt);
+      return types::TianmuDateTime();
+    types::TianmuDateTime rdt(v, vc_->TypeName());
+    types::TianmuDateTime::AdjustTimezone(rdt);
     if (Type().IsString())
       return rdt.ToBString();
     return rdt;
@@ -665,15 +667,15 @@ types::RCValueObject TimeZoneConversionCastColumn::GetValueImpl(const core::MIIt
 double TimeZoneConversionCastColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   if (full_const_) {
     int64_t v;
-    types::RCDateTime rdt(val_, vc_->TypeName());
+    types::TianmuDateTime rdt(val_, vc_->TypeName());
     rdt.ToInt64(v);
     return (double)v;
   } else {
     int64_t v = vc_->GetValueInt64(mit);
     if (v == common::NULL_VALUE_64)
       return NULL_VALUE_D;
-    types::RCDateTime rdt(v, vc_->TypeName());
-    types::RCDateTime::AdjustTimezone(rdt);
+    types::TianmuDateTime rdt(v, vc_->TypeName());
+    types::TianmuDateTime::AdjustTimezone(rdt);
     rdt.ToInt64(v);
     return (double)v;
   }
@@ -688,13 +690,14 @@ void TimeZoneConversionCastColumn::GetValueStringImpl(types::BString &s, const c
       s = types::BString();
       return;
     }
-    types::RCDateTime rdt(v, vc_->TypeName());
-    types::RCDateTime::AdjustTimezone(rdt);
+    types::TianmuDateTime rdt(v, vc_->TypeName());
+    types::TianmuDateTime::AdjustTimezone(rdt);
     s = rdt.ToBString();
   }
 }
 
-types::RCValueObject StringCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
+types::TianmuValueObject StringCastColumn::GetValueImpl(const core::MIIterator &mit,
+                                                        [[maybe_unused]] bool lookup_to_num) {
   types::BString s;
   vc_->GetValueString(s, mit);
   return s;

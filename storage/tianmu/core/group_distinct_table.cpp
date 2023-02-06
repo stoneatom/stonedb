@@ -57,8 +57,8 @@ void GroupDistinctTable::InitializeVC(int64_t max_no_groups, vcolumn::VirtualCol
   DEBUG_ASSERT(!initialized);
   if (max_bytes > 0)
     max_total_size = max_bytes;
-  if (max_bytes > 2_GB)  // possible for large aggregation settings, but
-                         // not allowed here - limit to 1 GB
+  if (max_bytes > static_cast<int64_t>(2_GB))  // possible for large aggregation settings, but
+                                               // not allowed here - limit to 1 GB
     max_total_size = 1_GB;
   if (max_no_rows == common::NULL_VALUE_64)
     max_no_rows = 0;  // not known
@@ -123,7 +123,7 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
     f = new Filter(max_no_rows, pack_power);
     f->Reset();
     rows_limit = max_no_rows + 1;  // limits do not apply
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "GroupDistinctTable initialized as Filter for up to " << max_no_rows << " positions." << system::unlock;
     return;
   }
@@ -143,8 +143,8 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
   //	t = new BlockedRowMemStorage(total_width, &mem_mngr, no_rows);
   input_buffer = reinterpret_cast<unsigned char *>(new int[total_width / 4 + 1]);  // ensure proper memory alignment
   memset(input_buffer, 0, total_width / 4 + 1);
-  rc_control_.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), "
-                                          << group_bytes << "+" << value_bytes << " bytes." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), "
+                                              << group_bytes << "+" << value_bytes << " bytes." << system::unlock;
   Clear();
 }
 

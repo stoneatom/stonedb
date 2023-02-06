@@ -20,15 +20,15 @@
 
 #include "common/common_definitions.h"
 #include "core/column_type.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace core {
-enum class PackOntologicalStatus { NULLS_ONLY, UNIFORM, UNIFORM_AND_NULLS, SEQUENTIAL, NORMAL };
+enum class PackOntologicalStatus { NULLS_ONLY = 0, UNIFORM, UNIFORM_AND_NULLS, SEQUENTIAL, NORMAL };
 
 /*! \brief Base class for columns.
  *
- * Defines the common interface for RCAttr, Attr and vcolumn::VirtualColumn
+ * Defines the common interface for TianmuAttr, Attr and vcolumn::VirtualColumn
  */
 class Column {
  public:
@@ -39,8 +39,8 @@ class Column {
   }
   constexpr Column &operator=(const Column &) = default;
   inline const ColumnType &Type() const { return ct; }
-  inline common::CT TypeName() const { return ct.GetTypeName(); }
-  inline void SetTypeName(common::CT type) { ct.SetTypeName(type); }
+  inline common::ColumnType TypeName() const { return ct.GetTypeName(); }
+  inline void SetTypeName(common::ColumnType type) { ct.SetTypeName(type); }
   void SetCollation(DTCollation collation) { ct.SetCollation(collation); }
   DTCollation GetCollation() { return ct.GetCollation(); }
 

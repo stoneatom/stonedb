@@ -25,17 +25,17 @@ namespace compress {
 constexpr size_t VECT_INIT = 128_KB;
 constexpr size_t STACK_INIT = VECT_INIT / 2;
 
-WordGraph::WordGraph(const Symb *data_, int dlen_, bool insatend_) {
+WordGraph::WordGraph(const Symb *data, int dlen, bool insatend) {
   Init();
 
-  if (dlen_ < 0)
-    dlen_ = (int)std::strlen((const char *)data_) + 1;
+  if (dlen < 0)
+    dlen_ = (int)std::strlen((const char *)data) + 1;
   else
-    dlen_ = dlen_;
+    dlen_ = dlen;
   DEBUG_ASSERT(dlen_ > 0);
 
-  data_ = data_;  // the data_ are NOT copied!
-  insatend_ = insatend_;
+  data_ = data;  // the data_ are NOT copied!
+  insatend_ = insatend;
   Create();
 }
 

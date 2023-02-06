@@ -213,7 +213,7 @@ class AggregatorGroupConcat : public TIANMUAggregator {
  public:
   using TIANMUAggregator::PutAggregatedValue;
   AggregatorGroupConcat() = delete;
-  AggregatorGroupConcat(SI si, common::CT type) : si(si), attrtype(type) {}
+  AggregatorGroupConcat(SI si, common::ColumnType type) : si(si), attrtype(type) {}
   AggregatorGroupConcat(const AggregatorGroupConcat &sec)
       : TIANMUAggregator(sec), si(sec.si), gconcat_maxlen(sec.gconcat_maxlen), attrtype(sec.attrtype) {}
 
@@ -240,7 +240,7 @@ class AggregatorGroupConcat : public TIANMUAggregator {
   const SI si{",", ORDER::ORDER_NOT_RELEVANT};
   const uint gconcat_maxlen = tianmu_group_concat_max_len;
   std::map<unsigned char *, unsigned int> lenmap;  // store aggregation column length
-  common::CT attrtype = common::CT::STRING;
+  common::ColumnType attrtype = common::ColumnType::STRING;
 };
 }  // namespace core
 }  // namespace Tianmu

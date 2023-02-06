@@ -1,6 +1,13 @@
 --source include/have_tianmu.inc
 
-use test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue282_test;
+--enable_warnings
+
+CREATE DATABASE issue282_test;
+
+USE issue282_test;
+
 CREATE TABLE issue282_t1 (sku int PRIMARY KEY, pr int)engine=tianmu;
 CREATE TABLE issue282_t2 (sku int PRIMARY KEY, sppr int, name varchar(255))engine=tianmu;
 
@@ -12,28 +19,36 @@ INSERT INTO issue282_t2 VALUES
   (50, 10, 'eee'), (60, 20, 'fff'), (70, 20, 'ggg'), (80, 30, 'hhh');
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
-  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 AND (issue282_t2.sku=issue282_t1.sku OR issue282_t2.sppr=issue282_t1.sku);
+  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 AND (issue282_t2.sku=issue282_t1.sku OR issue282_t2.sppr=issue282_t1.sku)
+ORDER BY issue282_t2.sku;
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
-  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR (issue282_t2.sku=issue282_t1.sku OR issue282_t2.sppr=issue282_t1.sku) order by issue282_t2.sku asc;
+  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR (issue282_t2.sku=issue282_t1.sku OR issue282_t2.sppr=issue282_t1.sku) 
+ORDER BY issue282_t2.sku asc;
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
-  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 AND (issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku);
+  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 AND (issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku)
+ORDER BY issue282_t2.sku;
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
-  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR (issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku);
+  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR (issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku)
+ORDER BY issue282_t2.sku;
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
-  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku;
+  FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku
+ORDER BY issue282_t2.sku;
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
-  FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku>20 OR issue282_t2.sku=issue282_t1.sku) AND issue282_t2.sppr=issue282_t1.sku;
+  FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku>20 OR issue282_t2.sku=issue282_t1.sku) AND issue282_t2.sppr=issue282_t1.sku
+ORDER BY issue282_t2.sku;
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
-  FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku<=20 OR issue282_t2.sku=issue282_t1.sku) AND issue282_t2.sppr=issue282_t1.sku;
+  FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku<=20 OR issue282_t2.sku=issue282_t1.sku) AND issue282_t2.sppr=issue282_t1.sku
+ORDER BY issue282_t2.sku;
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
-  FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku<=20 AND issue282_t2.sku>issue282_t1.sku) OR issue282_t2.sppr=issue282_t1.sku;
+  FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku<=20 AND issue282_t2.sku>issue282_t1.sku) OR issue282_t2.sppr=issue282_t1.sku
+ORDER BY issue282_t2.sku;
 
 --echo #
 --echo # Multiple nesting
@@ -44,13 +59,17 @@ SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, iss
   issue282_t1.sku=60 OR 
   (issue282_t2.sku=20 AND 
   (issue282_t2.sku=issue282_t1.sku OR 
-  issue282_t2.sppr=issue282_t1.sku));
+  issue282_t2.sppr=issue282_t1.sku))
+ORDER BY issue282_t2.sku;
 
 SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr   
   FROM issue282_t2, issue282_t1 WHERE 
   issue282_t1.sku=10 AND 
   (issue282_t2.sku=20 AND 
   (issue282_t2.sku=issue282_t1.sku OR 
-  issue282_t2.sppr=issue282_t1.sku));
+  issue282_t2.sppr=issue282_t1.sku))
+ORDER BY issue282_t2.sku;
 
 drop table issue282_t1 ,issue282_t2;
+
+DROP DATABASE issue282_test;

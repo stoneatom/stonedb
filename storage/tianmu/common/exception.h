@@ -57,9 +57,9 @@ static std::string error_messages[] = {
     "Killed.",
 };
 
-inline bool IsError(ErrorCode tianmu_rc) { return tianmu_rc == ErrorCode::FAILED; }
-inline bool IsWarning(ErrorCode tianmu_rc) {
-  return tianmu_rc == ErrorCode::OUT_OF_RANGE || tianmu_rc == ErrorCode::VALUE_TRUNCATED;
+inline bool IsError(ErrorCode tianmu_err_code) { return tianmu_err_code == ErrorCode::FAILED; }
+inline bool IsWarning(ErrorCode tianmu_err_code) {
+  return tianmu_err_code == ErrorCode::OUT_OF_RANGE || tianmu_err_code == ErrorCode::VALUE_TRUNCATED;
 }
 
 class TianmuError {
@@ -176,13 +176,13 @@ class FormatException : public Exception {
 
 class DataTypeConversionException : public Exception {
  public:
-  int64_t value;  // converted value
-  CT type;        // type to which value is converted
-  DataTypeConversionException(std::string const &msg, int64_t val = NULL_VALUE_64, CT t = CT::UNK)
+  int64_t value;    // converted value
+  ColumnType type;  // type to which value is converted
+  DataTypeConversionException(std::string const &msg, int64_t val = NULL_VALUE_64, ColumnType t = ColumnType::UNK)
       : Exception(msg), value(val), type(t) {}
 
   DataTypeConversionException(TianmuError tianmu_error = ErrorCode::DATACONVERSION, int64_t val = NULL_VALUE_64,
-                              CT t = CT::UNK)
+                              ColumnType t = ColumnType::UNK)
       : Exception(tianmu_error.Message()), value(val), type(t) {}
 };
 

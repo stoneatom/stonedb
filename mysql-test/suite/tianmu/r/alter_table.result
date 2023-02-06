@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS alter_table_test;
+CREATE DATABASE alter_table_test;
+USE alter_table_test;
 DROP TABLE IF EXISTS t_test;
 CREATE TABLE `t_test` (
 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -81,3 +84,5 @@ t_test	CREATE TABLE `t_test` (
   `copy_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8
+drop table t_test;
+DROP DATABASE alter_table_test;

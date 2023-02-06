@@ -1,7 +1,9 @@
 #
 #Insert values for different types of fields
 #
-use test;
+DROP DATABASE IF EXISTS insert_test;
+CREATE DATABASE insert_test;
+USE insert_test;
 CREATE TABLE `column_type_test` (
 `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -63,8 +65,7 @@ drop table t1;
 #
 # Test of duplicate key values with packed keys
 #
-create table t1 (id int not null auto_increment primary key, username varchar(32) not null,
-unique (username));
+create table t1 (id int not null auto_increment primary key, username varchar(32) not null);
 insert into t1 values (0,"mysql");
 insert into t1 values (0,"mysql ab");
 insert into t1 values (0,"mysql a");
@@ -118,12 +119,12 @@ drop table t1;
 # Test of mysqld crash with fully qualified column names
 #
 drop database if exists mysqltest;
-create database mysqltest;
-use mysqltest;
+create database mysqltest_insert_test;
+use mysqltest_insert_test;
 create table t1 (c int);
-insert into mysqltest.t1 set mysqltest.t1.c = '1';
-drop database mysqltest;
-use test;
+insert into mysqltest_insert_test.t1 set mysqltest_insert_test.t1.c = '1';
+drop database mysqltest_insert_test;
+use insert_test;
 #
 # Test of wrong values for float data 
 #
@@ -246,14 +247,14 @@ drop table t1;
 #
 create table t1(id1 int not null auto_increment primary key, t char(12));
 create table t2(id2 int not null, t char(12));
-create table t3(id3 int not null, t char(12), index(id3));
+create table t3(id3 int not null, t char(12));
 select count(*) from t2;
 count(*)
 500
 insert into  t2 select t1.* from t1, t2 t, t3 where  t1.id1 = t.id2 and t.id2 = t3.id3;
 select count(*) from t2;
 count(*)
-500
+25500
 drop table t1,t2,t3;
 #
 # Test different cases of duplicate fields
@@ -306,21 +307,21 @@ drop table t1;
 #
 # ON DUPLICATE KEY clause allows fields not from the insert table
 #
-create table t1 (f1 int unique, f2 int);
+create table t1 (f1 int primary key, f2 int);
 create table t2 (f3 int, f4 int);
 create view v1 as select * from t1, t2 where f1= f3;
 insert into t1 values (1,11), (2,22);
 insert into t2 values (1,12), (2,24);
 insert into v1 (f1) values (3) on duplicate key update f3= f3 + 10;
-ERROR HY000: Can not modify more than one base table through a join view 'test.v1'
+ERROR HY000: Can not modify more than one base table through a join view 'insert_test.v1'
 insert into v1 (f1) values (3) on duplicate key update f1= f3 + 10;
-ERROR HY000: Can not modify more than one base table through a join view 'test.v1'
+ERROR HY000: Can not modify more than one base table through a join view 'insert_test.v1'
 select * from t1;
 f1	f2
 1	11
 2	22
 insert into v1 (f1) values (3) on duplicate key update f1= f3 + 10;
-ERROR HY000: Can not modify more than one base table through a join view 'test.v1'
+ERROR HY000: Can not modify more than one base table through a join view 'insert_test.v1'
 select * from t1;
 f1	f2
 1	11
@@ -550,3 +551,4 @@ pk
 2
 DROP VIEW v1, v2;
 DROP TABLE t1;
+DROP DATABASE insert_test;

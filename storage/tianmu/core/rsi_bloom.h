@@ -21,10 +21,11 @@
 #include "common/common_definitions.h"
 #include "core/bloom_block.h"
 #include "core/rsi_index.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace core {
+
 class PackStr;
 
 class RSIndex_Bloom final : public RSIndex {
@@ -34,7 +35,7 @@ class RSIndex_Bloom final : public RSIndex {
 
   void SaveToFile(common::TX_ID ver) override;
   void Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack);
-  common::RSValue IsValue(types::BString min_v, types::BString max_v, int pack);
+  common::RoughSetValue IsValue(types::BString min_v, types::BString max_v, int pack);
 
  private:
   static const int FORMAT_VERSION = 2;
@@ -55,6 +56,7 @@ class RSIndex_Bloom final : public RSIndex {
   size_t capacity = 0;
   std::unique_ptr<const FilterPolicy> bloom_filter_policy;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

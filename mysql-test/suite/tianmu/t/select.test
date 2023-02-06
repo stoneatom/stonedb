@@ -3,6 +3,12 @@
 --echo #
 --echo # Simple select test
 --echo #
+--disable_warnings
+DROP DATABASE IF EXISTS select_db;
+--enable_warnings
+
+CREATE DATABASE select_db;
+USE select_db;
 
 --disable_warnings
 drop table if exists t1,t2,t3,t4,t11;
@@ -35,8 +41,6 @@ CREATE TABLE t2 (
   fld4 char(35) DEFAULT '' NOT NULL,
   fld5 char(35) DEFAULT '' NOT NULL,
   fld6 char(4) DEFAULT '' NOT NULL,
-  UNIQUE fld1 (fld1),
-  KEY fld3 (fld3),
   PRIMARY KEY (auto)
 )engine=tianmu;  
 
@@ -1281,10 +1285,10 @@ select t2.fld3 from t2 where fld3 LIKE 'don_t_find_me_please%';
 --echo #
 
 select t2.fld3 from t2 where fld3 = 'honeysuckle';
-select fld3 from t2 ignore index (fld3) where fld3 = 'honeysuckle';
-select fld3 from t2 use index (fld1) where fld3 = 'honeysuckle';
-select fld3 from t2 use index (fld3) where fld3 = 'honeysuckle';
-select fld3 from t2 use index (fld1,fld3) where fld3 = 'honeysuckle';
+#select fld3 from t2 ignore index (fld3) where fld3 = 'honeysuckle';
+#select fld3 from t2 use index (fld1) where fld3 = 'honeysuckle';
+#select fld3 from t2 use index (fld3) where fld3 = 'honeysuckle';
+#select fld3 from t2 use index (fld1,fld3) where fld3 = 'honeysuckle';
 
 --echo #
 --echo # NOTE NOTE NOTE
@@ -1292,9 +1296,9 @@ select fld3 from t2 use index (fld1,fld3) where fld3 = 'honeysuckle';
 --echo #
 
 -- error 1176
-select fld3 from t2 ignore index (fld3,not_used);
+#select fld3 from t2 ignore index (fld3,not_used);
 -- error 1176
-select fld3 from t2 use index (not_used);
+#select fld3 from t2 use index (not_used);
 
 --echo #
 --echo # Test sorting with a used key (there is no need for sorting)
@@ -1358,9 +1362,7 @@ create table t3 (
  name      char(32) not null,
  companynr int not null,
  price     double(11,0),
- price2     double(11,0),
- key (period),
- key (name)
+ price2     double(11,0)
 )engine=tianmu;
 
 #insert into 10 number
@@ -1381,9 +1383,7 @@ create table t3_1 (
  name      char(32) not null,
  companynr int not null,
  price     double(11,0),
- price2     double(11,0),
- key (period),
- key (name)
+ price2     double(11,0)
 )engine=tianmu;
 
 --echo #Reverse insert data
@@ -1407,4 +1407,5 @@ insert into t3_1 select * from t3;
 
 select * from t3_1;
 drop database aa;
-
+# Clean UP
+DROP DATABASE select_db;

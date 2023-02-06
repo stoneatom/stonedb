@@ -8,7 +8,9 @@
 
 </br>
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/stoneatom/stonedb/Compile%20&%20MTR)](https://github.com/stoneatom/stonedb/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/stoneatom/stonedb/pull_requests.yml?branch=stonedb-5.7-dev)](https://github.com/stoneatom/stonedb/actions)
+[![codecov](https://codecov.io/gh/stoneatom/stonedb/branch/stonedb-5.7-dev/graph/badge.svg?token=NWJYOOZ2S5)](https://codecov.io/gh/stoneatom/stonedb)
+[![Docker Pulls](https://img.shields.io/docker/pulls/stoneatom/stonedb)](https://hub.docker.com/r/stoneatom/stonedb)
 [![GitHub license](https://img.shields.io/github/license/stoneatom/stonedb)](https://github.com/stoneatom/stonedb/blob/stonedb-5.6/LICENSE)
 [![slack badge](https://img.shields.io/badge/Slack-Join%20StoneDB-blueviolet?logo=slack&amp)](https://stonedb.slack.com/join/shared_invite/zt-1ba2lpvbo-Vqq62DJcxViyxCZmp7Rimw#/shared-invite/email)
 [![WeChat badge](https://img.shields.io/badge/Wechat-join-green?logo=wechat&amp)](https://cms.stoneatom.com/assets/8f44fbdf-b987-44fb-8b8d-c65a37da9221.jpg)
@@ -52,11 +54,11 @@ StoneDB 是一个兼容 MySQL 的高性能混合事务/分析处理(HTAP)数据�
 [![logo](Docs/stonedb_architecture.png)](https://stonedb.io/zh/docs/about-stonedb/architecture)
 
 
-想获取更多关于 StoneDB 的信息，可以前往官网： [stonedb.io](https://stonedb.io/zh/).
+想获取更多关于 StoneDB 的信息，可以前往官网：[stonedb.io](https://stonedb.io/zh/)。
 
 # 贡献指南
 
-StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享您如何使用StoneDB的经验，并在论坛上在社区中提供见解，或贡献项目，使 StoneDB 成为一个更好的开源项目。想获取更多的细节，可以看这里：[contributing guide](https://stonedb.io/zh/community/main/) 
+StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享您如何使用StoneDB的经验，并在论坛上在社区中提供见解，或贡献项目，使 StoneDB 成为一个更好的开源项目。想获取更多的细节，可以看这里：[贡献指南](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CONTRIBUTING.md)。
 
 # 快速开始
 
@@ -70,7 +72,7 @@ StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享
 - Ubuntu 20.04 及以上
 - Red Hat Enterprise Linux 7 (RHEL 7.x)
 
-我们用来验证构建的编译器工具集:
+我们用来验证构建的编译器工具集：
 
 - GCC 9.3.0
 
@@ -86,22 +88,22 @@ StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享
 
 ### Ubuntu 20.04 下编译 StoneDB
 
-更多信息，可以查看 [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-ubuntu2004/compile-using-ubuntu20.04-for-57/).
+更多信息，可以查看 [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-ubuntu2004/compile-using-ubuntu20.04-for-57/)。
 
 ### CentOS 7.x 下编译 StoneDB
 
-更多信息，可以查看 [Compile StoneDB on CentOS 7](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-centos7/compile-using-centos7-57).
+更多信息，可以查看 [Compile StoneDB on CentOS 7](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-centos7/compile-using-centos7-57)。
 
 ### RedHat 7.x 下编译 StoneDB
-更多信息，可以查看 [Compile StoneDB on RHEL 7](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57).
+更多信息，可以查看 [Compile StoneDB on RHEL 7](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57)。
 
 ## 在 Docker 容器中通过源码编译 StoneDB
 
-更多信息，可以查看 [Compile StoneDB in a Docker Container](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-docker).
+更多信息，可以查看 [Compile StoneDB in a Docker Container](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-docker)。
 
 ## 配置 StoneDB
 
-StoneDB安装完成后，您至少需要在**my.cnf**文件中配置以下参数:
+StoneDB安装完成后，您至少需要在 `my.cnf` 文件中配置以下参数：
 
 ```
 #the stonedb configuration options are listed as following.
@@ -146,10 +148,10 @@ CREATE TABLE `example_table` (
 -- For version 5.6, the engine should be set to 'stonedb'
 ```
 
-这个例子展示了 StoneDB 中的一些重要特性和限制。有关限制的更多信息，请参见 [StoneDB Limitations](https://stonedb.io/zh/docs/about-stonedb/limits). 
+这个例子展示了 StoneDB 中的一些重要特性和限制。有关限制的更多信息，请参见 [StoneDB Limitations](https://stonedb.io/zh/docs/about-stonedb/limits)。
 
 - StoneDB 数据以列格式存储，并持久化到 RocksDB 中，RocksDB 作为磁盘按列存储格式化后的数据。所有数据会被压缩，压缩比为10:1 ~ 40:1。
-- 在处理特殊查询时，即使不创建任何索引，StoneDB 也能达到具有竞争力的性能。要了解更多信息，请点击[这里](https://stonedb.io/zh/)
+- 在处理特殊查询时，即使不创建任何索引，StoneDB 也能达到具有竞争力的性能。要了解更多信息，请点击[这里](https://stonedb.io/docs/about-stonedb/architecture)。
 
 --- 
 
@@ -182,9 +184,9 @@ CREATE TABLE `example_table` (
 # 加入 StoneDB 用户群
 您可以扫码加入我们的微信用户群：
 
-![logo](Docs/stonedb_wecaht_group.jpg)
+<img src="Docs/stonedb_wecaht_group.png" width="50%">
 
 
 # 行为准则
-参加StoneDB项目时，请确保您的所有行为都符合[行为准则](https://stonedb.io/zh/community/main/) 。
+参加StoneDB项目时，请确保您的所有行为都符合[行为准则](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CODE_OF_CONDUCT.md) 。
 

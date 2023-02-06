@@ -1,0 +1,100 @@
+#
+# Some double/float tests moved from regr.
+# DML, DQL w/without filters
+#
+DROP DATABASE IF EXISTS `double_float`;
+CREATE DATABASE `double_float`;
+USE `double_float`;
+SET default_storage_engine=tianmu;
+SELECT @@default_storage_engine;
+@@default_storage_engine
+TIANMU
+set autocommit=0;
+CREATE TABLE test1 (dkey int);
+INSERT INTO test1 VALUES (1), (2), (3);
+SELECT test1.dkey FROM test1 ORDER BY test1.dkey;
+dkey
+CREATE TABLE qatabledouble (col DOUBLE) ;
+CREATE TABLE qatablefloat (col float) ;
+INSERT INTO qatabledouble VALUES (-2.225073858507201E-307);
+INSERT INTO qatabledouble VALUES (-1.807302187774382E-127);
+INSERT INTO qatabledouble VALUES (0);
+INSERT INTO qatabledouble VALUES (1.993777023789432E+21);
+INSERT INTO qatabledouble VALUES (1.797693134862315E+38);
+INSERT INTO qatabledouble VALUES (-19937770237894323221);
+INSERT INTO qatabledouble VALUES (17976931348623158);
+SELECT * FROM qatabledouble;
+col
+INSERT INTO qatabledouble VALUES (null);
+INSERT INTO qatabledouble VALUES (null);
+INSERT INTO qatabledouble VALUES (null);
+SELECT * FROM qatabledouble;
+col
+INSERT INTO qatablefloat VALUES (null);
+INSERT INTO qatablefloat VALUES (null);
+INSERT INTO qatablefloat VALUES (null);
+SELECT * FROM qatablefloat;
+col
+DELETE FROM qatabledouble WHERE col IS NULL;
+SELECT * FROM qatabledouble;
+col
+delete FROM qatablefloat WHERE col IS NULL;
+SELECT * FROM qatablefloat;
+col
+CREATE TABLE qatabledouble_v2 (col1 DOUBLE, col2 DOUBLE, col3 DOUBLE) ;
+INSERT INTO qatabledouble_v2 VALUES (-0.50, -0.50, -0.50);
+INSERT INTO qatabledouble_v2 VALUES (-0.49, -0.49, -0.49);
+INSERT INTO qatabledouble_v2 VALUES (0.49, 0.49, 0.49);
+INSERT INTO qatabledouble_v2 VALUES (0.50, 0.50, 0.50);
+INSERT INTO qatabledouble_v2 VALUES (+8,+8,+8);
+INSERT INTO qatabledouble_v2 VALUES (+0.50,+0.50,+0.50);
+INSERT INTO qatabledouble_v2 VALUES (+0.49,+0.49,+0.49);
+INSERT INTO qatabledouble_v2 VALUES (+0.0,+0.0,+0.0);
+INSERT INTO qatabledouble_v2 VALUES (+.50,+.50,+.50);
+INSERT INTO qatabledouble_v2 VALUES (+.49,+.49,+.49);
+INSERT INTO qatabledouble_v2 VALUES (+.0,+.0,+.0);
+INSERT INTO qatabledouble_v2 VALUES (-.0,-.0,-.0);
+INSERT INTO qatabledouble_v2 VALUES (-.49,-.49,-.49);
+INSERT INTO qatabledouble_v2 VALUES (-.50,-.50,-.50);
+INSERT INTO qatabledouble_v2 VALUES (-0.0,-0.0,-0.0);
+INSERT INTO qatabledouble_v2 VALUES (-0.49,-0.49,-0.49);
+INSERT INTO qatabledouble_v2 VALUES (-0.50,-0.50,-0.50);
+INSERT INTO qatabledouble_v2 VALUES (-8,-8,-8);
+INSERT INTO qatabledouble_v2 VALUES (8,8,8);
+INSERT INTO qatabledouble_v2 VALUES (0.50,0.50,0.50);
+INSERT INTO qatabledouble_v2 VALUES (0.49,0.49,0.49);
+INSERT INTO qatabledouble_v2 VALUES (0.0,0.0,0.0);
+INSERT INTO qatabledouble_v2 VALUES (.50,.50,.50);
+INSERT INTO qatabledouble_v2 VALUES (.49,.49,.49);
+INSERT INTO qatabledouble_v2 VALUES (.0,.0,.0);
+SELECT * FROM qatabledouble_v2;
+col1	col2	col3
+CREATE TABLE qatablefloat_v3 (col1 float, col2 float, col3 float) ;
+INSERT INTO qatablefloat_v3 VALUES (-0.50, -0.50, -0.50);
+INSERT INTO qatablefloat_v3 VALUES (-0.49, -0.49, -0.49);
+INSERT INTO qatablefloat_v3 VALUES (0.49, 0.49, 0.49);
+INSERT INTO qatablefloat_v3 VALUES (0.50, 0.50, 0.50);
+INSERT INTO qatablefloat_v3 VALUES (+8,+8,+8);
+INSERT INTO qatablefloat_v3 VALUES (+0.50,+0.50,+0.50);
+INSERT INTO qatablefloat_v3 VALUES (+0.49,+0.49,+0.49);
+INSERT INTO qatablefloat_v3 VALUES (+0.0,+0.0,+0.0);
+INSERT INTO qatablefloat_v3 VALUES (+.50,+.50,+.50);
+INSERT INTO qatablefloat_v3 VALUES (+.49,+.49,+.49);
+INSERT INTO qatablefloat_v3 VALUES (+.0,+.0,+.0);
+INSERT INTO qatablefloat_v3 VALUES (-.0,-.0,-.0);
+INSERT INTO qatablefloat_v3 VALUES (-.49,-.49,-.49);
+INSERT INTO qatablefloat_v3 VALUES (-.50,-.50,-.50);
+INSERT INTO qatablefloat_v3 VALUES (-0.0,-0.0,-0.0);
+INSERT INTO qatablefloat_v3 VALUES (-0.49,-0.49,-0.49);
+INSERT INTO qatablefloat_v3 VALUES (-0.50,-0.50,-0.50);
+INSERT INTO qatablefloat_v3 VALUES (-8,-8,-8);
+INSERT INTO qatablefloat_v3 VALUES (8,8,8);
+INSERT INTO qatablefloat_v3 VALUES (0.50,0.50,0.50);
+INSERT INTO qatablefloat_v3 VALUES (0.49,0.49,0.49);
+INSERT INTO qatablefloat_v3 VALUES (0.0,0.0,0.0);
+INSERT INTO qatablefloat_v3 VALUES (.50,.50,.50);
+INSERT INTO qatablefloat_v3 VALUES (.49,.49,.49);
+INSERT INTO qatablefloat_v3 VALUES (.0,.0,.0);
+SELECT * FROM qatablefloat_v3;
+col1	col2	col3
+DROP DATABASE `double_float`;

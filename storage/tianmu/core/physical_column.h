@@ -34,7 +34,7 @@ class PhysicalColumn : public Column {
   PhysicalColumn(const PhysicalColumn &phc)
       : Column(phc), is_unique(phc.is_unique), is_unique_updated(phc.is_unique_updated) {}
 
-  enum class phys_col_t { ATTR, RCATTR };
+  enum class phys_col_t { ATTR, kTianmuAttr };
 
   /*! \brief Get a numeric value from a column
    *
@@ -68,23 +68,23 @@ class PhysicalColumn : public Column {
    * \pre necessary datapacks are loaded and locked
    *
    * \param row identifies a row
-   * \return types::RCNum object - a representation of a numeric value
+   * \return types::TianmuNum object - a representation of a numeric value
    */
-  //	virtual const RCNum& GetValueNum(const uint64_t row) const
+  //	virtual const TianmuNum& GetValueNum(const uint64_t row) const
   //               {ASSERT(false, "not overridden"); static
-  //               types::RCNum dummy(0.0); return dummy; };
+  //               types::TianmuNum dummy(0.0); return dummy; };
 
   /*! \brief Get a date/time value from a column
    *
    * \pre necessary datapacks are loaded and locked
    *
    * \param row identifies a row
-   * \return types::RCDateTime object - a representation of a date/time
+   * \return types::TianmuDateTime object - a representation of a date/time
    * value
    */
-  //	virtual const RCDateTime& GetValueDateTime(const uint64_t row) const
+  //	virtual const TianmuDateTime& GetValueDateTime(const uint64_t row) const
   //               {ASSERT(false, "not overridden"); static
-  //               types::RCDateTime dummy(0); return dummy;
+  //               types::TianmuDateTime dummy(0); return dummy;
   //               };
 
   /*! \brief Get a binary value from a column
@@ -97,7 +97,7 @@ class PhysicalColumn : public Column {
    */
   virtual void GetValueString(int64_t row, types::BString &s) = 0;
   virtual void GetNotNullValueString(int64_t row, types::BString &s) = 0;
-  virtual types::RCValueObject GetValue(int64_t obj, bool lookup_to_num = false) = 0;
+  virtual types::TianmuValueObject GetValue(int64_t obj, bool lookup_to_num = false) = 0;
 
   // ToDO uncomment and solve cyclic includes
   //	virtual MysqlExpression::ValueOrNull GetComplexValue(const uint64_t
@@ -139,14 +139,14 @@ class PhysicalColumn : public Column {
 
   virtual types::BString GetMaxString(int pack) = 0;
   virtual types::BString GetMinString(int pack) = 0;
-  //	virtual types::RCDateTime GetMaxDateTime(int pack) const
+  //	virtual types::TianmuDateTime GetMaxDateTime(int pack) const
   //{ASSERT(false, "not overridden"); return
   // 0; };
-  //	virtual types::RCDateTime GetMinDateTime(int pack) const
+  //	virtual types::TianmuDateTime GetMinDateTime(int pack) const
   //{ASSERT(false, "not overridden"); return
   // 0; };
-  //	virtual types::RCNum GetMaxNum(int pack) const {ASSERT(false,
-  //"not overridden"); return 0.0; }; 	virtual types::RCNum
+  //	virtual types::TianmuNum GetMaxNum(int pack) const {ASSERT(false,
+  //"not overridden"); return 0.0; }; 	virtual types::TianmuNum
   // GetMinNum(int pack) const {ASSERT(false, "not overridden"); return 0.0; };
 
   /*!
@@ -176,7 +176,7 @@ class PhysicalColumn : public Column {
     return 0;
   }
 
-  virtual uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf,
+  virtual uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RoughSetValue *rf,
                                       bool outer_nulls_possible) = 0;  // provide the best upper
                                                                        // approximation of number
                                                                        // of diff. values (incl.
@@ -200,22 +200,22 @@ class PhysicalColumn : public Column {
   bool IsUniqueUpdated() const { return is_unique_updated; }
   void SetUniqueUpdated(bool updated) { is_unique_updated = updated; }
   //! shortcut utility function = IsUniqueUpdated && IsUnique
-  common::RSValue IsDistinct() const {
-    return (IsUniqueUpdated() ? (IsUnique() ? common::RSValue::RS_ALL : common::RSValue::RS_NONE)
-                              : common::RSValue::RS_UNKNOWN);
+  common::RoughSetValue IsDistinct() const {
+    return (IsUniqueUpdated() ? (IsUnique() ? common::RoughSetValue::RS_ALL : common::RoughSetValue::RS_NONE)
+                              : common::RoughSetValue::RS_UNKNOWN);
   }
   virtual int64_t RoughMin(Filter *f = nullptr,
-                           common::RSValue *rf = nullptr) = 0;  // for numerical: best
-                                                                // rough approximation of
-                                                                // min for a given filter
-                                                                // (or global min if filter
-                                                                // is nullptr)
+                           common::RoughSetValue *rf = nullptr) = 0;  // for numerical: best
+                                                                      // rough approximation of
+                                                                      // min for a given filter
+                                                                      // (or global min if filter
+                                                                      // is nullptr)
   virtual int64_t RoughMax(Filter *f = nullptr,
-                           common::RSValue *rf = nullptr) = 0;  // for numerical: best
-                                                                // rough approximation of
-                                                                // max for a given filter
-                                                                // (or global max if filter
-                                                                // is nullptr)
+                           common::RoughSetValue *rf = nullptr) = 0;  // for numerical: best
+                                                                      // rough approximation of
+                                                                      // max for a given filter
+                                                                      // (or global max if filter
+                                                                      // is nullptr)
   virtual void GetTextStat(types::TextStat &s, [[maybe_unused]] Filter *f = nullptr) { s.Invalidate(); }
   virtual double RoughSelectivity() { return 1; }
   /*! \brief Return true if the column (filtered) contain only non-null distinct
@@ -261,14 +261,14 @@ class PhysicalColumn : public Column {
   // virtual bool CheckCondition(uint64_t row, Descriptor& d) = 0;
 
   //! check whether any value from the pack may meet the condition
-  virtual common::RSValue RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) = 0;
+  virtual common::RoughSetValue RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) = 0;
 
   //! check whether any pair from two packs of two different attr/tables may
   //! meet the condition
-  virtual common::RSValue RoughCheck(int pack1, int pack2, Descriptor &d) = 0;
-  virtual common::RSValue RoughCheckBetween([[maybe_unused]] int pack, [[maybe_unused]] int64_t min,
-                                            [[maybe_unused]] int64_t max) {
-    return common::RSValue::RS_SOME;
+  virtual common::RoughSetValue RoughCheck(int pack1, int pack2, Descriptor &d) = 0;
+  virtual common::RoughSetValue RoughCheckBetween([[maybe_unused]] int pack, [[maybe_unused]] int64_t min,
+                                                  [[maybe_unused]] int64_t max) {
+    return common::RoughSetValue::RS_SOME;
   }
   virtual bool TryToMerge(Descriptor &d1, Descriptor &d2) = 0;
 
@@ -277,7 +277,7 @@ class PhysicalColumn : public Column {
 
   virtual ~PhysicalColumn() = default;
 
-  /*! \brief For lookup (RCAttr) columns only: decode a lookup value
+  /*! \brief For lookup (TianmuAttr) columns only: decode a lookup value
    * \return Text value encoded by a given code
    */
   virtual types::BString DecodeValue_S(int64_t code) = 0;

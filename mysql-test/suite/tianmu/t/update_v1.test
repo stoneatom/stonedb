@@ -1,6 +1,12 @@
 --echo #
 --echo # test of updating of keys
 --echo #
+--disable_warnings
+DROP DATABASE IF EXISTS update_v1_db;
+--enable_warnings
+
+CREATE DATABASE update_v1_db;
+USE update_v1_db;
 
 --disable_warnings
 drop table if exists t1,t2;
@@ -65,12 +71,7 @@ CREATE TABLE t1 (
   body text NOT NULL,
   comment text,
   header text,
-  PRIMARY KEY  (lfdnr),
-  KEY k1 (timestamp),
-  KEY k2 (type),
-  KEY k3 (parent),
-  KEY k4 (assignment),
-  KEY ticket (ticket)
+  PRIMARY KEY  (lfdnr)
 ) ENGINE=tianmu;
 
 INSERT INTO t1 VALUES (773,773,'','','',980257344,20010318180652,0,'Open',10,0,0,0,1,'','','','','');
@@ -86,8 +87,7 @@ drop table t1;
 CREATE TABLE t1 (
    `id_param` smallint(3) NOT NULL default '0',
    `nom_option` char(40) NOT NULL default '',
-   `valid` tinyint(1) NOT NULL default '0',
-   KEY `id_param` (`id_param`,`nom_option`)
+   `valid` tinyint(1) NOT NULL default '0'
  ) ENGINE=tianmu;
 
 INSERT INTO t1 (id_param,nom_option,valid) VALUES (185,'600x1200',1);
@@ -122,7 +122,7 @@ drop table t1;
 --echo #  a problem with update and partial key part
 --echo #
 
-create table t1 (a int, b char(255), key(a, b(20)));
+create table t1 (a int, b char(255));
 insert into t1 values (0, '1');
 update t1 set b = b + 1 where a = 0;
 select * from t1;
@@ -180,8 +180,7 @@ drop table t1;
 CREATE TABLE t1 (
   a INT(11),
   quux decimal(17, 10),
-  UNIQUE KEY bar (a),
-  KEY quux (quux)
+  PRIMARY KEY bar (a)
 )engine=tianmu;
 
 INSERT INTO
@@ -215,8 +214,7 @@ DROP TABLE t1;
 CREATE TABLE t1(
 id INTEGER NOT NULL AUTO_INCREMENT,
 token VARCHAR(255) DEFAULT NULL,
-PRIMARY KEY (id),
-KEY token (token)
+PRIMARY KEY (id)
 )engine=tianmu;
 
 INSERT INTO t1 VALUES (1, "abc"), (2, "def");
@@ -227,4 +225,5 @@ SELECT * FROM t1;
 UPDATE t1 SET token = NULL WHERE token = X'ad';
 SELECT * FROM t1;
 DROP TABLE t1;
-
+# Clean UP
+DROP DATABASE update_v1_db;

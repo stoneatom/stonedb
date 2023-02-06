@@ -39,7 +39,7 @@ void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field
 bool ha_my_tianmu_set_statement_allowed(THD *thd, LEX *lex);
 
 // processing the load operation.
-bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
+bool ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 
 }  // namespace handler
 }  //  namespace Tianmu
