@@ -1106,7 +1106,7 @@ protected:
 bool error_if_full_join(JOIN *join);
 bool handle_query(THD *thd, LEX *lex, Query_result *result,
                   ulonglong added_options, ulonglong removed_options, 
-	              int optimize_after_bh=0, int free_join_from_bh=0);
+	              int is_optimize_after_tianmu=0, int free_join_from_tianmu=0);
 
 void free_underlaid_joins(THD *thd, SELECT_LEX *select);
 

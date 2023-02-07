@@ -655,10 +655,10 @@ public:
   bool prepare(THD *thd, Query_result *result, ulonglong added_options,
                ulonglong removed_options);
   bool optimize(THD *thd);
-  //TIANMU UPGRADE END
+  
   int optimize_for_tianmu();
   int optimize_after_tianmu();
-  //END
+  
   bool execute(THD *thd);
   bool explain(THD *ethd);
   bool cleanup(bool full);
@@ -1416,6 +1416,7 @@ public:
   bool setup_conds(THD *thd);
   bool prepare(THD *thd);
   bool optimize(THD *thd);
+  bool optimize_select_for_tianmu(THD *thd);
   void reset_nj_counters(List<TABLE_LIST> *join_list= NULL);
   bool check_only_full_group_by(THD *thd);
 

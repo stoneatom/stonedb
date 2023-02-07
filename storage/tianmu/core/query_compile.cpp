@@ -1072,7 +1072,7 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
       // necessary due to already done basic transformation of conditions
       // see comments in sql_select.cc:JOIN::optimize()
       if (IsLOJ(join_list))
-        sl->join->optimize(3);
+        sl->join->optimize(OptimizePhase::Finish_LOJ_Transform);
 
       if (left_expr_for_subselect)
         if (!ClearSubselectTransformation(*oper_for_subselect, field_for_subselect, conds, having, cond_to_reinsert,
