@@ -110,7 +110,7 @@ class Engine final {
   Transaction *GetTx(THD *thd);
   void ClearTx(THD *thd);
   QueryRouteTo HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
-                            int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
+                            int &is_optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
   std::shared_ptr<TianmuTable> GetTableRD(const std::string &table_path);
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);

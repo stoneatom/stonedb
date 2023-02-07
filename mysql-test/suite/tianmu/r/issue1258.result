@@ -1,0 +1,43 @@
+DROP DATABASE IF EXISTS issue1258_test;
+CREATE DATABASE issue1258_test;
+USE issue1258_test;
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+Warnings:
+Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+CREATE TABLE `t_test` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`first_name` varchar(10) NOT NULL,
+`last_name` varchar(10) NOT NULL,
+`sex` varchar(5) NOT NULL,
+`score` int(11) NOT NULL,
+`copy_id` int(11) NOT NULL,
+PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+insert into t_test values(1,"syz1","stonedb1","nan",99,21);
+insert into t_test values(2,"syz2","stonedb2","nan",99,22);
+insert into t_test values(3,"syz3","stonedb3","nan",99,23);
+insert into t_test values(4,"syz4","stonedb4","nan",99,24);
+insert into t_test values(5,"syz5","stonedb5","nan",99,25);
+SELECT
+bb.first_name,
+bb.last_name 
+FROM
+(
+SELECT
+count(a.first_name ) AS first_name,
+SUBSTR( a.last_name, 1, 10 ) AS last_name 
+FROM
+t_test a,
+t_test b 
+WHERE
+a.id = b.id 
+GROUP BY
+SUBSTR( a.last_name, 1, 10 ) 
+) bb;
+first_name	last_name
+1	stonedb1
+1	stonedb2
+1	stonedb3
+1	stonedb4
+1	stonedb5
+DROP DATABASE issue1258_test;
