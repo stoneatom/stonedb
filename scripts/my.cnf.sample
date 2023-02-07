@@ -154,6 +154,25 @@ binlog-direct-non-transactional-updates
 default-storage-engine=tianmu
 #use_stat_tables=preferably
 
+# insert delay
+tianmu_insert_delayed=1
+
+# log level
+# DISABLED = 0, FATAL = 1, ERROR = 2, WARN = 3
+# INFO = 4, DEBUG = 5, TRACE = 6
+tianmu_global_debug_level=4
+
+# The parallelism degree of multithreaded aggregation
+# the number of threads executing group by multithreaded aggregation
+tianmu_groupby_parallel_degree=4
+
+# Threshold for the minimum number of rows
+# that can start executing a multithreaded group by thread, minimum is 655360
+tianmu_groupby_parallel_rows_minimum=655360
+
+# order by parallel switch
+tianmu_orderby_speedup=1
+
 # here, at the end of [mysqld] group mtr will automatically disable
 # all optional plugins.
 
