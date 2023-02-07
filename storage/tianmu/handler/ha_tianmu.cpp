@@ -2024,7 +2024,7 @@ int tianmu_init_func(void *p) {
   tianmu_hton->state = SHOW_OPTION_YES;
   tianmu_hton->db_type = DB_TYPE_TIANMU;
   tianmu_hton->create = tianmu_create_handler;
-  tianmu_hton->flags = HTON_NO_FLAGS;
+  tianmu_hton->flags = HTON_NO_PARTITION;
   tianmu_hton->panic = tianmu_panic_func;
   tianmu_hton->close_connection = tianmu_close_connection;
   tianmu_hton->commit = tianmu_commit;

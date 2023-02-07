@@ -8127,15 +8127,12 @@ static void set_server_version(void)
 #endif
 #endif
 
-// BUG: https://github.com/stoneatom/stonedb/issues/1262
-#ifdef USE_STONEDB_TAG_NAME
   if (SERVER_VERSION_LENGTH - (end - server_version) >
       static_cast<int>(sizeof("-")))
     end = my_stpcpy(end, "-");
   if (SERVER_VERSION_LENGTH - (end - server_version) >
       static_cast<int>(sizeof(STONEDB_TAG_NAME)))
     end = my_stpcpy(end, STONEDB_TAG_NAME);
-#endif
 
 #ifndef NDEBUG
   if (SERVER_VERSION_LENGTH - (end - server_version) >

@@ -23,8 +23,6 @@
 #include "core/tools.h"
 #include "system/tianmu_system.h"
 
-#pragma GCC diagnostic ignored "-Wformat-overflow="
-
 namespace Tianmu {
 namespace system {
 

@@ -87,7 +87,7 @@ CREATE TABLE `t_issue1054` (
 `into` blob COMMENT 'blob',
 `set` text COMMENT 'text',
 `show` longblob COMMENT 'longblob',
-UNIQUE (`usage`)
+primary key (`usage`)
 ) engine=tianmu;
 
 insert into t_issue1054 

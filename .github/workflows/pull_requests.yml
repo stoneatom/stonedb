@@ -97,6 +97,7 @@ jobs:
 
           mkdir build && cd build
           git config --global --add safe.directory /__w/stonedb/stonedb
+          git fetch --tags
           cmake ../ \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/stonedb57/install \

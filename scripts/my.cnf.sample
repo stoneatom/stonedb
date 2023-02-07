@@ -55,7 +55,7 @@ log-bin=YOUR_ABS_PATH/data/binlog
 expire_logs_days=1
 #log_bin_compress=1
 #log_bin_compress_min_len=256
-binlog_format=statement
+binlog_format=row
 binlog_cache_size = 524288
 
 wait_timeout=3600
