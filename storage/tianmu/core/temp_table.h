@@ -391,6 +391,8 @@ class TempTable : public JustATable {
 
   void MarkCondPush() { can_cond_push_down = true; };
   bool CanCondPushDown() { return can_cond_push_down; };
+  const char *GetTableName() override { return "-"; }
+  const char *GetFieldName(int attr) override;
 
  protected:
   int64_t no_obj;

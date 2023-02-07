@@ -201,7 +201,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     }
   } else {
     int64_t local_limit = limit == -1 ? upper_approx_of_groups : limit;
-    MultiDimensionalGroupByScan(gbw, local_limit, offset, sender, limit_less_than_no_groups, false);
+    MultiDimensionalGroupByScan(gbw, local_limit, offset, sender, limit_less_than_no_groups);
     if (limit != -1)
       limit = local_limit;
   }
@@ -213,8 +213,8 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
 }
 
 void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int64_t &limit, int64_t &offset,
-                                                       ResultSender *sender, bool limit_less_than_no_groups,
-                                                       bool force_parall) {
+                                                       ResultSender *sender,
+                                                       [[maybe_unused]] bool limit_less_than_no_groups) {
   MEASURE_FET("TempTable::MultiDimensionalGroupByScan(...)");
   bool first_pass = true;
   // tuples are numbered according to tuple_left filter (not used, if tuple_left
@@ -244,18 +244,16 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
   }
   gbw.SetDistinctTuples(mit.NumOfTuples());
 
-  auto get_thd_cnt = []() {
-    int hardware_concurrency = std::thread::hardware_concurrency();
-    // TODO: The original code was the number of CPU cores divided by 4, and the reason for that is to be traced further
-    return hardware_concurrency > 4 ? (hardware_concurrency / 4) : 1;
-  };
-
-  int thd_cnt = 1;
-  if (force_parall) {
-    thd_cnt = get_thd_cnt();
-  } else {
-    if (ParallelAllowed(gbw) && !limit_less_than_no_groups) {
-      thd_cnt = get_thd_cnt();  // For concurrence reason, don't swallow all cores once.
+  unsigned int thd_cnt = 1;
+  if (tianmu_sysvar_groupby_parallel_degree > 1) {
+    if (static_cast<uint64_t>(mit.NumOfTuples()) > tianmu_sysvar_groupby_parallel_rows_minimum) {
+      unsigned int thd_limit = std::thread::hardware_concurrency() * 2;
+      thd_cnt = tianmu_sysvar_groupby_parallel_degree > thd_limit ? thd_limit : tianmu_sysvar_groupby_parallel_degree;
+      TIANMU_LOG(LogCtl_Level::DEBUG,
+                 "MultiDimensionalGroupByScan multi threads thd_cnt: %d thd_limit: %d NumOfTuples: %d "
+                 "groupby_parallel_degree: %d groupby_parallel_rows_minimum: %lld",
+                 thd_cnt, thd_limit, mit.NumOfTuples(), tianmu_sysvar_groupby_parallel_degree,
+                 tianmu_sysvar_groupby_parallel_rows_minimum);
     }
   }
 
@@ -289,9 +287,17 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
           t->GetAttrP(i)->term.vc->LockSourcePacks(m);
         }
       }
+
+      [[maybe_unused]] const char *thread_type = "multi";
+
+#ifdef DEBUG_AGGREGA_COST
+      std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
+
       if (ag_worker.ThreadsUsed() > 1) {
         ag_worker.DistributeAggreTaskAverage(mit);
       } else {
+        thread_type = "sin";
         while (mit.IsValid()) {  // need muti thread
                                  // First stage -
                                  //  some distincts may be delayed
@@ -316,6 +322,16 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
           cur_tuple += packrow_length;
         }
       }
+
+#ifdef DEBUG_AGGREGA_COST
+      auto diff =
+          std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+      if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+        TIANMU_LOG(LogCtl_Level::INFO, "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d", thread_type,
+                   diff.count(), mit.NumOfTuples());
+      }
+#endif
+
       gbw.ClearDistinctBuffers();              // reset buffers for a new contents
       MultiDimensionalDistinctScan(gbw, mit);  // if not needed, no effect
       ag_worker.Commit();
@@ -502,7 +518,6 @@ void AggregationAlgorithm::MultiDimensionalDistinctScan(GroupByWrapper &gbw, MII
 }
 
 AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple) {
-  std::scoped_lock guard(mtx);
   int64_t packrow_length = mit->GetPackSizeLeft();
   if (!gbw.AnyTuplesLeft(cur_tuple, cur_tuple + packrow_length - 1)) {
     mit->NextPackrow();
@@ -518,15 +533,46 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
   bool require_locking_ag = true;  // a new packrow, so locking will be needed
   bool require_locking_gr = true;  // do not lock if the grouping row is uniform
 
+#ifdef DEBUG_PACK_GUARDIAN
+  auto get_cur_dim = ([&gbw, &mit](int gr_a) -> int {
+    auto sc = gbw.SourceColumn(gr_a);
+    if (!sc) {
+      return -1;
+    }
+    return sc->GetDim();
+  });
+
+  auto get_cur_pack = ([&gbw, &mit](int gr_a) -> int {
+    auto sc = gbw.SourceColumn(gr_a);
+    if (!sc) {
+      return -1;
+    }
+
+    return mit->GetCurPackrow(sc->GetDim());
+  });
+#endif
+
   if (require_locking_gr) {
-    for (int gr_a = 0; gr_a < gbw.NumOfGroupingAttrs(); gr_a++)
+    for (int gr_a = 0; gr_a < gbw.NumOfGroupingAttrs(); gr_a++) {
+#ifdef DEBUG_PACK_GUARDIAN
+      TIANMU_LOG(LogCtl_Level::DEBUG, "AggregatePackrow LockPackAlways gr_a: %d dim: %d cur_pack: %d", gr_a,
+                 get_cur_dim(gr_a), get_cur_pack(gr_a));
+#endif
+
       gbw.LockPackAlways(gr_a, *mit);  // note: ColumnNotOmitted checked
-                                       // inside//»á¼ÓÔØ½âÑ¹group byÁÐÊý¾Ý°ü
+    }
+
     require_locking_gr = false;
   }
   if (require_locking_ag) {
-    for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++)
+    for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++) {
+#ifdef DEBUG_PACK_GUARDIAN
+      TIANMU_LOG(LogCtl_Level::DEBUG, "AggregatePackrow LockPackAlways gr_a: %d dim: %d cur_pack: %d", gr_a,
+                 get_cur_dim(gr_a), get_cur_pack(gr_a));
+#endif
+
       gbw.LockPackAlways(gr_a, *mit);  // note: ColumnNotOmitted checked inside
+    }
     require_locking_ag = false;
   }
 
@@ -859,6 +905,12 @@ void AggregationAlgorithm::TaskFillOutput(GroupByWrapper *gbw, Transaction *ci, 
 void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVector *dims [[maybe_unused]],
                                           MIIterator *mit [[maybe_unused]], CTask *task [[maybe_unused]],
                                           GroupByWrapper *gbw, Transaction *ci [[maybe_unused]]) {
+  TIANMU_LOG(LogCtl_Level::DEBUG, "TaskAggrePacks task_id: %d start pack_start: %d pack_end: %d", task->dwTaskId,
+             task->dwStartPackno, task->dwEndPackno);
+#ifdef DEBUG_AGGREGA_COST
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
+
   taskIterator->Rewind();
   int task_pack_num = 0;
   while (taskIterator->IsValid()) {
@@ -878,6 +930,15 @@ void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVec
     taskIterator->NextPackrow();
     ++task_pack_num;
   }
+
+#ifdef DEBUG_AGGREGA_COST
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO, "TaskAggrePacks task_id: %d spend: %f pack_start: %d pack_end: %d", task->dwTaskId,
+               diff.count(), task->dwStartPackno, task->dwEndPackno);
+  }
+#endif
 }
 
 void AggregationWorkerEnt::PrepShardingCopy(MIIterator *mit, GroupByWrapper *gb_sharding,
@@ -918,8 +979,23 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
 
   pack2cur.emplace(std::pair<int, int>(packnum, curtuple_index));
 
-  int loopcnt = (packnum < m_threads) ? packnum : m_threads;
-  int num = packnum / loopcnt;
+  int loopcnt = 0;
+  int mod = 0;
+  int num = 0;
+
+  int threads_num = m_threads + 1;
+
+  do {
+    loopcnt = (packnum < threads_num) ? packnum : threads_num;
+    mod = packnum % loopcnt;
+    num = packnum / loopcnt;
+
+    --threads_num;
+  } while ((num <= 1) && (threads_num >= 1));
+
+  TIANMU_LOG(LogCtl_Level::DEBUG,
+             "DistributeAggreTaskAverage packnum: %d threads_num: %d loopcnt: %d num: %d mod: %d NumOfTuples: %d",
+             packnum, threads_num, loopcnt, num, mod, mit.NumOfTuples());
 
   utils::result_set<void> res;
   for (int i = 0; i < loopcnt; ++i) {

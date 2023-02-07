@@ -72,7 +72,7 @@ void MemBlockManager::FreeBlock(void *b) {
         dealloc(b);
         current_size -= block_size;
       } else
-        free_blocks.push_back(b);
+        free_blocks.emplace_back(b);
     } else
         // often freed block are immediately required by other - keep some of them
         // above the limit in the pool
@@ -80,7 +80,7 @@ void MemBlockManager::FreeBlock(void *b) {
       dealloc(b);
       current_size -= block_size;
     } else
-      free_blocks.push_back(b);
+      free_blocks.emplace_back(b);
   }  // else not found (already erased)
 }
 
@@ -100,7 +100,7 @@ void BlockedRowMemStorage::Init(int rowl, std::shared_ptr<MemBlockManager> mbm, 
       void *b = bman->GetBlock();
       if (!b)
         throw common::OutOfMemoryException("too large initial BlockedRowMemStorage size");
-      blocks.push_back(b);
+      blocks.emplace_back(b);
     }
   no_rows = initial_size;
 }
@@ -140,7 +140,7 @@ void BlockedRowMemStorage::CalculateBlockSize(int row_len, int min_block_size) {
 int64_t BlockedRowMemStorage::AddRow(const void *r) {
   if ((no_rows & ndx_mask) == 0) {
     void *b = bman->GetBlock();
-    blocks.push_back(b);
+    blocks.emplace_back(b);
   }
   std::memcpy(((char *)blocks.back()) + (no_rows & ndx_mask) * row_len, r, row_len);
 
@@ -150,7 +150,7 @@ int64_t BlockedRowMemStorage::AddRow(const void *r) {
 int64_t BlockedRowMemStorage::AddEmptyRow() {
   if ((no_rows & ndx_mask) == 0) {
     void *b = bman->GetBlock();
-    blocks.push_back(b);
+    blocks.emplace_back(b);
   }
   std::memset(((char *)blocks.back()) + (no_rows & ndx_mask) * row_len, 0, row_len);
 

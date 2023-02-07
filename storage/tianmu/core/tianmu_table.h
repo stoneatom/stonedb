@@ -22,6 +22,7 @@
 
 #include "common/common_definitions.h"
 #include "core/just_a_table.h"
+#include "core/table_share.h"
 #include "core/tianmu_attr.h"
 #include "core/tianmu_mem_table.h"
 #include "util/fs.h"
@@ -89,7 +90,13 @@ class TianmuTable final : public JustATable {
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   const ColumnType &GetColumnType(int col) override;
   PhysicalColumn *GetColumn(int col_no) override { return m_attrs[col_no].get(); }
+  const char *GetTableName() override {
+    DEBUG_ASSERT(share != nullptr);
+    return const_cast<const TableShare *>(share)->Path().c_str();
+  }
+  const char *GetFieldName(int attr) override;
   TianmuAttr *GetAttr(int n_a);
+  const TableShare *GetTableShare() { return share; };
 
   // Transaction management
   bool Verify();

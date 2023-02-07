@@ -401,6 +401,10 @@ bool ParallelHashJoiner::AddKeyColumn(vcolumn::VirtualColumn *vc, vcolumn::Virtu
 void ParallelHashJoiner::ExecuteJoin() {
   MEASURE_FET("ParallelHashJoiner::ExecuteJoin(...)");
 
+#ifdef DEBUG_JOIN_COST
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
+
   int64_t joined_tuples = 0;
 
   // Preparing the new multiindex tables.
@@ -476,9 +480,21 @@ void ParallelHashJoiner::ExecuteJoin() {
       table->SetVCDistinctVals(i,
                                traversed_dist_limit);  // all dimensions involved in traversed side
   mind->UnlockAllFromUse();
+
+#ifdef DEBUG_JOIN_COST
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO, "ExecuteJoin spend: %f joined_tuples: %ld", diff.count(), joined_tuples);
+  }
+#endif
 }
 
 int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) {
+#ifdef DEBUG_JOIN_COST
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
+
   int64_t rows_count = mind->NumOfTuples(traversed_dims_);
   int availabled_packs = (int)((rows_count + (1 << pack_power_) - 1) >> pack_power_);
 
@@ -491,6 +507,8 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
     size_t slices_size = slice_capability.slices.size();
     int64_t rows_started = 0;
     for (size_t index = 0; index < slices_size; ++index) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "TraverseDim fixed index: %d slices_size: %d rows_started: %ld", index,
+                 slices_size, rows_started);
       MITaskIterator *iter = new MIFixedTaskIterator(pack_power_, mind, traversed_dims_, index, slices_size,
                                                      slice_capability.slices[index], rows_started, index);
       rows_started += slice_capability.slices[index];
@@ -517,11 +535,19 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
 
       int packs_increased = (index == split_count - 1) ? (-1 - packs_started) : (packs_per_fragment - 1);
 
+      TIANMU_LOG(LogCtl_Level::DEBUG,
+                 "TraverseDim kLinear index: %d split_count: %d rows_length: %ld packs_started: %d packs_increased: %d "
+                 "origin_size: %d",
+                 index, split_count, rows_length, packs_started, packs_increased, origin_size);
+
       MITaskIterator *iter = new MILinearPackTaskIterator(pack_power_, mind, traversed_dims_, index, split_count,
                                                           rows_length, packs_started, packs_started + packs_increased);
       task_iterators.push_back(iter);
     }
   } else {
+    TIANMU_LOG(LogCtl_Level::DEBUG,
+               "TraverseDim none rows_count: %ld availabled_packs: %d kTraversedPacksPerFragment: %d", rows_count,
+               availabled_packs, kTraversedPacksPerFragment);
     MITaskIterator *iter = new MITaskIterator(mind, traversed_dims_, 0, 1, rows_count);
     task_iterators.push_back(iter);
   }
@@ -598,10 +624,23 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
     vc1_[index]->UnlockSourcePacks();
   }
 
+#ifdef DEBUG_JOIN_COST
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO, "TraverseDim spend: %f rows_count: %ld task_num: %d slice_type: %s", diff.count(),
+               rows_count, task_iterators.size(), splitting_type.c_str());
+  }
+#endif
+
   return traversed_rows;
 }
 
 int64_t ParallelHashJoiner::AsyncTraverseDim(TraverseTaskParams *params) {
+#ifdef DEBUG_JOIN_COST
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
+
   params->traversed_hash_table->Initialize();
 
   HashTable *hash_table = params->traversed_hash_table->hash_table();
@@ -675,6 +714,14 @@ int64_t ParallelHashJoiner::AsyncTraverseDim(TraverseTaskParams *params) {
   }
 
   params->build_item->Finish();
+
+#ifdef DEBUG_JOIN_COST
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO, "AsyncTraverseDim spend: %f traversed_rows: %d", diff.count(), traversed_rows);
+  }
+#endif
 
   return traversed_rows;
 }

@@ -875,6 +875,11 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
     mit.NextPackrow();
     return;
   }
+
+#ifdef DEBUG_EVALUATE_PACK
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+#endif
+
   int64_t pv1 = d.val1.vc->GetValueInt64(mit);
   int64_t pv2 = d.val2.vc->GetValueInt64(mit);
   int64_t local_min = dpn.min_i;
@@ -954,6 +959,16 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
     } else
       EvaluatePack_NotNull(mit, dim);
   }
+
+#ifdef DEBUG_EVALUATE_PACK
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO,
+               "EvaluatePack_BetweenInt spend: %f pack: %d numOfRecords: %d pv1: %ld pv2: %ld pack_ptr: %lu",
+               diff.count(), pack, dpn.numOfRecords, pv1, pv2, dpn.GetPackPtr());
+  }
+#endif
 }
 
 void TianmuAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descriptor &d) {

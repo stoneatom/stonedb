@@ -19,6 +19,7 @@
 #pragma once
 
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 namespace Tianmu {
@@ -30,11 +31,18 @@ class MIIterator;
 
 class VCPackGuardian final {
  public:
+  enum class GUARDIAN_LOCK_STRATEGY { LOCK_ONE, LOCK_ONE_THREAD };
+
+ public:
   VCPackGuardian(vcolumn::VirtualColumn *vc) : my_vc_(*vc) {}
   ~VCPackGuardian() = default;
 
   void LockPackrow(const MIIterator &mit);
+  void LockPackrowOnLockOne(const MIIterator &mit);
+  void LockPackrowOnLockOneByThread(const MIIterator &mit);
   void UnlockAll();
+  void UnlockAllOnLockOne();
+  void UnlockAllOnLockOneByThread();
 
  private:
   void Initialize(int no_th);
@@ -48,8 +56,16 @@ class VCPackGuardian final {
   // Structures used for LOCK_ONE
   std::vector<std::vector<int>> last_pack_;
 
+  // thread_id::cur_dim::col_index -> pack
+  // TODO: A parallel hash table implementation with multithreading security
+  // https://greg7mdp.github.io/parallel-hashmap/
+  using TypeLockOne = std::unordered_map<uint64_t, std::unordered_map<int, std::unordered_map<int, int>>>;
+  TypeLockOne last_pack_thread_;
+
   int guardian_threads_{1};  // number of parallel threads using the guardian
   std::mutex mx_thread_;
+
+  GUARDIAN_LOCK_STRATEGY current_strategy_ = GUARDIAN_LOCK_STRATEGY::LOCK_ONE_THREAD;
 };
 }  // namespace core
 }  // namespace Tianmu

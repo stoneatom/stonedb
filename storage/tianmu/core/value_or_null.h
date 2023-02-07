@@ -105,8 +105,9 @@ class ValueOrNull final {
 
   void Swap(ValueOrNull &von);
   void Clear() {
-    if (string_owner)
+    if (string_owner && sp) {
       delete[] sp;
+    }
     sp = nullptr;
     string_owner = false;
     null = true;

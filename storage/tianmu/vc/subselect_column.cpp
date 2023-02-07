@@ -189,9 +189,10 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
   else if (cache_->ContainsNulls())
     res = common::TRIBOOL_UNKNOWN;
 
+  int64_t num_obj = tmp_tab_subq_ptr_->NumOfObj();
   bool added_new_value = false;
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString()) {
-    for (int64_t i = no_cached_values_; i < tmp_tab_subq_ptr_->NumOfObj(); i++) {
+    for (int64_t i = no_cached_values_; i < num_obj; i++) {
       no_cached_values_++;
       added_new_value = true;
       if (tmp_tab_subq_ptr_->IsNull(i, col_idx_)) {
@@ -209,7 +210,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
       }
     }
   } else {
-    for (int64_t i = no_cached_values_; i < tmp_tab_subq_ptr_->NumOfObj(); i++) {
+    for (int64_t i = no_cached_values_; i < num_obj; i++) {
       no_cached_values_++;
       added_new_value = true;
       if (tmp_tab_subq_ptr_->IsNull(i, col_idx_)) {
@@ -232,7 +233,8 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
       }
     }
   }
-  if (added_new_value && no_cached_values_ == tmp_tab_subq_ptr_->NumOfObj())
+
+  if (added_new_value && no_cached_values_ == num_obj)
     cache_->ForcePreparation();  // completed for the first time => recalculate
                                  // cache_
   return res;

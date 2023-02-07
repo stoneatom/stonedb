@@ -93,6 +93,9 @@ void ColumnShare::map_dpn() {
   // TODO: should we mlock(addr, common::COL_DN_FILE_SIZE)?
 
   start = static_cast<DPN *>(addr);
+
+  TIANMU_LOG(LogCtl_Level::DEBUG, "map_dpn, DataFile: %s sb.st_size: %d capacity: %d", DataFile().c_str(), sb.st_size,
+             capacity);
 }
 
 void ColumnShare::read_meta() {
@@ -140,6 +143,8 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
   fv.ReadExact(&hdr, sizeof(hdr));
 
   ASSERT(hdr.numOfPacks <= capacity, "bad dpn index");
+  TIANMU_LOG(LogCtl_Level::DEBUG, "scan_dpn, DataFile: %s numOfPacks: %d capacity: %d", DataFile().c_str(),
+             hdr.numOfPacks, capacity);
 
   if (hdr.numOfPacks == 0) {
     for (uint32_t i = 0; i < capacity; i++) {
@@ -230,6 +235,9 @@ int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
   ASSERT((capacity + DPN_INC_CNT) <= (common::COL_DN_FILE_SIZE / sizeof(DPN)),
          "Failed to allocate new DN: " + m_path.string());
   capacity += DPN_INC_CNT;
+
+  TIANMU_LOG(LogCtl_Level::DEBUG, "alloc_dpn, DataFile: %s xid: %s capacity: %d", DataFile().c_str(),
+             xid.ToString().c_str(), capacity);
 
   //  NOTICE:
   // It is not portable to enlarge the file size after mmapping, but it seems to

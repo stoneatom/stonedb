@@ -109,7 +109,7 @@ class AttributeTypeInfo {
     return ATI::IsDateTimeType(attrt_) || ATI::IsNumericType(attrt_) || Lookup() ? common::PackType::INT
                                                                                  : common::PackType::STR;
   }
-  std::string GetFieldName() { return field_name_; }
+  const char *GetFieldName() { return field_name_.c_str(); }
   uint Precision() const { return precision_; }
   ushort Scale() const { return scale_; }
   uint CharLen() const { return precision_ / collation_.collation->mbmaxlen; }
