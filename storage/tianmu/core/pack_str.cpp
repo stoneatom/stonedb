@@ -565,10 +565,6 @@ void PackStr::LoadCompressed(system::Stream *f) {
 
   dpn_->synced = true;
 
-  // if (ATI::IsBinType(s->ColType().GetTypeName())) {
-  //    throw common::Exception("Compression format no longer supported.");
-  //}
-
   // uncompress the data_
   mm::MMGuard<char *> tmp_index(
       reinterpret_cast<char **>(alloc(dpn_->numOfRecords * sizeof(char *), mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
