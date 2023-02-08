@@ -63,8 +63,6 @@ class TableShare;
 class TianmuTable final : public JustATable {
  public:
   TianmuTable() = delete;
-  TianmuTable(const TianmuTable &) = delete;
-  TianmuTable &operator=(const TianmuTable &) = delete;
   TianmuTable(std::string const &path, TableShare *share, Transaction *tx = nullptr);
   ~TianmuTable() = default;
 
@@ -187,42 +185,17 @@ class TianmuIterator {
   ~TianmuIterator() = default;
   TianmuIterator(const TianmuIterator &) = delete;
   TianmuIterator &operator=(const TianmuIterator &) = delete;
-  TianmuIterator(TianmuIterator &&other) noexcept {
-    table = other.table;
-    position = other.position;
-    conn = other.conn;
-    current_record_fetched = other.current_record_fetched;
-    filter = std::move(other.filter);
-    it = std::move(other.it);
-    record = std::move(other.record);
-    values_fetchers = std::move(other.values_fetchers);
-    dp_locks = std::move(other.dp_locks);
-    attrs = std::move(other.attrs);
-  }
-  TianmuIterator &operator=(TianmuIterator &&other) noexcept {
-    table = other.table;
-    position = other.position;
-    conn = other.conn;
-    current_record_fetched = other.current_record_fetched;
-    filter = std::move(other.filter);
-    it = std::move(other.it);
-    record = std::move(other.record);
-    values_fetchers = std::move(other.values_fetchers);
-    dp_locks = std::move(other.dp_locks);
-    attrs = std::move(other.attrs);
-    return *this;
-  };
   TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter &filter);
   TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs);
   bool operator==(const TianmuIterator &iter);
   bool operator!=(const TianmuIterator &iter) { return !(*this == iter); }
-  void operator++(int);
+  void Next();
 
   std::shared_ptr<types::TianmuDataType> &GetData(int col) {
     FetchValues();
     return record[col];
   }
-  void MoveTo(int64_t row_id);
+  void SeekTo(int64_t row_id);
   int64_t Position() const { return position; }
   bool Valid() { return position != -1; }
 

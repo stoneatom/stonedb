@@ -1036,12 +1036,6 @@ void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *
   TIANMU_LOG(LogCtl_Level::INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
 }
 
-void Engine::GetTableIterator(const std::string &table_path, CombinedIterator &iterator,
-                              std::shared_ptr<TianmuTable> &table, const std::vector<bool> &attrs, THD *thd) {
-  table = GetTx(thd)->GetTableByPath(table_path);
-  iterator = CombinedIterator::Create(table.get(), attrs);
-}
-
 std::shared_ptr<TianmuTable> Engine::GetTableRD(const std::string &table_path) {
   return getTableShare(table_path)->GetSnapshot();
 }

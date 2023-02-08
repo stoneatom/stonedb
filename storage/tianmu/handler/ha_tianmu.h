@@ -174,7 +174,7 @@ class ha_tianmu final : public handler {
   core::JustATable *table_ptr_ = nullptr;
   std::unique_ptr<core::Filter> filter_ptr_;
   uint64_t current_position_ = 0;
-  core::CombinedIterator iterator_;
+  std::unique_ptr<core::CombinedIterator> iterator_;
 
   std::unique_ptr<core::Query> query_;
   core::TabID tmp_table_;
