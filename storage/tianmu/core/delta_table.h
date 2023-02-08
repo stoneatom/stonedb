@@ -78,18 +78,16 @@ class DeltaIterator {
   ~DeltaIterator() = default;
   DeltaIterator(const DeltaIterator &) = delete;
   DeltaIterator &operator=(const DeltaIterator &) = delete;
-  DeltaIterator(DeltaIterator &&other) noexcept;
-  DeltaIterator &operator=(DeltaIterator &&other) noexcept;
   DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs);
 
  public:
   bool operator==(const DeltaIterator &other);
   bool operator!=(const DeltaIterator &other);
-  void operator++(int);
+  void Next();
   // fetch current row data from rocksdb to record_
   std::string &GetData();
   // move to the rocksdb iterator to this row [row_id]
-  void MoveTo(int64_t row_id);
+  void SeekTo(int64_t row_id);
   // get current row_id in the rocksdb
   int64_t Position() const { return position_; }
   // this is dividing point between delta and base
@@ -114,7 +112,7 @@ class DeltaIterator {
   int64_t position_ = -1;
   int64_t start_position_ = -1;  // determine row_id is in delta or base
   [[maybe_unused]] bool current_record_fetched_ = false;
-  std::unique_ptr<rocksdb::Iterator> it_ = nullptr;
+  std::unique_ptr<rocksdb::Iterator> it_;
   rocksdb::Slice prefix_;
   std::string record_;
   std::vector<bool> attrs_;

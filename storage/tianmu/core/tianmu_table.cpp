@@ -1470,8 +1470,8 @@ void TianmuTable::InsertIndexForDelta(TABLE *table, uint64_t row_id) {
     }
 
     if (tab->InsertIndex(current_txn_, fields, row_id) == common::ErrorCode::DUPP_KEY) {
-      TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d", row_id);
-      throw common::DupKeyException("Insert duplicate key on row " + std::to_string(row_id));
+      TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d, key: %s", row_id, fields[0].data());
+      throw common::DupKeyException("Insert duplicate key on row " + std::to_string(row_id) + "key: " +  std::to_string(*(uint64_t*)(fields[0].data())));
     }
   }
 }
@@ -1667,6 +1667,33 @@ int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) 
 
 /// TianmuIterator
 
+//TianmuIterator::TianmuIterator(TianmuIterator &&other) noexcept {
+//  std::swap(table, other.table);
+//  std::swap(position, other.position);
+//  std::swap(conn, other.conn);
+//  std::swap(current_record_fetched, other.current_record_fetched);
+//  std::swap(filter, other.filter);
+//  std::swap(it, other.it);
+//  std::swap(record, other.record);
+//  std::swap(values_fetchers, other.values_fetchers);
+//  std::swap(dp_locks, other.dp_locks);
+//  std::swap(attrs, other.attrs);
+//}
+//
+//TianmuIterator &TianmuIterator::operator=(TianmuIterator &&other) noexcept {
+//  std::swap(table, other.table);
+//  std::swap(position, other.position);
+//  std::swap(conn, other.conn);
+//  std::swap(current_record_fetched, other.current_record_fetched);
+//  std::swap(filter, other.filter);
+//  std::swap(it, other.it);
+//  std::swap(record, other.record);
+//  std::swap(values_fetchers, other.values_fetchers);
+//  std::swap(dp_locks, other.dp_locks);
+//  std::swap(attrs, other.attrs);
+//  return *this;
+//};
+
 TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter &raw_filter)
     : table(table), filter(std::make_shared<Filter>(raw_filter)), it(filter.get(), table->Getpackpower()) {
   Initialize(attrs);
@@ -1713,7 +1740,7 @@ void TianmuIterator::Initialize(const std::vector<bool> &attrs_) {
 
 bool TianmuIterator::operator==(const TianmuIterator &iter) { return position == iter.position; }
 
-void TianmuIterator::operator++(int) {
+void TianmuIterator::Next() {
   ++it;
   int64_t new_pos;
   if (it.IsValid())
@@ -1725,7 +1752,7 @@ void TianmuIterator::operator++(int) {
   current_record_fetched = false;
 }
 
-void TianmuIterator::MoveTo(int64_t row_id) {
+void TianmuIterator::SeekTo(int64_t row_id) {
   UnlockPacks(row_id);
   it.RewindToRow(row_id);
   if (it.IsValid())

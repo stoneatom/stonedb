@@ -102,9 +102,6 @@ class Engine final {
   std::vector<AttrInfo> GetTableAttributesInfo(const std::string &table_path, TABLE_SHARE *table_share);
   void UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                    CHARSET_INFO *cs);
-  void GetTableIterator(const std::string &table_path, CombinedIterator &iterator,
-                        std::shared_ptr<TianmuTable> &table, const std::vector<bool> &,
-                        THD *thd);
   common::TianmuError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
   void CommitTx(THD *thd, bool all);
   void Rollback(THD *thd, bool all, bool force_error_message = false);

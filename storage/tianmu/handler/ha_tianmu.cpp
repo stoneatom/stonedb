@@ -117,105 +117,6 @@ std::vector<bool> GetAttrsUseIndicator(TABLE *table) {
   }
   return attr_uses;
 }
-// for debug only, print all delta data
-static void DebugPrint(core::DeltaIterator &iter, Field **fields, size_t field_size) {
-  TIANMU_LOG(LogCtl_Level::DEBUG, ">>>================= delta insert record ================");
-  core::DeltaIterator clone_iter(iter.GetTable(), iter.GetAttrs());
-  while (clone_iter.Valid()) {
-    auto record = clone_iter.GetData();
-    core::Engine::DecodeInsertRecord(record.data(), record.size(), fields);
-    // print a delta row
-    std::stringstream ss;
-    ss << "[";
-    for (size_t i = 0; i < field_size; i++) {
-      Field *f = fields[i];
-      if (f->is_null()) {
-        ss << " {null} ";
-        continue;
-      }
-      switch (f->type()) {
-        case MYSQL_TYPE_TINY:
-        case MYSQL_TYPE_SHORT:
-        case MYSQL_TYPE_LONG:
-        case MYSQL_TYPE_INT24:
-        case MYSQL_TYPE_LONGLONG: {
-          int64_t v = f->val_int();
-          ss << " {" << v << "} ";
-        } break;
-        case MYSQL_TYPE_DECIMAL:
-        case MYSQL_TYPE_FLOAT:
-        case MYSQL_TYPE_DOUBLE: {
-          double v = f->val_real();
-          ss << " {" << v << "} ";
-        } break;
-        case MYSQL_TYPE_NEWDECIMAL: {
-          auto dec_f = dynamic_cast<Field_new_decimal *>(f);
-          auto dec = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
-          auto v = f->val_int();
-          ss << " {" << v << "} ";
-        } break;
-        case MYSQL_TYPE_TIME:
-        case MYSQL_TYPE_TIME2:
-        case MYSQL_TYPE_DATE:
-        case MYSQL_TYPE_DATETIME:
-        case MYSQL_TYPE_NEWDATE:
-        case MYSQL_TYPE_TIMESTAMP2:
-        case MYSQL_TYPE_DATETIME2: {
-          MYSQL_TIME my_time;
-          std::memset(&my_time, 0, sizeof(my_time));
-          f->get_time(&my_time);
-          types::DT dt(my_time);
-          ss << " {" << dt.val << "} ";
-        } break;
-        case MYSQL_TYPE_TIMESTAMP: {
-          MYSQL_TIME my_time;
-          std::memset(&my_time, 0, sizeof(my_time));
-          f->get_time(&my_time);
-          auto saved = my_time.second_part;
-          // convert to UTC
-          if (!common::IsTimeStampZero(my_time)) {
-            my_bool myb;
-            my_time_t secs_utc = current_thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
-            common::GMTSec2GMTTime(&my_time, secs_utc);
-          }
-          my_time.second_part = saved;
-          types::DT dt(my_time);
-          ss << " {" << dt.val << "} ";
-        } break;
-        case MYSQL_TYPE_YEAR:  // what the hell?
-        {
-          types::DT dt = {};
-          dt.year = f->val_int();
-          ss << " {" << dt.val << "} ";
-        } break;
-        case MYSQL_TYPE_VARCHAR:
-        case MYSQL_TYPE_TINY_BLOB:
-        case MYSQL_TYPE_MEDIUM_BLOB:
-        case MYSQL_TYPE_LONG_BLOB:
-        case MYSQL_TYPE_BLOB:
-        case MYSQL_TYPE_VAR_STRING:
-        case MYSQL_TYPE_STRING: {
-          String str;
-          f->val_str(&str);
-          ss << " {" << std::string(str.c_ptr(), str.length()) << "} ";
-        } break;
-        case MYSQL_TYPE_SET:
-        case MYSQL_TYPE_ENUM:
-        case MYSQL_TYPE_GEOMETRY:
-        case MYSQL_TYPE_NULL:
-        case MYSQL_TYPE_BIT:
-        default:
-          throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
-          break;
-      }
-    }
-    ss << "]";
-    TIANMU_LOG(LogCtl_Level::DEBUG, "==%s==", ss.str().c_str());
-    clone_iter++;
-  }
-  TIANMU_LOG(LogCtl_Level::DEBUG, "================= delta insert record ================>>>");
-}
-
 }  // namespace
 
 static bool is_delay_insert(THD *thd) {
@@ -1025,21 +926,15 @@ int ha_tianmu::rnd_init(bool scan) {
       cq_.reset();
     } else {
       if (scan && filter_ptr_.get()) {
-        iterator_ =
-            core::CombinedIterator::Create((core::TianmuTable *)table_ptr_, GetAttrsUseIndicator(table), *filter_ptr_);
+        iterator_ = std::make_unique<core::CombinedIterator>((core::TianmuTable *)table_ptr_,
+                                                             GetAttrsUseIndicator(table), *filter_ptr_);
       } else {
-        std::shared_ptr<core::TianmuTable> rctp;
-        ha_tianmu_engine_->GetTableIterator(table_name_, iterator_, rctp, GetAttrsUseIndicator(table), table->in_use);
+        std::shared_ptr<core::TianmuTable> rctp = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
         table_ptr_ = rctp.get();
         filter_ptr_.reset();
+        iterator_ = std::make_unique<core::CombinedIterator>(rctp.get(), GetAttrsUseIndicator(table));
       }
     }
-    //    { ===== for debug ========
-    //      my_bitmap_map *org_bitmap;
-    //      dbug_tmp_use_all_columns(table, &org_bitmap, table->read_set, table->write_set);
-    //      DebugPrint(iterator_.GetDeltaIterator(), table->field, table->s->fields);
-    //      dbug_tmp_restore_column_maps(table->read_set, table->write_set, &org_bitmap);
-    //    }
     ret = 0;
     blob_buffers_.resize(0);
     if (table_ptr_ != nullptr)
@@ -1143,11 +1038,9 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
       filter_ptr_->Set(position);
 
       auto tab_ptr = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
-      iterator_ =
-          core::CombinedIterator::Create((core::TianmuTable *)table_ptr_, GetAttrsUseIndicator(table), *filter_ptr_);
+      iterator_ = std::make_unique<core::CombinedIterator>(tab_ptr.get(), GetAttrsUseIndicator(table), *filter_ptr_);
       table_ptr_ = tab_ptr.get();
-
-      iterator_.MoveTo(position);
+      iterator_->SeekTo(position);
       table->status = 0;
       blob_buffers_.resize(table->s->fields);
       if (fill_row(buf) == HA_ERR_END_OF_FILE) {
@@ -1323,37 +1216,34 @@ uint ha_tianmu::max_supported_key_part_length([[maybe_unused]] HA_CREATE_INFO *c
 }
 
 int ha_tianmu::fill_row(uchar *buf) {
-  if (!iterator_.Valid())
+  if (!iterator_ || !iterator_->Valid())
     return HA_ERR_END_OF_FILE;
 
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
+  std::shared_ptr<void> defer(nullptr,
+                              [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
 
-  std::shared_ptr<char[]> buffer;
-
+  std::unique_ptr<char[]> buffer;
   // we should pack the row into `buf` but seems it just use record[0] blindly.
   // So this is a workaround to handle the case that `buf` is not record[0].
   if (buf != table->record[0]) {
     buffer.reset(new char[table->s->reclength]);
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
-  if (iterator_.IsDelta()) {
-    std::string insert_record = iterator_.GetDeltaData();
-    core::Engine::DecodeInsertRecord(insert_record.data(), insert_record.size(), table->field);
+  if (iterator_->IsDelta()) {
+    std::string delta_record = iterator_->GetDeltaData();
+    core::Engine::DecodeInsertRecord(delta_record.data(), delta_record.size(), table->field);
   } else {
     for (uint col_id = 0; col_id < table->s->fields; col_id++)
-      core::Engine::ConvertToField(table->field[col_id], *(iterator_.GetBaseData(col_id)), &blob_buffers_[col_id]);
+      core::Engine::ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)), &blob_buffers_[col_id]);
   }
 
   if (buf != table->record[0]) {
     std::memcpy(buf, table->record[0], table->s->reclength);
     std::memcpy(table->record[0], buffer.get(), table->s->reclength);
   }
-
-  current_position_ = iterator_.Position();
-  iterator_++;
-
-  dbug_tmp_restore_column_map(table->write_set, org_bitmap);
-
+  current_position_ = iterator_->Position();
+  iterator_->Next();
   return 0;
 }
 
@@ -1436,8 +1326,8 @@ int ha_tianmu::set_cond_iter() {
         filter_ptr_.reset(new core::Filter(*filter));
 
       table_ptr_ = push_down_result->GetTableP(0);
-      iterator_ =
-          core::CombinedIterator::Create((core::TianmuTable *)table_ptr_, GetAttrsUseIndicator(table), *filter_ptr_);
+      iterator_ = std::make_unique<core::CombinedIterator>((core::TianmuTable *)table_ptr_, GetAttrsUseIndicator(table),
+                                                           *filter_ptr_);
       blob_buffers_.resize(0);
       if (table_ptr_ != nullptr)
         blob_buffers_.resize(table_ptr_->NumOfDisplaybleAttrs());
@@ -1459,8 +1349,8 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
 
   try {
     if (!query_) {
-      std::shared_ptr<core::TianmuTable> rctp;
-      ha_tianmu_engine_->GetTableIterator(table_name_, iterator_, rctp, GetAttrsUseIndicator(table), table->in_use);
+      std::shared_ptr<core::TianmuTable> rctp = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
+      iterator_ = std::make_unique<core::CombinedIterator>(rctp.get(), GetAttrsUseIndicator(table));
       table_ptr_ = rctp.get();
       query_.reset(new core::Query(current_txn_));
       cq_.reset(new core::CompiledQuery);
@@ -1530,7 +1420,7 @@ int ha_tianmu::reset() {
 
   int ret = 1;
   try {
-    iterator_ = core::CombinedIterator();
+    iterator_.reset();
     table_ptr_ = nullptr;
     filter_ptr_.reset();
     query_.reset();

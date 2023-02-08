@@ -204,34 +204,13 @@ DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) 
   }
 }
 
-DeltaIterator::DeltaIterator(DeltaIterator &&other) noexcept {
-  table_ = other.table_;
-  position_ = other.position_;
-  start_position_ = other.start_position_;
-  current_record_fetched_ = other.current_record_fetched_;
-  it_ = std::move(other.it_);
-  record_ = std::move(other.record_);
-  attrs_ = std::move(other.attrs_);
-}
-
-DeltaIterator &DeltaIterator::operator=(DeltaIterator &&other) noexcept {
-  table_ = other.table_;
-  position_ = other.position_;
-  start_position_ = other.start_position_;
-  current_record_fetched_ = other.current_record_fetched_;
-  it_ = std::move(other.it_);
-  record_ = std::move(other.record_);
-  attrs_ = std::move(other.attrs_);
-  return *this;
-}
-
 bool DeltaIterator::operator==(const DeltaIterator &other) {
   return table_->GetDeltaTableID() == other.table_->GetDeltaTableID() && position_ == other.position_;
 }
 
 bool DeltaIterator::operator!=(const DeltaIterator &other) { return !(*this == other); }
 
-void DeltaIterator::operator++(int) {
+void DeltaIterator::Next() {
   it_->Next();
   while (RdbKeyValid() && !IsInsertType()) {
     it_->Next();
@@ -250,7 +229,7 @@ std::string &DeltaIterator::GetData() {
   return record_;
 }
 
-void DeltaIterator::MoveTo(int64_t row_id) {
+void DeltaIterator::SeekTo(int64_t row_id) {
   uchar key[12];
   size_t key_pos = 0;
   // table id
