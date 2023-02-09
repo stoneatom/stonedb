@@ -1516,11 +1516,9 @@ void Engine::ProcessDeltaStoreMerge() {
         std::scoped_lock guard(mem_table_mutex);
         for (auto &[name, delta_table] : m_table_deltas) {
           uint64_t record_count = delta_table->CountRecords();
-          // delta debug
-          bool for_delta_debug = true;
-          if ((record_count >= tianmu_sysvar_insert_numthreshold ||
-               (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) &&
-              for_delta_debug) {
+          if (!delta_table->merge_running.load() && (record_count >= tianmu_sysvar_insert_numthreshold ||
+               (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold))) {
+            delta_table->merge_running.store(true);   // start one thread on a table at a time.
             auto share = ha_tianmu_engine_->getTableShare(name);
             auto table_id = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());

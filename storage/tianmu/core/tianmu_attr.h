@@ -229,10 +229,10 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
   bool GetIfUnsigned() const { return ct.GetUnsigned(); }
   uint64_t AutoIncNext() {
-    backup_auto_inc_next_ = hdr.auto_inc_next;
+    backup_auto_inc_next_ = m_share->auto_inc_.fetch_add(1);
     if (backup_auto_inc_next_ >= UINT64_MAX)
       return backup_auto_inc_next_;
-    uint64_t auto_inc_value = ++hdr.auto_inc_next;
+    uint64_t auto_inc_value = m_share->auto_inc_.load();
     uint64_t max_value{0};
     bool unsigned_flag = GetIfUnsigned();
     switch (TypeName()) {
@@ -259,14 +259,13 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   void RollBackIfAutoInc() {
     if (!GetIfAutoInc())
       return;
-    hdr.auto_inc_next = backup_auto_inc_next_;
+    m_share->auto_inc_.store(backup_auto_inc_next_);
     return;
   }
-
-  uint64_t GetAutoInc() const { return hdr.auto_inc_next; }
+  uint64_t GetAutoInc() const { return m_share->auto_inc_.load(); }
   void SetAutoInc(uint64_t v) {
-    backup_auto_inc_next_ = hdr.auto_inc_next;
-    hdr.auto_inc_next = v;
+    backup_auto_inc_next_ = m_share->auto_inc_.load();
+    m_share->auto_inc_.store(v);
   }
   // Original 0-level value (text, not null-terminated) and its length; binary
   // data types may be displayed as hex
