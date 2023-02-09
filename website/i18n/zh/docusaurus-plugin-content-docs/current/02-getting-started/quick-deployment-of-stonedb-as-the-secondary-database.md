@@ -6,7 +6,7 @@ sidebar_position: 3.5
 # 快速部署 StoneDB 为从库
 
 ## 前提条件
-- 当前环境中存在两台服务器，且两台服务器上分别安装了 MySQL 和 StoneDB。关于如何安装 StoneDB，请参考[快速部署 StoneDB-5.7](https://stonedb.io/zh/docs/getting-started/quick-deployment/quick-deployment-57/)。
+- 当前环境中存在两台服务器，且两台服务器上分别安装了 MySQL 和 StoneDB。关于如何安装 StoneDB，请参考[快速部署 StoneDB-5.7](https://stonedb.io/docs/quick-deployment)。
 - StoneDB 和 MySQL 之间的网络已联通。
 - StoneDB 的备份目录磁盘空间充足。
 - StoneDB 和 MySQL 均能正常启动。
