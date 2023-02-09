@@ -293,7 +293,7 @@ bool TianmuAttr::SaveVersion() {
     if (m_dict && m_dict->Changed()) {
       m_dict->SaveData(Path() / common::COL_DICT_DIR / std::to_string(hdr.dict_ver));
     }
-
+    hdr.auto_inc = m_share->auto_inc_.load();
     hdr.unique = IsUnique();
     hdr.unique_updated = IsUniqueUpdated();
     hdr.numOfPacks = m_idx.size();

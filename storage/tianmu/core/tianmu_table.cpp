@@ -192,7 +192,7 @@ class DelayedInsertParser final {
             ptr += str_len;
           } break;
           case common::PackType::INT: {
-            if (attr->Type().Lookup()) {  // todo(dfx): check this !
+            if (attr->Type().Lookup()) {
               uint32_t len = *(uint32_t *)ptr;
               ptr += sizeof(uint32_t);
               types::BString s(len == 0 ? "" : ptr, len);
@@ -204,14 +204,15 @@ class DelayedInsertParser final {
               int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
               *buf = *(int64_t *)ptr;
 
-              if (attr->GetIfAutoInc()) {
-                if (*buf == 0)  // Value of auto inc column was not assigned by user
-                  *buf = attr->AutoIncNext();
-                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
-                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) && attr->GetIfUnsigned()))
-                    attr->SetAutoInc(*buf);
-                }
-              }
+              //              if (attr->GetIfAutoInc()) {
+              //                if (*buf == 0)  // Value of auto inc column was not assigned by user
+              //                  *buf = attr->AutoIncNext();
+              //                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
+              //                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) &&
+              //                  attr->GetIfUnsigned()))
+              //                    attr->SetAutoInc(*buf);
+              //                }
+              //              }
               vc.ExpectedSize(sizeof(int64_t));
               ptr += sizeof(int64_t);
             }
@@ -817,9 +818,8 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
                                       f->flags & UNSIGNED_FLAG);
       if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
-        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = m_attrs[col]->AutoIncNext();
-      else
-        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
+        value = m_attrs[col]->AutoIncNext();
+      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
       vc.ExpectedSize(sizeof(int64_t));
       if (m_attrs[col]->GetIfAutoInc()) {
         // inc counter should be set to value of user assigned
@@ -828,6 +828,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
             m_attrs[col]->SetAutoInc(value);
         }
       }
+      f->store(value);
     } break;
     case MYSQL_TYPE_BIT: {
       int64_t value = f->val_int();
@@ -1471,7 +1472,8 @@ void TianmuTable::InsertIndexForDelta(TABLE *table, uint64_t row_id) {
 
     if (tab->InsertIndex(current_txn_, fields, row_id) == common::ErrorCode::DUPP_KEY) {
       TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d, key: %s", row_id, fields[0].data());
-      throw common::DupKeyException("Insert duplicate key on row " + std::to_string(row_id) + "key: " +  std::to_string(*(uint64_t*)(fields[0].data())));
+      throw common::DupKeyException("Insert duplicate key on row: " + std::to_string(row_id) +
+                                    ", pk: " + std::to_string(*(uint64_t *)(fields[0].data())));
     }
   }
 }
@@ -1516,14 +1518,17 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   int update_num = 0;
   std::vector<uint64_t> delete_records;
   int delete_num = 0;
-  {
-    uchar entry_key[12];
-    size_t key_pos = 0;
+  uint64 need_merge_count = m_delta->CountRecords();  // this task need merge record count
+  m_delta->merge_id.fetch_add(need_merge_count);
+  {  // Fetch data from rocksdb
+    std::shared_ptr<void> defer(nullptr, [this](...) { m_delta->merge_running.store(false); });
+    // combine prefix key
+    uchar key_buf[12];
+    uint32_t delta_id = m_delta->GetDeltaTableID();
+    index::be_store_index(key_buf, delta_id);
+    rocksdb::Slice prefix((char *)key_buf, sizeof(uint32_t));
+    // rocksdb seek
     auto cf_handle = m_delta->GetCFHandle();
-    uint32_t mem_id = m_delta->GetDeltaTableID();
-    index::be_store_index(entry_key + key_pos, mem_id);
-    key_pos += sizeof(uint32_t);
-    rocksdb::Slice prefix((char *)entry_key, key_pos);
     rocksdb::ReadOptions r_opts;
     r_opts.total_order_seek = true;
     std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(r_opts, cf_handle));
@@ -1533,7 +1538,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
                  index::be_to_uint32(reinterpret_cast<const uchar *>(iter->key().data())),
                  index::be_to_uint64(reinterpret_cast<const uchar *>(iter->key().data()) + sizeof(uint32_t)));
     }
-    while (iter->Valid() && iter->key().starts_with(prefix)) {
+    while (need_merge_count > 0 && iter->Valid() && iter->key().starts_with(prefix)) {
       auto key = iter->key();
       uint64_t row_id = index::be_to_uint64(reinterpret_cast<const uchar *>(key.data()) + sizeof(uint32_t));
       auto value = iter->value();
@@ -1550,8 +1555,8 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       } else {
         TIANMU_LOG(LogCtl_Level::ERROR, "record type (%d) cannot be processed, delete this record!", type);
       }
-      m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
-      m_delta->merge_id.fetch_add(load_num);
+      m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());  // todo(dfx): change to DeleteRange
+      need_merge_count -= load_num;
       m_delta->stat.read_cnt++;
       m_delta->stat.read_bytes += value.size();
       if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
@@ -1565,6 +1570,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       }
       iter->Next();
     }
+    ASSERT(need_merge_count == 0, "need_merge_count is not 0!");
   }
   clock_gettime(CLOCK_REALTIME, &t2);
   if (!insert_records.empty()) {
@@ -1666,33 +1672,6 @@ int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) 
 }
 
 /// TianmuIterator
-
-//TianmuIterator::TianmuIterator(TianmuIterator &&other) noexcept {
-//  std::swap(table, other.table);
-//  std::swap(position, other.position);
-//  std::swap(conn, other.conn);
-//  std::swap(current_record_fetched, other.current_record_fetched);
-//  std::swap(filter, other.filter);
-//  std::swap(it, other.it);
-//  std::swap(record, other.record);
-//  std::swap(values_fetchers, other.values_fetchers);
-//  std::swap(dp_locks, other.dp_locks);
-//  std::swap(attrs, other.attrs);
-//}
-//
-//TianmuIterator &TianmuIterator::operator=(TianmuIterator &&other) noexcept {
-//  std::swap(table, other.table);
-//  std::swap(position, other.position);
-//  std::swap(conn, other.conn);
-//  std::swap(current_record_fetched, other.current_record_fetched);
-//  std::swap(filter, other.filter);
-//  std::swap(it, other.it);
-//  std::swap(record, other.record);
-//  std::swap(values_fetchers, other.values_fetchers);
-//  std::swap(dp_locks, other.dp_locks);
-//  std::swap(attrs, other.attrs);
-//  return *this;
-//};
 
 TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter &raw_filter)
     : table(table), filter(std::make_shared<Filter>(raw_filter)), it(filter.get(), table->Getpackpower()) {
