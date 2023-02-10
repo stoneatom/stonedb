@@ -905,7 +905,7 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
       } else {
         // more general case
         for (uint32_t n = 0; n < dpn.numOfRecords; n++) {
-          if (p->IsNull(n))
+          if (unlikely(p->IsNull(n)))
             filter->Reset(pack, n);
           else {
             auto v = p->GetValInt(n);

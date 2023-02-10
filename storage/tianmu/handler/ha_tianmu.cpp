@@ -1230,12 +1230,12 @@ int ha_tianmu::fill_row(uchar *buf) {
     buffer.reset(new char[table->s->reclength]);
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
-  if (iterator_->IsDelta()) {
-    std::string delta_record = iterator_->GetDeltaData();
-    core::Engine::DecodeInsertRecord(delta_record.data(), delta_record.size(), table->field);
-  } else {
+  if (iterator_->IsBase()) {
     for (uint col_id = 0; col_id < table->s->fields; col_id++)
       core::Engine::ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)), &blob_buffers_[col_id]);
+  } else {
+    std::string delta_record = iterator_->GetDeltaData();
+    core::Engine::DecodeInsertRecord(delta_record.data(), delta_record.size(), table->field);
   }
 
   if (buf != table->record[0]) {

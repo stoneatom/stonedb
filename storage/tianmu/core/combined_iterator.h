@@ -17,8 +17,8 @@ class CombinedIterator {
  public:
   CombinedIterator() = default;
   ~CombinedIterator() = default;
-  CombinedIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter &filter);
-  CombinedIterator(TianmuTable *table, const std::vector<bool> &attrs);
+  CombinedIterator(TianmuTable *base_table, const std::vector<bool> &attrs, const Filter &filter);
+  CombinedIterator(TianmuTable *base_table, const std::vector<bool> &attrs);
   // check two iterator is same
   bool operator==(const CombinedIterator &other);
   bool operator!=(const CombinedIterator &other);
@@ -35,10 +35,12 @@ class CombinedIterator {
   // check the iterator is valid
   bool Valid() const;
   // check the iterator is delta || base
-  bool IsDelta() const;
+  bool IsBase() const;
 
  private:
-  bool is_delta_ = true;
+  TianmuTable *base_table_ = nullptr;
+  std::vector<bool> attrs_;
+  bool is_base_ = true;  // make sure that is_base_=true base_iter_ is Valid
   std::unique_ptr<DeltaIterator> delta_iter_;
   std::unique_ptr<TianmuIterator> base_iter_;
 };
