@@ -87,7 +87,7 @@ jobs:
         run: |
           case ${{ matrix.os }} in
             debian10_1.0.3)
-              apt-get update && apt-get install curl lcov bc -y
+              apt-get update && apt-get install curl lcov bc  libssl-dev -y
               ;;
             centos7_1.0.3)
               yum install curl lcov.noarch bc.x86_64 -y
