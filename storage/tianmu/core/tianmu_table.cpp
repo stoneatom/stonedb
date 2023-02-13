@@ -1533,11 +1533,13 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
     r_opts.total_order_seek = true;
     std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(r_opts, cf_handle));
     iter->Seek(prefix);
+#ifndef NDEBUG
     if (iter->Valid()) {
-      TIANMU_LOG(LogCtl_Level::INFO, "MergeDeltaTable curr table id: %d, row id: %d",
+      TIANMU_LOG(LogCtl_Level::DEBUG, "MergeDeltaTable curr table id: %d, row id: %d",
                  index::be_to_uint32(reinterpret_cast<const uchar *>(iter->key().data())),
                  index::be_to_uint64(reinterpret_cast<const uchar *>(iter->key().data()) + sizeof(uint32_t)));
     }
+#endif
     while (need_merge_count > 0 && iter->Valid() && iter->key().starts_with(prefix)) {
       auto key = iter->key();
       uint64_t row_id = index::be_to_uint64(reinterpret_cast<const uchar *>(key.data()) + sizeof(uint32_t));
@@ -1570,7 +1572,9 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       }
       iter->Next();
     }
-    ASSERT(need_merge_count == 0, "need_merge_count is not 0!");
+    if (need_merge_count != 0) {
+      ASSERT(need_merge_count == 0, "need_merge_count is not 0!");
+    }
   }
   clock_gettime(CLOCK_REALTIME, &t2);
   if (!insert_records.empty()) {
