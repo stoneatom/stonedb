@@ -2148,7 +2148,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
   materialized = true;
 }
 
-// here we stored data both signed/unsigned, the exact values will be converted on send results phase.
+// here we deal with both signed/unsigned, the exact values will be converted on send results phase.
 void TempTable::RecordIterator::PrepareValues() {
   if (_currentRNo < uint64_t(table->NumOfObj())) {
     uint no_disp_attr = table->NumOfDisplaybleAttrs();
