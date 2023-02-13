@@ -35,11 +35,10 @@ DataType::DataType(common::ColumnType atype, int prec, int scale, DTCollation co
   this->collation = collation;
   unsigned_flag_ = unsigned_flag;
 
-  // TODO(gry): change all enum TIANMU_INT_MIN into mysql form.
+  // UINT_xxx from include/my_global.h
   switch (attrtype) {
     case common::ColumnType::INT:
       valtype = ValueType::VT_FIXED;
-      // MySQL does not have UINT_MAX32, used from ndb
       fixmax = unsigned_flag ? UINT_MAX32 : MAX(std::numeric_limits<int>::max(), -TIANMU_INT_MIN);
       break;
     case common::ColumnType::BIGINT:
