@@ -6,7 +6,7 @@ sidebar_position: 3.5
 # Quick Deployment of StoneDB as the Secondary Database
 
 ## Prerequisites
-- Two servers are deployed in your environment. MySQL and StoneDB are respectively installed on each server. For details about how to install StoneDB, see [Quick Deployment of StoneDB-5.7](https://stonedb.io/docs/getting-started/quick-deployment/quick-deployment-57).
+- Two servers are deployed in your environment. MySQL and StoneDB are respectively installed on each server. For details about how to install StoneDB, see [Quick Deployment of StoneDB-5.7](https://stonedb.io/docs/quick-deployment).
 - StoneDB can communicate with MySQL.
 - The disk space for the backup directory of StoneDB is sufficient.
 - StoneDB and MySQL can properly run.
