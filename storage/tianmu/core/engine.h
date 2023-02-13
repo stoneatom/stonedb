@@ -116,11 +116,11 @@ class Engine final {
   int UpdateRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
                 const uchar *old_data, uchar *new_data);
   int DeleteRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id);
-  void InsertDelayed(const std::string &table_path, int table_id, TABLE *table);
+  void InsertDelayed(const std::string &table_path, TABLE *table);
   void InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
   void UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id,
                      const uchar *old_data, uchar *new_data);
-  void DeleteToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id);
+  void DeleteToDelta(std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id);
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
   std::string DeltaStoreStat();
   void UnRegisterTable(const std::string &table_path);
@@ -186,12 +186,12 @@ class Engine final {
   std::shared_ptr<TableShare> getTableShare(const std::string &table_path);
   std::unique_ptr<char[]> GetRecord(size_t &len);
 
-  static void EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
+  static void EncodeInsertRecord(const std::string &table_path, Field **field, size_t col, size_t blobs,
                                  std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd);
-  static void EncodeUpdateRecord(const std::string &table_path, int table_id,
+  static void EncodeUpdateRecord(const std::string &table_path,
                                  std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
                                  std::unique_ptr<char[]> &buf, uint32_t &buf_size, THD *thd);
-  static void EncodeDeleteRecord(const std::string &table_path, int table_id, std::unique_ptr<char[]> &buf, uint32_t &buf_size);
+  static void EncodeDeleteRecord(std::unique_ptr<char[]> &buf, uint32_t &buf_size);
   void ProcessInsertBufferMerge();
   void ProcessDeltaStoreMerge();
 
