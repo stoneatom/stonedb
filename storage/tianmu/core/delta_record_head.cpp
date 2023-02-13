@@ -20,12 +20,10 @@
 
 namespace Tianmu {
 namespace core {
-DeltaRecordHeadForInsert::DeltaRecordHeadForInsert(char is_deleted, int32_t &table_id, const std::string &table_path,
+DeltaRecordHeadForInsert::DeltaRecordHeadForInsert(char is_deleted,
                                                    size_t &field_count, uint32_t load_num)
     : load_num_(load_num),
       is_deleted_(is_deleted),
-      table_id_(table_id),
-      table_path_(table_path),
       field_count_(field_count),
       null_mask_(field_count) {}
 
@@ -42,14 +40,6 @@ char *DeltaRecordHeadForInsert::record_encode(char *ptr) {
   // isDeleted
   *ptr = is_deleted_;
   ptr++;
-  // table id
-  *(int32_t *)ptr = table_id_;
-  ptr += sizeof(int32_t);
-  // table path
-  int32_t path_len = table_path_.size();
-  std::memcpy(ptr, table_path_.c_str(), path_len);
-  ptr += path_len;
-  *ptr++ = 0;  // end with \0
   // field count
   *(size_t *)ptr = field_count_;
   ptr += sizeof(size_t);
@@ -75,12 +65,6 @@ const char *DeltaRecordHeadForInsert::record_decode(const char *ptr) {
   // is delete
   is_deleted_ = *ptr;
   ptr++;
-  // table id
-  table_id_ = *(int32_t *)ptr;
-  ptr += sizeof(int32_t);
-  // table path
-  table_path_ = std::string(ptr);
-  ptr += table_path_.length() + sizeof(char);
   // get existing field count
   field_count_ = *(size_t *)ptr;
   ptr += sizeof(size_t);
@@ -93,11 +77,8 @@ const char *DeltaRecordHeadForInsert::record_decode(const char *ptr) {
   return ptr;
 }
 
-DeltaRecordHeadForUpdate::DeltaRecordHeadForUpdate(int32_t &table_id, const std::string &table_path,
-                                                   size_t &field_count, uint32_t load_num)
+DeltaRecordHeadForUpdate::DeltaRecordHeadForUpdate(size_t &field_count, uint32_t load_num)
     : load_num_(load_num),
-      table_id_(table_id),
-      table_path_(table_path),
       field_count_(field_count),
       update_mask_(field_count),
       null_mask_(field_count) {}
@@ -112,14 +93,6 @@ char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
   // load num
   *(uint32_t *)ptr = load_num_;
   ptr += sizeof(uint32_t);
-  // table id
-  *(int32_t *)ptr = table_id_;
-  ptr += sizeof(int32_t);
-  // table path
-  int32_t path_len = table_path_.size();
-  std::memcpy(ptr, table_path_.c_str(), path_len);
-  ptr += path_len;
-  *ptr++ = 0;  // end with \0
   // field count
   *(size_t *)ptr = field_count_;
   ptr += sizeof(size_t);
@@ -147,12 +120,6 @@ const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
   // load num
   load_num_ = *(uint32_t *)ptr;
   ptr += sizeof(uint32_t);
-  // table id
-  table_id_ = *(int32_t *)ptr;
-  ptr += sizeof(int32_t);
-  // table path
-  table_path_ = std::string(ptr);
-  ptr += table_path_.length() + sizeof(char);
   // get existing field count
   field_count_ = *(size_t *)ptr;
   ptr += sizeof(size_t);
@@ -171,8 +138,8 @@ const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
   return ptr;
 }
 
-DeltaRecordHeadForDelete::DeltaRecordHeadForDelete(int32_t &table_id, const std::string &table_path, uint32_t load_num)
-    : load_num_(load_num), table_id_(table_id), table_path_(table_path) {}
+DeltaRecordHeadForDelete::DeltaRecordHeadForDelete(uint32_t load_num)
+    : load_num_(load_num){}
 
 char *DeltaRecordHeadForDelete::record_encode(char *ptr) {
   if (ptr == nullptr)
@@ -184,14 +151,6 @@ char *DeltaRecordHeadForDelete::record_encode(char *ptr) {
   // load id
   *(uint32_t *)ptr = load_num_;
   ptr += sizeof(uint32_t);
-  // table id
-  *(int32_t *)ptr = table_id_;
-  ptr += sizeof(int32_t);
-  // table path
-  int32_t path_len = table_path_.size();
-  std::memcpy(ptr, table_path_.c_str(), path_len);
-  ptr += path_len;
-  *ptr++ = 0;  // end with \0
   return ptr;
 }
 
@@ -203,12 +162,6 @@ const char *DeltaRecordHeadForDelete::record_decode(const char *ptr) {
   // load id
   load_num_ = *(uint32_t *)ptr;
   ptr += sizeof(uint32_t);
-  // parse existing value table id and table path
-  table_id_ = *(int32_t *)ptr;
-  ptr += sizeof(int32_t);
-  // table path
-  table_path_ = std::string(ptr);
-  ptr += table_path_.length() + sizeof(char);
   return ptr;
 }
 

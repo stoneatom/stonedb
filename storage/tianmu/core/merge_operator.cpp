@@ -42,8 +42,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
 
       // new record head
       uint32_t n_load_num = e_insertRecord.load_num_ + updateRecord.load_num_;
-      DeltaRecordHeadForInsert insertRecord(e_insertRecord.is_deleted_, e_insertRecord.table_id_,
-                                            e_insertRecord.table_path_, e_insertRecord.field_count_, n_load_num);
+      DeltaRecordHeadForInsert insertRecord(e_insertRecord.is_deleted_, e_insertRecord.field_count_, n_load_num);
       n_ptr = insertRecord.record_encode(n_ptr);
 
       for (uint i = 0; i < updateRecord.field_count_; i++) {
@@ -78,8 +77,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       DeltaRecordHeadForDelete deleteRecord;
       deleteRecord.record_decode(ptr);
       uint32_t n_load_num = e_insertRecord.load_num_ + deleteRecord.load_num_;
-      DeltaRecordHeadForInsert insertRecord(DELTA_RECORD_DELETE, e_insertRecord.table_id_, e_insertRecord.table_path_,
-                                            e_insertRecord.field_count_, n_load_num);
+      DeltaRecordHeadForInsert insertRecord(DELTA_RECORD_DELETE, e_insertRecord.field_count_, n_load_num);
       n_ptr = insertRecord.record_encode(n_ptr);
       insertRecord.field_len_ = {0};
       new_value->assign(value_buff.get(), n_ptr - value_buff.get());
@@ -98,8 +96,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       ptr = updateRecord.record_decode(ptr);
 
       uint32_t n_load_num = e_updateRecord.load_num_ + updateRecord.load_num_;
-      DeltaRecordHeadForUpdate n_updateRecord(e_updateRecord.table_id_, e_updateRecord.table_path_,
-                                              e_updateRecord.field_count_, n_load_num);
+      DeltaRecordHeadForUpdate n_updateRecord(e_updateRecord.field_count_, n_load_num);
       n_ptr = n_updateRecord.record_encode(n_ptr);
 
       for (uint i = 0; i < updateRecord.field_count_; i++) {
@@ -141,7 +138,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       DeltaRecordHeadForDelete deleteRecord;
       deleteRecord.record_decode(ptr);
       uint32_t n_load_num = e_updateRecord.load_num_ + deleteRecord.load_num_;
-      DeltaRecordHeadForDelete n_deleteRecord(e_updateRecord.table_id_, e_updateRecord.table_path_, n_load_num);
+      DeltaRecordHeadForDelete n_deleteRecord(n_load_num);
       n_ptr = n_deleteRecord.record_encode(n_ptr);
       *new_value = std::string(value_buff.get(), n_ptr - value_buff.get());
       return true;
@@ -156,7 +153,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
     deleteRecord.record_decode(ptr);
 
     uint32_t n_load_num = e_deleteRecord.load_num_ + deleteRecord.load_num_;
-    DeltaRecordHeadForDelete n_deleteRecord(e_deleteRecord.table_id_, e_deleteRecord.table_path_, n_load_num);
+    DeltaRecordHeadForDelete n_deleteRecord(n_load_num);
     n_ptr = n_deleteRecord.record_encode(n_ptr);
     *new_value = std::string(value_buff.get(), n_ptr - value_buff.get());
     return true;
