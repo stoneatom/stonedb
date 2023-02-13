@@ -19,6 +19,7 @@
 
 #include "common/assert.h"
 #include "types/tianmu_num.h"
+#include "util/log_ctl.h"
 
 namespace Tianmu {
 namespace core {
@@ -71,14 +72,13 @@ void ValueOrNull::GetBString(types::BString &tianmu_s) const {
 }
 
 ValueOrNull::ValueOrNull(ValueOrNull const &von)
-    : x(von.x),
-      sp(von.string_owner ? new char[von.len + 1] : von.sp),
-      len(von.len),
-      string_owner(von.string_owner),
-      null(von.null) {
+    : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null) {
   if (string_owner) {
+    sp = new char[len + 1];
     std::memcpy(sp, von.sp, len);
     sp[len] = 0;
+  } else {
+    sp = von.sp;
   }
 }
 
