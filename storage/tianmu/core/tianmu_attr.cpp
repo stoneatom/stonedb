@@ -174,6 +174,7 @@ void TianmuAttr::LoadVersion(common::TX_ID xid) {
 void TianmuAttr::Truncate() {
   no_change = false;
   hdr = {};
+  m_share->Truncate();
   if (ct.Lookup()) {
     hdr.dict_ver = 1;  // starting with 1 because 0 means n/a
     auto dict = std::make_unique<FTree>();
