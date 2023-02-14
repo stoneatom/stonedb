@@ -1,6 +1,9 @@
 #
 # Test of alter table
 #
+DROP DATABASE IF EXISTS alter_table_v1_test;
+CREATE DATABASE alter_table_v1_test;
+USE alter_table_v1_test;
 create table t1 (bandID MEDIUMINT NOT NULL PRIMARY KEY, payoutID SMALLINT NOT NULL);
 insert into t1 (bandID,payoutID) VALUES (1,6),(2,6),(3,4),(4,9),(5,10),(6,1),(7,12),(8,12);
 alter table t1 add column new_col int, order by payoutid,bandid;
@@ -52,30 +55,30 @@ i
 4
 drop table t1;
 #
-# 'alter table t1 rename mysqltest.t1' silently drops mysqltest.t1 
+# 'alter table t1 rename alter_table_v1_test1.t1' silently drops alter_table_v1_test1.t1 
 # if it exists
 #
 create table t1 (name char(15));
 insert into t1 (name) values ("current");
-create database mysqltest;
-create table mysqltest.t1 (name char(15));
-insert into mysqltest.t1 (name) values ("mysqltest");
+create database alter_table_v1_test1;
+create table alter_table_v1_test1.t1 (name char(25));
+insert into alter_table_v1_test1.t1 (name) values ("alter_table_v1_test1");
 select * from t1;
 name
 current
-select * from mysqltest.t1;
+select * from alter_table_v1_test1.t1;
 name
-mysqltest
-alter table t1 rename mysqltest.t1;
+alter_table_v1_test1
+alter table t1 rename alter_table_v1_test1.t1;
 ERROR 42S01: Table 't1' already exists
 select * from t1;
 name
 current
-select * from mysqltest.t1;
+select * from alter_table_v1_test1.t1;
 name
-mysqltest
+alter_table_v1_test1
 drop table t1;
-drop database mysqltest;
+drop database alter_table_v1_test1;
 #
 # ALTER TABLE ... ENABLE/DISABLE KEYS
 #
@@ -110,3 +113,4 @@ ERROR 42000: Incorrect table name ''
 rename table t1 to ``;
 ERROR 42000: Incorrect table name ''
 drop table t1;
+DROP DATABASE alter_table_v1_test;
