@@ -138,5 +138,5 @@ jobs:
       - name: Codecov
         uses: codecov/codecov-action@v3.1.1
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.info
+          token: ${{ secrets.CODECOV_TOKEN }}
