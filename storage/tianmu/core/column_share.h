@@ -100,6 +100,8 @@ class ColumnShare final {
   }
   std::string GetFieldName() const { return field_name_; }
 
+  void Truncate() {auto_inc_.store(0);}
+
  private:
   void Init(common::TX_ID xid);
   void map_dpn();
