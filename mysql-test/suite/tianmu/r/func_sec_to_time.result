@@ -1,6 +1,9 @@
 #
 # SEC_TO_TIME(double_or_float)
 #
+DROP DATABASE IF EXISTS func_sec_to_time_test;
+CREATE DATABASE func_sec_to_time_test;
+USE func_sec_to_time_test;
 CREATE TABLE t1 (a DOUBLE);
 INSERT INTO t1 VALUES (0.000025e-35);
 INSERT INTO t1 VALUES (-1),(1);
@@ -16,3 +19,4 @@ a	SEC_TO_TIME(a)
 900	00:15:00.000000
 1000000	277:46:40.000000
 DROP TABLE t1;
+DROP DATABASE func_sec_to_time_test;
