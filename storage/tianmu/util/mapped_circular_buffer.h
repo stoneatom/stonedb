@@ -251,7 +251,7 @@ class MappedCircularBuffer {
     uint64_t version;
     volatile uint64_t write_offset;
     volatile uint64_t read_offset;
-  } *hdr;
+  } * hdr;
 
   struct Stat {
     std::atomic_ulong write_cnt{0};
