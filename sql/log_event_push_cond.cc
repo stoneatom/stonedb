@@ -44,141 +44,21 @@
   Currently, only Tianmu Engine uses this function.
 */
 
-
-/**
-  Prints a quoted string to io cache.
-  Control characters are displayed as hex sequence, e.g. \x00
-  
-  @param[in] file              IO cache
-  @param[in] prt               Pointer to string
-  @param[in] length            String length
-*/
-
-static void
-my_b_write_quoted(IO_CACHE *file, const uchar *ptr, uint length)
-{
-  const uchar *s;
-  my_b_printf(file, "'");
-  for (s= ptr; length > 0 ; s++, length--)
-  {
-    if (*s > 0x1F && *s != '\'' && *s != '\\')
-      my_b_write(file, s, 1);
-    else
-    {
-      uchar hex[10];
-      size_t len= my_snprintf((char*) hex, sizeof(hex), "%s%02x", "\\x", *s);
-      my_b_write(file, hex, len);
-    }
-  }
-  my_b_printf(file, "'");
-}
-
-/**
-  Prints a bit string to io cache in format  b'1010'.
-  
-  @param[in] file              IO cache
-  @param[in] ptr               Pointer to string
-  @param[in] nbits             Number of bits
-*/
-static void
-my_b_write_bit(char *file, const uchar *ptr, uint nbits)
-{
-  uint bitnum, nbits8= ((nbits + 7) / 8) * 8, skip_bits= nbits8 - nbits;
-  strncpy(file , "b'" , 2);
-  file += 2;
-  for (bitnum= skip_bits ; bitnum < nbits8; bitnum++)
-  {
-    int is_set= (ptr[(bitnum) / 8] >> (7 - bitnum % 8))  & 0x01;
-    char *c = (char*) (is_set ? "1" : "0");
-    strncpy(file , c ,1);
-    file ++;
-  }
-  strncpy(file , "'" ,1);
-}
-
-
-/**
-  Prints a packed string to io cache.
-  The string consists of length packed to 1 or 2 bytes,
-  followed by string data itself.
-  
-  @param[in] file              IO cache
-  @param[in] ptr               Pointer to string
-  @param[in] length            String size
-  
-  @retval   - number of bytes scanned.
-*/
-static size_t
-my_b_write_quoted_with_length(IO_CACHE *file, const uchar *ptr, uint length)
-{
-  if (length < 256)
-  {
-    length= *ptr;
-    my_b_write_quoted(file, ptr + 1, length);
-    return length + 1;
-  }
-  else
-  {
-    length= uint2korr(ptr);
-    my_b_write_quoted(file, ptr + 2, length);
-    return length + 2;
-  }
-}
-
-
-/**
-  Prints a 32-bit number in both signed and unsigned representation
-  
-  @param[in] file              IO cache
-  @param[in] sl                Signed number
-  @param[in] ul                Unsigned number
-*/
-static void
-my_b_write_sint32_and_uint32(IO_CACHE *file, int32 si, uint32 ui)
-{
-  my_b_printf(file, "%d", si);
-  if (si < 0)
-    my_b_printf(file, " (%u)", ui);
-}
-
-static double PowOfTen(int exponent) { return std::pow((double)10, exponent); }
-
 /**
  Conversion conditions of column data
   
   @param[std::string] str_condition       condition cache
   @param[Field *] f                       Column Properties
-  @param[in] meta                         Column meta information
   @param[bool] unwanted_str               Whether string condition is required
   
   @retval   - number of bytes scanned from ptr.
 */
 static size_t
-field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bool unwanted_str)
+field_str_to_sql_conditions(std::string &str_condition, Field *f, bool unwanted_str)
 {
   const uchar *ptr = f->is_null() ? nullptr:f->ptr;
   if(!ptr){
     return 0;
-  }
-  uint32 length= 0;
-  uint32 ASC_max = 255;
-  if (f->type() == MYSQL_TYPE_STRING)
-  {
-    if (meta > ASC_max)
-    {
-      uint byte0= meta >> 8;
-      uint byte1= meta & 0xFF;
-      
-      if ((byte0 & 0x30) != 0x30)
-      {
-        /* a long CHAR() field: see #37426 */
-        length= byte1 | (((byte0 & 0x30) ^ 0x30) << 4);
-      }
-      else
-        length = meta & 0xFF;
-    }
-    else
-      length= meta;
   }
 
   switch (f->type()) {
@@ -187,6 +67,7 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bo
   case MYSQL_TYPE_INT24:
   case MYSQL_TYPE_SHORT:
   case MYSQL_TYPE_LONGLONG:
+  case MYSQL_TYPE_BIT:
     {
       int64_t v = f->val_int();
       str_condition = std::to_string(v);
@@ -199,16 +80,6 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bo
       double v = f->val_real();
       str_condition = std::to_string(v);
       return 4;
-    }
-  case MYSQL_TYPE_BIT:
-    {
-      /* Meta-data: bit_len, bytes_in_rec, 2 bytes */
-      uint nbits= ((meta >> 8) * 8) + (meta & 0xFF);
-      length= (nbits + 7) / 8;
-      char tmp[120] = {0};
-      my_b_write_bit(tmp, ptr, nbits);
-      str_condition = tmp;
-      return length;
     }
   case MYSQL_TYPE_TIMESTAMP:
   case MYSQL_TYPE_TIMESTAMP2:
@@ -259,40 +130,10 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bo
       str_condition = tmp;
       return 1;
     }
-  
-  case MYSQL_TYPE_ENUM:
-    switch (meta & 0xFF) {
-    case 1:
-    {
-      int64_t v = f->val_int();
-      str_condition = std::to_string(v);
-      return 1;
-    }
-    case 2:
-    {
-      int32 i32= uint2korr(ptr);
-      char tmp[64] = {0};
-      sprintf(tmp, "%d", i32);
-      str_condition = tmp;
-      return 2;
-    }
-    default:
-      return 0;
-    }
-    break;
-    
-  case MYSQL_TYPE_SET:
-  {
-    char tmp[64] = {0};
-    my_b_write_bit(tmp, ptr , (meta & 0xFF) * 8);
-    str_condition = tmp;
-    return meta & 0xFF;
-  }
   case MYSQL_TYPE_BLOB:
   case MYSQL_TYPE_VARCHAR:
   case MYSQL_TYPE_VAR_STRING:
   case MYSQL_TYPE_STRING:
-  case MYSQL_TYPE_JSON:
   {
     if(unwanted_str){
         return 0;
@@ -303,6 +144,12 @@ field_str_to_sql_conditions(std::string &str_condition, Field *f , uint meta, bo
     str_condition = "'" + str1 + "'";
     return 4;
   }
+  //The tianmu engine does not support the following types. If it does, please adapt the type.
+  case MYSQL_TYPE_JSON:
+  case MYSQL_TYPE_SET:
+  case MYSQL_TYPE_ENUM:
+  case MYSQL_TYPE_GEOMETRY:
+  case MYSQL_TYPE_NULL:
   default:
     break;
   }
@@ -380,7 +227,7 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
         continue;
       }
 
-      field_str_to_sql_conditions(str_cond, f, meta, false);
+      field_str_to_sql_conditions(str_cond, f, false);
       if(str_cond.empty()) {
         col_id = 0;
         key_field_name = "";
@@ -392,7 +239,7 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
       return true;
     }
 
-    field_str_to_sql_conditions(str_cond, f, meta, unwanted_str);
+    field_str_to_sql_conditions(str_cond, f, unwanted_str);
     if(str_cond.empty()){
       continue;
     }

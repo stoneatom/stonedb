@@ -33,8 +33,6 @@ fld3 char(30) DEFAULT '' NOT NULL,
 fld4 char(35) DEFAULT '' NOT NULL,
 fld5 char(35) DEFAULT '' NOT NULL,
 fld6 char(4) DEFAULT '' NOT NULL,
-UNIQUE fld1 (fld1),
-KEY fld3 (fld3),
 PRIMARY KEY (auto)
 )engine=tianmu;
 #
@@ -157,26 +155,10 @@ fld3
 select t2.fld3 from t2 where fld3 = 'honeysuckle';
 fld3
 honeysuckle
-select fld3 from t2 ignore index (fld3) where fld3 = 'honeysuckle';
-fld3
-honeysuckle
-select fld3 from t2 use index (fld1) where fld3 = 'honeysuckle';
-fld3
-honeysuckle
-select fld3 from t2 use index (fld3) where fld3 = 'honeysuckle';
-fld3
-honeysuckle
-select fld3 from t2 use index (fld1,fld3) where fld3 = 'honeysuckle';
-fld3
-honeysuckle
 #
 # NOTE NOTE NOTE
 # The next should give an error
 #
-select fld3 from t2 ignore index (fld3,not_used);
-ERROR 42000: Key 'not_used' doesn't exist in table 't2'
-select fld3 from t2 use index (not_used);
-ERROR 42000: Key 'not_used' doesn't exist in table 't2'
 #
 # Test sorting with a used key (there is no need for sorting)
 #
@@ -485,9 +467,7 @@ period    int not null,
 name      char(32) not null,
 companynr int not null,
 price     double(11,0),
-price2     double(11,0),
-key (period),
-key (name)
+price2     double(11,0)
 )engine=tianmu;
 INSERT INTO t3 (period,name,companynr,price,price2) VALUES (1001,"Iranizes",37,5987435,234724);
 INSERT INTO t3 (period,name,companynr,price,price2) VALUES (1002,"violinist",37,28357832,8723648);
@@ -504,9 +484,7 @@ period    int not null,
 name      char(32) not null,
 companynr int not null,
 price     double(11,0),
-price2     double(11,0),
-key (period),
-key (name)
+price2     double(11,0)
 )engine=tianmu;
 #Reverse insert data
 insert into t3_1 select * from t3;

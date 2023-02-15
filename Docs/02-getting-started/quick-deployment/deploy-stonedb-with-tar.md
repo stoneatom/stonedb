@@ -3,7 +3,7 @@ id: deploy-stonedb-with-tar
 sidebar_position: 3.13
 ---
 
-# **Use a TAR Package to Deploy StoneDB**
+# Use a TAR Package to Deploy StoneDB
 
 ## Step 1. Install StoneDB
 1. Download the StoneDB software package. 

@@ -1619,7 +1619,7 @@ void Engine::LogStat() {
     TIANMU_LOG(LogCtl_Level::INFO, msg.c_str());
   }
 
-  TIANMU_LOG(LogCtl_Level::INFO,
+  TIANMU_LOG(LogCtl_Level::DEBUG,
              "Select: %lu/%lu, "
              "Loaded: %lu/%lu(%lu/%lu), "
              "dup: %lu/%lu, "

@@ -1,0 +1,383 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1185_test;
+--enable_warnings
+
+CREATE DATABASE issue1185_test;
+
+USE issue1185_test;
+
+--echo #
+--echo # Secondary INDEX
+--echo # 
+
+--error 3234
+CREATE TABLE tb_stu_info (id int(11) NOT NULL, height int(11) DEFAULT NULL,KEY height (height)) ENGINE=TIANMU;
+--error 3234
+CREATE TABLE tb_stu_info (id int(11) NOT NULL, height int(11) DEFAULT NULL,INDEX height (height)) ENGINE=TIANMU;
+
+CREATE TABLE tb_stu_info (id int, col_name varchar(10)) ENGINE=TIANMU;
+--error 3234
+CREATE INDEX index_name ON tb_stu_info(column_name);
+--error 3234
+ALTER TABLE  tb_stu_info  add INDEX  index_name  (col_name) ;
+--error 3234
+ALTER TABLE  tb_stu_info  add KEY  index_name  (col_name) ;
+
+--error 3243
+ALTER TABLE tb_stu_info DROP INDEX indx_name;
+--error 3243
+ALTER TABLE tb_stu_info DROP KEY indx_name;
+
+--error 3243
+ALTER TABLE tb_stu_info RENAME INDEX old_index_name TO new_index_name;
+--error 3243
+ALTER TABLE tb_stu_info RENAME KEY old_index_name TO new_index_name;
+
+--echo #
+--echo # UNIQUE INDEX
+--echo #
+--error 3235
+CREATE TABLE tb_stu_info_2 (id int(11) NOT NULL, height int(11) DEFAULT NULL,UNIQUE KEY height (height)) ENGINE=TIANMU;
+--error 3235
+CREATE TABLE tb_stu_info_2 (id int(11) NOT NULL, height int(11) DEFAULT NULL,UNIQUE INDEX height (height)) ENGINE=TIANMU;
+CREATE TABLE tb_stu_info_2 (id int(11) NOT NULL, height int(11) DEFAULT NULL) ENGINE=TIANMU;
+--error 3235
+ALTER TABLE tb_stu_info_2 ADD CONSTRAINT constraint_name UNIQUE KEY(height);
+--error 3235
+ALTER TABLE tb_stu_info_2 ADD CONSTRAINT constraint_name UNIQUE INDEX(height);
+--error 3235
+CREATE UNIQUE INDEX index_name ON tb_stu_info_2(height);
+
+--error 3243
+ALTER TABLE tb_stu_info_2 DROP INDEX c;
+--error 3243
+ALTER TABLE tb_stu_info_2 DROP KEY c;
+
+--error 3243
+ALTER TABLE tb_stu_info_2  RENAME INDEX old_index_name TO new_index_name;
+--error 3243
+ALTER TABLE tb_stu_info_2  RENAME KEY old_index_name TO new_index_name;
+
+--echo #
+--echo # FULL INDEX
+--echo #
+--error 3236
+CREATE TABLE tb_posts (id int(4) NOT NULL AUTO_INCREMENT,
+  title varchar(255) NOT NULL,
+  post_content text,
+  PRIMARY KEY (id),
+  FULLTEXT KEY post_content (post_content)
+)ENGINE=TIANMU;
+
+CREATE TABLE tb_posts (id int(4) NOT NULL AUTO_INCREMENT,
+  title varchar(255) NOT NULL,
+  post_content text,
+  PRIMARY KEY (id)
+)ENGINE=TIANMU;
+--error 3236
+ALTER TABLE tb_posts ADD FULLTEXT INDEX  index_name (post_content);
+--error 3236
+CREATE FULLTEXT INDEX index_name ON tb_posts (post_content);
+
+--error 3243
+ALTER TABLE tb_posts DROP INDEX index_name;
+--error 3243
+ALTER TABLE tb_posts DROP KEY index_name;
+--error 3243
+DROP INDEX index_name ON tb_posts;
+
+--echo #
+--echo # SPATIAL INDEX
+--echo #
+--error 3237
+CREATE TABLE geom (g GEOMETRY NOT NULL, SPATIAL INDEX(g));
+
+--echo #
+--echo # FOREIGN KEY
+--echo #
+CREATE TABLE customer (id int primary key) ENGINE=TIANMU;
+--error 3241
+CREATE TABLE product_order (
+    no INT NOT NULL ,
+    customer_id INT NOT NULL primary key,
+    FOREIGN KEY (customer_id)
+    REFERENCES customer1(id)) ENGINE=TIANMU;
+CREATE TABLE product_order (
+    no INT NOT NULL ,
+    customer_id INT NOT NULL primary key) ENGINE=TIANMU;
+--error 3241
+ALTER TABLE product_order ADD CONSTRAINT fk_custome_key FOREIGN KEY(customer_id) REFERENCES customer(id);
+--error 3241
+ALTER TABLE product_order DROP FOREIGN KEY customer_id;
+
+
+--echo #
+--echo # PARTITION
+--echo #
+--error 3242
+CREATE TABLE t1 (id INT, amount DECIMAL(7,2), tr_date DATE) ENGINE=TIANMU PARTITION BY HASH( MONTH(tr_date)) PARTITIONS 6;
+CREATE TABLE t1 (id INT, amount DECIMAL(7,2), tr_date DATE) ENGINE=TIANMU;
+--error 3242
+ALTER TABLE t1 ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));
+--error 3242
+ALTER TABLE t1 DROP PARTITION p0, p1;
+
+--echo #
+--echo # GEOMETRY, ENUM, SET
+--echo #
+--error 3237
+CREATE TABLE geom (g GEOMETRY NOT NULL) engine=tianmu;
+--error 3238
+CREATE TABLE my_enum(gender enum('male', 'female', 'secret'))engine=tianmu;
+--error 3239
+CREATE TABLE myset_test(Myset SET('Java','Python','C++','PHP'))engine=tianmu;
+
+--echo #
+--echo # TRIGGER
+--echo #
+CREATE TABLE employees(
+   id INT auto_increment PRIMARY KEY,
+   employeeNumber INT NOT NULL,
+   lastname VARCHAR(50) NOT NULL,
+   changedat DATETIME DEFAULT NULL,
+   action VARCHAR(50) DEFAULT NULL) ENGINE=TIANMU;
+
+CREATE TABLE employees_audit(
+   id INT auto_increment PRIMARY KEY,
+   employeeNumber INT NOT NULL,
+   lastname VARCHAR(50) NOT NULL,
+   changedat DATETIME DEFAULT NULL,
+   action VARCHAR(50) DEFAULT NULL) ENGINE=TIANMU;
+
+CREATE TABLE employees_audit2(
+   id INT auto_increment PRIMARY KEY,
+   employeeNumber INT NOT NULL,
+   lastname VARCHAR(50) NOT NULL,
+   changedat DATETIME DEFAULT NULL,
+   action VARCHAR(50) DEFAULT NULL) ENGINE=TIANMU;
+
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_employee_update 
+	BEFORE UPDATE ON employees 
+	FOR EACH ROW
+BEGIN
+	INSERT INTO employees_audit 
+	SET action = 'update',
+	employeeNumber = OLD.employeeNumber,
+	lastname = OLD.lastname,
+	new_lastname = NEW.lastname,
+	changedat = NOW( );
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER after_employee_update 
+	after UPDATE ON employees 
+	FOR EACH ROW
+BEGIN
+	INSERT INTO employees_audit2 
+	SET action = 'update',
+	employeeNumber = OLD.employeeNumber,
+	lastname = OLD.firstName,
+	new_lastname = NEW.firstName,
+	changedat = NOW( );
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_employee_insert 
+	BEFORE INSERT ON employees 
+	FOR EACH ROW
+BEGIN
+	INSERT INTO employees_audit 
+	SET action = 'insert',
+	employeeNumber = NEW.employeeNumber,
+	lastname = NEW.lastname,
+	new_lastname = NEW.lastname,
+	changedat = NOW( );
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER AFTER_employee_insert 
+	AFTER INSERT ON employees 
+	FOR EACH ROW
+BEGIN
+	INSERT INTO employees_audit2 
+	SET action = 'insert',
+	employeeNumber = NEW.employeeNumber,
+	lastname = NEW.lastname,
+	new_lastname = NEW.lastname,
+	changedat = NOW( );
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER BEFORE_employee_delete
+	BEFORE DELETE ON employees 
+	FOR EACH ROW
+BEGIN
+	INSERT INTO employees_audit
+	SET action = 'delete',
+	employeeNumber = OLD.employeeNumber,
+	lastname = OLD.lastname,
+	new_lastname = OLD.lastname,
+	changedat = NOW( );
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER after_employee_delete
+	after DELETE ON employees 
+	FOR EACH ROW
+BEGIN
+	INSERT INTO employees_audit2 
+	SET action = 'delete',
+	employeeNumber = OLD.employeeNumber,
+	lastname = OLD.lastname,
+	new_lastname = OLD.lastname,
+	changedat = NOW( );
+END |
+DELIMITER ;|
+
+--echo #
+--echo # TRIGGER BEFORE PRECEDES/FOLLOWS
+--echo #
+CREATE TABLE price_logs (
+ id INT(11) NOT NULL,
+ product_code VARCHAR(15) NOT NULL,
+ price DOUBLE NOT NULL,
+ updated_at TIMESTAMP NOT NULL
+) ENGINE=tianmu;
+
+CREATE TABLE user_change_logs (
+  id int(11) NOT NULL ,
+  product_code varchar(15) DEFAULT NULL,
+  updated_at timestamp NOT NULL,
+  updated_by varchar(30) NOT NULL
+) ENGINE=tianmu;
+
+CREATE TABLE `products` (
+  `productCode` varchar(15) NOT NULL DEFAULT '' COMMENT '',
+  `productName` varchar(70) NOT NULL COMMENT '',
+  `productLine` varchar(50) NOT NULL COMMENT '',
+  `productScale` varchar(10) NOT NULL,
+  `productVendor` varchar(50) NOT NULL,
+  `productDescription` text NOT NULL,
+  `quantityInStock` smallint(6) NOT NULL COMMENT '',
+  `buyPrice` decimal(10,2) NOT NULL COMMENT '',
+  `MSRP` decimal(10,2) NOT NULL COMMENT '',
+  PRIMARY KEY (`productCode`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_update 
+BEFORE UPDATE ON products 
+FOR EACH ROW
+BEGIN
+	INSERT INTO price_logs ( product_code, price )
+	VALUES(old.productCode, old.msrp);
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_update_2 
+BEFORE UPDATE ON products 
+FOR EACH ROW FOLLOWS before_products_update 
+BEGIN
+	INSERT INTO user_change_logs ( product_code, updated_by )
+	VALUES(old.productCode, USER ());
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_update_2 
+BEFORE UPDATE ON products 
+FOR EACH ROW PRECEDES before_products_update 
+BEGIN
+	INSERT INTO user_change_logs ( product_code, updated_by )
+	VALUES(old.productCode, USER ());
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_insert_2 
+BEFORE INSERT ON products 
+FOR EACH ROW FOLLOWS before_products_insert 
+BEGIN
+	INSERT INTO user_change_logs ( product_code, updated_by )
+	VALUES(new.productCode, USER ());
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_insert 
+BEFORE INSERT ON products 
+FOR EACH ROW
+BEGIN
+	INSERT INTO price_logs ( product_code, price )
+	VALUES(new.productCode, new.msrp);
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_insert_2 
+BEFORE INSERT ON products 
+FOR EACH ROW PRECEDES before_products_insert 
+BEGIN
+	INSERT INTO user_change_logs ( product_code, updated_by )
+	VALUES(new.productCode, USER ());
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_delete
+BEFORE DELETE ON products 
+FOR EACH ROW
+BEGIN
+	INSERT INTO price_logs ( product_code, price )
+	VALUES(old.productCode, old.msrp);
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_delete_2 
+BEFORE delete ON products 
+FOR EACH ROW FOLLOWS before_products_delete 
+BEGIN
+	INSERT INTO user_change_logs ( product_code, updated_by )
+	VALUES(old.productCode, USER ());
+END |
+DELIMITER ;|
+
+DELIMITER |;
+--error 3240
+CREATE TRIGGER before_products_delete_2 
+BEFORE delete ON products 
+FOR EACH ROW PRECEDES before_products_delete 
+BEGIN
+	INSERT INTO user_change_logs ( product_code, updated_by )
+	VALUES(old.productCode, USER ());
+END |
+DELIMITER ;|
+
+#drop trigger before_products_delete_2;
+
+DROP DATABASE issue1185_test;

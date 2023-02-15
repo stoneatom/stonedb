@@ -7796,6 +7796,36 @@ ER_DEPRECATED_TLS_VERSION_SESSION
 ER_WARN_DEPRECATED_TLS_VERSION
   eng "A deprecated TLS version %s is enabled. Please use TLSv1.2 or higher."
 
+ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX
+  eng "Tianmu engine does not support secondary index."
+
+ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX
+  eng "Tianmu engine does not support unique index."
+
+ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX
+  eng "Tianmu engine does not support fulltext index."
+
+ER_TIANMU_NOT_SUPPORTED_GEOMETRY
+  eng "Tianmu engine does not support gemoetry."
+
+ER_TIANMU_NOT_SUPPORTED_ENUM
+  eng "Tianmu engine does not support enum data type."
+
+ER_TIANMU_NOT_SUPPORTED_SET
+  eng "Tianmu engine does not support set data type."
+
+ER_TIANMU_NOT_SUPPORTED_TRIGGER
+  eng "Tianmu engine does not support trigger."
+
+ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY
+  eng "Tianmu engine does not support foreign key."
+
+ER_TIANMU_NOT_SUPPORTED_PARTITION
+  eng "Tianmu engine does not support partition."
+
+ER_TIANMU_NOT_FOUND_INDEX
+  eng "Tianmu engine does not find the index."
+
 #
 #  End of 5.7 error messages.
 #

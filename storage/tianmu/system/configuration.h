@@ -88,6 +88,14 @@ extern char tianmu_sysvar_enable_histogram_cmap_bloom;
 extern unsigned int tianmu_sysvar_result_sender_rows;
 // Number of threads executing (delete_row) and (update_row) in parallel
 extern unsigned int tianmu_sysvar_delete_or_update_threads;
+// The parallelism degree of multithreaded aggregation
+// the number of threads executing group by multithreaded aggregation
+extern unsigned int tianmu_sysvar_groupby_parallel_degree;
+// Threshold for the minimum number of rows
+// that can start executing a multithreaded group by thread
+extern unsigned long long tianmu_sysvar_groupby_parallel_rows_minimum;
+// Slow Query Threshold of recording tianmu logs, in seconds
+extern unsigned int tianmu_sysvar_slow_query_record_interval;
 
 void ConfigureRCControl();
 
