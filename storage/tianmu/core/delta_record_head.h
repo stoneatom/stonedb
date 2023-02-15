@@ -39,13 +39,8 @@ class DeltaRecordHead {
 class DeltaRecordHeadForInsert : public DeltaRecordHead {
   // layout:
   //     (Insert)TypeFlag
-  //     load_num [count of currently loaded data, which is 1 by default, increased when the merge operator is triggered.]
-  //     isDeleted [normal:n deleted:d]
-  //     fields_size
-  //     fields_count
-  //     null_mask
-  //     field_head
-  //     fields...
+  //     load_num [count of currently loaded data, which is 1 by default, increased when the merge operator is
+  //     triggered.] isDeleted [normal:n deleted:d] fields_size fields_count null_mask field_head fields...
  public:
   DeltaRecordHeadForInsert() = default;
   ~DeltaRecordHeadForInsert() = default;

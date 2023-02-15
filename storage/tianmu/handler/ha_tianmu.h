@@ -183,7 +183,7 @@ class ha_tianmu final : public handler {
   std::vector<std::vector<uchar>> blob_buffers_;
 };
 
-}  // namespace handler
+}  // namespace DBHandler
 }  // namespace Tianmu
 
 #endif  // HA_TIANMU_H_

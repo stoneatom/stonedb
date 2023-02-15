@@ -2,21 +2,21 @@
 //// Created by dfx on 22-12-27.
 ////
 //
-//#ifndef MYSQL_STORAGE_TIANMU_CORE_RECORD_ENCODE_H_
-//#define MYSQL_STORAGE_TIANMU_CORE_RECORD_ENCODE_H_
+// #ifndef MYSQL_STORAGE_TIANMU_CORE_RECORD_ENCODE_H_
+// #define MYSQL_STORAGE_TIANMU_CORE_RECORD_ENCODE_H_
 //
-//#include <field.h>
-//#include "common/common_definitions.h"
-//#include "string"
-//#include "util/bitset.h"
-//#include "vector"
+// #include <field.h>
+// #include "common/common_definitions.h"
+// #include "string"
+// #include "util/bitset.h"
+// #include "vector"
 //
-//namespace Tianmu {
-//namespace core {
+// namespace Tianmu {
+// namespace core {
 //
 ////enum class RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, RecordType_max };
 //
-//class Record {
+// class Record {
 // public:
 //  Record(RecordType type, int32_t table_id, const std::string &table_path)
 //      : type_(type), table_id_(table_id), table_path_(table_path) {}
@@ -29,7 +29,7 @@
 //  std::string table_path_;
 //};
 //
-//class InsertRecord : public Record {
+// class InsertRecord : public Record {
 // public:
 // public:
 //  InsertRecord() = default;
@@ -61,13 +61,13 @@
 //  std::unordered_map<std::string, int> fields_;
 //};
 //
-//class DeleteRecord : public Record {
+// class DeleteRecord : public Record {
 // public:
 //  void Parse(const std::string &str) override;
 //  std::string Encode() const override;
 //};
 //
-//class UpdateRecord : public Record {
+// class UpdateRecord : public Record {
 // public:
 //  void Parse(const std::string &str) override;
 //  std::string Encode() const override;
@@ -76,4 +76,4 @@
 //}  // namespace core
 //}  // namespace Tianmu
 //
-//#endif  // MYSQL_STORAGE_TIANMU_CORE_RECORD_ENCODE_H_
+// #endif  // MYSQL_STORAGE_TIANMU_CORE_RECORD_ENCODE_H_

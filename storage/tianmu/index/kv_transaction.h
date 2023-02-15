@@ -53,7 +53,7 @@ class KVTransaction {
                           const rocksdb::Slice &value);
   // merge the (key-value) to column_family.
   rocksdb::Status MergeData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
-                          const rocksdb::Slice &value);
+                            const rocksdb::Slice &value);
   // delete one 'row' by the key.
   rocksdb::Status SingleDeleteData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key);
   // gets the iterator of column_family with specific read options.

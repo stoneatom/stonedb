@@ -48,8 +48,8 @@ class ValueCache final {
     DEBUG_ASSERT(size_ <= capacity_);
     expected_size_ = 0;
     expected_null_ = false;
-    if(expected_delete_){
-      deletes_.emplace(values_.size()-1,true);
+    if (expected_delete_) {
+      deletes_.emplace(values_.size() - 1, true);
       expected_delete_ = false;
     }
   }
@@ -79,7 +79,7 @@ class ValueCache final {
 
   void SetDelete(size_t ono) {
     DEBUG_ASSERT(ono < values_.size());
-    deletes_.emplace(ono,true);
+    deletes_.emplace(ono, true);
   }
 
   void ExpectedSize(size_t expectedSize) {
@@ -89,9 +89,9 @@ class ValueCache final {
 
   size_t ExpectedSize() const { return expected_size_; }
   void ExpectedNull(bool null) { expected_null_ = null; }
-  void ExpectedDelete() { 
+  void ExpectedDelete() {
     expected_delete_ = true;
-    expected_null_ = true; 
+    expected_null_ = true;
   }
   bool ExpectedNull() const { return expected_null_; }
   void *PreparedBuffer() { return (static_cast<char *>(data_) + size_); }
@@ -116,9 +116,7 @@ class ValueCache final {
   bool IsNull(size_t ono) const { return nulls_[ono]; }
   bool NotNull(size_t ono) const { return !nulls_[ono]; }
 
-  bool IsDelete(size_t ono) const { 
-    return (deletes_.find(ono) != deletes_.end());
-  }
+  bool IsDelete(size_t ono) const { return (deletes_.find(ono) != deletes_.end()); }
 
   size_t NumOfNulls() const { return null_cnt_; }
   size_t NumOfValues() const { return values_.size(); }
@@ -147,8 +145,8 @@ class ValueCache final {
 
   std::vector<size_t> values_;
   std::vector<bool> nulls_;
-  //The delta layer is used to merge data of insert type and delete type
-  std::map<size_t,bool> deletes_;
+  // The delta layer is used to merge data of insert type and delete type
+  std::map<size_t, bool> deletes_;
   size_t null_cnt_ = 0;
 
   int64_t min_i_, max_i_, sum_i_;

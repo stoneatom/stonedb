@@ -51,8 +51,8 @@ std::shared_ptr<DeltaTable> DeltaTable::CreateDeltaTable(const std::shared_ptr<T
   uint32_t delta_id = ha_kvstore_->GetNextIndexId();
   delta = std::make_shared<DeltaTable>(normalized_name, delta_id, cf_id);
   ha_kvstore_->KVWriteDeltaMeta(delta);
-  TIANMU_LOG(LogCtl_Level::INFO, "Create Delta Store: %s, CF ID: %d, Delta Store ID: %u", normalized_name.c_str(), cf_id,
-             delta_id);
+  TIANMU_LOG(LogCtl_Level::INFO, "Create Delta Store: %s, CF ID: %d, Delta Store ID: %u", normalized_name.c_str(),
+             cf_id, delta_id);
 
   return delta;
 }

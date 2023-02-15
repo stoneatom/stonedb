@@ -20,12 +20,8 @@
 
 namespace Tianmu {
 namespace core {
-DeltaRecordHeadForInsert::DeltaRecordHeadForInsert(char is_deleted,
-                                                   size_t &field_count, uint32_t load_num)
-    : load_num_(load_num),
-      is_deleted_(is_deleted),
-      field_count_(field_count),
-      null_mask_(field_count) {}
+DeltaRecordHeadForInsert::DeltaRecordHeadForInsert(char is_deleted, size_t &field_count, uint32_t load_num)
+    : load_num_(load_num), is_deleted_(is_deleted), field_count_(field_count), null_mask_(field_count) {}
 
 char *DeltaRecordHeadForInsert::record_encode(char *ptr) {
   if (ptr == nullptr)
@@ -78,10 +74,7 @@ const char *DeltaRecordHeadForInsert::record_decode(const char *ptr) {
 }
 
 DeltaRecordHeadForUpdate::DeltaRecordHeadForUpdate(size_t &field_count, uint32_t load_num)
-    : load_num_(load_num),
-      field_count_(field_count),
-      update_mask_(field_count),
-      null_mask_(field_count) {}
+    : load_num_(load_num), field_count_(field_count), update_mask_(field_count), null_mask_(field_count) {}
 
 char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
   if (ptr == nullptr)
@@ -138,8 +131,7 @@ const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
   return ptr;
 }
 
-DeltaRecordHeadForDelete::DeltaRecordHeadForDelete(uint32_t load_num)
-    : load_num_(load_num){}
+DeltaRecordHeadForDelete::DeltaRecordHeadForDelete(uint32_t load_num) : load_num_(load_num) {}
 
 char *DeltaRecordHeadForDelete::record_encode(char *ptr) {
   if (ptr == nullptr)

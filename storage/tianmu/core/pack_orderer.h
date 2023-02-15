@@ -87,9 +87,9 @@ class PackOrderer {
    * \return pack number or -1 if end of sequence reached
    */
   int Current() {
-    return cur_ndx_[cur_vc_] < 0
-               ? -1
-               : natural_order_[cur_vc_] ? cur_ndx_[cur_vc_] : packs_[cur_vc_][cur_ndx_[cur_vc_]].second;
+    return cur_ndx_[cur_vc_] < 0     ? -1
+           : natural_order_[cur_vc_] ? cur_ndx_[cur_vc_]
+                                     : packs_[cur_vc_][cur_ndx_[cur_vc_]].second;
   }
 
   /*!

@@ -67,7 +67,7 @@ rocksdb::Status KVTransaction::PutData(rocksdb::ColumnFamilyHandle *column_famil
 }
 
 rocksdb::Status KVTransaction::MergeData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
-                                       const rocksdb::Slice &value) {
+                                         const rocksdb::Slice &value) {
   return data_batch_->Merge(column_family, key, value);
 }
 

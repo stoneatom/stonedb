@@ -1010,11 +1010,11 @@ rocksdb::ColumnFamilyHandle *CFManager::get_or_create_cf(rocksdb::DB *const rdb_
   } else {
     rocksdb::ColumnFamilyOptions opts;
     if (IsDeltaStoreCF(cf_name)) {
-        opts.write_buffer_size = 512 << 20;  // test for speed insert/update
-        opts.merge_operator = std::make_shared<core::RecordMergeOperator>();
+      opts.write_buffer_size = 512 << 20;  // test for speed insert/update
+      opts.merge_operator = std::make_shared<core::RecordMergeOperator>();
     } else {
-        opts.disable_auto_compactions = true;
-        opts.compaction_filter_factory.reset(new IndexCompactFilterFactory);
+      opts.disable_auto_compactions = true;
+      opts.compaction_filter_factory.reset(new IndexCompactFilterFactory);
     }
     const rocksdb::Status s = rdb_->CreateColumnFamily(opts, cf_name, &cf_handle);
     if (s.ok()) {

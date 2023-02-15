@@ -26,13 +26,13 @@
 
 #include "common/assert.h"
 #include "common/exception.h"
+#include "core/combined_iterator.h"
 #include "core/data_cache.h"
 #include "core/object_cache.h"
 #include "core/query.h"
 #include "core/table_share.h"
 #include "core/temp_table.h"
 #include "core/tianmu_table.h"
-#include "core/combined_iterator.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
 #include "index/tianmu_table_index.h"
@@ -188,9 +188,9 @@ class Engine final {
 
   static void EncodeInsertRecord(const std::string &table_path, Field **field, size_t col, size_t blobs,
                                  std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd);
-  static void EncodeUpdateRecord(const std::string &table_path,
-                                 std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
-                                 std::unique_ptr<char[]> &buf, uint32_t &buf_size, THD *thd);
+  static void EncodeUpdateRecord(const std::string &table_path, std::unordered_map<uint, Field *> update_fields,
+                                 size_t field_count, size_t blobs, std::unique_ptr<char[]> &buf, uint32_t &buf_size,
+                                 THD *thd);
   static void EncodeDeleteRecord(std::unique_ptr<char[]> &buf, uint32_t &buf_size);
   void ProcessInsertBufferMerge();
   void ProcessDeltaStoreMerge();
@@ -341,10 +341,10 @@ enum class tianmu_param_name {
   TIANMU_VAR_LIMIT  // KEEP THIS LAST
 };
 
-static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT", "TIANMU_LOAD_DATAFORMAT",
-                                                "TIANMU_LOAD_PIPEMODE", "TIANMU_LOAD_NULL",
-                                                "TIANMU_LOAD_THROTTLE", "TIANMU_LOAD_TIANMUEXPRESSIONS",
-                                                "TIANMU_LOAD_PARALLEL_AGGR", "TIANMU_LOAD_REJECT_FILE",
+static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT",        "TIANMU_LOAD_DATAFORMAT",
+                                                "TIANMU_LOAD_PIPEMODE",       "TIANMU_LOAD_NULL",
+                                                "TIANMU_LOAD_THROTTLE",       "TIANMU_LOAD_TIANMUEXPRESSIONS",
+                                                "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
                                                 "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
 
 std::string get_parameter_name(enum tianmu_param_name vn);

@@ -41,7 +41,7 @@ class BitSet {
     }
   }
 
-  void Init(size_t sz, char *data = nullptr){
+  void Init(size_t sz, char *data = nullptr) {
     sz_ = sz;
     if (data) {
       ptr_ = data;
