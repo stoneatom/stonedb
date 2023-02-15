@@ -63,7 +63,6 @@ class DeltaTable {
   std::atomic<uint64_t> load_id{0};
   std::atomic<uint64_t> merge_id{0};
   std::atomic<uint64_t> row_id{0};
-  std::atomic_bool merge_running{0};
 
  private:
   std::string fullname_;

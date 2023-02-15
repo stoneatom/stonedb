@@ -1518,10 +1518,8 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   int update_num = 0;
   std::vector<uint64_t> delete_records;
   int delete_num = 0;
-  uint64 need_merge_count = m_delta->CountRecords();  // this task need merge record count
-  m_delta->merge_id.fetch_add(need_merge_count);
-  {  // Fetch data from rocksdb
-    std::shared_ptr<void> defer(nullptr, [this](...) { m_delta->merge_running.store(false); });
+  uint64 expected_count = m_delta->CountRecords();  // this task need merge record count
+  {
     // combine prefix key
     uchar key_buf[12];
     uint32_t delta_id = m_delta->GetDeltaTableID();
@@ -1533,12 +1531,14 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
     r_opts.total_order_seek = true;
     std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(r_opts, cf_handle));
     iter->Seek(prefix);
+#ifndef NDEBUG
     if (iter->Valid()) {
-      TIANMU_LOG(LogCtl_Level::INFO, "MergeDeltaTable curr table id: %d, row id: %d",
+      TIANMU_LOG(LogCtl_Level::DEBUG, "MergeDeltaTable curr table id: %d, row id: %d",
                  index::be_to_uint32(reinterpret_cast<const uchar *>(iter->key().data())),
                  index::be_to_uint64(reinterpret_cast<const uchar *>(iter->key().data()) + sizeof(uint32_t)));
     }
-    while (need_merge_count > 0 && iter->Valid() && iter->key().starts_with(prefix)) {
+#endif
+    while (expected_count > 0 && iter->Valid() && iter->key().starts_with(prefix)) {
       auto key = iter->key();
       uint64_t row_id = index::be_to_uint64(reinterpret_cast<const uchar *>(key.data()) + sizeof(uint32_t));
       auto value = iter->value();
@@ -1556,7 +1556,8 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
         TIANMU_LOG(LogCtl_Level::ERROR, "record type (%d) cannot be processed, delete this record!", type);
       }
       m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());  // todo(dfx): change to DeleteRange
-      need_merge_count -= load_num;
+      expected_count -= load_num;
+      m_delta->merge_id.fetch_add(load_num);
       m_delta->stat.read_cnt++;
       m_delta->stat.read_bytes += value.size();
       if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
@@ -1570,7 +1571,6 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       }
       iter->Next();
     }
-    ASSERT(need_merge_count == 0, "need_merge_count is not 0!");
   }
   clock_gettime(CLOCK_REALTIME, &t2);
   if (!insert_records.empty()) {

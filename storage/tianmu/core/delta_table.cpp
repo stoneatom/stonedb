@@ -36,7 +36,7 @@ std::shared_ptr<DeltaTable> DeltaTable::CreateDeltaTable(const std::shared_ptr<T
   std::string table_name = share->Path();
   std::string normalized_name;
   if (!index::NormalizeName(table_name, normalized_name)) {
-    throw common::Exception("Normalized rowstore name failed " + table_name);
+    throw common::Exception("Normalized Delta Store name failed " + table_name);
     return nullptr;
   }
   std::shared_ptr<DeltaTable> delta = ha_kvstore_->FindDeltaTable(normalized_name);
@@ -44,14 +44,14 @@ std::shared_ptr<DeltaTable> DeltaTable::CreateDeltaTable(const std::shared_ptr<T
     return delta;
 
   if (cf_prefix == index::DEFAULT_SYSTEM_CF_NAME)
-    throw common::Exception("Insert rowstore name should not be " + index::DEFAULT_SYSTEM_CF_NAME);
+    throw common::Exception("Insert Delta Store name should not be " + index::DEFAULT_SYSTEM_CF_NAME);
   std::string cf_name =
       cf_prefix.empty() ? index::DEFAULT_ROWSTORE_NAME : index::DEFAULT_DELTA_STORE_PREFIX + cf_prefix;
   uint32_t cf_id = ha_kvstore_->GetCfHandle(cf_name)->GetID();
   uint32_t delta_id = ha_kvstore_->GetNextIndexId();
   delta = std::make_shared<DeltaTable>(normalized_name, delta_id, cf_id);
   ha_kvstore_->KVWriteDeltaMeta(delta);
-  TIANMU_LOG(LogCtl_Level::INFO, "Create RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(), cf_id,
+  TIANMU_LOG(LogCtl_Level::INFO, "Create Delta Store: %s, CF ID: %d, Delta Store ID: %u", normalized_name.c_str(), cf_id,
              delta_id);
 
   return delta;
@@ -100,11 +100,11 @@ void DeltaTable::Init(uint64_t base_row_num) {
     // row_id
     auto type = *reinterpret_cast<RecordType *>(const_cast<char *>(iter->value().data()));
     if (type == RecordType::kInsert) {
-      row_id++;
+      row_id.fetch_add(1);
     }
     // load_id
     uint32_t load_num = *reinterpret_cast<uint32_t *>(const_cast<char *>(iter->value().data()) + sizeof(RecordType));
-    load_id += load_num;
+    load_id.fetch_add(load_num);
     iter->Next();
   }
 }

@@ -264,17 +264,19 @@ int Engine::Init(uint engine_slot) {
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for query, size = %ld", query_thread_pool.size());
 
   m_monitor_thread = std::thread([this] {
+    TIANMU_LOG(LogCtl_Level::INFO, "Tianmu monitor thread start...");
     struct job {
       long interval;
       std::function<void()> func;
     } jobs[] = {
         {60, [this]() { this->LogStat(); }},
-        {5,
+        {60,
          [this]() {
            for (auto &delta : m_table_deltas) {
-             TIANMU_LOG(LogCtl_Level::INFO, "delta table id: %d current load id: %d, merge id: %d, row_id: %d",
-                        delta.second->GetDeltaTableID(), delta.second->load_id.load(), delta.second->merge_id.load(),
-                        delta.second->row_id.load());
+             TIANMU_LOG(LogCtl_Level::INFO,
+                        "delta table id: %d delta_size: %d, current load id: %d, merge id: %d, current row_id: %d",
+                        delta.second->GetDeltaTableID(), delta.second->load_id.load() - delta.second->merge_id.load(),
+                        delta.second->load_id.load(), delta.second->merge_id.load(), delta.second->row_id.load());
            }
          }},
         {60 * 5,
@@ -293,7 +295,7 @@ int Engine::Init(uint engine_slot) {
     };
 
     int counter = 0;
-    const long loop_interval = 5;  // todo(dfx): change to 60
+    const long loop_interval = 60;
 
     while (!exiting) {
       counter++;
@@ -312,6 +314,7 @@ int Engine::Init(uint engine_slot) {
   m_load_thread = std::thread([this] { ProcessInsertBufferMerge(); });
   m_merge_thread = std::thread([this] { ProcessDeltaStoreMerge(); });
   m_purge_thread = std::thread([this] {
+    TIANMU_LOG(LogCtl_Level::INFO, "Tianmu file purge thread start...");
     do {
       std::this_thread::sleep_for(std::chrono::seconds(3));
       std::unique_lock<std::mutex> lk(cv_mtx);
@@ -1447,6 +1450,7 @@ void Engine::ProcessInsertBufferMerge() {
   std::unordered_map<uint32_t, std::vector<std::unique_ptr<char[]>>> tm;
   uint32_t buffer_recordnum = 0;
   uint32_t sleep_cnt = 0;
+  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu merge insert_buffer thread start...");
   while (!exiting) {
     if (tianmu_sysvar_enable_rowstore) {
       std::unique_lock<std::mutex> lk(cv_mtx);
@@ -1500,6 +1504,7 @@ void Engine::ProcessDeltaStoreMerge() {
   mysql_mutex_unlock(&LOCK_server_started);
 
   std::map<std::string, uint> sleep_cnts;
+  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu merge delta store thread start...");
   while (!exiting) {
     if (!tianmu_sysvar_enable_rowstore) {
       std::unique_lock<std::mutex> lk(cv_merge_mtx);
@@ -1513,9 +1518,8 @@ void Engine::ProcessDeltaStoreMerge() {
         std::scoped_lock guard(mem_table_mutex);
         for (auto &[name, delta_table] : m_table_deltas) {
           uint64_t record_count = delta_table->CountRecords();
-          if (!delta_table->merge_running.load() && (record_count >= tianmu_sysvar_insert_numthreshold ||
+          if ((record_count >= tianmu_sysvar_insert_numthreshold ||
                (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold))) {
-            delta_table->merge_running.store(true);   // start one thread on a table at a time.
             auto share = ha_tianmu_engine_->getTableShare(name);
             auto table_id = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());
@@ -1537,12 +1541,12 @@ void Engine::ProcessDeltaStoreMerge() {
           }
         }
       } catch (common::Exception &e) {
-        TIANMU_LOG(LogCtl_Level::ERROR, "delayed merge failed. %s %s", e.what(), e.trace().c_str());
+        TIANMU_LOG(LogCtl_Level::ERROR, "Tianmu merge delta store  failed. %s %s", e.what(), e.trace().c_str());
         std::unique_lock<std::mutex> lk(cv_merge_mtx);
         cv_merge.wait_for(lk, std::chrono::milliseconds(tianmu_sysvar_insert_wait_ms));
         continue;
       } catch (...) {
-        TIANMU_LOG(LogCtl_Level::ERROR, "delayed merge failed.");
+        TIANMU_LOG(LogCtl_Level::ERROR, "Tianmu merge delta store failed.");
         std::unique_lock<std::mutex> lk(cv_merge_mtx);
         cv_merge.wait_for(lk, std::chrono::milliseconds(tianmu_sysvar_insert_wait_ms));
         continue;
@@ -1555,7 +1559,7 @@ void Engine::ProcessDeltaStoreMerge() {
       cv_merge.wait_for(lk, std::chrono::milliseconds(tianmu_sysvar_insert_wait_ms));
     }
   }
-  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu merge thread exiting...");
+  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu merge delta store thread exiting...");
 }
 
 void Engine::LogStat() {
@@ -2345,11 +2349,11 @@ void Engine::AddTableDelta(TABLE *form, std::shared_ptr<TableShare> share) {
     }
     return;
   } catch (common::Exception &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create memory table: %s / %s", e.what(), e.trace().c_str());
+    TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create delta table: %s / %s", e.what(), e.trace().c_str());
   } catch (std::exception &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create memory table: %s", e.what());
+    TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create delta table: %s", e.what());
   } catch (...) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create memory table");
+    TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create delta table");
   }
   return;
 }
