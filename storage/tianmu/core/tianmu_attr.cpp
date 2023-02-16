@@ -67,7 +67,8 @@ TianmuAttr::TianmuAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num,
   };
 }
 
-void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows) {
+void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows,
+                        uint64_t auto_inc_value) {
   uint32_t no_pack = common::rows2packs(no_rows, pss);
 
   // write meta data(immutable)
@@ -110,6 +111,11 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
     // TODO: if there is default value, we should add it into dictionary
     dict->Init(ati.Precision());
     dict->SaveData(dir / common::COL_DICT_DIR / std::to_string(1));
+  }
+
+  // auto_increment
+  if (ati.AutoInc() && auto_inc_value != 0) {
+    hdr.auto_inc_next = --auto_inc_value;
   }
 
   // create version directory
@@ -1084,6 +1090,10 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
           hdr.max = std::max(get_dpn(i).max_i, hdr.max);
       }
     }
+
+    // reset auto increment value
+    if (GetIfAutoInc() && (static_cast<uint64_t>(v.GetInt()) > GetAutoInc()))
+      hdr.auto_inc_next = static_cast<uint64_t>(v.GetInt());
   } else {  // common::PackType::STR
   }
 }
