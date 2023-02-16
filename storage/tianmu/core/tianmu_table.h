@@ -179,6 +179,7 @@ class TianmuTable final : public JustATable {
     void MoveToRow(int64_t row_id);
     int64_t GetCurrentRowId() const { return position; }
     bool Inited() const { return table != nullptr; }
+    std::vector<TianmuAttr *> GetAttrs() { return attrs; }
 
    private:
     void FetchValues();

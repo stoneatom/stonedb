@@ -1107,8 +1107,12 @@ int ha_tianmu::rnd_next(uchar *buf) {
   int ret = HA_ERR_END_OF_FILE;
   try {
     table->status = 0;
-    if (fill_row(buf) == HA_ERR_END_OF_FILE) {
+    ret = fill_row(buf);
+    if (ret == HA_ERR_END_OF_FILE) {
       table->status = STATUS_NOT_FOUND;
+      DBUG_RETURN(ret);
+    }
+    if (ret == HA_ERR_RECORD_DELETED) {
       DBUG_RETURN(ret);
     }
     ret = 0;
@@ -1369,8 +1373,19 @@ int ha_tianmu::fill_row(uchar *buf) {
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
 
-  for (uint col_id = 0; col_id < table->s->fields; col_id++)
-    core::Engine::ConvertToField(table->field[col_id], *(table_new_iter_.GetData(col_id)), &blob_buffers_[col_id]);
+  for (uint col_id = 0; col_id < table->s->fields; col_id++) {
+    // when ConvertToField() return true, to judge whether this line has been deleted.
+    // if this line has been deleted, data will not be copied.
+    if (core::Engine::ConvertToField(table->field[col_id], *(table_new_iter_.GetData(col_id)),
+                                     &blob_buffers_[col_id]) &&
+        (table_new_iter_.GetAttrs().size() > col_id) &&
+        table_new_iter_.GetAttrs()[col_id]->IsDelete(table_new_iter_.GetCurrentRowId())) {
+      current_position_ = table_new_iter_.GetCurrentRowId();
+      table_new_iter_++;
+      dbug_tmp_restore_column_map(table->write_set, org_bitmap);
+      return HA_ERR_RECORD_DELETED;
+    }
+  }
 
   if (buf != table->record[0]) {
     std::memcpy(buf, table->record[0], table->s->reclength);
