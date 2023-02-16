@@ -47,10 +47,10 @@ TableShare::TableShare(const fs::path &table_path, const TABLE_SHARE *table_shar
   for (uint i = 0; i < no_cols; i++) {
     common::TX_ID xid;
     fv.ReadExact(&xid, sizeof(xid));
-    m_columns.emplace_back(std::make_unique<ColumnShare>(
-        this, xid, i, table_path / common::COLUMN_DIR / std::to_string(i), table_share->field[i]));
+    Field *field = table_share->field[i];
+    auto colpath = table_path / common::COLUMN_DIR / std::to_string(i);
+    m_columns.emplace_back(std::make_unique<ColumnShare>(this, xid, i, colpath, field));
   }
-
   thr_lock_init(&thr_lock);
 }
 

@@ -87,7 +87,8 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   TianmuAttr &operator=(const TianmuAttr &) = delete;
   ~TianmuAttr() = default;
 
-  static void Create(const fs::path &path, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows);
+  static void Create(const fs::path &path, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows,
+                     uint64_t auto_inc_value = 0);
 
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
   void UpdateData(uint64_t row, Value &v);
@@ -260,6 +261,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   }
 
   uint64_t GetAutoInc() const { return hdr.auto_inc_next; }
+  uint64_t GetAutoIncInfo() const { return hdr.auto_inc_next + 1; }  // for show create table 'auto_increment='
   void SetAutoInc(uint64_t v) {
     backup_auto_inc_next_ = hdr.auto_inc_next;
     hdr.auto_inc_next = v;
