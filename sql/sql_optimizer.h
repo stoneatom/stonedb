@@ -55,6 +55,15 @@ typedef struct st_rollup
   List<Item> *fields;
 } ROLLUP;
 
+enum class OptimizePhase // for Tianmu to indicate which optimization phase.
+{ 
+  Beginning = 0,
+  Before_LOJ_Transform = 1,
+  After_LOJ_Transform = 2,
+  Finish_LOJ_Transform = 3,
+  Done_Optimization = 4
+};
+
 class JOIN :public Sql_alloc
 {
   JOIN(const JOIN &rhs);                        /**< not implemented */
@@ -555,8 +564,9 @@ public:
     tables taking part in semi-join materialization).
   */
   bool plan_is_single_table() { return primary_tables - const_tables == 1; }
+  
+  int optimize(OptimizePhase phase = OptimizePhase::Beginning);
 
-  int optimize(unsigned char part = 0);//TIANMU UPGRADE
   void reset();
   void exec();
   bool prepare_result();
@@ -874,10 +884,10 @@ private:
 bool uses_index_fields_only(Item *item, TABLE *tbl, uint keyno, 
                             bool other_tbls_ok);
 bool remove_eq_conds(THD *thd, Item *cond, Item **retcond,
-                     Item::cond_result *cond_value, unsigned char part = 0);//TIANMU UPGRADE
+                     Item::cond_result *cond_value, OptimizePhase phase = OptimizePhase::Beginning);
 bool optimize_cond(THD *thd, Item **conds, COND_EQUAL **cond_equal,
                     List<TABLE_LIST> *join_list,
-                    Item::cond_result *cond_value, unsigned char part = 0);//TIANMU UPGRADE
+                    Item::cond_result *cond_value, OptimizePhase phase = OptimizePhase::Beginning);
 Item* substitute_for_best_equal_field(Item *cond,
                                       COND_EQUAL *cond_equal,
                                       void *table_join_idx);
