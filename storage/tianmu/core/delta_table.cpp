@@ -128,6 +128,7 @@ void DeltaTable::AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_p
   tx->AddInsertRowNum();
   if(tx->GetInsertRowNum() >= INSERT_THRESHOLD){
     kv_trans.Commit();
+    kv_trans.ResetWriteBatch();
     kv_trans.Acquiresnapshot();
     tx->ResetInsertRowNum();
   }
