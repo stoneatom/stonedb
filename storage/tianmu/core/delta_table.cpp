@@ -125,6 +125,12 @@ void DeltaTable::AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_p
     throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) +
                             " date:" + std::string(buf.get()));
   }
+  tx->AddInsertRowNum();
+  if(tx->GetInsertRowNum() >= INSERT_THRESHOLD){
+    kv_trans.Commit();
+    kv_trans.Acquiresnapshot();
+    tx->ResetInsertRowNum();
+  }
   load_id++;
   stat.write_cnt++;
   stat.write_bytes += size;
