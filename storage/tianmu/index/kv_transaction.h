@@ -68,6 +68,8 @@ class KVTransaction {
   bool Commit();
   // rollback the transaction
   void Rollback();
+  //
+  void ResetWriteBatch();
 
  private:
   // writes 'rows' in batch with index.
@@ -75,7 +77,7 @@ class KVTransaction {
   // wites 'rows' in batch.
   std::unique_ptr<rocksdb::WriteBatch> data_batch_;
   // writes options.
-  rocksdb::WriteOptions write_opts_;
+  //rocksdb::WriteOptions write_opts_;
   // reads options.
   rocksdb::ReadOptions read_opts_;
   // iterator of key.

@@ -28,7 +28,7 @@ namespace Tianmu {
 namespace core {
 
 // Threshold to submit in insert request
-#define INSERT_THRESHOLD 50000
+#define INSERT_THRESHOLD 10000
 
 class Transaction final {
   static common::SequenceGenerator seq_generator_;
