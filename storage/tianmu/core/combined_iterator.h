@@ -37,6 +37,10 @@ class CombinedIterator {
   // check the iterator is delta || base
   bool IsBase() const;
 
+  std::vector<TianmuAttr *> GetBaseAttr() const {
+    return base_iter_->GetAttrs();
+  }
+
  private:
   TianmuTable *base_table_ = nullptr;
   std::vector<bool> attrs_;

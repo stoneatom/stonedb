@@ -1238,12 +1238,12 @@ int ha_tianmu::fill_row(uchar *buf) {
     for (uint col_id = 0; col_id < table->s->fields; col_id++) {
       // when ConvertToField() return true, to judge whether this line has been deleted.
       // if this line has been deleted, data will not be copied.
-      if (core::Engine::ConvertToField(table->field[col_id], *(iterator_.GetBaseData(col_id)),
+      if (core::Engine::ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)),
                                        &blob_buffers_[col_id]) &&
-          (iterator_.GetAttrs().size() > col_id) &&
-          iterator_.GetAttrs()[col_id]->IsDelete(iterator_.GetCurrentRowId())) {
-        current_position_ = iterator_.GetCurrentRowId();
-        iterator_++;
+          (iterator_->GetBaseAttr().size() > col_id) &&
+          iterator_->GetBaseAttr()[col_id]->IsDelete(iterator_->Position())) {
+        current_position_ = iterator_->Position();
+        iterator_->Next();
         dbug_tmp_restore_column_map(table->write_set, org_bitmap);
         return HA_ERR_RECORD_DELETED;
       }
@@ -2306,8 +2306,8 @@ static MYSQL_SYSVAR_UINT(merge_rocks_expected_count, tianmu_sysvar_merge_rocks_e
                          nullptr, nullptr, 65536, 0, 6553600, 0);
 static MYSQL_SYSVAR_UINT(insert_write_batch_size, tianmu_sysvar_insert_write_batch_size, PLUGIN_VAR_READONLY, "-",
                          nullptr, nullptr, 10000, 0, 1000000, 0);
-static MYSQL_SYSVAR_UINT(log_loop_interval, tianmu_sysvar_log_loop_interval, PLUGIN_VAR_READONLY, "-",
-                         nullptr, nullptr, 60, 0, 6000, 0);
+static MYSQL_SYSVAR_UINT(log_loop_interval, tianmu_sysvar_log_loop_interval, PLUGIN_VAR_READONLY, "-", nullptr, nullptr,
+                         60, 0, 6000, 0);
 
 static MYSQL_THDVAR_INT(session_debug_level, PLUGIN_VAR_INT, "session debug level", nullptr, debug_update, 3, 0, 5, 0);
 static MYSQL_THDVAR_INT(control_trace, PLUGIN_VAR_OPCMDARG, "ini controltrace", nullptr, trace_update, 0, 0, 100, 0);
