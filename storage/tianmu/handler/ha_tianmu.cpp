@@ -2408,7 +2408,7 @@ static struct st_mysql_sys_var *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_thread
                                                      MYSQL_SYSVAR(delete_or_update_threads),
                                                      MYSQL_SYSVAR(merge_rocks_expected_count),
                                                      MYSQL_SYSVAR(insert_write_batch_size),
-                                                     MYSQL_SYSVAR(gitlog_loop_interval),
+                                                     MYSQL_SYSVAR(log_loop_interval),
                                                      MYSQL_SYSVAR(disk_usage_threshold),
                                                      MYSQL_SYSVAR(distinct_cache_size),
                                                      MYSQL_SYSVAR(filterevaluation_speedup),
