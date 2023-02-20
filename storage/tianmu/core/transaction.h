@@ -27,9 +27,6 @@
 namespace Tianmu {
 namespace core {
 
-// Threshold to submit in insert request
-#define INSERT_THRESHOLD 10000
-
 class Transaction final {
   static common::SequenceGenerator seq_generator_;
 
@@ -50,7 +47,7 @@ class Transaction final {
   index::KVTransaction kv_trans_;
   common::LoadSource load_source_;
 
-  uint32 insert_row_num_ = 0;
+  uint32_t insert_row_num_ = 0;
 
  public:
   ulong GetThreadID() const;
@@ -90,8 +87,8 @@ class Transaction final {
   void Rollback(THD *thd, bool force_error_message);
   index::KVTransaction &KVTrans() { return kv_trans_; }
 
-  uint32 &GetInsertRowNum() { return insert_row_num_; }
-  void AddInsertRowNum(uint32 row_num = 1) { insert_row_num_ += row_num; }
+  uint32_t &GetInsertRowNum() { return insert_row_num_; }
+  void AddInsertRowNum(uint32_t row_num = 1) { insert_row_num_ += row_num; }
   void ResetInsertRowNum() { insert_row_num_ = 0; }
 };
 }  // namespace core

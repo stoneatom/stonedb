@@ -1518,7 +1518,9 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   int update_num = 0;
   std::vector<uint64_t> delete_records;
   int delete_num = 0;
-  uint64 expected_count = m_delta->CountRecords();  // this task need merge record count
+  uint64 expected_count = m_delta->CountRecords() < tianmu_sysvar_merge_rocks_expected_count
+                              ? m_delta->CountRecords()
+                              : tianmu_sysvar_merge_rocks_expected_count;
   {
     // combine prefix key
     uchar key_buf[12];

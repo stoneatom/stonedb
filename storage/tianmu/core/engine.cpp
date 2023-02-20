@@ -269,8 +269,8 @@ int Engine::Init(uint engine_slot) {
       long interval;
       std::function<void()> func;
     } jobs[] = {
-        {60, [this]() { this->LogStat(); }},
-        {60,
+        {tianmu_sysvar_log_loop_interval, [this]() { this->LogStat(); }},
+        {tianmu_sysvar_log_loop_interval,
          [this]() {
            for (auto &delta : m_table_deltas) {
              TIANMU_LOG(LogCtl_Level::INFO,
@@ -279,7 +279,7 @@ int Engine::Init(uint engine_slot) {
                         delta.second->load_id.load(), delta.second->merge_id.load(), delta.second->row_id.load());
            }
          }},
-        {60 * 5,
+        {tianmu_sysvar_log_loop_interval * 5,
          []() {
            TIANMU_LOG(
                LogCtl_Level::INFO,
@@ -295,16 +295,15 @@ int Engine::Init(uint engine_slot) {
     };
 
     int counter = 0;
-    const long loop_interval = 60;
 
     while (!exiting) {
       counter++;
       std::unique_lock<std::mutex> lk(cv_mtx);
-      if (cv.wait_for(lk, std::chrono::seconds(loop_interval)) == std::cv_status::timeout) {
+      if (cv.wait_for(lk, std::chrono::seconds(tianmu_sysvar_log_loop_interval)) == std::cv_status::timeout) {
         if (!tianmu_sysvar_qps_log)
           continue;
         for (auto &j : jobs) {
-          if (counter % (j.interval / loop_interval) == 0)
+          if (counter % (j.interval / tianmu_sysvar_log_loop_interval) == 0)
             j.func();
         }
       }
