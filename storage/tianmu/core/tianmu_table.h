@@ -198,6 +198,7 @@ class TianmuIterator {
   void SeekTo(int64_t row_id);
   int64_t Position() const { return position; }
   bool Valid() { return position != -1; }
+  std::vector<TianmuAttr *> GetAttrs() { return attrs; }
 
  private:
   void Initialize(const std::vector<bool> &attrs);

@@ -2099,6 +2099,9 @@ struct TABLE_LIST
   /// Optimize the query expression representing a derived table/view 
   bool optimize_derived(THD *thd);
 
+  /// Optimize the query expression representing a derived table/view for tianmu table
+  bool optimize_derived_for_tianmu(THD *thd);
+
   /// Create result table for a materialized derived table/view
   bool create_derived(THD *thd);
 

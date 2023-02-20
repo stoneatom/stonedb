@@ -82,6 +82,8 @@ jobs:
       image: stoneatom/stonedb_buildenv:${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+        with:
+          ssh-strict: 'false'
       - name: compile stonedb
         id: compile
         run: |

@@ -41,6 +41,7 @@ t_issue1090	CREATE TABLE `t_issue1090` (
   `c3` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 [on slave]
+include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
 sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
@@ -98,6 +99,7 @@ t_issue1090_2	CREATE TABLE `t_issue1090_2` (
   `c3` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 [on slave]
+include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
 sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
@@ -155,6 +157,7 @@ t_issue1090_3	CREATE TABLE `t_issue1090_3` (
   `c3` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 [on slave]
+include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
 sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
@@ -210,6 +213,7 @@ t_issue1090_4	CREATE TABLE `t_issue1090_4` (
   `c1` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 [on slave]
+include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
 sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU

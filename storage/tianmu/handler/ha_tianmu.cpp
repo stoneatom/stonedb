@@ -971,8 +971,12 @@ int ha_tianmu::rnd_next(uchar *buf) {
   int ret = HA_ERR_END_OF_FILE;
   try {
     table->status = 0;
-    if (fill_row(buf) == HA_ERR_END_OF_FILE) {
+    ret = fill_row(buf);
+    if (ret == HA_ERR_END_OF_FILE) {
       table->status = STATUS_NOT_FOUND;
+      DBUG_RETURN(ret);
+    }
+    if (ret == HA_ERR_RECORD_DELETED) {
       DBUG_RETURN(ret);
     }
     ret = 0;
@@ -1231,8 +1235,19 @@ int ha_tianmu::fill_row(uchar *buf) {
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
   if (iterator_->IsBase()) {
-    for (uint col_id = 0; col_id < table->s->fields; col_id++)
-      core::Engine::ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)), &blob_buffers_[col_id]);
+    for (uint col_id = 0; col_id < table->s->fields; col_id++) {
+      // when ConvertToField() return true, to judge whether this line has been deleted.
+      // if this line has been deleted, data will not be copied.
+      if (core::Engine::ConvertToField(table->field[col_id], *(iterator_.GetBaseData(col_id)),
+                                       &blob_buffers_[col_id]) &&
+          (iterator_.GetAttrs().size() > col_id) &&
+          iterator_.GetAttrs()[col_id]->IsDelete(iterator_.GetCurrentRowId())) {
+        current_position_ = iterator_.GetCurrentRowId();
+        iterator_++;
+        dbug_tmp_restore_column_map(table->write_set, org_bitmap);
+        return HA_ERR_RECORD_DELETED;
+      }
+    }
   } else {
     std::string delta_record = iterator_->GetDeltaData();
     core::Engine::DecodeInsertRecord(delta_record.data(), delta_record.size(), table->field);
@@ -1439,6 +1454,28 @@ int ha_tianmu::reset() {
   DBUG_RETURN(ret);
 }
 
+bool ha_tianmu::check_if_notnull_of_added_column(TABLE *altered_table) {
+  std::vector<Field *> old_cols(table_share->field, table_share->field + table_share->fields);
+  std::vector<Field *> new_cols(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
+
+  for (size_t i = 0; i < new_cols.size(); i++) {
+    size_t j;
+    for (j = 0; j < old_cols.size(); j++)
+      if (old_cols[j] != nullptr && std::strcmp(new_cols[i]->field_name, old_cols[j]->field_name) == 0) {
+        old_cols[j] = nullptr;
+        break;
+      }
+
+    if (j < old_cols.size())  // column exists
+      continue;
+
+    if ((*new_cols[i]).null_bit == 0)
+      return true;
+  }
+
+  return false;
+}
+
 enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
                                                                       Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
@@ -1454,8 +1491,15 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
       DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
   }
 
+  // use copy when add column with not null
+  if ((ha_alter_info->handler_flags & Alter_inplace_info::ADD_COLUMN) &&
+      check_if_notnull_of_added_column(altered_table)) {
+    DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+  }
+
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
-      (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
+      ((ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME) ||
+       (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_NOT_NULLABLE))) {
     // support alter table: column type
     if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
@@ -1472,9 +1516,9 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
     // support alter table: mix add/drop column、order column and other syntaxs to use
     if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
-    if (ha_alter_info->handler_flags & Alter_inplace_info::ADD_PK_INDEX)
-      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
-    if (ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
+    // support alter table: mix add/drop primary key
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ADD_PK_INDEX ||
+        ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);

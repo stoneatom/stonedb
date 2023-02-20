@@ -164,6 +164,7 @@ class ha_tianmu final : public handler {
   int set_cond_iter();
   int fill_row(uchar *buf);
   int free_share();
+  bool check_if_notnull_of_added_column(TABLE *altered_table);
 
   std::shared_ptr<core::TableShare> share_;
 
