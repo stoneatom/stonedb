@@ -1684,9 +1684,9 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table: mix add/drop key
     if ((ha_alter_info->handler_flags & Alter_inplace_info::ADD_INDEX ||
-        ha_alter_info->handler_flags & Alter_inplace_info::DROP_INDEX ||
-        ha_alter_info->handler_flags & Alter_inplace_info::ADD_UNIQUE_INDEX ||
-        ha_alter_info->handler_flags & Alter_inplace_info::DROP_UNIQUE_INDEX) &&
+         ha_alter_info->handler_flags & Alter_inplace_info::DROP_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::ADD_UNIQUE_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::DROP_UNIQUE_INDEX) &&
         (ha_thd()->variables.sql_mode & MODE_NO_KEY_ERROR))
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 

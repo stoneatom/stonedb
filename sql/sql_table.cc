@@ -3934,8 +3934,7 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
     (*key_count)++;
     tmp=file->max_key_parts();
 
-    if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
-        (thd->lex->sql_command != SQLCOM_CREATE_TABLE)) {
+    if ((create_info->db_type->db_type == DB_TYPE_TIANMU)) {
       if ((file->ha_table_flags() & HA_NON_SECONDARY_KEY) &&
           (key->type == KEYTYPE_MULTIPLE) &&
           !(thd->variables.sql_mode & MODE_NO_KEY_ERROR)) {
