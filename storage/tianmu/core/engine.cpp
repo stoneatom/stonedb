@@ -33,6 +33,7 @@
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "mm/initializer.h"
+#include "mm/memory_statistics.h"
 #include "mysql/thread_pool_priv.h"
 #include "mysqld_thd_manager.h"
 #include "system/file_out.h"
@@ -1374,6 +1375,22 @@ void Engine::LogStat() {
     }
     msg = msg + "queries " + std::to_string(queries) + "/" + std::to_string(global_query_id);
     TIANMU_LOG(LogCtl_Level::INFO, msg.c_str());
+  }
+
+  {
+    const auto &&mem_info = MemoryStatisticsOS::Instance()->GetMemInfo();
+    const auto &&mem_self = MemoryStatisticsOS::Instance()->GetSelfStatm();
+
+    uint64_t mem_available = mem_info.mem_available;
+    uint64_t swap_used = mem_info.swap_used;
+    int64_t mem_available_chg = mem_available - m_mem_available_;
+    int64_t swap_used_chg = swap_used - m_swap_used_;
+    m_mem_available_ = mem_available;
+    m_swap_used_ = swap_used;
+
+    TIANMU_LOG(LogCtl_Level::INFO, "mem_available_chg: %ld swap_used_chg: %ld", mem_available_chg, swap_used_chg);
+
+    MEMORY_STATISTICS("HEATBEAT", "UPDATE");
   }
 
   TIANMU_LOG(LogCtl_Level::DEBUG,

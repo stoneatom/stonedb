@@ -27,6 +27,7 @@ low-level mechanisms
 #include "core/mi_iterator.h"
 #include "core/pack_guardian.h"
 #include "core/transaction.h"
+#include "mm/memory_statistics.h"
 #include "system/fet.h"
 #include "system/tianmu_system.h"
 
@@ -292,10 +293,14 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
 
 #ifdef DEBUG_AGGREGA_COST
       std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+      uint64_t mem_available = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available;
+      uint64_t swap_used = MemoryStatisticsOS::Instance()->GetMemInfo().swap_used;
+      MEMORY_STATISTICS("AGGREGA", "START");
+      uint64_t mem_used = 0;
 #endif
 
       if (ag_worker.ThreadsUsed() > 1) {
-        ag_worker.DistributeAggreTaskAverage(mit);
+        ag_worker.DistributeAggreTaskAverage(mit, &mem_used);
       } else {
         thread_type = "sin";
         while (mit.IsValid()) {  // need muti thread
@@ -306,7 +311,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
 
           // Grouping on a packrow
           int64_t packrow_length = mit.GetPackSizeLeft();
-          AggregaGroupingResult grouping_result = AggregatePackrow(gbw, &mit, cur_tuple);
+          AggregaGroupingResult grouping_result = AggregatePackrow(gbw, &mit, cur_tuple, &mem_used);
           if (sender) {
             sender->SetAffectRows(gbw.NumOfGroups());
           }
@@ -324,12 +329,17 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
       }
 
 #ifdef DEBUG_AGGREGA_COST
+      int64_t mem_available_chg = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available - mem_available;
+      int64_t swap_used_chg = MemoryStatisticsOS::Instance()->GetMemInfo().swap_used - swap_used;
       auto diff =
           std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
       if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
-        TIANMU_LOG(LogCtl_Level::INFO, "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d", thread_type,
-                   diff.count(), mit.NumOfTuples());
+        TIANMU_LOG(LogCtl_Level::INFO,
+                   "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d mem_available_chg: %ld swap_used_chg: "
+                   "%ld collec_mem_used: %lu",
+                   thread_type, diff.count(), mit.NumOfTuples(), mem_available_chg, swap_used_chg, mem_used);
       }
+      MEMORY_STATISTICS("AGGREGA", "END");
 #endif
 
       gbw.ClearDistinctBuffers();              // reset buffers for a new contents
@@ -517,12 +527,20 @@ void AggregationAlgorithm::MultiDimensionalDistinctScan(GroupByWrapper &gbw, MII
   }
 }
 
-AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple) {
+AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple,
+                                                             uint64_t *mem_used) {
   int64_t packrow_length = mit->GetPackSizeLeft();
   if (!gbw.AnyTuplesLeft(cur_tuple, cur_tuple + packrow_length - 1)) {
     mit->NextPackrow();
     return AggregaGroupingResult::AGR_NO_LEFT;
   }
+
+#ifdef DEBUG_AGGREGA_COST
+  const auto &mem_info = MemoryStatisticsOS::Instance()->GetMemInfo();
+  uint64_t mem_available = mem_info.mem_available;
+  uint64_t swap_used = mem_info.swap_used;
+#endif
+
   int64_t uniform_pos = common::NULL_VALUE_64;
   bool skip_packrow = false;
   bool packrow_done = false;
@@ -641,6 +659,32 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
       break;
   }
   gbw.CommitResets();
+
+#ifdef DEBUG_AGGREGA_COST
+  {
+    if (mem_available) {
+      const auto mem_info = MemoryStatisticsOS::Instance()->GetMemInfo();
+      int64_t mem_available_chg = mem_info.mem_available - mem_available;
+      int64_t swap_used_chg = mem_info.swap_used - swap_used;
+
+      if (mem_used && (mem_available_chg < 0)) {
+        (*mem_used) -= mem_available_chg;
+      }
+
+      // #ifdef DEBUG_AGGREGA_PACK_COST
+      //			if ((mem_available_chg < (-(1 * 1024))) || (swap_used_chg > (1 * 1024))) {
+      //				TIANMU_LOG(LogCtl_Level::INFO, "AggregatePackrow mem_available_chg: %ld "
+      //					"swap_used_chg: %ld pri_mem_available: %lu mem_available: %lu
+      // pri_swap_used: %lu swap_used: %lu", 					mem_available_chg, swap_used_chg,
+      // mem_available, mem_info.mem_available, swap_used,
+      // mem_info.swap_used);
+      //				// MEMORY_STATISTICS("AGGRE", "PACK");
+      //			}
+      // #endif
+    }
+  }
+#endif
+
   return AggregaGroupingResult::AGR_OK;  // success
 }
 
@@ -873,11 +917,12 @@ void AggregationAlgorithm::TaskFillOutput(GroupByWrapper *gbw, Transaction *ci, 
 
 void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVector *dims [[maybe_unused]],
                                           MIIterator *mit [[maybe_unused]], CTask *task [[maybe_unused]],
-                                          GroupByWrapper *gbw, Transaction *ci [[maybe_unused]]) {
+                                          GroupByWrapper *gbw, Transaction *ci [[maybe_unused]], uint64_t *mem_used) {
   TIANMU_LOG(LogCtl_Level::DEBUG, "TaskAggrePacks task_id: %d start pack_start: %d pack_end: %d", task->dwTaskId,
              task->dwStartPackno, task->dwEndPackno);
 #ifdef DEBUG_AGGREGA_COST
   std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+  uint64_t mem_available = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available;
 #endif
 
   taskIterator->Rewind();
@@ -886,7 +931,7 @@ void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVec
     if ((task_pack_num >= task->dwStartPackno) && (task_pack_num <= task->dwEndPackno)) {
       int cur_tuple = (*task->dwPack2cur)[task_pack_num];
       MIInpackIterator mii(*taskIterator);
-      AggregaGroupingResult grouping_result = aa->AggregatePackrow(*gbw, &mii, cur_tuple);
+      AggregaGroupingResult grouping_result = aa->AggregatePackrow(*gbw, &mii, cur_tuple, mem_used);
       if (grouping_result == AggregaGroupingResult::AGR_FINISH)
         break;
       if (grouping_result == AggregaGroupingResult::AGR_KILLED)
@@ -901,11 +946,13 @@ void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVec
   }
 
 #ifdef DEBUG_AGGREGA_COST
+  int64_t mem_available_chg = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available - mem_available;
   auto diff =
       std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
   if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
-    TIANMU_LOG(LogCtl_Level::INFO, "TaskAggrePacks task_id: %d spend: %f pack_start: %d pack_end: %d", task->dwTaskId,
-               diff.count(), task->dwStartPackno, task->dwEndPackno);
+    TIANMU_LOG(LogCtl_Level::INFO,
+               "TaskAggrePacks task_id: %d spend: %f pack_start: %d pack_end: %d mem_available_chg: %ld",
+               task->dwTaskId, diff.count(), task->dwStartPackno, task->dwEndPackno, mem_available_chg);
   }
 #endif
 }
@@ -924,7 +971,13 @@ void AggregationWorkerEnt::PrepShardingCopy(MIIterator *mit, GroupByWrapper *gb_
 }
 
 /*Average allocation task*/
-void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
+void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit, uint64_t *mem_used) {
+#ifdef DEBUG_AGGREGA_COST
+  const auto mem_info = MemoryStatisticsOS::Instance()->GetMemInfo();
+  uint64_t mem_available = mem_info.mem_available;
+  uint64_t swap_used = mem_info.swap_used;
+#endif
+
   Transaction *conn = current_txn_;
   DimensionVector dims(mind->NumOfDimensions());
   std::vector<CTask> vTask;
@@ -1015,10 +1068,20 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
 
   for (size_t i = 0; i < vTask.size(); ++i) {
     GroupByWrapper *gbw = i == 0 ? gb_main : vGBW[i].get();
-    res1.insert(ha_tianmu_engine_->query_thread_pool.add_task(&AggregationWorkerEnt::TaskAggrePacks, this,
-                                                              &taskIterator[i], &dims, &mit, &vTask[i], gbw, conn));
+    res1.insert(ha_tianmu_engine_->query_thread_pool.add_task(
+        &AggregationWorkerEnt::TaskAggrePacks, this, &taskIterator[i], &dims, &mit, &vTask[i], gbw, conn, mem_used));
   }
   res1.get_all_with_except();
+
+#ifdef DEBUG_AGGREGA_COST
+  {
+    int64_t mem_available_chg = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available - mem_available;
+    int64_t swap_used_chg = MemoryStatisticsOS::Instance()->GetMemInfo().swap_used - swap_used;
+    TIANMU_LOG(LogCtl_Level::INFO, "DistributeAggreTaskAverage TASK mem_available_chg: %ld swap_used_chg: %ld",
+               mem_available_chg, swap_used_chg);
+  }
+  MEMORY_STATISTICS("AGGREGA", "TASK");
+#endif
 
   for (size_t i = 0; i < vTask.size(); ++i) {
     // Merge aggreation data together
@@ -1027,6 +1090,16 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
       gb_main->Merge(*(vGBW[i]));
     }
   }
+
+#ifdef DEBUG_AGGREGA_COST
+  {
+    int64_t mem_available_chg = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available - mem_available;
+    int64_t swap_used_chg = MemoryStatisticsOS::Instance()->GetMemInfo().swap_used - swap_used;
+    TIANMU_LOG(LogCtl_Level::INFO, "DistributeAggreTaskAverage MERGE mem_available_chg: %ld swap_used_chg: %ld",
+               mem_available_chg, swap_used_chg);
+  }
+  MEMORY_STATISTICS("AGGREGA", "MERGE");
+#endif
 }
 }  // namespace core
 }  // namespace Tianmu

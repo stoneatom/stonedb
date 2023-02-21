@@ -100,6 +100,7 @@ class MemBlockManager final : public mm::TraceableObject {
   int no_threads{1};
   int64_t current_size{0};
   std::mutex mx;
+  int allock_num{0};
 };
 
 class BlockedRowMemStorage {

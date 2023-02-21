@@ -16,10 +16,14 @@
 */
 
 #include "blocked_mem_table.h"
+#include "util/log_ctl.h"
 
 namespace Tianmu {
 namespace core {
 MemBlockManager::~MemBlockManager() {
+  TIANMU_LOG(LogCtl_Level::INFO, "destructor block_size: %d current_size: %ld allock_num: %d", block_size, current_size,
+             allock_num);
+
   for (auto &it : free_blocks) dealloc(it);
 
   for (auto &it : used_blocks) dealloc(it);
@@ -40,6 +44,7 @@ void *MemBlockManager::GetBlock() {
     } else {
       p = alloc(block_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
       current_size += block_size;
+      ++allock_num;
     }
     used_blocks.insert(p);
     return p;
@@ -103,6 +108,9 @@ void BlockedRowMemStorage::Init(int rowl, std::shared_ptr<MemBlockManager> mbm, 
       blocks.push_back(b);
     }
   no_rows = initial_size;
+
+  TIANMU_LOG(LogCtl_Level::INFO, "Init block_size: %d no_rows: %ld rows_in_block: %d row_len: %d min_block_len: %d",
+             block_size, no_rows, rows_in_block, row_len, min_block_len);
 }
 
 void BlockedRowMemStorage::Clear() {

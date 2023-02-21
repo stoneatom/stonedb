@@ -28,6 +28,7 @@
 #include "core/temp_table.h"
 #include "core/transaction.h"
 #include "exporter/data_exporter.h"
+#include "mm/memory_statistics.h"
 #include "system/fet.h"
 #include "system/io_parameters.h"
 #include "system/tianmu_system.h"
@@ -193,7 +194,7 @@ bool TempTable::OrderByAndMaterialize(
     for (int i = 0; i < task_num; ++i) {
       int pstart = ((i == 0) ? 0 : mod + i * num);
       int pend = mod + (i + 1) * num - 1;
-      TIANMU_LOG(LogCtl_Level::INFO, "create new MIIterator: start pack %d, endpack %d", pstart, pend);
+      TIANMU_LOG(LogCtl_Level::DEBUG, "create new MIIterator: start pack %d, endpack %d", pstart, pend);
 
       auto &mi = mis.emplace_back(*filter.mind_, true);
 
@@ -305,6 +306,11 @@ bool TempTable::OrderByAndMaterialize(
 
   // TIANMU_LOG(LogCtl_Level::INFO, "OrderByAndMaterialize complete global_row %d, limit %d,
   // offset %d", global_row, limit, offset);
+
+#ifdef DEBUG_AGGREGA_COST
+  MEMORY_STATISTICS("AGGREGA", "ORDER_BY");
+#endif
+
   return true;
 }
 
