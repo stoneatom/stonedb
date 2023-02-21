@@ -1,0 +1,14 @@
+DROP DATABASE IF EXISTS issue981_test;
+CREATE DATABASE issue981_test;
+USE issue981_test;
+DROP TABLE IF EXISTS timetest;
+create table timetest (val timestamp) ENGINE=TIANMU;
+insert into timetest values ('2010-02-22 18:35:23');
+select val not between '2010-02-22 18:35:23' and '2015-11-23 08:02:45' from (select * from timetest) as A;
+val not between '2010-02-22 18:35:23' and '2015-11-23 08:02:45'
+0
+select val, val >= '2010-02-22 18:35:23' from (select * from timetest) as A;
+val	val >= '2010-02-22 18:35:23'
+2010-02-22 18:35:23	1
+DROP TABLE timetest;
+DROP DATABASE issue981_test;
