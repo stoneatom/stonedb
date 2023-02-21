@@ -93,7 +93,7 @@ ISACTIVE=NULLif(@ISACTIVE,'')
 select * from AD_PINSTANCE_LOG_DOUBLE_ENCLOSED;
 
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
---error 1366
+--error 1261
 eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1263-3.txt' into table AD_PINSTANCE_LOG_DOUBLE_ENCLOSED
 FIELDS TERMINATED BY ',' 
 ENCLOSED BY '"' 
