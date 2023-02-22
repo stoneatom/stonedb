@@ -49,6 +49,7 @@ struct TableOption {
   std::string name;
   int id;
   uint8_t pss;
+  HA_CREATE_INFO *create_info;
 };
 
 class DataPackLock : public FunctionExecutor {

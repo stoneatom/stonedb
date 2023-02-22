@@ -339,7 +339,7 @@ void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
   uint32_t tid = ha_tianmu_engine_->GetNextTableId();
   auto &path(opt->path);
   uint32_t no_attrs = opt->atis.size();
-
+  uint64_t auto_inc_value = opt->create_info->auto_increment_value;
   fs::create_directory(path);
 
   TABLE_META meta{common::FILE_MAGIC, common::TABLE_DATA_VERSION, tid, opt->pss};
@@ -373,7 +373,7 @@ void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
     auto lnk = column_path / std::to_string(idx);
     fs::create_symlink(dir, lnk);
 
-    TianmuAttr::Create(lnk, opt->atis[idx], opt->pss, 0);
+    TianmuAttr::Create(lnk, opt->atis[idx], opt->pss, 0, auto_inc_value);
     // TIANMU_LOG(LogCtl_Level::INFO, "Column %zu at %s", idx, dir.c_str());
   }
   TIANMU_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);

@@ -1,0 +1,27 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1209_test;
+--enable_warnings
+
+CREATE DATABASE issue1209_test;
+
+USE issue1209_test;
+
+CREATE TABLE `t1_tianmu` (
+  `id` int(11) DEFAULT NULL,
+  `a` char(20) DEFAULT NULL,
+  `id2` int(11) DEFAULT NULL
+) ENGINE=tianmu DEFAULT CHARSET=utf8mb4;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA LOCAL infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1209-1.txt' into table t1_tianmu FIELDS TERMINATED BY ',' LINES TERMINATED BY ';';
+select * from t1_tianmu;
+
+truncate table t1_tianmu;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA LOCAL infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1209-2.txt' into table t1_tianmu FIELDS TERMINATED BY ',' enclosed by '"' LINES TERMINATED BY ';';
+select * from t1_tianmu;
+
+DROP DATABASE issue1209_test;

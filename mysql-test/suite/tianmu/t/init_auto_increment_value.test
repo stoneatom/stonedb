@@ -1,0 +1,63 @@
+--source include/have_tianmu.inc
+#
+# Test auto_increment_value with TIANMU
+#
+--disable_warnings
+DROP DATABASE IF EXISTS auto_increment_value_db;
+--enable_warnings
+
+CREATE DATABASE auto_increment_value_db;
+USE auto_increment_value_db;
+
+# test init value
+CREATE TABLE t_auto_increment_value (
+  id int NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+) engine=tianmu AUTO_INCREMENT=100;
+show create table t_auto_increment_value;
+insert into t_auto_increment_value (data) values("first"),("middle"),("last");
+select * from t_auto_increment_value;
+show create table t_auto_increment_value;
+
+# test update 
+update t_auto_increment_value set id=80 where id=100;
+select * from t_auto_increment_value;
+show create table t_auto_increment_value;
+insert into t_auto_increment_value (id, data) values(0,"update_lt_max_id");
+select * from t_auto_increment_value;
+
+update t_auto_increment_value set id=200 where id=101;
+select * from t_auto_increment_value;
+show create table t_auto_increment_value;
+insert into t_auto_increment_value (id, data) values(0,"update_gt_max_id");
+select * from t_auto_increment_value;
+
+# test alter
+alter table t_auto_increment_value AUTO_INCREMENT=300;
+select * from t_auto_increment_value;
+show create table t_auto_increment_value;
+insert into t_auto_increment_value (id, data) values(0,"alter_gt_max_id");
+select * from t_auto_increment_value;
+
+# when SET AUTO_INCREMENT < max_id, AUTO_INCREMENT value wouldnot be changed.
+alter table t_auto_increment_value AUTO_INCREMENT=50;
+select * from t_auto_increment_value;
+show create table t_auto_increment_value;
+insert into t_auto_increment_value (id, data) values(0,"alter_lt_max_id");
+select * from t_auto_increment_value;
+
+
+#test load data with auto_increment value into auto_increment col
+CREATE TABLE load_auto_increment_value (
+  id int(11) NOT NULL AUTO_INCREMENT, 
+  company varchar(25), 
+  PRIMARY KEY (id)
+  ) ENGINE=TIANMU AUTO_INCREMENT=100;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/load_auto_increment_value.txt' INTO TABLE load_auto_increment_value;  
+select * from load_auto_increment_value;
+show create table load_auto_increment_value;
+
+# Clean UP
+DROP DATABASE auto_increment_value_db;

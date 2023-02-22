@@ -226,7 +226,8 @@ bool mysql_create_or_drop_trigger(THD *thd, TABLE_LIST *tables, bool create)
   }
   table= tables->table;
   table->pos_in_table_list= tables;
-  if (table->file && table->file->ht == tianmu_hton) {
+  if ((table->file && table->file->ht == tianmu_hton) &&
+      (!(thd->variables.sql_mode & MODE_NO_KEY_ERROR))) {
     my_error(ER_TIANMU_NOT_SUPPORTED_TRIGGER, MYF(0));
     goto end;
   }

@@ -79,7 +79,7 @@ class Engine final {
   ~Engine();
 
   int Init(uint engine_slot);
-  void CreateTable(const std::string &table, TABLE *from);
+  void CreateTable(const std::string &table, TABLE *from, HA_CREATE_INFO *create_info);
   int DeleteTable(const char *table, THD *thd);
   void TruncateTable(const std::string &table_path, THD *thd);
   int RenameTable(Transaction *trans_, const std::string &from, const std::string &to, THD *thd);
@@ -182,7 +182,7 @@ class Engine final {
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
   void LogStat();
-  std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form);
+  std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form, HA_CREATE_INFO *create_info);
   std::shared_ptr<TableShare> getTableShare(const std::string &table_path);
   std::unique_ptr<char[]> GetRecord(size_t &len);
 

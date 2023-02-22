@@ -180,7 +180,8 @@ enum enum_binlog_format {
 #define MODE_NO_ENGINE_SUBSTITUTION     (MODE_HIGH_NOT_PRECEDENCE*2)
 #define MODE_PAD_CHAR_TO_FULL_LENGTH    (1ULL << 31)
 //Force the engine to be tianmu when acting as a slave library
-#define MODE_MANDATORY_TIANMU    (1ULL << 32)
+#define MODE_MANDATORY_TIANMU           (1ULL << 32)
+#define MODE_NO_KEY_ERROR               (1ULL << 33)
 
 /*
   Replication uses 8 bytes to store SQL_MODE in the binary log. The day you

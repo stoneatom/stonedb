@@ -518,7 +518,12 @@ int ha_tianmu::rename_table(const char *from, const char *to) {
   DBUG_RETURN(1);
 }
 
-void ha_tianmu::update_create_info([[maybe_unused]] HA_CREATE_INFO *create_info) {}
+void ha_tianmu::update_create_info(HA_CREATE_INFO *create_info) {
+  if (!(create_info->used_fields & HA_CREATE_USED_AUTO)) {
+    info(HA_STATUS_AUTO);
+    create_info->auto_increment_value = stats.auto_increment_value;
+  }
+}
 
 /*
  ::info() is used to return information to the optimizer.
@@ -598,6 +603,20 @@ int ha_tianmu::info(uint flag) {
       my_store_ptr(dup_ref, ref_length, dupkey_pos_);
     }
 
+    if ((flag & HA_STATUS_AUTO) && table->found_next_number_field) {
+      std::shared_ptr<core::TianmuTable> tab;
+      if (current_txn_ != nullptr) {
+        tab = current_txn_->GetTableByPath(table_name_);
+      } else {
+        tab = ha_tianmu_engine_->GetTableRD(table_name_);
+      }
+      for (uint colno = 0; colno < tab->NumOfAttrs(); colno++) {
+        auto attr = tab->GetAttr(colno);
+        if (attr->GetIfAutoInc()) {
+          stats.auto_increment_value = attr->GetAutoIncInfo();
+        }
+      }
+    }
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1178,7 +1197,7 @@ int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CR
       DBUG_RETURN(ER_WRONG_TABLE_NAME);
     }
 
-    ha_tianmu_engine_->CreateTable(name, table_arg);
+    ha_tianmu_engine_->CreateTable(name, table_arg, create_info);
     DBUG_RETURN(0);
   } catch (common::AutoIncException &e) {
     my_message(ER_WRONG_AUTO_KEY, e.what(), MYF(0));
@@ -1489,6 +1508,9 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
     // support alter table comment
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
       DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
+    // support alter table auto_increment
+    if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_AUTO)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
   }
 
   // use copy when add column with not null
@@ -1520,6 +1542,13 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
     if (ha_alter_info->handler_flags & Alter_inplace_info::ADD_PK_INDEX ||
         ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table: mix add/drop key
+    if ((ha_alter_info->handler_flags & Alter_inplace_info::ADD_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::DROP_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::ADD_UNIQUE_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::DROP_UNIQUE_INDEX) &&
+        (ha_thd()->variables.sql_mode & MODE_NO_KEY_ERROR))
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);
   }
@@ -1536,6 +1565,32 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
         DBUG_RETURN(false);
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
         DBUG_RETURN(false);
+      if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_AUTO) {
+        auto tab = current_txn_->GetTableByPath(table_name_);
+        fs::path tab_dir = table_name_ + common::TIANMU_EXT;
+        for (uint i = 0; i < table_share->fields; i++) {
+          if (table_share->field[i]->flags & AUTO_INCREMENT_FLAG) {
+            system::TianmuFile fv, fw;
+            fv.OpenReadOnly(tab_dir / common::TABLE_VERSION_FILE);
+            common::TX_ID xid;
+            fv.ReadExact(&xid, sizeof(xid));
+            Tianmu::core::COL_VER_HDR hdr{};
+            fs::path fname =
+                tab_dir / common::COLUMN_DIR / std::to_string(i) / common::COL_VERSION_DIR / xid.ToString();
+            fw.OpenReadWrite(fname);
+            fw.ReadExact(&hdr, sizeof(hdr));
+            uint64_t autoinc_ = ha_alter_info->create_info->auto_increment_value;
+            if (autoinc_ > hdr.auto_inc_next) {  // alter table auto_increment must be > current max autoinc
+              hdr.auto_inc_next = --autoinc_;
+              fw.WriteExact(&hdr, sizeof(hdr));
+            }
+            fw.Flush();
+          }
+        }
+        ha_tianmu_engine_->cache.ReleaseTable(tab->GetID());
+        ha_tianmu_engine_->UnRegisterTable(table_name_);
+        DBUG_RETURN(false);
+      }
     } else if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
       std::vector<Field *> v_new(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
@@ -1573,6 +1628,8 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
       DBUG_RETURN(false);
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
+      DBUG_RETURN(false);
+    if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_AUTO)
       DBUG_RETURN(false);
   }
   if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
