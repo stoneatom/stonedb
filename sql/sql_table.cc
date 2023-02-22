@@ -3927,21 +3927,23 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
                  (fk_key->name.str ? fk_key->name.str :
                                      "foreign key without name"),
                  ER(ER_KEY_REF_DO_NOT_MATCH_TABLE_REF));
-	DBUG_RETURN(TRUE);
+	      DBUG_RETURN(TRUE);
       }
       continue;
     }
     (*key_count)++;
     tmp=file->max_key_parts();
 
-    if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+    if ((create_info->db_type->db_type == DB_TYPE_TIANMU)) {
       if ((file->ha_table_flags() & HA_NON_SECONDARY_KEY) &&
-          key->type == KEYTYPE_MULTIPLE) {
+          (key->type == KEYTYPE_MULTIPLE) &&
+          !(thd->variables.sql_mode & MODE_NO_KEY_ERROR)) {
         my_error(ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX, MYF(0));
         DBUG_RETURN(TRUE);
       }
-      if (file->ha_table_flags() & HA_NON_UNIQUE_KEY &&
-          key->type == KEYTYPE_UNIQUE) {
+      if ((file->ha_table_flags() & HA_NON_UNIQUE_KEY) &&
+          (key->type == KEYTYPE_UNIQUE) &&
+          (!(thd->variables.sql_mode & MODE_NO_KEY_ERROR))) {
         my_error(ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX, MYF(0));
         DBUG_RETURN(TRUE);
       }
@@ -4078,7 +4080,8 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
                      MYF(0));
           DBUG_RETURN(TRUE);
         }
-        if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+        if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
+            (!(thd->variables.sql_mode & MODE_NO_KEY_ERROR))) {
           my_message(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX,
                      ER(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX), MYF(0));
         } else {
@@ -8493,7 +8496,8 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
     while ((drop=drop_it++)) {
       switch (drop->type) {
       case Alter_drop::KEY:
-        if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+        if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
+            (!(thd->variables.sql_mode & MODE_NO_KEY_ERROR))) {
           my_error(ER_TIANMU_NOT_FOUND_INDEX, MYF(0));
           goto err;
         }
@@ -8503,7 +8507,8 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
                  alter_info->drop_list.head()->name);
         goto err;
       case Alter_drop::FOREIGN_KEY:
-        if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+        if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
+            (!(thd->variables.sql_mode & MODE_NO_KEY_ERROR))) {
           my_error(ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY, MYF(0));
         }
         break;
@@ -8517,7 +8522,8 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
   }
   if (rename_key_list.elements)
   {
-    if (create_info->db_type->db_type == DB_TYPE_TIANMU) {
+    if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
+        (!(thd->variables.sql_mode & MODE_NO_KEY_ERROR))) {
       my_error(ER_TIANMU_NOT_FOUND_INDEX, MYF(0));
     } else {
       my_error(ER_KEY_DOES_NOT_EXITS, MYF(0), rename_key_list.head()->old_name,

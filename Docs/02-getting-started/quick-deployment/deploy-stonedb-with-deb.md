@@ -2,7 +2,7 @@
 id: deploy-stonedb-with-deb
 sidebar_position: 3.14
 ---
-# **Use a DEB Package to Deploy StoneDB on Ubuntu 20**
+# Use a DEB Package to Deploy StoneDB on Ubuntu 20
 
 ## Step 1. Install StoneDB
 1. Download the StoneDB software package. 

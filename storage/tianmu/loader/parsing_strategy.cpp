@@ -71,6 +71,16 @@ ParsingStrategy::ParsingStrategy(const system::IOParameters &iop, std::vector<uc
   }
 }
 
+// continuous double enclosed char is reterpreted as a general char.
+// ref:https://dev.mysql.com/doc/refman/5.7/en/load-data.html
+inline bool DoubleEnclosedCharMatch(const char enclosed_char, const char *ptr, const char *buf_end) {
+  if (enclosed_char && *ptr == enclosed_char && ptr + 1 < buf_end && *(ptr + 1) == enclosed_char) {
+    return true;
+  }
+
+  return false;
+}
+
 inline void ParsingStrategy::GuessUnescapedEOL(const char *ptr, const char *const buf_end) {
   for (; ptr < buf_end; ptr++) {
     if (escape_char_ && *ptr == escape_char_) {
@@ -113,6 +123,8 @@ inline bool ParsingStrategy::SearchUnescapedPattern(const char *&ptr, const char
     while (ptr < search_end && *ptr != *c_pattern) {
       if (escape_char_ && *ptr == escape_char_)
         ptr += 2;
+      else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, search_end))
+        ptr += 2;
       else
         ++ptr;
     }
@@ -121,6 +133,8 @@ inline bool ParsingStrategy::SearchUnescapedPattern(const char *&ptr, const char
     while (ptr < search_end && (*ptr != *c_pattern || ptr[1] != c_pattern[1])) {
       if (escape_char_ && *ptr == escape_char_)
         ptr += 2;
+      else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, search_end))
+        ptr += 2;
       else
         ++ptr;
     }
@@ -128,6 +142,9 @@ inline bool ParsingStrategy::SearchUnescapedPattern(const char *&ptr, const char
     int b = 0;
     for (; ptr < buf_end; ++ptr) {
       if (escape_char_ && *ptr == escape_char_) {
+        b = 0;
+        ++ptr;
+      } else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, buf_end)) {
         b = 0;
         ++ptr;
       } else if (c_pattern[b] != *ptr) {
@@ -169,16 +186,19 @@ inline bool TailsMatch(const char *s1, const char *s2, const size_t size) {
 inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEOL(const char *&ptr,
                                                                                   const char *const buf_end,
                                                                                   const std::string &pattern,
+                                                                                  const std::string &line_termination,
                                                                                   const std::vector<int> &kmp_next) {
   const char *c_pattern = pattern.c_str();
   size_t size = pattern.size();
-  const char *c_eol = terminator_.c_str();
-  size_t crlf = terminator_.size();
+  const char *c_eol = line_termination.c_str();
+  size_t crlf = line_termination.size();
   const char *search_end = buf_end;
 
   if (size == 1) {
     while (ptr < search_end && *ptr != *c_pattern) {
       if (escape_char_ && *ptr == escape_char_)
+        ptr += 2;
+      else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, search_end))
         ptr += 2;
       else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
         return SearchResult::END_OF_LINE;
@@ -190,6 +210,8 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
     while (ptr < search_end && (*ptr != *c_pattern || ptr[1] != c_pattern[1])) {
       if (escape_char_ && *ptr == escape_char_)
         ptr += 2;
+      else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, search_end))
+        ptr += 2;
       else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
         return SearchResult::END_OF_LINE;
       else
@@ -199,6 +221,9 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
     int b = 0;
     for (; ptr < buf_end; ++ptr) {
       if (escape_char_ && *ptr == escape_char_) {
+        b = 0;
+        ++ptr;
+      } else if (DoubleEnclosedCharMatch(string_qualifier_, ptr, buf_end)) {
         b = 0;
         ++ptr;
       } else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
@@ -291,12 +316,12 @@ class Field_tmp_nullability_guard {
 
 void ParsingStrategy::ReadField(const char *&ptr, const char *&val_beg, Item *&item, uint &index_of_field,
                                 std::vector<std::pair<const char *, size_t>> &vec_ptr_field,
-                                uint &field_index_in_field_list, const CHARSET_INFO *char_info) {
+                                uint &field_index_in_field_list, const CHARSET_INFO *char_info, bool completed_row) {
   bool is_enclosed = false;
   char *val_start{nullptr};
   size_t val_len{0};
 
-  if (string_qualifier_ && *val_beg == string_qualifier_) {
+  if (string_qualifier_ && *val_beg == string_qualifier_ && completed_row) {
     // first char is enclose char, skip it
     val_start = const_cast<char *>(val_beg) + 1;
     // skip the first and the last char which is encolose char
@@ -383,8 +408,8 @@ void ParsingStrategy::ReadField(const char *&ptr, const char *&val_beg, Item *&i
 }
 
 ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, size_t size,
-                                                        std::vector<ValueCache> &record, uint &rowsize,
-                                                        int &errorinfo) {
+                                                        std::vector<ValueCache> &record, uint &rowsize, int &errorinfo,
+                                                        bool eof) {
   const char *buf_end = buf + size;
   if (!prepared_) {
     GetEOL(buf, buf_end);
@@ -440,22 +465,39 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
   uint index_of_field{0};
 
   // step2, fill the field list with data file content;
+
+  // three condition for matching one field:
+  // (1) enclosed-char(optional) + content + enclosed-char(optional) + delimiter-str, return PATTERN_FOUND
+  // (2) enclosed-char(optional) + content + enclosed-char(optional) + termination_str, return END_OF_LINE
+  // (3) enclosed-char(optional) + content +(without enclosed-char(optional) + delimiter-str/termination_str), return
+  // END_OF_BUFFER
+  bool enclosed_column = false;
+
   while ((item = it++)) {
     index++;
 
-    if (index == fields_vars.elements)
-      break;
     const char *val_beg = ptr;
-    if (string_qualifier_ && *ptr == string_qualifier_) {
-      row_incomplete = !SearchUnescapedPattern(++ptr, buf_end, enclose_delimiter_, kmp_next_enclose_delimiter_);
+
+    enclosed_column = false;
+    if (string_qualifier_ && *ptr == string_qualifier_)
+      enclosed_column = true;
+    const std::string &delimitor = enclosed_column ? enclose_delimiter_ : delimiter_;
+    const std::string &line_termination = enclosed_column ? enclose_terminator_ : terminator_;
+    const std::vector<int> &kmp_local = enclosed_column ? kmp_next_enclose_delimiter_ : kmp_next_delimiter_;
+
+    if (enclosed_column)
       ++ptr;
-    } else {
-      SearchResult res = SearchUnescapedPatternNoEOL(ptr, buf_end, delimiter_, kmp_next_delimiter_);
-      if (res == SearchResult::END_OF_LINE) {
-        ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
-        continue;
-      }
-      row_incomplete = (res == SearchResult::END_OF_BUFFER);
+
+    SearchResult res = SearchUnescapedPatternNoEOL(ptr, buf_end, delimitor, line_termination, kmp_local);
+    row_incomplete = (res == SearchResult::END_OF_BUFFER);
+
+    if (row_incomplete && eof) {
+      // field is incompleted,and reach to the end of buffer, take the incompeted data as the field content;
+      ReadField(buf_end, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info, false);
+      ptr = buf_end;
+      row_incomplete = false;
+      ++item;
+      break;
     }
 
     if (row_incomplete) {
@@ -463,35 +505,47 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       goto end;
     }
 
+    if (enclosed_column)
+      ++ptr;
     ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
 
-    ptr += delimiter_.size();
-  }
-
-  if (!row_incomplete) {
-    // the last column
-    index++;
-    const char *val_beg = ptr;
-    if (string_qualifier_ && *ptr == string_qualifier_) {
-      row_incomplete = !SearchUnescapedPattern(++ptr, buf_end, enclose_terminator_, kmp_next_enclose_terminator_);
-      ++ptr;
-    } else
-      row_incomplete = !SearchUnescapedPattern(ptr, buf_end, terminator_, kmp_next_terminator_);
-
-    if (!row_incomplete) {
-      ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
-    } else {
-      errorinfo = index;
-      goto end;
+    if (res == SearchResult::PATTERN_FOUND) {
+      ptr += delimiter_.size();
     }
 
-    ptr += terminator_.size();
+    if (res == SearchResult::END_OF_LINE) {
+      ++item;
+      break;
+    }
+  }
+
+  if (item) {
+    while ((item = it++)) {
+      // field is few, warn if occurs;
+      ReadField(ptr, ptr, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info, false);
+      push_warning_printf(thd_, Sql_condition::SL_WARNING, ER_WARN_TOO_FEW_RECORDS, ER(ER_WARN_TOO_FEW_RECORDS),
+                          thd_->get_stmt_da()->current_row_for_condition());
+    }
+  }
+
+  if (!row_incomplete && !eof) {
+    const char *orig_ptr = ptr;
+    SearchResult res = SearchUnescapedPatternNoEOL(ptr, buf_end, terminator_, terminator_, kmp_next_terminator_);
+    // check too many records, warn if occurs
+    if (res != SearchResult::END_OF_BUFFER) {
+      if (orig_ptr != ptr) {
+        push_warning_printf(thd_, Sql_condition::SL_WARNING, ER_WARN_TOO_MANY_RECORDS, ER(ER_WARN_TOO_MANY_RECORDS),
+                            thd_->get_stmt_da()->current_row_for_condition());
+      }
+      ptr += terminator_.size();
+    }
   }
 
   if (thd_->killed) {
     row_data_error = true;
     goto end;
   }
+
   it.rewind();
   while ((item = it++)) {
     Item *real_item = item->real_item();
@@ -623,6 +677,8 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
     for (size_t j = 0; j < value_size; j++) {
       if (value_ptr[j] == escape_char_)
         buf[new_size] = TranslateEscapedChar(value_ptr[++j]);
+      else if (DoubleEnclosedCharMatch(string_qualifier_, value_ptr + j, value_ptr + value_size))
+        buf[new_size] = value_ptr[++j];
       else
         buf[new_size] = value_ptr[j];
       new_size++;

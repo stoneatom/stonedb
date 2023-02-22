@@ -4,6 +4,14 @@
 --echo # Test of alter table
 --echo #
 
+--disable_warnings
+DROP DATABASE IF EXISTS alter_table_v1_test;
+--enable_warnings
+
+CREATE DATABASE alter_table_v1_test;
+USE alter_table_v1_test;
+
+
 create table t1 (bandID MEDIUMINT NOT NULL PRIMARY KEY, payoutID SMALLINT NOT NULL);
 insert into t1 (bandID,payoutID) VALUES (1,6),(2,6),(3,4),(4,9),(5,10),(6,1),(7,12),(8,12);
 alter table t1 add column new_col int, order by payoutid,bandid;
@@ -33,23 +41,23 @@ select * from t1;
 drop table t1;
 
 --echo #
---echo # 'alter table t1 rename mysqltest.t1' silently drops mysqltest.t1 
+--echo # 'alter table t1 rename alter_table_v1_test1.t1' silently drops alter_table_v1_test1.t1 
 --echo # if it exists
 --echo #
 
 create table t1 (name char(15));
 insert into t1 (name) values ("current");
-create database mysqltest;
-create table mysqltest.t1 (name char(15));
-insert into mysqltest.t1 (name) values ("mysqltest");
+create database alter_table_v1_test1;
+create table alter_table_v1_test1.t1 (name char(25));
+insert into alter_table_v1_test1.t1 (name) values ("alter_table_v1_test1");
 select * from t1;
-select * from mysqltest.t1;
+select * from alter_table_v1_test1.t1;
 --error ER_TABLE_EXISTS_ERROR
-alter table t1 rename mysqltest.t1;
+alter table t1 rename alter_table_v1_test1.t1;
 select * from t1;
-select * from mysqltest.t1;
+select * from alter_table_v1_test1.t1;
 drop table t1;
-drop database mysqltest;
+drop database alter_table_v1_test1;
 
 --echo #
 --echo # ALTER TABLE ... ENABLE/DISABLE KEYS
@@ -85,4 +93,6 @@ alter table t1 rename to ``;
 rename table t1 to ``;
 drop table t1;
 
+# Clean UP
+DROP DATABASE alter_table_v1_test;
 

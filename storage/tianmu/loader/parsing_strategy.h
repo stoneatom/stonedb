@@ -34,10 +34,10 @@ class ParsingStrategy final {
   ParsingStrategy(const system::IOParameters &iop, std::vector<uchar> columns_collations);
   ~ParsingStrategy() {}
   ParseResult GetOneRow(const char *const buf, size_t size, std::vector<ValueCache> &values, uint &rowsize,
-                        int &errorinfo);
+                        int &errorinfo, bool eof = false);
   void ReadField(const char *&ptr, const char *&val_beg, Item *&item, uint &index_of_field,
                  std::vector<std::pair<const char *, size_t>> &vec_ptr_field, uint &field_index_in_field_list,
-                 const CHARSET_INFO *char_info);
+                 const CHARSET_INFO *char_info, bool completed_row = true);
   void SetTHD(THD *thd) { thd_ = thd; }
   THD *GetTHD() const { return thd_; };
 
@@ -79,7 +79,7 @@ class ParsingStrategy final {
                               const std::vector<int> &kmp_next);
   enum class SearchResult { PATTERN_FOUND, END_OF_BUFFER, END_OF_LINE };
   SearchResult SearchUnescapedPatternNoEOL(const char *&ptr, const char *const buf_end, const std::string &pattern,
-                                           const std::vector<int> &kmp_next);
+                                           const std::string &line_termination, const std::vector<int> &kmp_next);
 
   void GetEOL(const char *const buf, const char *const buf_end);
   void GetValue(const char *const value_ptr, size_t value_size, ushort col, ValueCache &value);

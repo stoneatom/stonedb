@@ -28,8 +28,7 @@ connection master;
 alter table t_issue1090 add c3 int;
 show create table t_issue1090;
 --echo [on slave]
-connection slave;
-sleep 1;
+--source include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 show global variables like '%_engine';
 show create table t_issue1090;
@@ -61,8 +60,7 @@ connection master;
 alter table t_issue1090_2 add c3 int;
 show create table t_issue1090_2;
 --echo [on slave]
-connection slave;
-sleep 1;
+--source include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 show global variables like '%_engine';
 show create table t_issue1090_2;
@@ -94,8 +92,7 @@ connection master;
 alter table t_issue1090_3 add c3 int;
 show create table t_issue1090_3;
 --echo [on slave]
-connection slave;
-sleep 1;
+--source include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 show global variables like '%_engine';
 show create table t_issue1090_3;
@@ -129,8 +126,7 @@ connection master;
 alter table t_issue1090_4 DROP COLUMN c2;
 show create table t_issue1090_4;
 --echo [on slave]
-connection slave;
-sleep 1;
+--source include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 show global variables like '%_engine';
 show create table t_issue1090_4;

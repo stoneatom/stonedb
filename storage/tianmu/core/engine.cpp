@@ -577,7 +577,8 @@ uint32_t Engine::GetNextTableId() {
   return seq;
 }
 
-std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TABLE *form) {
+std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TABLE *form,
+                                                    HA_CREATE_INFO *create_info) {
   auto opt = std::make_shared<TableOption>();
 
   int power = has_pack(form->s->comment);
@@ -595,10 +596,13 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
 
   opt->path = table + common::TIANMU_EXT;
   opt->name = form->s->table_name.str;
+  opt->create_info = create_info;
   return opt;
 }
 
-void Engine::CreateTable(const std::string &table, TABLE *form) { TianmuTable::CreateNew(GetTableOption(table, form)); }
+void Engine::CreateTable(const std::string &table, TABLE *form, HA_CREATE_INFO *create_info) {
+  TianmuTable::CreateNew(GetTableOption(table, form, create_info));
+}
 
 AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
   bool auto_inc = field.flags & AUTO_INCREMENT_FLAG;
@@ -1376,7 +1380,7 @@ void Engine::LogStat() {
     TIANMU_LOG(LogCtl_Level::INFO, msg.c_str());
   }
 
-  TIANMU_LOG(LogCtl_Level::INFO,
+  TIANMU_LOG(LogCtl_Level::DEBUG,
              "Select: %lu/%lu, Loaded: %lu/%lu(%lu/%lu), dup: %lu/%lu, insert: "
              "%lu/%lu, failed insert: %lu/%lu, update: "
              "%lu/%lu",

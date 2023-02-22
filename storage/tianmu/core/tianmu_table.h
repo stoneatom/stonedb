@@ -49,6 +49,7 @@ struct TableOption {
   std::string name;
   int id;
   uint8_t pss;
+  HA_CREATE_INFO *create_info;
 };
 
 class DataPackLock : public FunctionExecutor {
@@ -179,6 +180,7 @@ class TianmuTable final : public JustATable {
     void MoveToRow(int64_t row_id);
     int64_t GetCurrentRowId() const { return position; }
     bool Inited() const { return table != nullptr; }
+    std::vector<TianmuAttr *> GetAttrs() { return attrs; }
 
    private:
     void FetchValues();

@@ -77,7 +77,7 @@ class Engine final {
   ~Engine();
 
   int Init(uint engine_slot);
-  void CreateTable(const std::string &table, TABLE *from);
+  void CreateTable(const std::string &table, TABLE *from, HA_CREATE_INFO *create_info);
   int DeleteTable(const char *table, THD *thd);
   void TruncateTable(const std::string &table_path, THD *thd);
   int RenameTable(Transaction *trans_, const std::string &from, const std::string &to, THD *thd);
@@ -110,7 +110,7 @@ class Engine final {
   Transaction *GetTx(THD *thd);
   void ClearTx(THD *thd);
   QueryRouteTo HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
-                            int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
+                            int &is_optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
   std::shared_ptr<TianmuTable> GetTableRD(const std::string &table_path);
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
@@ -176,7 +176,7 @@ class Engine final {
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
   void LogStat();
-  std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form);
+  std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form, HA_CREATE_INFO *create_info);
   std::shared_ptr<TableShare> getTableShare(const std::string &table_path);
   void ProcessDelayedInsert();
   void ProcessDelayedMerge();

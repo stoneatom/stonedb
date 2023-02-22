@@ -67,7 +67,8 @@ TianmuAttr::TianmuAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num,
   };
 }
 
-void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows) {
+void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows,
+                        uint64_t auto_inc_value) {
   uint32_t no_pack = common::rows2packs(no_rows, pss);
 
   // write meta data(immutable)
@@ -110,6 +111,11 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
     // TODO: if there is default value, we should add it into dictionary
     dict->Init(ati.Precision());
     dict->SaveData(dir / common::COL_DICT_DIR / std::to_string(1));
+  }
+
+  // auto_increment
+  if (ati.AutoInc() && auto_inc_value != 0) {
+    hdr.auto_inc_next = --auto_inc_value;
   }
 
   // create version directory
@@ -812,6 +818,10 @@ void TianmuAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
     return;
   }
 
+  if (pn >= m_idx.size()) {
+    return;
+  }
+
   auto dpn = &get_dpn(pn);
   if (dpn->IsLocal())
     dpn = m_share->get_dpn_ptr(dpn->base);
@@ -823,18 +833,22 @@ void TianmuAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
   unsigned long newv;
 
   do {
-    ASSERT(v > tag_one,
-           "Unexpected lock counter!: " + Path().string() + " index:" + std::to_string(pn) + " " + std::to_string(v));
+    if (v <= tag_one) {
+      TIANMU_LOG(LogCtl_Level::ERROR, "UnlockPackFromUse fail, v [%ld] <= tag_one [%ld]", v, tag_one);
+      ASSERT(0,
+             "Unexpected lock counter!: " + Path().string() + " index:" + std::to_string(pn) + " " + std::to_string(v));
+    }
     newv = v - tag_one;
     if ((v & ~tag_mask) == tag_one)
       newv = 0;
   } while (!dpn->CAS(v, newv));
 
-  if (newv == 0) {
-    auto ap = reinterpret_cast<Pack *>(v & tag_mask);
-    ap->Unlock();
-  } else {
+  if (newv != 0) {
+    return;
   }
+
+  auto ap = reinterpret_cast<Pack *>(v & tag_mask);
+  ap->Unlock();
 }
 
 void TianmuAttr::Collapse() {
@@ -1076,6 +1090,10 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
           hdr.max = std::max(get_dpn(i).max_i, hdr.max);
       }
     }
+
+    // reset auto increment value
+    if (GetIfAutoInc() && (static_cast<uint64_t>(v.GetInt()) > GetAutoInc()))
+      hdr.auto_inc_next = static_cast<uint64_t>(v.GetInt());
   } else {  // common::PackType::STR
   }
 }

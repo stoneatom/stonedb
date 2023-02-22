@@ -88,8 +88,10 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
   int errorinfo;
 
   bool cont = true;
+  bool eof = false;
+
   while (cont) {
-    switch (strategy_->GetOneRow(cur_ptr_, buf_end_ - cur_ptr_, value_buffers, rowsize, errorinfo)) {
+    switch (strategy_->GetOneRow(cur_ptr_, buf_end_ - cur_ptr_, value_buffers, rowsize, errorinfo, eof)) {
       case ParsingStrategy::ParseResult::EOB:
         if (mysql_bin_log.is_open())
           binlog_loaded_block(read_buffer_.Buf(), cur_ptr_);
@@ -98,10 +100,15 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
           buf_end_ = cur_ptr_ + read_buffer_.BufSize();
         } else {
           // reaching the end of the buffer
-          if (cur_ptr_ != buf_end_)
-            rejecter_.ConsumeBadRow(cur_ptr_, buf_end_ - cur_ptr_, cur_row_ + 1, errorinfo == -1 ? -1 : errorinfo + 1);
-          cur_row_++;
-          cont = false;
+          if (cur_ptr_ != buf_end_) {
+            // rejecter_.ConsumeBadRow(cur_ptr_, buf_end_ - cur_ptr_, cur_row_ + 1, errorinfo == -1 ? -1 : errorinfo +
+            // 1);
+            // do not cousume the row, take this as the normal line
+            eof = true;
+          } else {
+            cur_row_++;
+            cont = false;
+          }
         }
         break;
 
@@ -134,6 +141,7 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
         io_param_.GetTHD()->get_stmt_da()->inc_current_row_for_condition();
         if (num_of_skip_ < io_param_.GetSkipLines()) /*check skip lines */
         {
+          // does not load this line,continue to get next line
           num_of_skip_++;
           num_of_row_--;
           for (uint att = 0; att < attrs_.size(); ++att) {
@@ -142,8 +150,10 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
             auto &attr(attrs_[att]);
             attr->RollBackIfAutoInc();
           }
+          break;
         } else if (tab_index_ != nullptr) { /* check duplicate */
           if (HA_ERR_FOUND_DUPP_KEY == ProcessInsertIndex(tab_index_, value_buffers, num_of_row_ - 1)) {
+            // dose not load this line, continue to get next line
             num_of_row_--;
             num_of_dup_++;
             for (uint att = 0; att < attrs_.size(); ++att) {
@@ -152,6 +162,7 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
               auto &attr(attrs_[att]);
               attr->RollBackIfAutoInc();
             }
+            break;
           }
         }
 

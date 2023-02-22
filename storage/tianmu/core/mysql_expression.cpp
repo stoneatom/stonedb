@@ -505,8 +505,6 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
       my_decimal2decimal(retdec, &dec);
     int64_t v;
     int err;
-    // err = my_decimal_shift((uint)-1, &dec, item->decimals <= 18 ?
-    // item->decimals : 18);
     if (dec_scale == -1)
       err = my_decimal_shift((uint)-1, &dec, item->decimals <= 18 ? item->decimals : 18);
     else

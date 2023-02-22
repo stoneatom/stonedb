@@ -651,7 +651,12 @@ int ha_tianmu::rename_table(const char *from, const char *to) {
   DBUG_RETURN(1);
 }
 
-void ha_tianmu::update_create_info([[maybe_unused]] HA_CREATE_INFO *create_info) {}
+void ha_tianmu::update_create_info(HA_CREATE_INFO *create_info) {
+  if (!(create_info->used_fields & HA_CREATE_USED_AUTO)) {
+    info(HA_STATUS_AUTO);
+    create_info->auto_increment_value = stats.auto_increment_value;
+  }
+}
 
 /*
  ::info() is used to return information to the optimizer.
@@ -731,6 +736,20 @@ int ha_tianmu::info(uint flag) {
       my_store_ptr(dup_ref, ref_length, dupkey_pos_);
     }
 
+    if ((flag & HA_STATUS_AUTO) && table->found_next_number_field) {
+      std::shared_ptr<core::TianmuTable> tab;
+      if (current_txn_ != nullptr) {
+        tab = current_txn_->GetTableByPath(table_name_);
+      } else {
+        tab = ha_tianmu_engine_->GetTableRD(table_name_);
+      }
+      for (uint colno = 0; colno < tab->NumOfAttrs(); colno++) {
+        auto attr = tab->GetAttr(colno);
+        if (attr->GetIfAutoInc()) {
+          stats.auto_increment_value = attr->GetAutoIncInfo();
+        }
+      }
+    }
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1107,8 +1126,12 @@ int ha_tianmu::rnd_next(uchar *buf) {
   int ret = HA_ERR_END_OF_FILE;
   try {
     table->status = 0;
-    if (fill_row(buf) == HA_ERR_END_OF_FILE) {
+    ret = fill_row(buf);
+    if (ret == HA_ERR_END_OF_FILE) {
       table->status = STATUS_NOT_FOUND;
+      DBUG_RETURN(ret);
+    }
+    if (ret == HA_ERR_RECORD_DELETED) {
       DBUG_RETURN(ret);
     }
     ret = 0;
@@ -1313,7 +1336,7 @@ int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CR
       DBUG_RETURN(ER_WRONG_TABLE_NAME);
     }
 
-    ha_tianmu_engine_->CreateTable(name, table_arg);
+    ha_tianmu_engine_->CreateTable(name, table_arg, create_info);
     DBUG_RETURN(0);
   } catch (common::AutoIncException &e) {
     my_message(ER_WRONG_AUTO_KEY, e.what(), MYF(0));
@@ -1369,8 +1392,19 @@ int ha_tianmu::fill_row(uchar *buf) {
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
 
-  for (uint col_id = 0; col_id < table->s->fields; col_id++)
-    core::Engine::ConvertToField(table->field[col_id], *(table_new_iter_.GetData(col_id)), &blob_buffers_[col_id]);
+  for (uint col_id = 0; col_id < table->s->fields; col_id++) {
+    // when ConvertToField() return true, to judge whether this line has been deleted.
+    // if this line has been deleted, data will not be copied.
+    if (core::Engine::ConvertToField(table->field[col_id], *(table_new_iter_.GetData(col_id)),
+                                     &blob_buffers_[col_id]) &&
+        (table_new_iter_.GetAttrs().size() > col_id) &&
+        table_new_iter_.GetAttrs()[col_id]->IsDelete(table_new_iter_.GetCurrentRowId())) {
+      current_position_ = table_new_iter_.GetCurrentRowId();
+      table_new_iter_++;
+      dbug_tmp_restore_column_map(table->write_set, org_bitmap);
+      return HA_ERR_RECORD_DELETED;
+    }
+  }
 
   if (buf != table->record[0]) {
     std::memcpy(buf, table->record[0], table->s->reclength);
@@ -1579,6 +1613,28 @@ int ha_tianmu::reset() {
   DBUG_RETURN(ret);
 }
 
+bool ha_tianmu::check_if_notnull_of_added_column(TABLE *altered_table) {
+  std::vector<Field *> old_cols(table_share->field, table_share->field + table_share->fields);
+  std::vector<Field *> new_cols(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
+
+  for (size_t i = 0; i < new_cols.size(); i++) {
+    size_t j;
+    for (j = 0; j < old_cols.size(); j++)
+      if (old_cols[j] != nullptr && std::strcmp(new_cols[i]->field_name, old_cols[j]->field_name) == 0) {
+        old_cols[j] = nullptr;
+        break;
+      }
+
+    if (j < old_cols.size())  // column exists
+      continue;
+
+    if ((*new_cols[i]).null_bit == 0)
+      return true;
+  }
+
+  return false;
+}
+
 enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
                                                                       Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
@@ -1592,10 +1648,20 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
     // support alter table comment
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
       DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
+    // support alter table auto_increment
+    if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_AUTO)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+  }
+
+  // use copy when add column with not null
+  if ((ha_alter_info->handler_flags & Alter_inplace_info::ADD_COLUMN) &&
+      check_if_notnull_of_added_column(altered_table)) {
+    DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
   }
 
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
-      (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
+      ((ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME) ||
+       (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_NOT_NULLABLE))) {
     // support alter table: column type
     if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
@@ -1612,9 +1678,16 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
     // support alter table: mix add/drop column、order column and other syntaxs to use
     if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
-    if (ha_alter_info->handler_flags & Alter_inplace_info::ADD_PK_INDEX)
+    // support alter table: mix add/drop primary key
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ADD_PK_INDEX ||
+        ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
-    if (ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
+    // support alter table: mix add/drop key
+    if ((ha_alter_info->handler_flags & Alter_inplace_info::ADD_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::DROP_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::ADD_UNIQUE_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::DROP_UNIQUE_INDEX) &&
+        (ha_thd()->variables.sql_mode & MODE_NO_KEY_ERROR))
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);
@@ -1632,6 +1705,32 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
         DBUG_RETURN(false);
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
         DBUG_RETURN(false);
+      if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_AUTO) {
+        auto tab = current_txn_->GetTableByPath(table_name_);
+        fs::path tab_dir = table_name_ + common::TIANMU_EXT;
+        for (uint i = 0; i < table_share->fields; i++) {
+          if (table_share->field[i]->flags & AUTO_INCREMENT_FLAG) {
+            system::TianmuFile fv, fw;
+            fv.OpenReadOnly(tab_dir / common::TABLE_VERSION_FILE);
+            common::TX_ID xid;
+            fv.ReadExact(&xid, sizeof(xid));
+            Tianmu::core::COL_VER_HDR hdr{};
+            fs::path fname =
+                tab_dir / common::COLUMN_DIR / std::to_string(i) / common::COL_VERSION_DIR / xid.ToString();
+            fw.OpenReadWrite(fname);
+            fw.ReadExact(&hdr, sizeof(hdr));
+            uint64_t autoinc_ = ha_alter_info->create_info->auto_increment_value;
+            if (autoinc_ > hdr.auto_inc_next) {  // alter table auto_increment must be > current max autoinc
+              hdr.auto_inc_next = --autoinc_;
+              fw.WriteExact(&hdr, sizeof(hdr));
+            }
+            fw.Flush();
+          }
+        }
+        ha_tianmu_engine_->cache.ReleaseTable(tab->GetID());
+        ha_tianmu_engine_->UnRegisterTable(table_name_);
+        DBUG_RETURN(false);
+      }
     } else if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
       std::vector<Field *> v_new(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
@@ -1669,6 +1768,8 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
       DBUG_RETURN(false);
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
+      DBUG_RETURN(false);
+    if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_AUTO)
       DBUG_RETURN(false);
   }
   if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
@@ -2409,10 +2510,18 @@ static MYSQL_SYSVAR_UINT(distinct_cache_size, tianmu_sysvar_distcache_size, PLUG
 static MYSQL_SYSVAR_BOOL(filterevaluation_speedup, tianmu_sysvar_filterevaluation_speedup, PLUGIN_VAR_BOOL, "-",
                          nullptr, nullptr, TRUE);
 static MYSQL_SYSVAR_BOOL(groupby_speedup, tianmu_sysvar_groupby_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
-static MYSQL_SYSVAR_BOOL(orderby_speedup, tianmu_sysvar_orderby_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, FALSE);
+static MYSQL_SYSVAR_UINT(groupby_parallel_degree, tianmu_sysvar_groupby_parallel_degree, PLUGIN_VAR_INT,
+                         "group by parallel degree, number of worker threads", nullptr, nullptr, 8, 0, INT32_MAX, 0);
+static MYSQL_SYSVAR_ULONGLONG(groupby_parallel_rows_minimum, tianmu_sysvar_groupby_parallel_rows_minimum,
+                              PLUGIN_VAR_LONGLONG, "group by parallel minimum rows", nullptr, nullptr, 655360, 655360,
+                              INT64_MAX, 0);
+static MYSQL_SYSVAR_UINT(slow_query_record_interval, tianmu_sysvar_slow_query_record_interval, PLUGIN_VAR_INT,
+                         "slow Query Threshold of recording tianmu logs, in seconds", nullptr, nullptr, 0, 0, INT32_MAX,
+                         0);
+static MYSQL_SYSVAR_BOOL(orderby_speedup, tianmu_sysvar_orderby_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
 static MYSQL_SYSVAR_UINT(join_parallel, tianmu_sysvar_join_parallel, PLUGIN_VAR_INT,
                          "join matching parallel: 0-Disabled, 1-Auto, N-specify count", nullptr, nullptr, 1, 0, 1000,
-                         0);
+                         1);
 static MYSQL_SYSVAR_UINT(join_splitrows, tianmu_sysvar_join_splitrows, PLUGIN_VAR_INT,
                          "join split rows:0-Disabled, 1-Auto, N-specify count", nullptr, nullptr, 0, 0, 1000, 0);
 static MYSQL_SYSVAR_BOOL(minmax_speedup, tianmu_sysvar_minmax_speedup, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
@@ -2446,7 +2555,7 @@ static MYSQL_SYSVAR_UINT(lookup_max_size, tianmu_sysvar_lookup_max_size, PLUGIN_
 
 static MYSQL_SYSVAR_BOOL(qps_log, tianmu_sysvar_qps_log, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
 
-static MYSQL_SYSVAR_BOOL(force_hashjoin, tianmu_sysvar_force_hashjoin, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, FALSE);
+static MYSQL_SYSVAR_BOOL(force_hashjoin, tianmu_sysvar_force_hashjoin, PLUGIN_VAR_BOOL, "-", nullptr, nullptr, TRUE);
 static MYSQL_SYSVAR_UINT(start_async, tianmu_sysvar_start_async, PLUGIN_VAR_INT,
                          "Enable async, specifies async threads x/100 * cpus", nullptr, start_async_update, 0, 0, 100,
                          0);
@@ -2536,7 +2645,9 @@ static struct st_mysql_sys_var *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_thread
                                                      MYSQL_SYSVAR(distinct_cache_size),
                                                      MYSQL_SYSVAR(filterevaluation_speedup),
                                                      MYSQL_SYSVAR(global_debug_level),
-                                                     MYSQL_SYSVAR(groupby_speedup),
+                                                     MYSQL_SYSVAR(groupby_parallel_degree),
+                                                     MYSQL_SYSVAR(groupby_parallel_rows_minimum),
+                                                     MYSQL_SYSVAR(slow_query_record_interval),
                                                      MYSQL_SYSVAR(hugefiledir),
                                                      MYSQL_SYSVAR(index_cache_size),
                                                      MYSQL_SYSVAR(index_search),

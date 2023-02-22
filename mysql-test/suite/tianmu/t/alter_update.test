@@ -1,0 +1,27 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS alter_update;
+--enable_warnings
+
+CREATE DATABASE alter_update;
+
+USE alter_update;
+
+CREATE TABLE test (a INT,b INT);
+
+INSERT INTO test(a,b) VALUES (1,37),(64,34),(65,17);
+
+ALTER TABLE test ADD COLUMN c INT;
+
+UPDATE test SET c=b;
+
+SELECT * FROM test;
+
+UPDATE test SET c=a;
+
+SELECT * FROM test;
+
+DROP TABLE test;
+
+DROP DATABASE alter_update;

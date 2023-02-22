@@ -81,3 +81,7 @@ loose-show-compatibility-56=ON
 
 tianmu_insert_delayed = 0
 tianmu_ini_allowmysqlquerypath=1
+tianmu_groupby_parallel_degree=0
+tianmu_force_hashjoin=0
+tianmu_join_parallel=0
+
