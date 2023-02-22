@@ -1580,8 +1580,8 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
             fw.OpenReadWrite(fname);
             fw.ReadExact(&hdr, sizeof(hdr));
             uint64_t autoinc_ = ha_alter_info->create_info->auto_increment_value;
-            if (autoinc_ > hdr.auto_inc_next) {  // alter table auto_increment must be > current max autoinc
-              hdr.auto_inc_next = --autoinc_;
+            if (autoinc_ > hdr.auto_inc) {  // alter table auto_increment must be > current max autoinc
+              hdr.auto_inc = --autoinc_;
               fw.WriteExact(&hdr, sizeof(hdr));
             }
             fw.Flush();

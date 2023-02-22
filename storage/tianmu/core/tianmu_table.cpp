@@ -42,7 +42,7 @@
 namespace Tianmu {
 namespace core {
 
-void TianmuTable::GetValueFromField(Field *f, Value &v) {
+void TianmuTable::GetValueFromField(Field *f, Value &v, size_t col) {
   if (f->is_null())
     return;
 
@@ -52,9 +52,25 @@ void TianmuTable::GetValueFromField(Field *f, Value &v) {
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_BIT:
-    case MYSQL_TYPE_LONGLONG:
-      v.SetInt(f->val_int());
+    case MYSQL_TYPE_LONGLONG: {
+      int64_t value = f->val_int();
+      common::PushWarningIfOutOfRange(current_txn_->Thd(), std::string(f->field_name), value, f->type(),
+                                      f->flags & UNSIGNED_FLAG);
+      if (m_attrs[col]->GetIfAutoInc() && value == 0) {
+        // Value of auto inc column was not assigned by user
+        value = m_attrs[col]->AutoIncNext();
+      }
+      if (m_attrs[col]->GetIfAutoInc()) {
+        // inc counter should be set to value of user assigned
+        if (static_cast<uint64_t>(value) > m_attrs[col]->GetAutoInc()) {
+          if (value > 0 || ((m_attrs[col]->TypeName() == common::ColumnType::BIGINT) && m_attrs[col]->GetIfUnsigned()))
+            m_attrs[col]->SetAutoInc(value);
+        }
+      }
+      f->store(value);
+      v.SetInt(value);
       break;
+    }
     case MYSQL_TYPE_DECIMAL:
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE:
@@ -138,9 +154,9 @@ void TianmuTable::UpdateGetOldNewValue(TABLE *table, uint64_t col_id, Value &old
   std::shared_ptr<uchar[]> buffer;
   buffer.reset(new uchar[table->s->reclength]);
   std::memcpy(buffer.get(), table->record[0], table->s->reclength);
-  GetValueFromField(table->field[col_id], new_v);
+  GetValueFromField(table->field[col_id], new_v, col_id);
   std::memcpy(table->record[0], table->record[1], table->s->reclength);
-  GetValueFromField(table->field[col_id], old_v);
+  GetValueFromField(table->field[col_id], old_v, col_id);
   std::memcpy(table->record[0], buffer.get(), table->s->reclength);
 }
 

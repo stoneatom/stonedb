@@ -125,7 +125,7 @@ class TianmuTable final : public JustATable {
   int64_t NoRecordsLoaded() { return no_loaded_rows; }
   int64_t NoRecordsDuped() { return no_dup_rows; }
 
-  void GetValueFromField(Field *f, Value &v);
+  void GetValueFromField(Field *f, Value &v, size_t col);
   void UpdateGetOldNewValue(TABLE *table, uint64_t col_id, Value &old_v, Value &new_v);
 
   // directly (no delta)

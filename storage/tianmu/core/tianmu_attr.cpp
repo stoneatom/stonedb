@@ -115,7 +115,7 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
 
   // auto_increment
   if (ati.AutoInc() && auto_inc_value != 0) {
-    hdr.auto_inc_next = --auto_inc_value;
+    hdr.auto_inc = --auto_inc_value;
   }
 
   // create version directory
@@ -1246,9 +1246,6 @@ void TianmuAttr::ResetMaxMin(DPN &dpn) {
           hdr.max = std::max(get_dpn(i).max_i, hdr.max);
       }
     }
-    // reset auto increment value
-    if (GetIfAutoInc() && (static_cast<uint64_t>(v.GetInt()) > GetAutoInc()))
-      hdr.auto_inc_next = static_cast<uint64_t>(v.GetInt());
   } else {  // common::PackType::STR
   }
 }
