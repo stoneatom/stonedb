@@ -3283,8 +3283,8 @@ case SQLCOM_PREPARE:
 		  
 		  int tianmu_res, free_join_from_tianmu, is_optimize_after_tianmu;
 		  if (Tianmu::DBHandler::QueryRouteTo::kToMySQL ==
-			  Tianmu::DBHandler::ha_my_tianmu_query(thd, lex, result, 0, tianmu_res, optimize_after_tianmu, free_join_from_tianmu, (int)true))
-		    res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, optimize_after_tianmu, free_join_from_tianmu);
+			  Tianmu::DBHandler::ha_my_tianmu_query(thd, lex, result, 0, tianmu_res, is_optimize_after_tianmu, free_join_from_tianmu, (int)true))
+		    res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, is_optimize_after_tianmu, free_join_from_tianmu);
 		  else
 		    res = tianmu_res;
 		  
@@ -5205,8 +5205,8 @@ static bool execute_sqlcom_select(THD *thd, TABLE_LIST *all_tables)
 	 
 	  int tianmu_res, free_join_from_tianmu, is_optimize_after_tianmu;
 	  if (Tianmu::DBHandler::QueryRouteTo::kToMySQL ==
-		  Tianmu::DBHandler::ha_my_tianmu_query(thd, lex, result, (ulong)0, tianmu_res, optimize_after_tianmu, free_join_from_tianmu)) {
-		  res = handle_query(thd, lex, result, (ulonglong)0, (ulonglong)0, optimize_after_tianmu, free_join_from_tianmu);
+		  Tianmu::DBHandler::ha_my_tianmu_query(thd, lex, result, (ulong)0, tianmu_res, is_optimize_after_tianmu, free_join_from_tianmu)) {
+		  res = handle_query(thd, lex, result, (ulonglong)0, (ulonglong)0, is_optimize_after_tianmu, free_join_from_tianmu);
 	  }
 	  else
 		  res = tianmu_res;
