@@ -256,5 +256,24 @@ INSERT INTO t1 VALUES(128, 256, 32768, 65536, 8388608, 16777216, 4294967296);
 INSERT INTO t1 VALUES(-129, -1, -32769, -1, -8388609, -1, -1);
 SELECT * FROM t1;
 DROP TABLE t1;
+# test load export related issue1329, test both with out of boundary
+create table load_unsigned(
+  `ut` tinyint(3) unsigned DEFAULT NULL,
+  `us` smallint(5) unsigned DEFAULT NULL,
+  `um` mediumint(8) unsigned DEFAULT NULL,
+  `ui` int(10) unsigned DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/load_export_unsigned.txt' INTO TABLE load_unsigned;
+select * from load_unsigned;
+
+disable_query_log;
+eval select * into outfile "$MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt" from load_unsigned;
+disable_query_log;
+truncate table load_unsigned;
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/unsigned_outfile-test.txt' INTO TABLE load_unsigned;
+show warnings;
+select * from load_unsigned;
+drop table load_unsigned;
 
 drop database unsigned_support;
