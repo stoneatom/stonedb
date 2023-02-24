@@ -388,8 +388,8 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
   // calculate result type
   //  type = DataType();
   switch (mysql_type) {
-    case INT_RESULT:
-      type = DataType(common::ColumnType::BIGINT);
+    case INT_RESULT:  // prec = 0, scale = 0
+      type = DataType(common::ColumnType::BIGINT, 0, 0, DTCollation(), item->unsigned_flag);
       break;
     case REAL_RESULT:
       type = DataType(common::ColumnType::FLOAT);

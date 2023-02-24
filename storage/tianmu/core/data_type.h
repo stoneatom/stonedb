@@ -57,7 +57,7 @@ struct DataType final {
     unsigned_flag_ = false;
   }
   DataType(common::ColumnType atype, int prec = 0, int scale = 0, DTCollation collation = DTCollation(),
-           bool unsigned_flag_ = false);
+           bool unsigned_flag = false);
   DataType &operator=(const ColumnType &ct);
 
   bool IsKnown() const { return valtype != ValueType::VT_NOTKNOWN; }

@@ -655,7 +655,9 @@ AttributeTypeInfo Engine::GetCorrespondingATI(Field &field) {
       return AttributeTypeInfo(at, !field.maybe_null(), static_cast<Field_new_decimal &>(field).precision,
                                static_cast<Field_num &>(field).decimals());
     }
-    return AttributeTypeInfo(at, !field.maybe_null(), field.field_length, static_cast<Field_num &>(field).decimals());
+    auto unsigned_flag = field.flags & UNSIGNED_FLAG;
+    return AttributeTypeInfo(at, !field.maybe_null(), field.field_length, static_cast<Field_num &>(field).decimals(),
+                             false, DTCollation(), common::PackFmt::DEFAULT, false, std::string(), unsigned_flag);
   }
   return AttributeTypeInfo(at, !field.maybe_null(), field.field_length);
 }

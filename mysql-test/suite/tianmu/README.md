@@ -1,6 +1,6 @@
 Stonedb prepares the rules to be followed by MTR
 
-# Writing Test Cases  
+# Writing Test Cases
 - <font color=blue>Test Case Coding Guidelines  </font>
 
 ## <font color=blue>Test Case Coding Guidelines  </font>

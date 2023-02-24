@@ -542,11 +542,23 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::Tia
       tianmu_data_exp_->PutBin(tianmu_dt.ToBString());
     else if (ATI::IsNumericType(tianmu_dt.Type())) {
       if (tianmu_dt.Type() == common::ColumnType::BYTEINT)
-        tianmu_data_exp_->PutNumeric((char)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        if (l_item->unsigned_flag) {
+          tianmu_data_exp_->PutNumeric((uchar) dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        } else {
+          tianmu_data_exp_->PutNumeric((char)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        }
       else if (tianmu_dt.Type() == common::ColumnType::SMALLINT)
-        tianmu_data_exp_->PutNumeric((short)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        if (l_item->unsigned_flag) {
+          tianmu_data_exp_->PutNumeric((ushort) dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        } else {
+          tianmu_data_exp_->PutNumeric((short)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        }
       else if (tianmu_dt.Type() == common::ColumnType::INT || tianmu_dt.Type() == common::ColumnType::MEDIUMINT)
-        tianmu_data_exp_->PutNumeric((int)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        if (l_item->unsigned_flag) {
+          tianmu_data_exp_->PutNumeric((uint) dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        } else {
+          tianmu_data_exp_->PutNumeric((int)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        }
       else
         tianmu_data_exp_->PutNumeric(dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
     } else if (ATI::IsDateTimeType(tianmu_dt.Type())) {
