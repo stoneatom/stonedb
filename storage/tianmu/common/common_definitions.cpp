@@ -32,10 +32,11 @@ void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint code, 
   push_warning(thd, level, code, msg);
 }
 
-// min MYSQL_TYPE_LONG value in tianmu is -2147483647, -2147483648 is used for null_32, so here we do not test signed int
-// min MYSQL_TYPE_LONGLONG value in tianmu is -9223372036854775806, -9223372036854775807 is used for null_64, so here we do not test signed int
-// We use std::exception() but not common::Exceptions here as it will raise infos like "internal error in storage
-// tianmu ..." on mysql client, this is not user friendly. Users has already get error msg from push_warning() func.
+// min MYSQL_TYPE_LONG value in tianmu is -2147483647, -2147483648 is used for null_32, so here we do not test signed
+// int min MYSQL_TYPE_LONGLONG value in tianmu is -9223372036854775806, -9223372036854775807 is used for null_64, so
+// here we do not test signed int We use std::exception() but not common::Exceptions here as it will raise infos like
+// "internal error in storage tianmu ..." on mysql client, this is not user friendly. Users has already get error msg
+// from push_warning() func.
 void PushWarningIfOutOfRange(THD *thd, std::string col_name, int64_t v, int type, bool unsigned_flag) {
   // below `0` is for min unsigned value.
   switch (type) {
