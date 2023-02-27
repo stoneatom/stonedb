@@ -3,6 +3,7 @@
 drop database if exists unsigned_support;
 create database unsigned_support;
 use unsigned_support;
+# test with sql_mode = TRADITIONAL, refs:https://dev.mysql.com/doc/refman/5.6/en/out-of-range-and-overflow.html
 create table tiny(a tinyint, b tinyint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
 # test insert correctly
 insert into tiny values(-128, 0);
@@ -237,6 +238,23 @@ select b * 12345678910123456789 from int_;
 # error(mysql will be numeric results, diff with tianmu):  Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
 --error 1105
 select b * 123456789101234567891 from int_;
-
 drop table int_;
+
+# explict test strictive modes
+# min int value in tianmu is -2147483647, -2147483648 is used for null, so here we do not test signed int
+CREATE TABLE t1(i1 TINYINT, i2 TINYINT UNSIGNED, i3 SMALLINT, i4 SMALLINT UNSIGNED, i5 MEDIUMINT, i6 MEDIUMINT UNSIGNED, i7 INT UNSIGNED);
+SET sql_mode = 'TRADITIONAL';
+--error 1264
+INSERT INTO t1 VALUES(128, 256, 32768, 65536, 8388608, 16777216, 4294967296);
+--error 1264
+INSERT INTO t1 VALUES(-129, -1, -32769, -1, -8388609, -1, 4294967296);
+SELECT * FROM t1;
+
+# test no restrictive modes are enabled, SET sql_mode = '';
+SET sql_mode = '';
+INSERT INTO t1 VALUES(128, 256, 32768, 65536, 8388608, 16777216, 4294967296);
+INSERT INTO t1 VALUES(-129, -1, -32769, -1, -8388609, -1, -1);
+SELECT * FROM t1;
+DROP TABLE t1;
+
 drop database unsigned_support;

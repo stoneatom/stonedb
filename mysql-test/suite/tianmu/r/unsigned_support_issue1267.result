@@ -360,4 +360,38 @@ ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`int_
 select b * 123456789101234567891 from int_;
 ERROR HY000: Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
 drop table int_;
+CREATE TABLE t1(i1 TINYINT, i2 TINYINT UNSIGNED, i3 SMALLINT, i4 SMALLINT UNSIGNED, i5 MEDIUMINT, i6 MEDIUMINT UNSIGNED, i7 INT UNSIGNED);
+SET sql_mode = 'TRADITIONAL';
+INSERT INTO t1 VALUES(128, 256, 32768, 65536, 8388608, 16777216, 4294967296);
+ERROR 22003: Out of range value for column 'i1' at row 1
+INSERT INTO t1 VALUES(-129, -1, -32769, -1, -8388609, -1, 4294967296);
+ERROR 22003: Out of range value for column 'i1' at row 1
+SELECT * FROM t1;
+i1	i2	i3	i4	i5	i6	i7
+SET sql_mode = '';
+Warnings:
+Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+INSERT INTO t1 VALUES(128, 256, 32768, 65536, 8388608, 16777216, 4294967296);
+Warnings:
+Warning	1264	Out of range value for column 'i1' at row 1
+Warning	1264	Out of range value for column 'i2' at row 1
+Warning	1264	Out of range value for column 'i3' at row 1
+Warning	1264	Out of range value for column 'i4' at row 1
+Warning	1264	Out of range value for column 'i5' at row 1
+Warning	1264	Out of range value for column 'i6' at row 1
+Warning	1264	Out of range value for column 'i7' at row 1
+INSERT INTO t1 VALUES(-129, -1, -32769, -1, -8388609, -1, -1);
+Warnings:
+Warning	1264	Out of range value for column 'i1' at row 1
+Warning	1264	Out of range value for column 'i2' at row 1
+Warning	1264	Out of range value for column 'i3' at row 1
+Warning	1264	Out of range value for column 'i4' at row 1
+Warning	1264	Out of range value for column 'i5' at row 1
+Warning	1264	Out of range value for column 'i6' at row 1
+Warning	1264	Out of range value for column 'i7' at row 1
+SELECT * FROM t1;
+i1	i2	i3	i4	i5	i6	i7
+127	255	32767	65535	8388607	16777215	4294967295
+-128	0	-32768	0	-8388608	0	0
+DROP TABLE t1;
 drop database unsigned_support;
