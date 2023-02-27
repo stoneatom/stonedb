@@ -159,7 +159,7 @@ common::ErrorCode TianmuTableIndex::CheckUniqueness(core::Transaction *tx, const
     return common::ErrorCode::FAILED;
   }
 
-  if (!s.IsNotFound()) {
+  if (s.ok()) {
     return common::ErrorCode::DUPP_KEY;
   }
 

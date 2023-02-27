@@ -777,19 +777,22 @@ uint TianmuTable::MaxStringSize(int n_a, Filter *f) {
 
 void TianmuTable::FillRowByRowid(TABLE *table, int64_t obj) {
   int col_id = 0;
-  assert((int64_t)obj <= NumOfObj());
-  for (Field **field = table->field; *field; field++, col_id++) {
-    LockPackForUse(col_id, obj >> m_attrs[col_id]->ValueOfPackPower());
-    std::shared_ptr<void> defer(nullptr,
-                                [this, col_id, obj](...) { UnlockPackFromUse(col_id, obj >> Getpackpower()); });
-    std::unique_ptr<types::TianmuDataType> value(m_attrs[col_id]->ValuePrototype(false).Clone());
-    m_attrs[col_id]->GetValueData(obj, *value);
-    if (bitmap_is_set(table->read_set, col_id)) {
-      Engine::ConvertToField(*field, *value, nullptr);
-    } else {
-      std::memset((*field)->ptr, 0, 2);
-      (*field)->set_null();
+  if (obj <= NumOfObj()) {
+    for (Field **field = table->field; *field; field++, col_id++) {
+      LockPackForUse(col_id, obj >> m_attrs[col_id]->ValueOfPackPower());
+      std::shared_ptr<void> defer(nullptr,
+                                  [this, col_id, obj](...) { UnlockPackFromUse(col_id, obj >> Getpackpower()); });
+      std::unique_ptr<types::TianmuDataType> value(m_attrs[col_id]->ValuePrototype(false).Clone());
+      m_attrs[col_id]->GetValueData(obj, *value);
+      if (bitmap_is_set(table->read_set, col_id)) {
+        Engine::ConvertToField(*field, *value, nullptr);
+      } else {
+        std::memset((*field)->ptr, 0, 2);
+        (*field)->set_null();
+      }
     }
+  } else {
+    m_delta->FillRowByRowid(m_tx, table, obj);
   }
 }
 

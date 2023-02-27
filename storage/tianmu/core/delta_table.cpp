@@ -71,6 +71,24 @@ common::ErrorCode DeltaTable::Rename(const std::string &to) {
   return common::ErrorCode::SUCCESS;
 }
 
+void DeltaTable::FillRowByRowid(Transaction *tx, TABLE *table, int64_t obj) {
+  uchar key[12];
+  size_t key_pos = 0;
+  index::KVTransaction &kv_trans = tx->KVTrans();
+  // table id
+  index::be_store_index(key + key_pos, delta_tid_);
+  key_pos += sizeof(uint32_t);
+  // row id
+  index::be_store_uint64(key + key_pos, obj);
+  key_pos += sizeof(uint64_t);
+  std::string delta_record;
+  rocksdb::Status status = kv_trans.GetData(cf_handle_, {(char *)key, key_pos}, &delta_record);
+  if (!status.ok()) {
+    throw common::Exception("Error, kv_trans.GetData failed, key: %s" + std::string((char *)key, key_pos));
+  }
+  core::Engine::DecodeInsertRecord(delta_record.data(), delta_record.size(), table->field);
+}
+
 common::ErrorCode DeltaTable::DropDeltaTable(const std::string &table_name) {
   std::string normalized_name;
   if (!index::NormalizeName(table_name, normalized_name)) {

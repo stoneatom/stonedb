@@ -7,15 +7,17 @@
 namespace Tianmu::core {
 
 CombinedIterator::CombinedIterator(TianmuTable *base_table, const std::vector<bool> &attrs, const Filter &filter)
-    : base_table_(base_table), attrs_(attrs), is_base_(true) {
+    : base_table_(base_table), attrs_(attrs){
   base_iter_ = std::make_unique<TianmuIterator>(base_table, attrs, filter);
-  // lazy create delta iter
+  delta_iter_ = std::make_unique<DeltaIterator>(base_table_->GetDelta().get(), attrs_);
+  is_base_ = !delta_iter_->Valid();
 }
 
 CombinedIterator::CombinedIterator(TianmuTable *base_table, const std::vector<bool> &attrs)
-    : base_table_(base_table), attrs_(attrs), is_base_(true) {
+    : base_table_(base_table), attrs_(attrs) {
   base_iter_ = std::make_unique<TianmuIterator>(base_table, attrs);
-  // lazy create delta iter
+  delta_iter_ = std::make_unique<DeltaIterator>(base_table_->GetDelta().get(), attrs_);
+  is_base_ = !delta_iter_->Valid();
 }
 
 bool CombinedIterator::operator==(const CombinedIterator &o) {
@@ -25,16 +27,19 @@ bool CombinedIterator::operator==(const CombinedIterator &o) {
 bool CombinedIterator::operator!=(const CombinedIterator &other) { return !(*this == other); }
 
 void CombinedIterator::Next() {
-  if (is_base_) {
-    if (base_iter_->Valid()) {
-      base_iter_->Next();
-      if (!base_iter_->Valid()) {  // switch to delta
-        delta_iter_ = std::make_unique<DeltaIterator>(base_table_->GetDelta().get(), attrs_);
-        is_base_ = false;
-      }
+  if (!is_base_) {
+    delta_iter_->Next();
+    if (!delta_iter_->Valid()) {
+      is_base_ = true;
+    }
+    if (delta_iter_->Valid()) {
+      TIANMU_LOG(LogCtl_Level::ERROR, "delta pos: %d", delta_iter_->Position());
     }
   } else {
-    delta_iter_->Next();
+    base_iter_->Next();
+    if (base_iter_->Valid()) {
+      TIANMU_LOG(LogCtl_Level::ERROR, "base pos: %d", base_iter_->Position());
+    }
   }
 }
 
@@ -48,9 +53,6 @@ void CombinedIterator::SeekTo(int64_t row_id) {
     base_iter_->SeekTo(row_id);
     is_base_ = true;
   } else {
-    if (!delta_iter_) {  // lazy create
-      delta_iter_ = std::make_unique<DeltaIterator>(base_table_->GetDelta().get(), attrs_);
-    }
     delta_iter_->SeekTo(row_id);
     is_base_ = false;
   }
