@@ -1683,9 +1683,7 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
         ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table: mix add/drop key
-    sql_mode_t sql_mode = ha_thd()->variables.sql_mode;
-    if (ha_thd()->slave_thread)
-      sql_mode = global_system_variables.sql_mode;
+    sql_mode_t sql_mode = ha_thd()->slave_thread ? global_system_variables.sql_mode : ha_thd()->variables.sql_mode;
     if ((ha_alter_info->handler_flags & Alter_inplace_info::ADD_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::DROP_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::ADD_UNIQUE_INDEX ||

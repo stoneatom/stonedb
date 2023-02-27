@@ -3934,8 +3934,7 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
     (*key_count)++;
     tmp=file->max_key_parts();
 
-    sql_mode_t sql_mode = thd->variables.sql_mode;
-    if(thd->slave_thread) sql_mode = global_system_variables.sql_mode;
+    sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
     if ((create_info->db_type->db_type == DB_TYPE_TIANMU)) {
       if ((file->ha_table_flags() & HA_NON_SECONDARY_KEY) &&
           (key->type == KEYTYPE_MULTIPLE) &&
@@ -4083,8 +4082,7 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
           DBUG_RETURN(TRUE);
         }
         if (create_info->db_type->db_type == DB_TYPE_TIANMU){
-          sql_mode_t sql_mode = thd->variables.sql_mode;
-          if(thd->slave_thread) sql_mode = global_system_variables.sql_mode;
+          sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
           if(!(sql_mode & MODE_NO_KEY_ERROR)) {
             my_message(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX,
                       ER(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX), MYF(0));
@@ -8499,8 +8497,7 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
     // Now this contains only DROP for foreign keys and not-found objects
     Alter_drop *drop;
     drop_it.rewind();
-    sql_mode_t sql_mode = thd->variables.sql_mode;
-    if(thd->slave_thread) sql_mode = global_system_variables.sql_mode;
+    sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
     while ((drop=drop_it++)) {
       switch (drop->type) {
       case Alter_drop::KEY:
@@ -8531,8 +8528,7 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
   if (rename_key_list.elements)
   {
     if (create_info->db_type->db_type == DB_TYPE_TIANMU){
-      sql_mode_t sql_mode = thd->variables.sql_mode;
-      if(thd->slave_thread) sql_mode = global_system_variables.sql_mode;
+      sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
       if(!(sql_mode & MODE_NO_KEY_ERROR)){
         my_error(ER_TIANMU_NOT_FOUND_INDEX, MYF(0));
         goto err;

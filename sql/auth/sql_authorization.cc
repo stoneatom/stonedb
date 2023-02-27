@@ -4389,8 +4389,7 @@ bool check_fk_parent_table_access(THD *thd,
 
   // Return if engine does not support Foreign key Constraint.
   if (!ha_check_storage_engine_flag(db_type, HTON_SUPPORTS_FOREIGN_KEYS)) {
-    sql_mode_t sql_mode = thd->variables.sql_mode;
-    if(thd->slave_thread) sql_mode = global_system_variables.sql_mode;
+    sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
     if (db_type == tianmu_hton &&
         (alter_info->flags & Alter_info::ADD_FOREIGN_KEY) &&
         (!(sql_mode & MODE_NO_KEY_ERROR))) {
