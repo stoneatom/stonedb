@@ -395,6 +395,191 @@ Engine::~Engine() {
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu engine destroyed.");
 }
 
+char * Engine::FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd) {
+  switch (field->type()) {
+    case MYSQL_TYPE_TINY:
+    case MYSQL_TYPE_SHORT:
+    case MYSQL_TYPE_LONG:
+    case MYSQL_TYPE_INT24:
+    case MYSQL_TYPE_LONGLONG: {
+      int64_t v = field->val_int();
+      common::PushWarningIfOutOfRange(thd, std::string(field->field_name), v, field->type(),
+                                      field->flags & UNSIGNED_FLAG);
+      *reinterpret_cast<int64_t *>(ptr) = v;
+      deltaRecord->field_len_[col_num] = sizeof(int64_t);
+      ptr += sizeof(int64_t);
+    } break;
+    case MYSQL_TYPE_BIT: {
+      int64_t v = field->val_int();
+      // open it when support M = 64, now all value parsed is < 0.
+      if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
+        v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
+      *reinterpret_cast<int64_t *>(ptr) = v;
+      deltaRecord->field_len_[col_num] = sizeof(int64_t);
+      ptr += sizeof(int64_t);
+    } break;
+    case MYSQL_TYPE_DECIMAL:
+    case MYSQL_TYPE_FLOAT:
+    case MYSQL_TYPE_DOUBLE: {
+      double v = field->val_real();
+      *reinterpret_cast<int64_t *>(ptr) = *reinterpret_cast<int64_t *>(&v);
+      deltaRecord->field_len_[col_num] = sizeof(int64_t);
+      ptr += sizeof(int64_t);
+    } break;
+    case MYSQL_TYPE_NEWDECIMAL: {
+      auto dec_f = dynamic_cast<Field_new_decimal *>(field);
+      *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
+      deltaRecord->field_len_[col_num] = sizeof(int64_t);
+      ptr += sizeof(int64_t);
+    } break;
+    case MYSQL_TYPE_TIME:
+    case MYSQL_TYPE_TIME2:
+    case MYSQL_TYPE_DATE:
+    case MYSQL_TYPE_DATETIME:
+    case MYSQL_TYPE_NEWDATE:
+    case MYSQL_TYPE_TIMESTAMP2:
+    case MYSQL_TYPE_DATETIME2: {
+      MYSQL_TIME my_time;
+      std::memset(&my_time, 0, sizeof(my_time));
+      field->get_time(&my_time);
+      types::DT dt(my_time);
+      *(int64_t *)ptr = dt.val;
+      deltaRecord->field_len_[col_num] = sizeof(int64_t);
+      ptr += sizeof(int64_t);
+    } break;
+
+    case MYSQL_TYPE_TIMESTAMP: {
+      MYSQL_TIME my_time;
+      std::memset(&my_time, 0, sizeof(my_time));
+      field->get_time(&my_time);
+      auto saved = my_time.second_part;
+      // convert to UTC
+      if (!common::IsTimeStampZero(my_time)) {
+        my_bool myb;
+        my_time_t secs_utc = thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
+        common::GMTSec2GMTTime(&my_time, secs_utc);
+      }
+      my_time.second_part = saved;
+      types::DT dt(my_time);
+      *(int64_t *)ptr = dt.val;
+      deltaRecord->field_len_[col_num] = sizeof(int64_t);
+      ptr += sizeof(int64_t);
+    } break;
+    case MYSQL_TYPE_YEAR:  // what the hell?
+    {
+      types::DT dt = {};
+      dt.year = field->val_int();
+      *(int64_t *)ptr = dt.val;
+      deltaRecord->field_len_[col_num] = sizeof(int64_t);
+      ptr += sizeof(int64_t);
+    } break;
+    case MYSQL_TYPE_VARCHAR:
+    case MYSQL_TYPE_TINY_BLOB:
+    case MYSQL_TYPE_MEDIUM_BLOB:
+    case MYSQL_TYPE_LONG_BLOB:
+    case MYSQL_TYPE_BLOB:
+    case MYSQL_TYPE_VAR_STRING:
+    case MYSQL_TYPE_STRING: {
+      String str;
+      field->val_str(&str);
+      std::memcpy(ptr, str.ptr(), str.length());
+      deltaRecord->field_len_[col_num] = str.length();
+      ptr += str.length();
+    } break;
+    case MYSQL_TYPE_SET:
+    case MYSQL_TYPE_ENUM:
+    case MYSQL_TYPE_GEOMETRY:
+    case MYSQL_TYPE_NULL:
+    default:
+      throw common::Exception("unsupported mysql type " + std::to_string(field->type()));
+      break;
+  }
+  return ptr;
+}
+
+const char * Engine::StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num) {
+  switch (field->type()) {
+    case MYSQL_TYPE_TINY:
+    case MYSQL_TYPE_SHORT:
+    case MYSQL_TYPE_LONG:
+    case MYSQL_TYPE_INT24:
+    case MYSQL_TYPE_BIT:
+    case MYSQL_TYPE_LONGLONG: {
+      int64_t v = *(int64_t *)ptr;
+      ptr += sizeof(int64_t);
+      field->store(v, true);
+      break;
+    }
+    case MYSQL_TYPE_FLOAT:
+    case MYSQL_TYPE_DOUBLE:
+    case MYSQL_TYPE_DECIMAL: {
+      double v = *(double *)ptr;
+      ptr += sizeof(double);
+      field->store(v);
+      break;
+    }
+    case MYSQL_TYPE_NEWDECIMAL: {
+      my_decimal md;
+      double v = *(double *)ptr;
+      ptr += sizeof(double);
+      double2decimal(v, &md);
+      auto dec_field = static_cast<Field_new_decimal *>(field);
+      decimal_round(&md, &md, dec_field->decimals(), HALF_UP);
+      decimal2bin(&md, (uchar *)field->ptr, dec_field->precision, dec_field->decimals());
+    }
+    case MYSQL_TYPE_TIME:
+    case MYSQL_TYPE_TIME2: {
+      uint64_t v = *(uint64_t *)ptr;
+      ptr += sizeof(uint64_t);
+      types::DT dt;
+      dt.val = v;
+      MYSQL_TIME my_time = {};
+      dt.Store(&my_time, MYSQL_TIMESTAMP_TIME);
+      field->store_time(&my_time);
+    } break;
+    case MYSQL_TYPE_DATE:
+    case MYSQL_TYPE_YEAR:
+    case MYSQL_TYPE_NEWDATE: {
+      uint64_t v = *(uint64_t *)ptr;
+      ptr += sizeof(uint64_t);
+      types::DT dt;
+      dt.val = v;
+      MYSQL_TIME my_time = {};
+      dt.Store(&my_time, MYSQL_TIMESTAMP_DATE);
+      field->store_time(&my_time);
+    } break;
+    case MYSQL_TYPE_TIMESTAMP:
+    case MYSQL_TYPE_TIMESTAMP2:
+    case MYSQL_TYPE_DATETIME:
+    case MYSQL_TYPE_DATETIME2: {
+      uint64_t v = *(uint64_t *)ptr;
+      ptr += sizeof(uint64_t);
+      types::DT dt;
+      dt.val = v;
+      MYSQL_TIME my_time = {};
+      dt.Store(&my_time, MYSQL_TIMESTAMP_DATETIME);
+      field->store_time(&my_time);
+    } break;
+    case MYSQL_TYPE_VARCHAR:
+    case MYSQL_TYPE_VAR_STRING:
+    case MYSQL_TYPE_STRING:
+    case MYSQL_TYPE_BLOB:
+    case MYSQL_TYPE_TINY_BLOB:
+    case MYSQL_TYPE_MEDIUM_BLOB:
+    case MYSQL_TYPE_LONG_BLOB: {
+      uint32_t str_len = deltaRecord->field_len_[col_num];
+      auto buf = std::make_unique<char[]>(str_len);
+      std::memcpy(buf.get(), ptr, str_len);
+      ptr += str_len;
+      field->store(buf.get(), str_len, field->charset());
+    } break;
+    default:
+      // MYSQL_TYPE_BIT
+      throw common::Exception("Unsupported field type for INSERT " + std::to_string(field->type()));
+  }
+  return ptr;
+}
+
 void Engine::EncodeInsertRecord(const std::string &table_path, Field **field, size_t col, size_t blobs,
                                 std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd) {
   size = blobs > 0 ? 4_MB : 128_KB;
@@ -432,104 +617,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, Field **field, si
       deltaRecord.null_mask_.set(i);
       continue;
     }
-
-    switch (f->type()) {
-      case MYSQL_TYPE_TINY:
-      case MYSQL_TYPE_SHORT:
-      case MYSQL_TYPE_LONG:
-      case MYSQL_TYPE_INT24:
-      case MYSQL_TYPE_LONGLONG: {
-        int64_t v = f->val_int();
-        common::PushWarningIfOutOfRange(thd, std::string(f->field_name), v, f->type(), f->flags & UNSIGNED_FLAG);
-        *reinterpret_cast<int64_t *>(ptr) = v;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_BIT: {
-        int64_t v = f->val_int();
-        // open it when support M = 64, now all value parsed is < 0.
-        if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
-          v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
-        *reinterpret_cast<int64_t *>(ptr) = v;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_DECIMAL:
-      case MYSQL_TYPE_FLOAT:
-      case MYSQL_TYPE_DOUBLE: {
-        double v = f->val_real();
-        *reinterpret_cast<int64_t *>(ptr) = *reinterpret_cast<int64_t *>(&v);
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_NEWDECIMAL: {
-        auto dec_f = dynamic_cast<Field_new_decimal *>(f);
-        *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_TIME:
-      case MYSQL_TYPE_TIME2:
-      case MYSQL_TYPE_DATE:
-      case MYSQL_TYPE_DATETIME:
-      case MYSQL_TYPE_NEWDATE:
-      case MYSQL_TYPE_TIMESTAMP2:
-      case MYSQL_TYPE_DATETIME2: {
-        MYSQL_TIME my_time;
-        std::memset(&my_time, 0, sizeof(my_time));
-        f->get_time(&my_time);
-        types::DT dt(my_time);
-        *(int64_t *)ptr = dt.val;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-
-      case MYSQL_TYPE_TIMESTAMP: {
-        MYSQL_TIME my_time;
-        std::memset(&my_time, 0, sizeof(my_time));
-        f->get_time(&my_time);
-        auto saved = my_time.second_part;
-        // convert to UTC
-        if (!common::IsTimeStampZero(my_time)) {
-          my_bool myb;
-          my_time_t secs_utc = current_thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
-          common::GMTSec2GMTTime(&my_time, secs_utc);
-        }
-        my_time.second_part = saved;
-        types::DT dt(my_time);
-        *(int64_t *)ptr = dt.val;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_YEAR:  // what the hell?
-      {
-        types::DT dt = {};
-        dt.year = f->val_int();
-        *(int64_t *)ptr = dt.val;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_VARCHAR:
-      case MYSQL_TYPE_TINY_BLOB:
-      case MYSQL_TYPE_MEDIUM_BLOB:
-      case MYSQL_TYPE_LONG_BLOB:
-      case MYSQL_TYPE_BLOB:
-      case MYSQL_TYPE_VAR_STRING:
-      case MYSQL_TYPE_STRING: {
-        String str;
-        f->val_str(&str);
-        std::memcpy(ptr, str.ptr(), str.length());
-        deltaRecord.field_len_[i] = str.length();
-        ptr += str.length();
-      } break;
-      case MYSQL_TYPE_SET:
-      case MYSQL_TYPE_ENUM:
-      case MYSQL_TYPE_GEOMETRY:
-      case MYSQL_TYPE_NULL:
-      default:
-        throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
-        break;
-    }
+    ptr = FiledToStr(ptr, f, &deltaRecord, i,thd);
     ASSERT(ptr <= buf.get() + size, "Buffer overflow");
   }
 
@@ -537,96 +625,23 @@ void Engine::EncodeInsertRecord(const std::string &table_path, Field **field, si
   size = ptr - buf.get();
 }
 
-void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
+bool Engine::DecodeInsertRecordToField(const char *ptr, Field **fields) {
   DeltaRecordHeadForInsert deltaRecord;
   ptr = deltaRecord.record_decode(ptr);
+
+  if(deltaRecord.is_deleted_ == DELTA_RECORD_DELETE){
+    return false;
+  }
   for (uint i = 0; i < deltaRecord.field_count_; i++) {
     auto field = fields[i];
     if (deltaRecord.null_mask_[i]) {
       field->set_null();
       continue;
     }
-    //    auto length = deltaRecord.field_head_[i];
-    switch (field->type()) {
-      case MYSQL_TYPE_TINY:
-      case MYSQL_TYPE_SHORT:
-      case MYSQL_TYPE_LONG:
-      case MYSQL_TYPE_INT24:
-      case MYSQL_TYPE_BIT:
-      case MYSQL_TYPE_LONGLONG: {
-        int64_t v = *(int64_t *)ptr;
-        ptr += sizeof(int64_t);
-        field->store(v, true);
-        break;
-      }
-      case MYSQL_TYPE_FLOAT:
-      case MYSQL_TYPE_DOUBLE:
-      case MYSQL_TYPE_DECIMAL: {
-        double v = *(double *)ptr;
-        ptr += sizeof(double);
-        field->store(v);
-        break;
-      }
-      case MYSQL_TYPE_NEWDECIMAL: {
-        my_decimal md;
-        double v = *(double *)ptr;
-        ptr += sizeof(double);
-        double2decimal(v, &md);
-        auto dec_field = static_cast<Field_new_decimal *>(field);
-        decimal_round(&md, &md, dec_field->decimals(), HALF_UP);
-        decimal2bin(&md, (uchar *)field->ptr, dec_field->precision, dec_field->decimals());
-      }
-      case MYSQL_TYPE_TIME:
-      case MYSQL_TYPE_TIME2: {
-        uint64_t v = *(uint64_t *)ptr;
-        ptr += sizeof(uint64_t);
-        types::DT dt;
-        dt.val = v;
-        MYSQL_TIME my_time = {};
-        dt.Store(&my_time, MYSQL_TIMESTAMP_TIME);
-        field->store_time(&my_time);
-      } break;
-      case MYSQL_TYPE_DATE:
-      case MYSQL_TYPE_YEAR:
-      case MYSQL_TYPE_NEWDATE: {
-        uint64_t v = *(uint64_t *)ptr;
-        ptr += sizeof(uint64_t);
-        types::DT dt;
-        dt.val = v;
-        MYSQL_TIME my_time = {};
-        dt.Store(&my_time, MYSQL_TIMESTAMP_DATE);
-        field->store_time(&my_time);
-      } break;
-      case MYSQL_TYPE_TIMESTAMP:
-      case MYSQL_TYPE_TIMESTAMP2:
-      case MYSQL_TYPE_DATETIME:
-      case MYSQL_TYPE_DATETIME2: {
-        uint64_t v = *(uint64_t *)ptr;
-        ptr += sizeof(uint64_t);
-        types::DT dt;
-        dt.val = v;
-        MYSQL_TIME my_time = {};
-        dt.Store(&my_time, MYSQL_TIMESTAMP_DATETIME);
-        field->store_time(&my_time);
-      } break;
-      case MYSQL_TYPE_VARCHAR:
-      case MYSQL_TYPE_VAR_STRING:
-      case MYSQL_TYPE_STRING:
-      case MYSQL_TYPE_BLOB:
-      case MYSQL_TYPE_TINY_BLOB:
-      case MYSQL_TYPE_MEDIUM_BLOB:
-      case MYSQL_TYPE_LONG_BLOB: {
-        uint32_t str_len = deltaRecord.field_len_[i];
-        auto buf = std::make_unique<char[]>(str_len);
-        std::memcpy(buf.get(), ptr, str_len);
-        ptr += str_len;
-        field->store(buf.get(), str_len, field->charset());
-      } break;
-      default:
-        // MYSQL_TYPE_BIT
-        throw common::Exception("Unsupported field type for INSERT " + std::to_string(field->type()));
-    }
+    field->set_notnull();
+    ptr = StrToFiled(ptr, field, &deltaRecord, i);
   }
+  return true;
 }
 
 void Engine::EncodeUpdateRecord(const std::string &table_path, std::unordered_map<uint, Field *> update_fields,
@@ -674,109 +689,29 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, std::unordered_ma
         ptr = buf.get() + used;
       }
     }
-    switch (f->type()) {
-      case MYSQL_TYPE_TINY:
-      case MYSQL_TYPE_SHORT:
-      case MYSQL_TYPE_LONG:
-      case MYSQL_TYPE_INT24:
-      case MYSQL_TYPE_LONGLONG: {
-        int64_t v = f->val_int();
-        common::PushWarningIfOutOfRange(thd, std::string(f->field_name), v, f->type(), f->flags & UNSIGNED_FLAG);
-        *reinterpret_cast<int64_t *>(ptr) = v;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_BIT: {
-        int64_t v = f->val_int();
-        // open it when support M = 64, now all value parsed is < 0.
-        if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
-          v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
-        *reinterpret_cast<int64_t *>(ptr) = v;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_DECIMAL:
-      case MYSQL_TYPE_FLOAT:
-      case MYSQL_TYPE_DOUBLE: {
-        double v = f->val_real();
-        *reinterpret_cast<int64_t *>(ptr) = *reinterpret_cast<int64_t *>(&v);
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_NEWDECIMAL: {
-        auto dec_f = dynamic_cast<Field_new_decimal *>(f);
-        *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_TIME:
-      case MYSQL_TYPE_TIME2:
-      case MYSQL_TYPE_DATE:
-      case MYSQL_TYPE_DATETIME:
-      case MYSQL_TYPE_NEWDATE:
-      case MYSQL_TYPE_TIMESTAMP2:
-      case MYSQL_TYPE_DATETIME2: {
-        MYSQL_TIME my_time;
-        std::memset(&my_time, 0, sizeof(my_time));
-        f->get_time(&my_time);
-        types::DT dt(my_time);
-        *(int64_t *)ptr = dt.val;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-
-      case MYSQL_TYPE_TIMESTAMP: {
-        MYSQL_TIME my_time;
-        std::memset(&my_time, 0, sizeof(my_time));
-        f->get_time(&my_time);
-        auto saved = my_time.second_part;
-        // convert to UTC
-        if (!common::IsTimeStampZero(my_time)) {
-          my_bool myb;
-          my_time_t secs_utc = current_thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
-          common::GMTSec2GMTTime(&my_time, secs_utc);
-        }
-        my_time.second_part = saved;
-        types::DT dt(my_time);
-        *(int64_t *)ptr = dt.val;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_YEAR:  // what the hell?
-      {
-        types::DT dt = {};
-        dt.year = f->val_int();
-        *(int64_t *)ptr = dt.val;
-        deltaRecord.field_len_[i] = sizeof(int64_t);
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_VARCHAR:
-      case MYSQL_TYPE_TINY_BLOB:
-      case MYSQL_TYPE_MEDIUM_BLOB:
-      case MYSQL_TYPE_LONG_BLOB:
-      case MYSQL_TYPE_BLOB:
-      case MYSQL_TYPE_VAR_STRING:
-      case MYSQL_TYPE_STRING: {
-        String str;
-        f->val_str(&str);
-        std::memcpy(ptr, str.ptr(), str.length());
-        ptr += str.length();
-        deltaRecord.field_len_[i] = str.length();
-      } break;
-      case MYSQL_TYPE_SET:
-      case MYSQL_TYPE_ENUM:
-      case MYSQL_TYPE_GEOMETRY:
-      case MYSQL_TYPE_NULL:
-      default:
-        throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
-        break;
-    }
+    ptr = FiledToStr(ptr, f, &deltaRecord, i, thd);
     ASSERT(ptr <= buf.get() + buf_size, "Buffer overflow");
   }
   std::memcpy(buf.get() + deltaRecord.update_offset_, deltaRecord.update_mask_.data(),
               deltaRecord.update_mask_.data_size());
   std::memcpy(buf.get() + deltaRecord.null_offset_, deltaRecord.null_mask_.data(), deltaRecord.null_mask_.data_size());
   buf_size = ptr - buf.get();
+}
+
+void Engine::DecodeUpdateRecordToField(const char *ptr, Field **fields) {
+  DeltaRecordHeadForUpdate deltaRecord;
+  ptr = deltaRecord.record_decode(ptr);
+  for (uint i = 0; i < deltaRecord.field_count_; i++) {
+    if (deltaRecord.update_mask_[i]) {
+      auto field = fields[i];
+      if (deltaRecord.null_mask_[i]) {
+        field->set_null();
+        continue;
+      }
+      field->set_notnull();
+      ptr = StrToFiled(ptr, field, &deltaRecord, i);
+    }
+  }
 }
 
 void Engine::EncodeDeleteRecord(std::unique_ptr<char[]> &buf, uint32_t &buf_size) {

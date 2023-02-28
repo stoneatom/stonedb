@@ -55,6 +55,8 @@ class DeltaTable {
 
   void Truncate(Transaction *tx);
 
+  // Check whether the current row has been deleted
+  bool BaseRowIsDeleted(Transaction *tx, uint64_t row_id) const;
   struct Stat {
     std::atomic_ulong write_cnt{0};
     std::atomic_ulong write_bytes{0};

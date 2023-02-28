@@ -161,13 +161,17 @@ class Engine final {
   static int Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
   static int Convert(int &is_null, double &value, types::TianmuDataType &tianmu_item);
   static int Convert(int &is_null, String *value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
-  static void DecodeInsertRecord(const char *ptr, size_t size, Field **fields);
+  static bool DecodeInsertRecordToField(const char *ptr, Field **fields);
+  static void DecodeUpdateRecordToField(const char *ptr, Field **fields);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
                                     TABLE *table = 0, void *arg = nullptr, bool for_exporter = false);
   static common::TianmuError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
+
+  static const char * StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num);
+  static char * FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd);
 
  private:
   void AddTx(Transaction *tx);
