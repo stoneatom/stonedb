@@ -98,4 +98,20 @@ SELECT * FROM ttb1;
 id	name	age
 1	AAA	
 2	BBB	
+create table stu(id int primary key, name char(20))engine=tianmu;
+insert into stu(id, name) values(1, 'zhang fei');
+insert into stu(id, name) values(2, 'zhao yun');
+insert into stu(id, name) values(3, 'zhen ji');
+insert into stu(id, name) values(4, 'zhou yu');
+insert into stu(id, name) values(5, 'zhu ge liang');
+insert into stu(id, name) values(6, 'ma chao');
+alter table stu add column ctm2 timestamp default current_timestamp();
+select id,name,length(ctm2) from stu;
+id	name	length(ctm2)
+1	zhang fei	19
+2	zhao yun	19
+3	zhen ji	19
+4	zhou yu	19
+5	zhu ge liang	19
+6	ma chao	19
 DROP DATABASE alter_colunm;
