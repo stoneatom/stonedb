@@ -1628,7 +1628,7 @@ bool ha_tianmu::check_if_notnull_of_added_column(TABLE *altered_table) {
     if (j < old_cols.size())  // column exists
       continue;
 
-    if ((*new_cols[i]).null_bit == 0)
+    if ((*new_cols[i]).null_bit == 0 || (*new_cols[i]).has_insert_default_function())
       return true;
   }
 
