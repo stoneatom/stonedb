@@ -394,4 +394,46 @@ i1	i2	i3	i4	i5	i6	i7
 127	255	32767	65535	8388607	16777215	4294967295
 -128	0	-32768	0	-8388608	0	0
 DROP TABLE t1;
+create table load_unsigned(
+`ut` tinyint(3) unsigned DEFAULT NULL,
+`us` smallint(5) unsigned DEFAULT NULL,
+`um` mediumint(8) unsigned DEFAULT NULL,
+`ui` int(10) unsigned DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+LOAD DATA LOCAL INFILE '/github/stonedb/build/install/mysql-test/suite/tianmu/std_data/load_export_unsigned.txt' INTO TABLE load_unsigned FIELDS TERMINATED BY ',';
+Warnings:
+Warning	1264	Out of range value for column 'ut' at row 5
+Warning	1264	Out of range value for column 'us' at row 5
+Warning	1264	Out of range value for column 'um' at row 5
+Warning	1264	Out of range value for column 'ui' at row 5
+Warning	1264	Out of range value for column 'ut' at row 6
+Warning	1264	Out of range value for column 'us' at row 6
+Warning	1264	Out of range value for column 'um' at row 6
+Warning	1264	Out of range value for column 'ui' at row 6
+Warning	1264	Out of range value for column 'ut' at row 7
+Warning	1264	Out of range value for column 'us' at row 7
+Warning	1264	Out of range value for column 'um' at row 7
+Warning	1264	Out of range value for column 'ui' at row 7
+select * from load_unsigned;
+ut	us	um	ui
+0	0	0	0
+127	32767	8388607	2147483647
+128	32768	8388608	2147483648
+255	65535	16777215	4294967295
+0	0	0	0
+0	0	0	0
+255	65535	16777215	4294967295
+select * into outfile "/github/stonedb/build/install/mysql-test/suite/tianmu/tmp/unsigned_outfile-test.txt" from load_unsigned;
+truncate table load_unsigned;
+LOAD DATA LOCAL INFILE '/github/stonedb/build/install/mysql-test/suite/tianmu/tmp/unsigned_outfile-test.txt' INTO TABLE load_unsigned FIELDS TERMINATED BY ';';
+select * from load_unsigned;
+ut	us	um	ui
+0	0	0	0
+127	32767	8388607	2147483647
+128	32768	8388608	2147483648
+255	65535	16777215	4294967295
+0	0	0	0
+0	0	0	0
+255	65535	16777215	4294967295
+drop table load_unsigned;
 drop database unsigned_support;

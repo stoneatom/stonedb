@@ -264,15 +264,14 @@ create table load_unsigned(
   `ui` int(10) unsigned DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
 
-eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/load_export_unsigned.txt' INTO TABLE load_unsigned;
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/load_export_unsigned.txt' INTO TABLE load_unsigned FIELDS TERMINATED BY ',';
 select * from load_unsigned;
 
 disable_query_log;
 eval select * into outfile "$MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt" from load_unsigned;
 disable_query_log;
 truncate table load_unsigned;
-eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/unsigned_outfile-test.txt' INTO TABLE load_unsigned;
-show warnings;
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt' INTO TABLE load_unsigned FIELDS TERMINATED BY ';';
 select * from load_unsigned;
 drop table load_unsigned;
 
