@@ -71,6 +71,28 @@ common::ErrorCode DeltaTable::Rename(const std::string &to) {
   return common::ErrorCode::SUCCESS;
 }
 
+bool DeltaTable::ExistDeleteRow(Transaction *tx, int64_t obj) {
+  uchar key[12];
+  size_t key_pos = 0;
+  index::KVTransaction &kv_trans = tx->KVTrans();
+  // table id
+  index::be_store_index(key + key_pos, delta_tid_);
+  key_pos += sizeof(uint32_t);
+  // row id
+  index::be_store_uint64(key + key_pos, obj);
+  key_pos += sizeof(uint64_t);
+  std::string delta_record;
+  rocksdb::Status status = kv_trans.GetData(cf_handle_, {(char *)key, key_pos}, &delta_record);
+  if (!status.ok() || delta_record.empty()) {
+    return false;
+  }
+  auto rtype = *reinterpret_cast<RecordType *>(const_cast<char *>(delta_record.data()));
+  if (rtype == RecordType::kDelete) {
+    return true;
+  }
+  return false;
+}
+
 void DeltaTable::FillRowByRowid(Transaction *tx, TABLE *table, int64_t obj) {
   uchar key[12];
   size_t key_pos = 0;

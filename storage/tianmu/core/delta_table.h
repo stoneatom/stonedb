@@ -49,6 +49,7 @@ class DeltaTable {
   uint64_t CountRecords() { return load_id.load() - merge_id.load(); }
   rocksdb::ColumnFamilyHandle *GetCFHandle() { return cf_handle_; }
   common::ErrorCode Rename(const std::string &to);
+  bool ExistDeleteRow(Transaction *tx, int64_t obj);
   void FillRowByRowid(Transaction *tx, TABLE *table, int64_t obj);
   void AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
   void AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);

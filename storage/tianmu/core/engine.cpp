@@ -546,7 +546,7 @@ void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
       field->set_null();
       continue;
     }
-    //    auto length = deltaRecord.field_head_[i];
+    field->set_notnull();
     switch (field->type()) {
       case MYSQL_TYPE_TINY:
       case MYSQL_TYPE_SHORT:
