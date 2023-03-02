@@ -971,7 +971,7 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   // now dpn->sum has been updated
 
   // uniform package
-  if ((dpn.numOfNulls + load_nulls) == 0 && load_min == load_max &&
+  if ((dpn.numOfNulls + load_nulls) == 0 && load_min == load_max && nvs->NumOfDeletes() == 0 &&
       (dpn.numOfRecords == 0 || (dpn.min_i == load_min && dpn.max_i == load_max))) {
     dpn.min_i = load_min;
     dpn.max_i = load_max;

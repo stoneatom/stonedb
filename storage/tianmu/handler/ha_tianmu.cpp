@@ -1407,7 +1407,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
   try {
     if (!query_) {
       std::shared_ptr<core::TianmuTable> rctp = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
-      iterator_ = std::make_unique<core::CombinedIterator>(rctp.get(), GetAttrsUseIndicator(table));
+      // iterator_ = std::make_unique<core::CombinedIterator>(rctp.get(), GetAttrsUseIndicator(table));
       table_ptr_ = rctp.get();
       query_.reset(new core::Query(current_txn_));
       cq_.reset(new core::CompiledQuery);
