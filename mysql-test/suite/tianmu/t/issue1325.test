@@ -34,7 +34,8 @@ create table ttt(id int primary key,name varchar(10),key idx_name(name))engine=i
 drop table ttt;
 create table ttt(id int primary key,name varchar(10))engine=innodb;
 create index idx_name on ttt(name);
-drop index idx_name on ttt;
+alter table ttt rename index idx_name to new_idx_name;
+drop index new_idx_name on ttt;
 show create table ttt;
 
 --source include/sync_slave_sql_with_master.inc
@@ -53,7 +54,8 @@ create table xxx(id int,name varchar(10),unique key idx_id(id))engine=innodb;
 drop table xxx;
 create table xxx(id int,name varchar(10))engine=innodb;
 create unique index idx_id on xxx(id);
-drop index idx_id on xxx;
+alter table xxx rename index idx_id to new_idx_id;
+drop index new_idx_id on xxx;
 show create table xxx;
 
 --source include/sync_slave_sql_with_master.inc
@@ -71,7 +73,7 @@ create table ttt(id int primary key,name text,fulltext key idx_name(name))engine
 drop table ttt;
 create table ttt(id int primary key,name text)engine=innodb;
 create fulltext index idx_name on ttt(name);
-
+alter table ttt rename index idx_name to new_idx_name;
 show create table ttt;
 --source include/sync_slave_sql_with_master.inc
 --echo # on slave:
@@ -104,6 +106,7 @@ create table student_score
 
 drop index idx_uk on student_score;
 drop index idx_score on student_score;
+alter table student_score rename index idx_address to new_idx_address;
 
 --source include/sync_slave_sql_with_master.inc
 --echo # on slave:
