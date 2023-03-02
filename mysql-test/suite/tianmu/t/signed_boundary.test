@@ -1,0 +1,27 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test signed boundary
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS signed_boundary;
+--enable_warnings
+
+# int32 limit
+CREATE TABLE int32_(c_max int, c_min int) engine = tianmu;
+INSERT INTO int32_ values(-2147483647, 2147483647);
+--error 1264
+INSERT INTO int32_ values(-2147483648, 2147483647);
+--error 1264
+INSERT INTO int32_ values(-2147483647, 2147483648);
+DROP TABLE int32_;
+
+# int64 limit
+CREATE TABLE int64_(c_max bigint, c_min bigint) engine = tianmu;
+INSERT INTO int64_ values(-9223372036854775806, 9223372036854775807);
+--error 1264
+INSERT INTO int64_ values(-9223372036854775807, 9223372036854775807);
+--error 1264
+INSERT INTO int64_ values(-9223372036854775806, 9223372036854775808);
+DROP TABLE int64_;
