@@ -49,6 +49,7 @@ class DeltaTable {
   uint64_t CountRecords() { return load_id.load() - merge_id.load(); }
   rocksdb::ColumnFamilyHandle *GetCFHandle() { return cf_handle_; }
   common::ErrorCode Rename(const std::string &to);
+  bool ExistDeleteRow(Transaction *tx, int64_t obj);
   void FillRowByRowid(Transaction *tx, TABLE *table, int64_t obj);
   void AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
   void AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
@@ -116,7 +117,6 @@ class DeltaIterator {
   int64_t start_position_ = -1;  // determine row_id is in delta or base
   [[maybe_unused]] bool current_record_fetched_ = false;
   std::unique_ptr<rocksdb::Iterator> it_;
-  rocksdb::Slice prefix_;
   std::string record_;
   std::vector<bool> attrs_;
 };

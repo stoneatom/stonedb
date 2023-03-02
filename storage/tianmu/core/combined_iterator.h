@@ -38,8 +38,9 @@ class CombinedIterator {
   bool IsBase() const;
   // Check whether the current row has been deleted
   bool BaseCurrentRowIsDeleted() const;
-  
+
   std::map<int64_t,bool> InDeltaUpdateRow;
+  const TianmuTable *GetBaseTable() const { return base_table_; }
  private:
   TianmuTable *base_table_ = nullptr;
   std::vector<bool> attrs_;
