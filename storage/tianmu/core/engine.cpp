@@ -224,7 +224,7 @@ int Engine::Init(uint engine_slot) {
   size_t main_size = size_t(tianmu_sysvar_servermainheapsize) << 20;
 
   std::string hugefiledir = tianmu_sysvar_hugefiledir;
-  int hugefilesize = 0;  // unused
+  int hugefilesize = tianmu_sysvar_hugefilesize;  // MB
   if (hugefiledir.empty())
     mm::MemoryManagerInitializer::Instance(0, main_size);
   else
