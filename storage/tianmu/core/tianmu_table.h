@@ -110,6 +110,7 @@ class TianmuTable final : public JustATable {
               int attr) override;  // return true if the value of attr. is null
   types::TianmuValueObject GetValue(int64_t obj, int attr, Transaction *conn = nullptr);
   const fs::path &Path() { return m_path; }
+  bool IsDelete(int64_t row) const;
 
   // Query execution
 
@@ -199,7 +200,7 @@ class TianmuIterator {
   void SeekTo(int64_t row_id);
   int64_t Position() const { return position; }
   bool Valid() { return position != -1; }
-  std::vector<TianmuAttr *> GetAttrs() { return attrs; }
+  bool CurrentRowIsDeleted() const { return table->IsDelete(position); }
 
  private:
   void Initialize(const std::vector<bool> &attrs);

@@ -7,7 +7,7 @@
 namespace Tianmu::core {
 
 CombinedIterator::CombinedIterator(TianmuTable *base_table, const std::vector<bool> &attrs, const Filter &filter)
-    : base_table_(base_table), attrs_(attrs){
+    : base_table_(base_table), attrs_(attrs) {
   base_iter_ = std::make_unique<TianmuIterator>(base_table, attrs, filter);
   delta_iter_ = std::make_unique<DeltaIterator>(base_table_->GetDelta().get(), attrs_);
   is_base_ = !delta_iter_->Valid();
@@ -69,5 +69,13 @@ int64_t CombinedIterator::Position() const {
 bool CombinedIterator::Valid() const { return Position() != -1; }
 
 bool CombinedIterator::IsBase() const { return is_base_; }
+
+bool CombinedIterator::BaseCurrentRowIsDeleted() const {
+  if (base_iter_->CurrentRowIsDeleted() ||
+      delta_iter_->GetTable()->BaseRowIsDeleted(current_txn_, base_iter_->Position())) {
+    return true;
+  }
+  return false;
+}
 
 }  // namespace Tianmu::core

@@ -36,14 +36,15 @@ class CombinedIterator {
   bool Valid() const;
   // check the iterator is delta || base
   bool IsBase() const;
+  // Check whether the current row has been deleted
+  bool BaseCurrentRowIsDeleted() const;
 
-  std::vector<TianmuAttr *> GetBaseAttr() const { return base_iter_->GetAttrs(); }
+  std::map<int64_t,bool> InDeltaUpdateRow;
   const TianmuTable *GetBaseTable() const { return base_table_; }
-
  private:
   TianmuTable *base_table_ = nullptr;
   std::vector<bool> attrs_;
-  bool is_base_ = true;  // make sure that is_base_=true base_iter_ is Valid
+  bool is_base_ = false;  // make sure that is_base_=true base_iter_ is Valid
   std::unique_ptr<DeltaIterator> delta_iter_;
   std::unique_ptr<TianmuIterator> base_iter_;
 };
