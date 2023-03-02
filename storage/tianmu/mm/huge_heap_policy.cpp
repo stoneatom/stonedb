@@ -16,18 +16,30 @@
 */
 
 #include "huge_heap_policy.h"
+#include "system/tianmu_system.h"
+#include "util/log_ctl.h"
 
 #include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <cstring>
+#include <unistd.h>
 
-#include "system/tianmu_system.h"
+#include <cstring>
 
 namespace Tianmu {
 namespace mm {
 
 HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
+  {
+    char command[2048];
+    std::strcpy(command, "rm -rf ");
+    std::strcat(command, hugedir.c_str());
+    std::strcat(command, "/tianmuhuge.*");
+    ::system(command);
+  }
+
   heap_frame_ = nullptr;
   // convert size from MB to B and make it a multiple of 2MB
   size_ = 1_MB * (size & ~0x1);
@@ -40,13 +52,18 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
     std::sprintf(pidtext, "%d", getpid());
     std::strcat(huge_filename_, "/tianmuhuge.");
     std::strcat(huge_filename_, pidtext);
-    fd_ = open(huge_filename_, O_CREAT | O_RDWR, 0700);
+    fd_ = open(huge_filename_, O_CREAT | O_RDWR, 0666);
     if (fd_ < 0) {
       heap_status_ = HEAP_STATUS::HEAP_OUT_OF_MEMORY;
       tianmu_control_ << system::lock << "Memory Manager Error: Unable to create hugepage file: " << huge_filename_
                       << system::unlock;
       return;
     }
+
+    lseek(fd_, size_ - 1, SEEK_SET);
+    write(fd_, " ", 1);
+    lseek(fd_, 0, SEEK_SET);
+
     // MAP_SHARED to have mmap fail immediately if not enough pages
     // MAP_PRIVATE does copy on write
     // MAP_POPULATE to create page table entries and avoid future surprises
@@ -60,6 +77,10 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
     }
 
     tianmu_control_ << system::lock << "Huge Heap size (MB) " << (int)(size) << system::unlock;
+
+    TIANMU_LOG(LogCtl_Level::INFO, "HugeHeap huge_filename_: %s size: %ld size_: %ld kPageShift: %d", huge_filename_,
+               size, size_, kPageShift);
+
     // size_ = size;
     // manage the region as a normal 4k pagesize heap
     m_heap.RegisterArea(heap_frame_, size_ >> kPageShift);

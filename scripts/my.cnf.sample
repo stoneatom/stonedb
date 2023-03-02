@@ -173,6 +173,16 @@ tianmu_groupby_parallel_rows_minimum=655360
 # order by parallel switch
 tianmu_orderby_speedup=1
 
+# DIR
+tianmu_hugefiledir='/tmp'
+
+# MB, If the value is set to 0, the system does not use it
+tianmu_hugefilesize=30720
+
+# minimum available memory of the system, MB
+# If the remaining memory is smaller than this value, huge memory is used
+tianmu_os_least_mem=512
+
 # here, at the end of [mysqld] group mtr will automatically disable
 # all optional plugins.
 

@@ -104,6 +104,11 @@ void ValueMatching_HashTable::Init(int64_t mem_available, int64_t max_no_groups,
   bmanager = std::make_shared<MemBlockManager>(mem_available, 1);
   t.Init(total_width, bmanager, 0, (int)min_block_len);
   Clear();
+
+  TIANMU_LOG(LogCtl_Level::INFO,
+             "Init mem_available: %ld max_no_groups: %ld max_no_rows: %ld total_width: %d input_buffer_width: %d "
+             "matching_width: %d min_block_len: %d",
+             mem_available, max_no_groups, max_no_rows, total_width, input_buffer_width, matching_width, min_block_len);
 }
 
 int64_t ValueMatching_HashTable::ByteSize() {
