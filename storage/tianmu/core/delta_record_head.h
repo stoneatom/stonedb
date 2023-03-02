@@ -34,6 +34,8 @@ class DeltaRecordHead {
  public:
   virtual char *record_encode(char *ptr) = 0;
   virtual const char *record_decode(const char *ptr) = 0;
+  static RecordType GetRecordType(const char *ptr);
+  uint32_t *field_len_ = nullptr;
 };
 
 class DeltaRecordHeadForInsert : public DeltaRecordHead {
@@ -57,7 +59,6 @@ class DeltaRecordHeadForInsert : public DeltaRecordHead {
   size_t field_count_;
   utils::BitSet null_mask_;
 
-  uint32_t *field_len_;
   int null_offset_;
   int field_offset_;
 };
@@ -86,7 +87,6 @@ class DeltaRecordHeadForUpdate : public DeltaRecordHead {
   size_t field_count_;
   utils::BitSet update_mask_;
   utils::BitSet null_mask_;
-  uint32_t *field_len_;
   int null_offset_;
   int update_offset_;
   int field_offset_;

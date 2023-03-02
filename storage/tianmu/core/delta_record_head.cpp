@@ -17,6 +17,7 @@
 
 #include "core/delta_record_head.h"
 #include <cstring>
+#include "delta_record_head.h"
 
 namespace Tianmu {
 namespace core {
@@ -155,6 +156,10 @@ const char *DeltaRecordHeadForDelete::record_decode(const char *ptr) {
   load_num_ = *(uint32_t *)ptr;
   ptr += sizeof(uint32_t);
   return ptr;
+}
+
+RecordType core::DeltaRecordHead::GetRecordType(const char *ptr) { 
+  return *(RecordType *)(ptr); 
 }
 
 }  // namespace core

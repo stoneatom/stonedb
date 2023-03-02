@@ -28,6 +28,7 @@
 #include "common/exception.h"
 #include "core/compilation_tools.h"
 #include "core/compiled_query.h"
+#include "core/delta_record_head.h"
 #include "core/temp_table.h"
 #include "core/tools.h"
 #include "core/transaction.h"
@@ -1254,22 +1255,44 @@ int ha_tianmu::fill_row(uchar *buf) {
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
   if (iterator_->IsBase()) {
+    // judge whether this line has been deleted.
+    // if this line has been deleted, data will not be copied.
+    if (iterator_->BaseCurrentRowIsDeleted() ||
+        iterator_->InDeltaUpdateRow.find(iterator_->Position()) != iterator_->InDeltaUpdateRow.end()) {
+      current_position_ = iterator_->Position();
+      iterator_->Next();
+      dbug_tmp_restore_column_map(table->write_set, org_bitmap);
+      return HA_ERR_RECORD_DELETED;
+    }
     for (uint col_id = 0; col_id < table->s->fields; col_id++) {
-      // when ConvertToField() return true, to judge whether this line has been deleted.
-      // if this line has been deleted, data will not be copied.
-      if (core::Engine::ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)),
-                                       &blob_buffers_[col_id]) &&
-          (iterator_->GetBaseAttr().size() > col_id) &&
-          iterator_->GetBaseAttr()[col_id]->IsDelete(iterator_->Position())) {
-        current_position_ = iterator_->Position();
-        iterator_->Next();
-        dbug_tmp_restore_column_map(table->write_set, org_bitmap);
-        return HA_ERR_RECORD_DELETED;
-      }
+      core::Engine::ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)), &blob_buffers_[col_id]);
     }
   } else {
     std::string delta_record = iterator_->GetDeltaData();
-    core::Engine::DecodeInsertRecord(delta_record.data(), delta_record.size(), table->field);
+    if (!delta_record.empty()) {
+      switch (core::DeltaRecordHead::GetRecordType(delta_record.data())) {
+        case core::RecordType::kInsert:
+          if (!core::Engine::DecodeInsertRecordToField(delta_record.data(), table->field)) {
+            current_position_ = iterator_->Position();
+            iterator_->Next();
+            dbug_tmp_restore_column_map(table->write_set, org_bitmap);
+            return HA_ERR_RECORD_DELETED;
+          }
+          break;
+        case core::RecordType::kUpdate:
+          current_txn_->GetTableByPath(table_name_)->FillRowByRowid(table, iterator_->Position());
+          core::Engine::DecodeUpdateRecordToField(delta_record.data(), table->field);
+          iterator_->InDeltaUpdateRow.insert(std::map<int64_t,bool>::value_type(iterator_->Position(), true));
+          break;
+        case core::RecordType::kDelete:
+          current_position_ = iterator_->Position();
+          iterator_->Next();
+          dbug_tmp_restore_column_map(table->write_set, org_bitmap);
+          return HA_ERR_RECORD_DELETED;
+        default:
+          break;
+      }
+    }
   }
 
   if (buf != table->record[0]) {

@@ -18,6 +18,7 @@
 #include "core/delta_table.h"
 #include "core/table_share.h"
 #include "core/transaction.h"
+#include "delta_table.h"
 #include "index/kv_transaction.h"
 #include "index/rdb_meta_manager.h"
 
@@ -86,7 +87,7 @@ void DeltaTable::FillRowByRowid(Transaction *tx, TABLE *table, int64_t obj) {
   if (!status.ok()) {
     throw common::Exception("Error, kv_trans.GetData failed, key: %s" + std::string((char *)key, key_pos));
   }
-  core::Engine::DecodeInsertRecord(delta_record.data(), delta_record.size(), table->field);
+  core::Engine::DecodeInsertRecordToField(delta_record.data(), table->field);
 }
 
 common::ErrorCode DeltaTable::DropDeltaTable(const std::string &table_name) {
@@ -202,11 +203,37 @@ void DeltaTable::Truncate(Transaction *tx) {
   return;
 }
 
+bool DeltaTable::BaseRowIsDeleted(Transaction *tx, uint64_t row_id) const {
+  uchar key[12];
+  size_t key_pos = 0;
+  index::KVTransaction &kv_trans = tx->KVTrans();
+  // table id
+  index::be_store_index(key + key_pos, delta_tid_);
+  key_pos += sizeof(uint32_t);
+  // row id
+  index::be_store_uint64(key + key_pos, row_id);
+  key_pos += sizeof(uint64_t);
+  std::string delta_record;
+  rocksdb::Status status = kv_trans.GetData(cf_handle_, {(char *)key, key_pos}, &delta_record);
+  if (status.IsBusy() && !status.IsDeadlock()) {
+    kv_trans.Releasesnapshot();
+    kv_trans.Acquiresnapshot();
+    status = kv_trans.GetData(cf_handle_, {(char *)key, key_pos}, &delta_record);
+  }
+  if (status.IsNotFound() || delta_record.empty()) {
+    return false;
+  } else if (status.ok()) {
+    if (DeltaRecordHead::GetRecordType(delta_record.data()) == RecordType::kDelete) {
+      return true;
+    }
+  }
+  return false;
+}
 /// DeltaIterator
 
 DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) : table_(table), attrs_(attrs) {
   // get snapshot for rocksdb, snapshot will release when DeltaIterator is destructured
-  current_txn_->KVTrans().Commit();
+  //current_txn_->KVTrans().Commit();
   auto snapshot = ha_kvstore_->GetRdbSnapshot();
   rocksdb::ReadOptions read_options;
   read_options.total_order_seek = true;
@@ -219,9 +246,9 @@ DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) 
   key_pos += sizeof(uint32_t);
   prefix_ = rocksdb::Slice((char *)entry_key, key_pos);
   it_->Seek(prefix_);
-  while (RdbKeyValid() && !IsInsertType()) {
-    it_->Next();
-  }
+ // while (RdbKeyValid()) {
+  //  it_->Next();
+  //}
   if (RdbKeyValid()) {
     position_ = CurrentRowId();
     start_position_ = position_;
@@ -238,9 +265,9 @@ bool DeltaIterator::operator!=(const DeltaIterator &other) { return !(*this == o
 
 void DeltaIterator::Next() {
   it_->Next();
-  while (RdbKeyValid() && !IsInsertType()) {
-    it_->Next();
-  }
+  //while (RdbKeyValid()) {
+  //  it_->Next();
+ // }
   if (RdbKeyValid()) {
     position_ = CurrentRowId();
   } else {
