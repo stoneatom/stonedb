@@ -461,7 +461,6 @@ int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
                               [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
 
   try {
-    TIANMU_LOG(LogCtl_Level::ERROR, "delete current pk: %d", table->field[0]);
     ha_tianmu_engine_->DeleteRow(table_name_, table, share_, current_position_);
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {

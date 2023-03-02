@@ -73,7 +73,7 @@ common::ErrorCode DeltaTable::Rename(const std::string &to) {
 }
 
 void DeltaTable::FillRowByRowid(Transaction *tx, TABLE *table, int64_t obj) {
-  uchar key[12];
+  uchar key[sizeof(uint32_t) + sizeof(uint64_t)];
   size_t key_pos = 0;
   index::KVTransaction &kv_trans = tx->KVTrans();
   // table id
@@ -129,7 +129,7 @@ void DeltaTable::Init(uint64_t base_row_num) {
 }
 
 void DeltaTable::AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
-  uchar key[12];
+  uchar key[sizeof(uint32_t) + sizeof(uint64_t)];
   size_t key_pos = 0;
   index::KVTransaction &kv_trans = tx->KVTrans();
   // table id
@@ -157,7 +157,7 @@ void DeltaTable::AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_p
 }
 
 void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
-  uchar key[12];
+  uchar key[sizeof(uint32_t) + sizeof(uint64_t)];
   size_t key_pos = 0;
   index::KVTransaction &kv_trans = tx->KVTrans();
   // table id
@@ -180,7 +180,7 @@ void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<cha
 void DeltaTable::Truncate(Transaction *tx) {
   ASSERT(tx, "No truncate transaction.");
   // todo(dfx): just use DropColumnFamily() and CreateColumnFamily(), maybe faster
-  uchar entry_key[12];
+  uchar entry_key[sizeof(uint32_t) + sizeof(uint64_t)];
   size_t key_pos = 0;
   index::be_store_index(entry_key + key_pos, delta_tid_);
   key_pos += sizeof(uint32_t);
@@ -204,7 +204,7 @@ void DeltaTable::Truncate(Transaction *tx) {
 }
 
 bool DeltaTable::BaseRowIsDeleted(Transaction *tx, uint64_t row_id) const {
-  uchar key[12];
+  uchar key[sizeof(uint32_t) + sizeof(uint64_t)];
   size_t key_pos = 0;
   index::KVTransaction &kv_trans = tx->KVTrans();
   // table id
@@ -233,20 +233,18 @@ bool DeltaTable::BaseRowIsDeleted(Transaction *tx, uint64_t row_id) const {
 
 DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) : table_(table), attrs_(attrs) {
   // get snapshot for rocksdb, snapshot will release when DeltaIterator is destructured
-  //current_txn_->KVTrans().Commit();
+  // current_txn_->KVTrans().Commit();
   auto snapshot = ha_kvstore_->GetRdbSnapshot();
   rocksdb::ReadOptions read_options;
   read_options.total_order_seek = true;
   read_options.snapshot = snapshot;
   it_ = std::unique_ptr<rocksdb::Iterator>(ha_kvstore_->GetRdb()->NewIterator(read_options, table_->GetCFHandle()));
-  uchar entry_key[12];
-  size_t key_pos = 0;
+  uchar entry_key[sizeof(uint32_t)];
   uint32_t table_id = table_->GetDeltaTableID();
-  index::be_store_index(entry_key + key_pos, table_id);
-  key_pos += sizeof(uint32_t);
-  prefix_ = rocksdb::Slice((char *)entry_key, key_pos);
-  it_->Seek(prefix_);
- // while (RdbKeyValid()) {
+  index::be_store_index(entry_key, table_id);
+  rocksdb::Slice prefix = rocksdb::Slice((char *)entry_key, sizeof(uint32_t));
+  it_->Seek(prefix);
+  // while (RdbKeyValid()) {
   //  it_->Next();
   //}
   if (RdbKeyValid()) {
@@ -265,9 +263,9 @@ bool DeltaIterator::operator!=(const DeltaIterator &other) { return !(*this == o
 
 void DeltaIterator::Next() {
   it_->Next();
-  //while (RdbKeyValid()) {
-  //  it_->Next();
- // }
+  // while (RdbKeyValid()) {
+  //   it_->Next();
+  // }
   if (RdbKeyValid()) {
     position_ = CurrentRowId();
   } else {
@@ -283,7 +281,7 @@ std::string &DeltaIterator::GetData() {
 }
 
 void DeltaIterator::SeekTo(int64_t row_id) {
-  uchar key[12];
+  uchar key[sizeof(uint32_t) + sizeof(uint64_t)];
   size_t key_pos = 0;
   // table id
   index::be_store_index(key + key_pos, table_->GetDeltaTableID());
@@ -303,7 +301,13 @@ void DeltaIterator::SeekTo(int64_t row_id) {
 
 bool DeltaIterator::IsInsertType() { return CurrentType() == RecordType::kInsert && CurrentDeleteFlag() == 'n'; }
 
-bool DeltaIterator::RdbKeyValid() { return it_->Valid() && it_->key().starts_with(prefix_); }
+bool DeltaIterator::RdbKeyValid() {
+  uchar entry_key[sizeof(uint32_t)];
+  uint32_t table_id = table_->GetDeltaTableID();
+  index::be_store_index(entry_key, table_id);
+  rocksdb::Slice prefix = rocksdb::Slice((char *)entry_key, sizeof(uint32_t));
+  return it_->Valid() && it_->key().starts_with(prefix);
+}
 
 inline RecordType DeltaIterator::CurrentType() { return static_cast<RecordType>(it_->value().data()[0]); }
 

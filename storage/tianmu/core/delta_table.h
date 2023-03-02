@@ -117,7 +117,6 @@ class DeltaIterator {
   int64_t start_position_ = -1;  // determine row_id is in delta or base
   [[maybe_unused]] bool current_record_fetched_ = false;
   std::unique_ptr<rocksdb::Iterator> it_;
-  rocksdb::Slice prefix_;
   std::string record_;
   std::vector<bool> attrs_;
 };

@@ -32,9 +32,6 @@ void CombinedIterator::Next() {
     if (!delta_iter_->Valid()) {
       is_base_ = true;
     }
-    if (delta_iter_->Valid()) {
-      TIANMU_LOG(LogCtl_Level::ERROR, "delta pos: %d", delta_iter_->Position());
-    }
   } else {
     base_iter_->Next();
     if (base_iter_->Valid()) {

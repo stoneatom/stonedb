@@ -1546,7 +1546,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
                               : tianmu_sysvar_merge_rocks_expected_count;
   {
     // combine prefix key
-    uchar key_buf[12];
+    uchar key_buf[sizeof(uint32_t)];
     uint32_t delta_id = m_delta->GetDeltaTableID();
     index::be_store_index(key_buf, delta_id);
     rocksdb::Slice prefix((char *)key_buf, sizeof(uint32_t));
