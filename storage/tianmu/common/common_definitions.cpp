@@ -97,7 +97,7 @@ void PushWarningIfOutOfRange(THD *thd, std::string col_name, int64_t v, int type
         PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
                     getErrMsg(col_name, 0, TIANMU_BIGINT_MAX, unsigned_flag, v).c_str());
         throw std::exception();
-      } else if (v > TIANMU_BIGINT_MAX || v < TIANMU_BIGINT_MIN) {
+      } else if (v > TIANMU_BIGINT_MAX || v <= TIANMU_BIGINT_MIN) {
         PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
                     getErrMsg(col_name, TIANMU_BIGINT_MIN, TIANMU_BIGINT_MAX, unsigned_flag, v).c_str());
         throw std::exception();
