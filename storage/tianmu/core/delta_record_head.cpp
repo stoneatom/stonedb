@@ -158,9 +158,7 @@ const char *DeltaRecordHeadForDelete::record_decode(const char *ptr) {
   return ptr;
 }
 
-RecordType core::DeltaRecordHead::GetRecordType(const char *ptr) { 
-  return *(RecordType *)(ptr); 
-}
+RecordType core::DeltaRecordHead::GetRecordType(const char *ptr) { return *(RecordType *)(ptr); }
 
 }  // namespace core
 }  // namespace Tianmu

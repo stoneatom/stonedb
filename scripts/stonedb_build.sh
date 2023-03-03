@@ -34,8 +34,8 @@ then
     mkdir ../build
 fi
 
-#build_type=Debug
-build_type=Release
+build_type=Debug
+#build_type=Release
 branch=`git rev-parse --abbrev-ref HEAD`
 cpu_arc=`uname -m`
 os_dist=`lsb_release -a | grep Distributor | tail -n 1 | awk '{print $3}'`

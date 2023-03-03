@@ -34,11 +34,11 @@
 #include "system/channel.h"
 #include "system/file_system.h"
 #include "system/net_stream.h"
+#include "tianmu_table.h"
 #include "types/value_parser4txt.h"
 #include "util/bitset.h"
 #include "util/timer.h"
 #include "vc/virtual_column.h"
-#include "tianmu_table.h"
 
 namespace Tianmu {
 namespace core {
@@ -769,9 +769,7 @@ types::TianmuValueObject TianmuTable::GetValue(int64_t obj, int attr, [[maybe_un
   return m_attrs[attr]->GetValue(obj, false);
 }
 
-bool TianmuTable::IsDelete(int64_t row) const { 
-  return m_attrs[0]->IsDelete(row); 
-}
+bool TianmuTable::IsDelete(int64_t row) const { return m_attrs[0]->IsDelete(row); }
 uint TianmuTable::MaxStringSize(int n_a, Filter *f) {
   DEBUG_ASSERT(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
   if (NumOfObj() == 0)

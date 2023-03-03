@@ -233,7 +233,6 @@ bool DeltaTable::BaseRowIsDeleted(Transaction *tx, uint64_t row_id) const {
 
 DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) : table_(table), attrs_(attrs) {
   // get snapshot for rocksdb, snapshot will release when DeltaIterator is destructured
-  // current_txn_->KVTrans().Commit();
   auto snapshot = ha_kvstore_->GetRdbSnapshot();
   rocksdb::ReadOptions read_options;
   read_options.total_order_seek = true;
@@ -244,9 +243,6 @@ DeltaIterator::DeltaIterator(DeltaTable *table, const std::vector<bool> &attrs) 
   index::be_store_index(entry_key, table_id);
   rocksdb::Slice prefix = rocksdb::Slice((char *)entry_key, sizeof(uint32_t));
   it_->Seek(prefix);
-  // while (RdbKeyValid()) {
-  //  it_->Next();
-  //}
   if (RdbKeyValid()) {
     position_ = CurrentRowId();
     start_position_ = position_;
@@ -263,9 +259,6 @@ bool DeltaIterator::operator!=(const DeltaIterator &other) { return !(*this == o
 
 void DeltaIterator::Next() {
   it_->Next();
-  // while (RdbKeyValid()) {
-  //   it_->Next();
-  // }
   if (RdbKeyValid()) {
     position_ = CurrentRowId();
   } else {

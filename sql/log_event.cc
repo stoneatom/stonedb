@@ -10868,12 +10868,6 @@ int Rows_log_event::do_table_scan_and_update(Relay_log_info const *rli)
 
     int restart_count= 0; // Number of times scanning has restarted from top
 
-//    if (error= m_table->file->ha_rnd_init(1))
-//    {
-//      DBUG_PRINT("info",("error initializing table scan"
-//                          " (ha_rnd_init returns %d)",error));
-//      goto end;
-//    }
     bool push_result = can_push_down();
     if (!push_result && (error= m_table->file->ha_rnd_init(1)))
     {

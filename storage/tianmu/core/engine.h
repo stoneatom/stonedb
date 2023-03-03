@@ -170,8 +170,8 @@ class Engine final {
   static common::TianmuError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
 
-  static const char * StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num);
-  static char * FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd);
+  static const char *StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num);
+  static char *FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd);
 
  private:
   void AddTx(Transaction *tx);

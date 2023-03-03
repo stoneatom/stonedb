@@ -1,3 +1,20 @@
+/* Copyright (c) 2022 StoneAtom, Inc. All rights reserved.
+   Use is subject to license terms
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; version 2 of the License.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
+*/
+
 //
 // Created by dfx on 22-12-19.
 //
@@ -67,9 +84,9 @@ bool CombinedIterator::Valid() const { return Position() != -1; }
 
 bool CombinedIterator::IsBase() const { return is_base_; }
 
-bool CombinedIterator::BaseCurrentRowIsDeleted() const {
-  if (base_iter_->CurrentRowIsDeleted() ||
-      delta_iter_->GetTable()->BaseRowIsDeleted(current_txn_, base_iter_->Position())) {
+bool CombinedIterator::BaseCurrentRowIsInvalid() const {
+  if (base_iter_->CurrentRowIsDeleted() || InDeltaDeletedRow.find(base_iter_->Position()) != InDeltaDeletedRow.end() ||
+      InDeltaUpdateRow.find(base_iter_->Position()) != InDeltaUpdateRow.end()) {
     return true;
   }
   return false;

@@ -76,8 +76,6 @@ class KVTransaction {
   std::unique_ptr<rocksdb::WriteBatchWithIndex> index_batch_;
   // wites 'rows' in batch.
   std::unique_ptr<rocksdb::WriteBatch> data_batch_;
-  // writes options.
-  //rocksdb::WriteOptions write_opts_;
   // reads options.
   rocksdb::ReadOptions read_opts_;
   // iterator of key.

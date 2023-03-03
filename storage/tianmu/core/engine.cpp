@@ -395,7 +395,7 @@ Engine::~Engine() {
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu engine destroyed.");
 }
 
-char * Engine::FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd) {
+char *Engine::FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd) {
   switch (field->type()) {
     case MYSQL_TYPE_TINY:
     case MYSQL_TYPE_SHORT:
@@ -497,7 +497,7 @@ char * Engine::FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord,
   return ptr;
 }
 
-const char * Engine::StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num) {
+const char *Engine::StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num) {
   switch (field->type()) {
     case MYSQL_TYPE_TINY:
     case MYSQL_TYPE_SHORT:
@@ -617,7 +617,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, Field **field, si
       deltaRecord.null_mask_.set(i);
       continue;
     }
-    ptr = FiledToStr(ptr, f, &deltaRecord, i,thd);
+    ptr = FiledToStr(ptr, f, &deltaRecord, i, thd);
     ASSERT(ptr <= buf.get() + size, "Buffer overflow");
   }
 
@@ -629,7 +629,7 @@ bool Engine::DecodeInsertRecordToField(const char *ptr, Field **fields) {
   DeltaRecordHeadForInsert deltaRecord;
   ptr = deltaRecord.record_decode(ptr);
 
-  if(deltaRecord.is_deleted_ == DELTA_RECORD_DELETE){
+  if (deltaRecord.is_deleted_ == DELTA_RECORD_DELETE) {
     return false;
   }
   for (uint i = 0; i < deltaRecord.field_count_; i++) {

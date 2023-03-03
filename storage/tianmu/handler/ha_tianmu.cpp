@@ -1257,8 +1257,7 @@ int ha_tianmu::fill_row(uchar *buf) {
   if (iterator_->IsBase()) {
     // judge whether this line has been deleted.
     // if this line has been deleted, data will not be copied.
-    if (iterator_->BaseCurrentRowIsDeleted() ||
-        iterator_->InDeltaUpdateRow.find(iterator_->Position()) != iterator_->InDeltaUpdateRow.end()) {
+    if (iterator_->BaseCurrentRowIsInvalid()) {
       current_position_ = iterator_->Position();
       iterator_->Next();
       dbug_tmp_restore_column_map(table->write_set, org_bitmap);
@@ -1282,12 +1281,13 @@ int ha_tianmu::fill_row(uchar *buf) {
         case core::RecordType::kUpdate:
           current_txn_->GetTableByPath(table_name_)->FillRowByRowid(table, iterator_->Position());
           core::Engine::DecodeUpdateRecordToField(delta_record.data(), table->field);
-          iterator_->InDeltaUpdateRow.insert(std::map<int64_t,bool>::value_type(iterator_->Position(), true));
+          iterator_->InDeltaUpdateRow.insert(std::unordered_map<int64_t,bool>::value_type(iterator_->Position(), true));
           break;
         case core::RecordType::kDelete:
           current_position_ = iterator_->Position();
+          iterator_->InDeltaDeletedRow.insert(std::unordered_map<int64_t,bool>::value_type(current_position_, true));
           iterator_->Next();
-          dbug_tmp_restore_column_map(table->write_set, org_bitmap);
+          dbug_tmp_restore_column_map(table->write_set, org_bitmap); 
           return HA_ERR_RECORD_DELETED;
         default:
           break;
@@ -1407,7 +1407,6 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
   try {
     if (!query_) {
       std::shared_ptr<core::TianmuTable> rctp = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
-      // iterator_ = std::make_unique<core::CombinedIterator>(rctp.get(), GetAttrsUseIndicator(table));
       table_ptr_ = rctp.get();
       query_.reset(new core::Query(current_txn_));
       cq_.reset(new core::CompiledQuery);
