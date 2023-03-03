@@ -1,0 +1,25 @@
+DROP DATABASE IF EXISTS issue1352_test;
+CREATE DATABASE issue1352_test;
+USE issue1352_test;
+CREATE TABLE test (dt TIMESTAMP) engine=tianmu;
+insert test values(now());
+EXPLAIN SELECT dt FROM test WHERE dt >= date_sub(now(), INTERVAL 30 DAY) AND dt < now();
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	test	NULL	ALL	NULL	NULL	NULL	NULL	1	100.00	Using where with pushed condition ((`issue1352_test`.`test`.`dt` >= <cache>((now() - interval 30 day))) and (`issue1352_test`.`test`.`dt` < <cache>(now())))(t0) Pckrows: 1, susp. 0 (0 empty 1 full). Conditions: 1
+EXPLAIN SELECT dt FROM test WHERE dt < date_sub(now(), INTERVAL 30 DAY) AND dt < now();
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	test	NULL	ALL	NULL	NULL	NULL	NULL	1	100.00	Using where with pushed condition ((`issue1352_test`.`test`.`dt` < <cache>((now() - interval 30 day))) and (`issue1352_test`.`test`.`dt` < <cache>(now())))(t0) Pckrows: 1, susp. 0 (1 empty 0 full). Conditions: 1
+EXPLAIN SELECT dt FROM test WHERE dt >= date_sub(now(), INTERVAL 30 DAY) AND dt >= now();
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	test	NULL	ALL	NULL	NULL	NULL	NULL	1	100.00	Using where with pushed condition ((`issue1352_test`.`test`.`dt` >= <cache>((now() - interval 30 day))) and (`issue1352_test`.`test`.`dt` >= <cache>(now())))(t0) Pckrows: 1, susp. 0 (1 empty 0 full). Conditions: 1
+EXPLAIN SELECT count(dt) FROM test WHERE dt >= date_sub(now(), INTERVAL 30 DAY) AND dt >= now() group by dt;
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	test	NULL	ALL	NULL	NULL	NULL	NULL	1	100.00	Using where with pushed condition ((`issue1352_test`.`test`.`dt` >= <cache>((now() - interval 30 day))) and (`issue1352_test`.`test`.`dt` >= <cache>(now())))(t0) Pckrows: 1, susp. 0 (1 empty 0 full). Conditions: 1; Using temporary; Using filesort
+EXPLAIN SELECT count(dt) FROM test WHERE dt >= date_sub(now(), INTERVAL 30 DAY) AND dt >= now() group by dt;
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	test	NULL	ALL	NULL	NULL	NULL	NULL	1	100.00	Using where with pushed condition ((`issue1352_test`.`test`.`dt` >= <cache>((now() - interval 30 day))) and (`issue1352_test`.`test`.`dt` >= <cache>(now())))(t0) Pckrows: 1, susp. 0 (1 empty 0 full). Conditions: 1; Using temporary; Using filesort
+EXPLAIN SELECT dt FROM test WHERE dt >= date_add(now(), INTERVAL 30 DAY) AND dt < now();
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	SIMPLE	test	NULL	ALL	NULL	NULL	NULL	NULL	1	100.00	Using where with pushed condition ((`issue1352_test`.`test`.`dt` >= <cache>((now() + interval 30 day))) and (`issue1352_test`.`test`.`dt` < <cache>(now())))
+DROP TABLE test;
+DROP DATABASE issue1352_test;
