@@ -615,6 +615,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, Field **field, si
 
     if (f->is_null()) {
       deltaRecord.null_mask_.set(i);
+      deltaRecord.field_len_[i] = 0;
       continue;
     }
     ptr = FiledToStr(ptr, f, &deltaRecord, i, thd);
@@ -663,7 +664,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, std::unordered_ma
     deltaRecord.update_mask_.set(i);
 
     Field *f = update_fields[i];
-    if (f == nullptr) {
+    if (f == nullptr || f->is_null()) {
       deltaRecord.null_mask_.set(i);
       deltaRecord.field_len_[i] = 0;
       continue;

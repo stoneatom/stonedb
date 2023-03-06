@@ -63,11 +63,9 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       n_ptr = insertRecord.record_encode(n_ptr);
 
       for (uint i = 0; i < updateRecord.field_count_; i++) {
-        // this field length
-        insertRecord.field_len_[i] =
-            updateRecord.field_len_[i] > 0 ? updateRecord.field_len_[i] : e_insertRecord.field_len_[i];
         if (updateRecord.null_mask_[i]) {
           insertRecord.null_mask_.set(i);
+          insertRecord.field_len_[i] = 0;
           if (!e_insertRecord.null_mask_[i]) {
             e_ptr += e_insertRecord.field_len_[i];
           }
@@ -75,15 +73,18 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
           std::memcpy(n_ptr, ptr, updateRecord.field_len_[i]);
           n_ptr += updateRecord.field_len_[i];
           ptr += updateRecord.field_len_[i];
+          insertRecord.field_len_[i] = updateRecord.field_len_[i];
           if (!e_insertRecord.null_mask_[i]) {
             e_ptr += e_insertRecord.field_len_[i];
           }
         } else if (e_insertRecord.null_mask_[i]) {
           insertRecord.null_mask_.set(i);
+          insertRecord.field_len_[i] = 0;
         } else {
           std::memcpy(n_ptr, e_ptr, e_insertRecord.field_len_[i]);
           n_ptr += e_insertRecord.field_len_[i];
           e_ptr += e_insertRecord.field_len_[i];
+          insertRecord.field_len_[i] = e_insertRecord.field_len_[i];
         }
       }
       std::memcpy(value_buff.get() + insertRecord.null_offset_, insertRecord.null_mask_.data(),
@@ -117,13 +118,11 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       n_ptr = n_updateRecord.record_encode(n_ptr);
 
       for (uint i = 0; i < updateRecord.field_count_; i++) {
-        // this field length
-        n_updateRecord.field_len_[i] =
-            updateRecord.field_len_[i] > 0 ? updateRecord.field_len_[i] : e_updateRecord.field_len_[i];
 
         if (updateRecord.null_mask_[i]) {
           n_updateRecord.null_mask_.set(i);
           n_updateRecord.update_mask_.set(i);
+          n_updateRecord.field_len_[i]=0;
           if (e_updateRecord.update_mask_[i]) {
             e_ptr += e_updateRecord.field_len_[i];
           }
@@ -132,6 +131,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
           n_ptr += updateRecord.field_len_[i];
           ptr += updateRecord.field_len_[i];
           n_updateRecord.update_mask_.set(i);
+          n_updateRecord.field_len_[i] = updateRecord.field_len_[i];
 
           if (e_updateRecord.update_mask_[i]) {
             e_ptr += e_updateRecord.field_len_[i];
@@ -139,10 +139,12 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
         } else if (e_updateRecord.null_mask_[i]) {
           n_updateRecord.null_mask_.set(i);
           n_updateRecord.update_mask_.set(i);
+          n_updateRecord.field_len_[i]=0;
         } else if (e_updateRecord.update_mask_[i]) {
           std::memcpy(n_ptr, e_ptr, e_updateRecord.field_len_[i]);
           n_ptr += e_updateRecord.field_len_[i];
           e_ptr += e_updateRecord.field_len_[i];
+          n_updateRecord.field_len_[i] = e_updateRecord.field_len_[i];
         }
       }
       std::memcpy(value_buff.get() + n_updateRecord.update_offset_, n_updateRecord.update_mask_.data(),
