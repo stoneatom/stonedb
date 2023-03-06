@@ -324,7 +324,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDat
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == INT_RESULT) {
             Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), tianmu_dt,
-                            isum_hybrid_rcbase->hybrid_field_type_);
+                            isum_hybrid_rcbase->hybrid_field_type_, is->unsigned_flag);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == REAL_RESULT) {
             Engine::Convert(is_null, isum_hybrid_rcbase->real_value(), tianmu_dt);
@@ -339,7 +339,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDat
         // do not check COUNT_DISTINCT_FUNC, we use only this for both types
         if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::SUM_BIT_FUNC) {
           isum_int_rcbase = (types::ItemSumInTianmuBase *)is;
-          Engine::Convert(is_null, value, tianmu_dt, is->field_type());
+          Engine::Convert(is_null, value, tianmu_dt, is->field_type(), is->unsigned_flag);
           if (is_null)
             value = 0;
           isum_int_rcbase->int64_value(value);
@@ -542,11 +542,23 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::Tia
       tianmu_data_exp_->PutBin(tianmu_dt.ToBString());
     else if (ATI::IsNumericType(tianmu_dt.Type())) {
       if (tianmu_dt.Type() == common::ColumnType::BYTEINT)
-        tianmu_data_exp_->PutNumeric((char)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        if (l_item->unsigned_flag) {
+          tianmu_data_exp_->PutNumeric((uchar) dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        } else {
+          tianmu_data_exp_->PutNumeric((char)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        }
       else if (tianmu_dt.Type() == common::ColumnType::SMALLINT)
-        tianmu_data_exp_->PutNumeric((short)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        if (l_item->unsigned_flag) {
+          tianmu_data_exp_->PutNumeric((ushort) dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        } else {
+          tianmu_data_exp_->PutNumeric((short)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        }
       else if (tianmu_dt.Type() == common::ColumnType::INT || tianmu_dt.Type() == common::ColumnType::MEDIUMINT)
-        tianmu_data_exp_->PutNumeric((int)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        if (l_item->unsigned_flag) {
+          tianmu_data_exp_->PutNumeric((uint) dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        } else {
+          tianmu_data_exp_->PutNumeric((int)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        }
       else
         tianmu_data_exp_->PutNumeric(dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
     } else if (ATI::IsDateTimeType(tianmu_dt.Type())) {

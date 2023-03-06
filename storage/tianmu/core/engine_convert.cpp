@@ -361,7 +361,8 @@ int Engine::Convert(int &is_null, my_decimal *value, types::TianmuDataType &tian
   return 1;
 }
 
-int Engine::Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type) {
+int Engine::Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type,
+                    bool unsigned_flag) {
   if (tianmu_item.IsNull())
     is_null = 1;
   else {
@@ -400,13 +401,16 @@ int Engine::Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_
       }
       return 1;
     } else if (tianmu_item.Type() == common::ColumnType::INT || tianmu_item.Type() == common::ColumnType::MEDIUMINT) {
-      value = (int)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item);
+      value = (unsigned_flag ? (uint)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item)
+                             : (int)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item));
       return 1;
     } else if (tianmu_item.Type() == common::ColumnType::BYTEINT) {
-      value = (char)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item);
+      value = (unsigned_flag ? (uchar)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item)
+                             : (char)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item));
       return 1;
     } else if (tianmu_item.Type() == common::ColumnType::SMALLINT) {
-      value = (short)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item);
+      value = (unsigned_flag ? (ushort)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item)
+                             : (short)(int64_t) dynamic_cast<types::TianmuNum &>(tianmu_item));
       return 1;
     } else if (tianmu_item.Type() == common::ColumnType::YEAR) {
       value = dynamic_cast<types::TianmuDateTime &>(tianmu_item).Year();
@@ -651,7 +655,9 @@ AttributeTypeInfo Engine::GetCorrespondingATI(Field &field) {
       return AttributeTypeInfo(at, !field.maybe_null(), static_cast<Field_new_decimal &>(field).precision,
                                static_cast<Field_num &>(field).decimals());
     }
-    return AttributeTypeInfo(at, !field.maybe_null(), field.field_length, static_cast<Field_num &>(field).decimals());
+    auto unsigned_flag = field.flags & UNSIGNED_FLAG;
+    return AttributeTypeInfo(at, !field.maybe_null(), field.field_length, static_cast<Field_num &>(field).decimals(),
+                             false, DTCollation(), common::PackFmt::DEFAULT, false, std::string(), unsigned_flag);
   }
   return AttributeTypeInfo(at, !field.maybe_null(), field.field_length);
 }

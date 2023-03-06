@@ -45,6 +45,7 @@ struct DataType final {
   // precision of a decimal = QuickMath::precision10(fixmax)
   DTCollation collation;  // character set of ValueType::VT_STRING + coercibility
   int precision;
+  bool unsigned_flag_ = false;
 
   DataType() {
     valtype = ValueType::VT_NOTKNOWN;
@@ -53,8 +54,10 @@ struct DataType final {
     fixmax = -1;
     collation = DTCollation();
     precision = -1;
+    unsigned_flag_ = false;
   }
-  DataType(common::ColumnType atype, int prec = 0, int scale = 0, DTCollation collation = DTCollation());
+  DataType(common::ColumnType atype, int prec = 0, int scale = 0, DTCollation collation = DTCollation(),
+           bool unsigned_flag = false);
   DataType &operator=(const ColumnType &ct);
 
   bool IsKnown() const { return valtype != ValueType::VT_NOTKNOWN; }

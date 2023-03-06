@@ -267,7 +267,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
   if (select_lex->join && Query::IsLOJ(select_lex->join_list))
     is_optimize_after_tianmu = TRUE;  // optimize partially (phase=Doneoptimization), since part of LOJ
                                       // optimization was already done
-  res |= (int)thd->is_error();  // the ending of original handle_select(...) */
+  res |= (int)thd->is_error();        // the ending of original handle_select(...) */
   if (unlikely(res)) {
     // If we had a another error reported earlier then this will be ignored //
     result->send_error(ER_UNKNOWN_ERROR, ER(ER_UNKNOWN_ERROR));
