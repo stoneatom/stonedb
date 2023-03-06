@@ -55,6 +55,7 @@ class AttrBuffer : public CachedBuffer<T> {
   void Set(int64_t idx, T value) { CachedBuffer<T>::Set(idx, value); }
 };
 
+// here we stored data both signed/unsigned, the exact values will be converted on send results phase.
 template class AttrBuffer<char>;
 template class AttrBuffer<short>;
 template class AttrBuffer<int>;
@@ -273,6 +274,7 @@ void TempTable::Attr::DeleteBuffer() {
   no_obj = 0;
 }
 
+// here we stored data both signed/unsigned, the exact values will be converted on send results phase.
 void TempTable::Attr::SetValueInt64(int64_t obj, int64_t val) {
   no_materialized = obj + 1;
   no_obj = obj >= no_obj ? obj + 1 : no_obj;
@@ -2146,6 +2148,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
   materialized = true;
 }
 
+// here we deal with both signed/unsigned, the exact values will be converted on send results phase.
 void TempTable::RecordIterator::PrepareValues() {
   if (_currentRNo < uint64_t(table->NumOfObj())) {
     uint no_disp_attr = table->NumOfDisplaybleAttrs();

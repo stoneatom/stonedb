@@ -229,7 +229,7 @@ chown -R mysql:mysql /stonedb57/install/my.cnf
 ### 3. 自动安装
 编译完成后，在安装目录下会自动生成 reinstall.sh、install.sh 和 my.cnf 文件，执行 reinstall.sh 就是创建目录、初始化实例和启动实例的过程。
 ```shell
-cd /stonedb56/install
+cd /stonedb57/install
 ./reinstall.sh
 ```
 :::info

@@ -192,7 +192,8 @@ common::ErrorCode ValueParserForText::ParseNum(const BString &tianmu_s, TianmuNu
   return tianmuret;
 }
 
-common::ErrorCode ValueParserForText::Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::ColumnType at) {
+common::ErrorCode ValueParserForText::Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::ColumnType at,
+                                            bool unsigned_flag) {
   if (at == common::ColumnType::BIGINT)
     return ParseBigInt(tianmu_s, tianmu_n);
 
@@ -321,36 +322,76 @@ common::ErrorCode ValueParserForText::Parse(const BString &tianmu_s, TianmuNum &
     int64_t v = tianmu_n.value_;
 
     if (at == common::ColumnType::BYTEINT) {
-      if (v > TIANMU_TINYINT_MAX) {
-        v = TIANMU_TINYINT_MAX;
-        ret = common::ErrorCode::OUT_OF_RANGE;
-      } else if (v < TIANMU_TINYINT_MIN) {
-        v = TIANMU_TINYINT_MIN;
-        ret = common::ErrorCode::OUT_OF_RANGE;
+      if (unsigned_flag) {
+        if (v > UINT_MAX8) {
+          v = UINT_MAX8;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        } else if (v < 0) {
+          v = 0;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        }
+      } else {
+        if (v > TIANMU_TINYINT_MAX) {
+          v = TIANMU_TINYINT_MAX;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        } else if (v < TIANMU_TINYINT_MIN) {
+          v = TIANMU_TINYINT_MIN;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        }
       }
     } else if (at == common::ColumnType::SMALLINT) {
-      if (v > TIANMU_SMALLINT_MAX) {
-        v = TIANMU_SMALLINT_MAX;
-        ret = common::ErrorCode::OUT_OF_RANGE;
-      } else if (v < TIANMU_SMALLINT_MIN) {
-        v = TIANMU_SMALLINT_MIN;
-        ret = common::ErrorCode::OUT_OF_RANGE;
+      if (unsigned_flag) {
+        if (v > UINT_MAX16) {
+          v = UINT_MAX16;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        } else if (v < 0) {
+          v = 0;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        }
+      } else {
+        if (v > TIANMU_SMALLINT_MAX) {
+          v = TIANMU_SMALLINT_MAX;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        } else if (v < TIANMU_SMALLINT_MIN) {
+          v = TIANMU_SMALLINT_MIN;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        }
       }
     } else if (at == common::ColumnType::MEDIUMINT) {
-      if (v > TIANMU_MEDIUMINT_MAX) {
-        v = TIANMU_MEDIUMINT_MAX;
-        ret = common::ErrorCode::OUT_OF_RANGE;
-      } else if (v < TIANMU_MEDIUMINT_MIN) {
-        v = TIANMU_MEDIUMINT_MIN;
-        ret = common::ErrorCode::OUT_OF_RANGE;
+      if (unsigned_flag) {
+        if (v > UINT_MAX24) {
+          v = UINT_MAX24;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        } else if (v < 0) {
+          v = 0;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        }
+      } else {
+        if (v > TIANMU_MEDIUMINT_MAX) {
+          v = TIANMU_MEDIUMINT_MAX;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        } else if (v < TIANMU_MEDIUMINT_MIN) {
+          v = TIANMU_MEDIUMINT_MIN;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        }
       }
     } else if (at == common::ColumnType::INT) {
-      if (v > std::numeric_limits<int>::max()) {
-        v = std::numeric_limits<int>::max();
-        ret = common::ErrorCode::OUT_OF_RANGE;
-      } else if (v < TIANMU_INT_MIN) {
-        v = TIANMU_INT_MIN;
-        ret = common::ErrorCode::OUT_OF_RANGE;
+      if (unsigned_flag) {
+        if (v > UINT_MAX32) {
+          v = UINT_MAX32;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        } else if (v < 0) {
+          v = 0;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        }
+      } else {
+        if (v > std::numeric_limits<int>::max()) {
+          v = std::numeric_limits<int>::max();
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        } else if (v < TIANMU_INT_MIN) {
+          v = TIANMU_INT_MIN;
+          ret = common::ErrorCode::OUT_OF_RANGE;
+        }
       }
     }
     tianmu_n.is_double_ = false;
@@ -583,9 +624,10 @@ common::ErrorCode ValueParserForText::ParseBigInt(const BString &tianmu_s, Tianm
   return ret;
 }
 
-common::ErrorCode ValueParserForText::ParseNumeric(BString const &tianmu_s, int64_t &out, common::ColumnType at) {
+common::ErrorCode ValueParserForText::ParseNumeric(BString const &tianmu_s, int64_t &out, common::ColumnType at,
+                                                   bool unsigned_flag) {
   TianmuNum number;
-  common::ErrorCode return_code = Parse(tianmu_s, number, at);
+  common::ErrorCode return_code = Parse(tianmu_s, number, at, unsigned_flag);
   out = number.ValueInt();
   return return_code;
 }

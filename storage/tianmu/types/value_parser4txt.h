@@ -42,7 +42,8 @@ class ValueParserForText {
       case common::ColumnType::SMALLINT:
       case common::ColumnType::MEDIUMINT:
       case common::ColumnType::INT:
-        return std::bind<common::ErrorCode>(&ParseNumeric, std::placeholders::_1, std::placeholders::_2, at.Type());
+        return std::bind<common::ErrorCode>(&ParseNumeric, std::placeholders::_1, std::placeholders::_2, at.Type(),
+                                            at.GetUnsignedFlag());
       case common::ColumnType::BIGINT:
         return &ParseBigIntAdapter;
       case common::ColumnType::BIT:
@@ -61,13 +62,15 @@ class ValueParserForText {
     return nullptr;
   }
 
-  static common::ErrorCode ParseNumeric(BString const &tianmu_s, int64_t &out, common::ColumnType at);
+  static common::ErrorCode ParseNumeric(BString const &tianmu_s, int64_t &out, common::ColumnType at,
+                                        bool unsigned_flag);
   static common::ErrorCode ParseBigIntAdapter(const BString &tianmu_s, int64_t &out);
   static common::ErrorCode ParseBitAdapter(const BString &tianmu_s, int64_t &out);
   static common::ErrorCode ParseDecimal(BString const &tianmu_s, int64_t &out, short precision, short scale);
   static common::ErrorCode ParseDateTimeAdapter(BString const &tianmu_s, int64_t &out, common::ColumnType at);
 
-  static common::ErrorCode Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::ColumnType at);
+  static common::ErrorCode Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::ColumnType at,
+                                 bool unsigned_flag = false);
   static common::ErrorCode ParseNum(const BString &tianmu_s, TianmuNum &tianmu_n, short scale);
   static common::ErrorCode ParseBigInt(const BString &tianmu_s, TianmuNum &out);
   static common::ErrorCode ParseReal(const BString &tianmu_s, TianmuNum &tianmu_n, common::ColumnType at);
