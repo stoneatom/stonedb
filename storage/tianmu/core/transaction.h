@@ -26,6 +26,7 @@
 #include "index/kv_transaction.h"
 namespace Tianmu {
 namespace core {
+
 class Transaction final {
   static common::SequenceGenerator seq_generator_;
 
@@ -45,6 +46,8 @@ class Transaction final {
   std::string explain_msg_;
   index::KVTransaction kv_trans_;
   common::LoadSource load_source_;
+
+  uint32_t insert_row_num_ = 0;
 
  public:
   ulong GetThreadID() const;
@@ -83,6 +86,10 @@ class Transaction final {
   void Commit(THD *thd);
   void Rollback(THD *thd, bool force_error_message);
   index::KVTransaction &KVTrans() { return kv_trans_; }
+
+  uint32_t &GetInsertRowNum() { return insert_row_num_; }
+  void AddInsertRowNum(uint32_t row_num = 1) { insert_row_num_ += row_num; }
+  void ResetInsertRowNum() { insert_row_num_ = 0; }
 };
 }  // namespace core
 }  // namespace Tianmu

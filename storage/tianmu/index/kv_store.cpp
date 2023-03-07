@@ -18,6 +18,7 @@
 #include "index/kv_store.h"
 
 #include "core/engine.h"
+#include "core/merge_operator.h"
 
 namespace Tianmu {
 namespace index {
@@ -55,13 +56,17 @@ void KVStore::Init() {
     cf_names.push_back(DEFAULT_CF_NAME);
   }
 
+  // Only delta store cf need merge operator
+  rocksdb::ColumnFamilyOptions delta_cf_option(options);
+  delta_cf_option.merge_operator = std::make_shared<core::RecordMergeOperator>();
+
   // Disable compactions to prevent compaction start before compaction filter is ready.
-  rocksdb::ColumnFamilyOptions rs_cf_option(options);
   rocksdb::ColumnFamilyOptions index_cf_option(options);
   index_cf_option.disable_auto_compactions = true;
   index_cf_option.compaction_filter_factory.reset(new IndexCompactFilterFactory);
+
   for (auto &cfn : cf_names) {
-    IsRowStoreCF(cfn) ? cf_descr.emplace_back(cfn, rs_cf_option) : cf_descr.emplace_back(cfn, index_cf_option);
+    IsDeltaStoreCF(cfn) ? cf_descr.emplace_back(cfn, delta_cf_option) : cf_descr.emplace_back(cfn, index_cf_option);
   }
 
   // open db, get column family handles
@@ -226,7 +231,7 @@ common::ErrorCode KVStore::KVRenameTableMeta(const std::string &s_name, const st
   return dict_manager_.commit(batch) ? common::ErrorCode::SUCCESS : common::ErrorCode::FAILED;
 }
 
-common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::TianmuMemTable> tb_mem) {
+common::ErrorCode KVStore::KVWriteDeltaMeta(std::shared_ptr<core::DeltaTable> delta) {
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict_manager_.begin();
   rocksdb::WriteBatch *const batch = wb.get();
 
@@ -234,7 +239,7 @@ common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::TianmuMemTa
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager_.unlock(); });
 
   // put the tb_mem into mem cache and stores into dict data.
-  ddl_manager_.put_mem(tb_mem, batch);
+  ddl_manager_.put_delta(delta, batch);
   if (!dict_manager_.commit(batch)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Commit memory table metadata fail!");
     return common::ErrorCode::FAILED;
@@ -243,9 +248,9 @@ common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::TianmuMemTa
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode KVStore::KVDelMemTableMeta(std::string table_name) {
-  std::shared_ptr<core::TianmuMemTable> tb_mem = ddl_manager_.find_mem(table_name);
-  if (!tb_mem)
+common::ErrorCode KVStore::KVDelDeltaMeta(std::string table_name) {
+  std::shared_ptr<core::DeltaTable> delta_table = ddl_manager_.find_delta(table_name);
+  if (!delta_table)
     return common::ErrorCode::FAILED;
 
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict_manager_.begin();
@@ -257,13 +262,13 @@ common::ErrorCode KVStore::KVDelMemTableMeta(std::string table_name) {
   std::vector<GlobalId> dropped_index_ids;
   GlobalId gid;
   // gets column family id.
-  gid.cf_id = tb_mem->GetCFHandle()->GetID();
+  gid.cf_id = delta_table->GetCFHandle()->GetID();
   // gets index id.
-  gid.index_id = tb_mem->GetMemID();
+  gid.index_id = delta_table->GetDeltaTableID();
   dropped_index_ids.push_back(gid);
   dict_manager_.add_drop_index(dropped_index_ids, batch);
   // removes from mem cache and dict data.
-  ddl_manager_.remove_mem(tb_mem, batch);
+  ddl_manager_.remove_delta(delta_table, batch);
   if (!dict_manager_.commit(batch))
     return common::ErrorCode::FAILED;
 
@@ -273,14 +278,14 @@ common::ErrorCode KVStore::KVDelMemTableMeta(std::string table_name) {
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode KVStore::KVRenameMemTableMeta(std::string s_name, std::string d_name) {
+common::ErrorCode KVStore::KVRenameDeltaMeta(std::string s_name, std::string d_name) {
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict_manager_.begin();
   rocksdb::WriteBatch *const batch = wb.get();
 
   dict_manager_.lock();
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager_.unlock(); });
   // rename the memtable.
-  if (!ddl_manager_.rename_mem(s_name, d_name, batch)) {
+  if (!ddl_manager_.rename_delta(s_name, d_name, batch)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "rename table %s failed", s_name.c_str());
     return common::ErrorCode::FAILED;
   }
@@ -301,7 +306,7 @@ bool KVStore::KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHan
 }
 
 bool KVStore::KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch) {
-  const rocksdb::Status s = txn_db_->GetBaseDB()->Write(wopts, batch);
+  const rocksdb::Status s = txn_db_->Write(wopts, batch);
   if (!s.ok()) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Rdb write batch fail: %s", s.ToString().c_str());
     return false;
