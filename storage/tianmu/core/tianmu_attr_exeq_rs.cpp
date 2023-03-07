@@ -562,11 +562,13 @@ common::RoughSetValue TianmuAttr::RoughCheckBetween(int pack, int64_t v1, int64_
                                                                // and then consider negation
   bool is_float = Type().IsFloat();
   auto const &dpn(get_dpn(pack));
-  if (!is_float && (v1 == common::PLUS_INF_64 || v2 == common::MINUS_INF_64)) {
-    res = common::RoughSetValue::RS_NONE;
-  } else if (is_float && (v1 == *(int64_t *)&common::PLUS_INF_DBL || v2 == *(int64_t *)&common::MINUS_INF_DBL)) {
-    res = common::RoughSetValue::RS_NONE;
-  } else if (!is_float && (v1 > dpn.max_i || v2 < dpn.min_i)) {
+
+  // before:
+  // if(v1 == common::PLUS_INF_64 || v2 == common::MINUS_INF_64) --> RS_NONE
+  // if(is_float && (v1 == *(int64_t *)&common::PLUS_INF_DBL || v2 == *(int64_t *)&common::MINUS_INF_DBL)) --> RS_NONE
+  // actually the v1 or v2 equal to boundary is illegal and it will cause empty result when condition
+  // like `where col = PLUS_INF_64`, `where col = PLUS_INF_DBL`, `where col = MINUS_INF_DBL`
+  if (!is_float && (v1 > dpn.max_i || v2 < dpn.min_i)) {
     res = common::RoughSetValue::RS_NONE;
   } else if (is_float && (*(double *)&v1 > dpn.max_d || *(double *)&v2 < dpn.min_d)) {
     res = common::RoughSetValue::RS_NONE;
