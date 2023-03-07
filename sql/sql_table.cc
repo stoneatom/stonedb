@@ -3933,7 +3933,6 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
     }
     (*key_count)++;
     tmp=file->max_key_parts();
-
     sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
     if ((create_info->db_type->db_type == DB_TYPE_TIANMU)) {
       if ((file->ha_table_flags() & HA_NON_SECONDARY_KEY) &&
@@ -8316,8 +8315,36 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
     while ((drop=drop_it++))
     {
       if (drop->type == Alter_drop::KEY &&
-	  !my_strcasecmp(system_charset_info,key_name, drop->name))
-	break;
+	  !my_strcasecmp(system_charset_info,key_name, drop->name)) {
+      // for issue 1342 and 1343, if sql_mode does not contains NO_KEY_ERROR, 
+      // drop unique key, sencondary index, and fulltext index will return an error.
+      sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
+      if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
+            !(sql_mode & MODE_NO_KEY_ERROR)) {
+        if (key_info->flags & HA_SPATIAL){
+          //key_type= KEYTYPE_SPATIAL; 
+          //do nothing
+        } else if (key_info->flags & HA_NOSAME) {
+          if (! my_strcasecmp(system_charset_info, key_name, primary_key_name)) {
+            //key_type= KEYTYPE_PRIMARY;
+            //do nothing
+          } else {
+            //key_type= KEYTYPE_UNIQUE;
+            my_error(ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX, MYF(0));
+            goto err;
+          }
+        } else if (key_info->flags & HA_FULLTEXT) {
+          //key_type= KEYTYPE_FULLTEXT;
+          my_error(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX, MYF(0));
+          goto err; 
+        } else {
+          //key_type= KEYTYPE_MULTIPLE;
+          my_error(ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX, MYF(0));
+          goto err; 
+        }
+      }
+      break;
+    }
     }
     if (drop)
     {
