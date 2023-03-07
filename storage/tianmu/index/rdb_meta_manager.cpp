@@ -29,8 +29,9 @@
 #include "m_ctype.h"
 #include "my_bit.h"
 
+#include "core/delta_table.h"
 #include "core/engine.h"
-#include "core/tianmu_mem_table.h"
+#include "core/merge_operator.h"
 #include "index/kv_store.h"
 #include "index/rdb_utils.h"
 
@@ -498,16 +499,16 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     }
 
     const uint32_t cf_id = be_read_uint32(&ptr);
-    const uint32_t memtable_id = be_read_uint32(&ptr);
+    const uint32_t delta_table_id = be_read_uint32(&ptr);
     std::string table_name = std::string(key.data() + INDEX_NUMBER_SIZE, key.size() - INDEX_NUMBER_SIZE);
-    if (max_index_id < memtable_id) {
+    if (max_index_id < delta_table_id) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: Found MAX_MEM_ID %u, but also found larger memtable id %u.",
-                 max_index_id, memtable_id);
+                 max_index_id, delta_table_id);
       return false;
     }
-    std::shared_ptr<core::TianmuMemTable> tb_mem =
-        std::make_shared<core::TianmuMemTable>(table_name, memtable_id, cf_id);
-    mem_hash_[table_name] = tb_mem;
+    std::shared_ptr<core::DeltaTable> delta_table =
+        std::make_shared<core::DeltaTable>(table_name, delta_table_id, cf_id);
+    delta_hash_[table_name] = delta_table;
   }
 
   if (max_index_id < static_cast<uint32_t>(MetaType::END_DICT_INDEX_ID)) {
@@ -603,38 +604,38 @@ void DDLManager::cleanup() {
   }
   {
     std::scoped_lock mem_guard(mem_lock_);
-    mem_hash_.clear();
+    delta_hash_.clear();
   }
 }
 
-std::shared_ptr<core::TianmuMemTable> DDLManager::find_mem(const std::string &table_name) {
+std::shared_ptr<core::DeltaTable> DDLManager::find_delta(const std::string &table_name) {
   std::scoped_lock guard(mem_lock_);
 
-  auto iter = mem_hash_.find(table_name);
-  if (iter != mem_hash_.end())
+  auto iter = delta_hash_.find(table_name);
+  if (iter != delta_hash_.end())
     return iter->second;
 
   return nullptr;
 }
 
-void DDLManager::put_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
+void DDLManager::put_delta(std::shared_ptr<core::DeltaTable> delta, rocksdb::WriteBatch *const batch) {
   std::scoped_lock guard(mem_lock_);
 
   StringWriter key;
-  std::string table_name = tb_mem->FullName();
+  std::string delta_name = delta->FullName();
   key.write_uint32(static_cast<uint32_t>(MetaType::DDL_MEMTABLE));
-  key.write((const uchar *)table_name.c_str(), table_name.size());
+  key.write((const uchar *)delta_name.c_str(), delta_name.size());
 
   StringWriter value;
   value.write_uint16(static_cast<uint>(VersionType::DDL_VERSION));
-  value.write_uint32(tb_mem->GetCFHandle()->GetID());
-  value.write_uint32(tb_mem->GetMemID());
+  value.write_uint32(delta->GetCFHandle()->GetID());
+  value.write_uint32(delta->GetDeltaTableID());
 
   dict_->put_key(batch, {(char *)key.ptr(), key.length()}, {(char *)value.ptr(), value.length()});
-  mem_hash_[table_name] = tb_mem;
+  delta_hash_[delta_name] = delta;
 }
 
-void DDLManager::remove_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
+void DDLManager::remove_delta(std::shared_ptr<core::DeltaTable> tb_mem, rocksdb::WriteBatch *const batch) {
   std::scoped_lock guard(mem_lock_);
 
   StringWriter key;
@@ -643,13 +644,13 @@ void DDLManager::remove_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksd
   key.write((const uchar *)table_name.c_str(), table_name.size());
   dict_->delete_key(batch, {(const char *)key.ptr(), key.length()});
 
-  auto iter = mem_hash_.find(table_name);
-  if (iter != mem_hash_.end()) {
-    mem_hash_.erase(iter);
+  auto iter = delta_hash_.find(table_name);
+  if (iter != delta_hash_.end()) {
+    delta_hash_.erase(iter);
   }
 }
 
-bool DDLManager::rename_mem(std::string &from, std::string &to, rocksdb::WriteBatch *const batch) {
+bool DDLManager::rename_delta(std::string &from, std::string &to, rocksdb::WriteBatch *const batch) {
   std::scoped_lock guard(mem_lock_);
 
   StringWriter skey;
@@ -665,13 +666,13 @@ bool DDLManager::rename_mem(std::string &from, std::string &to, rocksdb::WriteBa
   dkey.write((const uchar *)to.c_str(), to.size());
   dict_->put_key(batch, {(const char *)dkey.ptr(), dkey.length()}, origin_value);
 
-  auto iter = mem_hash_.find(from);
-  if (iter == mem_hash_.end())
+  auto iter = delta_hash_.find(from);
+  if (iter == delta_hash_.end())
     return false;
 
   auto tb_mem = iter->second;
-  mem_hash_.erase(iter);
-  mem_hash_[to] = tb_mem;
+  delta_hash_.erase(iter);
+  delta_hash_[to] = tb_mem;
   return true;
 }
 
@@ -1008,8 +1009,13 @@ rocksdb::ColumnFamilyHandle *CFManager::get_or_create_cf(rocksdb::DB *const rdb_
     cf_handle = it->second;
   } else {
     rocksdb::ColumnFamilyOptions opts;
-    if (!IsRowStoreCF(cf_name))
-      opts.compaction_filter_factory.reset(new index::IndexCompactFilterFactory);
+    if (IsDeltaStoreCF(cf_name)) {
+      opts.write_buffer_size = 512 << 20;  // test for speed insert/update
+      opts.merge_operator = std::make_shared<core::RecordMergeOperator>();
+    } else {
+      opts.disable_auto_compactions = true;
+      opts.compaction_filter_factory.reset(new IndexCompactFilterFactory);
+    }
     const rocksdb::Status s = rdb_->CreateColumnFamily(opts, cf_name, &cf_handle);
     if (s.ok()) {
       cf_name_map_[cf_handle->GetName()] = cf_handle;
