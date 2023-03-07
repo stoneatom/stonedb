@@ -183,20 +183,20 @@ static bool checklist_have_number_or_time(Field **field, uint field_num)
       }
       default:
         break;
-    } 
+    }
   }
   return false;
 }
 
 
-bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens, 
+bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens,
                                                       std::string &prefix)
 {
   sql_statemens += prefix;
   Field **field = m_table->field;
   if(!field) return false;
   /*
-    If there is a unique constraint, 
+    If there is a unique constraint,
     use the field of the unique constraint as the push down condition
   */
   std::string key_field_name;
@@ -210,7 +210,7 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
   int cond_num = 0;
   bool unwanted_str = false;
   /*
-    If there is a number or time type in the table, 
+    If there is a number or time type in the table,
     the string type value is not used as the push down condition.
   */
   if(checklist_have_number_or_time(field, m_table->s->fields)) unwanted_str = true;
@@ -222,7 +222,7 @@ bool Rows_log_event::column_information_to_conditions(std::string &sql_statemens
     std::string str_cond;
 
     if(!key_field_name.empty()) {
-      
+
       if(key_field_name.compare(f->field_name) != 0) {
         continue;
       }
