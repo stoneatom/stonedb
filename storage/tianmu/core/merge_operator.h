@@ -25,7 +25,7 @@
 #include "rocksdb/merge_operator.h"
 
 namespace Tianmu::core {
-
+// The Merge function of this class is mainly used for the callback of RocksDB to merge the data of the same key
 class RecordMergeOperator : public rocksdb::AssociativeMergeOperator {
  public:
   bool Merge(const rocksdb::Slice &key, const rocksdb::Slice *existing_value, const rocksdb::Slice &value,

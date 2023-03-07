@@ -729,7 +729,7 @@ types::BString PackStr::GetStringValueTrie(int locationInPack) const {
 types::BString PackStr::GetValueBinary(int locationInPack) const {
   if (IsNull(locationInPack))
     return types::BString();
-  DEBUG_ASSERT(locationInPack < (int)dpn_->numOfRecords);
+  DEBUG_ASSERT(locationInPack <= (int)dpn_->numOfRecords);
   if (pack_str_state_ == PackStrtate::kPackTrie)
     return GetStringValueTrie(locationInPack);
   size_t str_size;

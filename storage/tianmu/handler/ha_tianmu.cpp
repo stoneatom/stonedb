@@ -1281,13 +1281,14 @@ int ha_tianmu::fill_row(uchar *buf) {
         case core::RecordType::kUpdate:
           current_txn_->GetTableByPath(table_name_)->FillRowByRowid(table, iterator_->Position());
           core::Engine::DecodeUpdateRecordToField(delta_record.data(), table->field);
-          iterator_->InDeltaUpdateRow.insert(std::unordered_map<int64_t,bool>::value_type(iterator_->Position(), true));
+          iterator_->InDeltaUpdateRow.insert(
+              std::unordered_map<int64_t, bool>::value_type(iterator_->Position(), true));
           break;
         case core::RecordType::kDelete:
           current_position_ = iterator_->Position();
-          iterator_->InDeltaDeletedRow.insert(std::unordered_map<int64_t,bool>::value_type(current_position_, true));
+          iterator_->InDeltaDeletedRow.insert(std::unordered_map<int64_t, bool>::value_type(current_position_, true));
           iterator_->Next();
-          dbug_tmp_restore_column_map(table->write_set, org_bitmap); 
+          dbug_tmp_restore_column_map(table->write_set, org_bitmap);
           return HA_ERR_RECORD_DELETED;
         default:
           break;
