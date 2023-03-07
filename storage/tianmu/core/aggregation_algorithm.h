@@ -53,7 +53,8 @@ class AggregationAlgorithm {
 
   // Return code for AggregatePackrow: 0 - success, 1 - stop aggregation
   // (finished), 5 - pack already aggregated (skip)
-  AggregaGroupingResult AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple);
+  AggregaGroupingResult AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple,
+                                         uint64_t *mem_used = nullptr);
 
   // No parallel for subquery/join/distinct cases
   bool ParallelAllowed(GroupByWrapper &gbw) {
@@ -99,8 +100,8 @@ class AggregationWorkerEnt {
   int ThreadsUsed() { return m_threads; }
   void Barrier() {}
   void TaskAggrePacks(MIIterator *taskIterator, DimensionVector *dims, MIIterator *mit, CTask *task,
-                      GroupByWrapper *gbw, Transaction *ci);
-  void DistributeAggreTaskAverage(MIIterator &mit);
+                      GroupByWrapper *gbw, Transaction *ci, uint64_t *mem_used = nullptr);
+  void DistributeAggreTaskAverage(MIIterator &mit, uint64_t *mem_used = nullptr);
   void PrepShardingCopy(MIIterator *mit, GroupByWrapper *gb_sharding,
                         std::vector<std::unique_ptr<GroupByWrapper>> *vGBW);
 

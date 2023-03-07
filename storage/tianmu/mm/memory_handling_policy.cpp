@@ -35,6 +35,7 @@
 #include "mm/release_lru.h"
 #include "mm/release_null.h"
 
+#include "mm/memory_statistics.h"
 #include "mm/sys_heap_policy.h"
 #include "mm/tcm_heap_policy.h"
 #include "mm/traceable_object.h"
@@ -169,6 +170,13 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
   std::scoped_lock guard(m_mutex);
   HeapPolicy *heap;
 
+  if (type != BLOCK_TYPE::BLOCK_HUGE && tianmu_sysvar_hugefilesize > 0 && tianmu_os_least_mem > 0) {
+    uint64_t mem_available = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available;  // KB
+    if (mem_available <= (1024 * tianmu_os_least_mem)) {
+      type = BLOCK_TYPE::BLOCK_HUGE;
+    }
+  }
+
   ASSERT(size < (size_t)(1 << 31), "Oversized alloc request!");
   // choose appropriate heap for this request
   switch (type) {
@@ -192,6 +200,9 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
         }
       else
         heap = m_main_heap;
+      break;
+    case BLOCK_TYPE::BLOCK_HUGE:
+      heap = (m_huge_heap->getHeapStatus() == HEAP_STATUS::HEAP_SUCCESS) ? m_huge_heap : m_main_heap;
       break;
     default:
       heap = m_main_heap;

@@ -38,6 +38,8 @@ extern char *tianmu_sysvar_cachefolder;
 extern char *tianmu_sysvar_hugefiledir;
 extern char *tianmu_sysvar_mm_policy;
 extern char *tianmu_sysvar_mm_releasepolicy;
+extern unsigned int tianmu_os_least_mem;
+extern unsigned int tianmu_sysvar_hugefilesize;
 extern unsigned int tianmu_sysvar_allowmysqlquerypath;
 extern unsigned int tianmu_sysvar_bg_load_threads;
 extern unsigned int tianmu_sysvar_cachereleasethreshold;

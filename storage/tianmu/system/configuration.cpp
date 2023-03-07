@@ -25,6 +25,8 @@ char *tianmu_sysvar_cachefolder;
 char *tianmu_sysvar_hugefiledir;
 char *tianmu_sysvar_mm_policy;
 char *tianmu_sysvar_mm_releasepolicy;
+unsigned int tianmu_os_least_mem;
+unsigned int tianmu_sysvar_hugefilesize;
 unsigned int tianmu_sysvar_allowmysqlquerypath;
 unsigned int tianmu_sysvar_bg_load_threads;
 unsigned int tianmu_sysvar_cachereleasethreshold;
