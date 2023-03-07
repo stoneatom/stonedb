@@ -33,6 +33,7 @@
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "mm/initializer.h"
+#include "mm/memory_statistics.h"
 #include "mysql/thread_pool_priv.h"
 #include "mysqld_thd_manager.h"
 #include "system/file_out.h"
@@ -223,7 +224,7 @@ int Engine::Init(uint engine_slot) {
   size_t main_size = size_t(tianmu_sysvar_servermainheapsize) << 20;
 
   std::string hugefiledir = tianmu_sysvar_hugefiledir;
-  int hugefilesize = 0;  // unused
+  int hugefilesize = tianmu_sysvar_hugefilesize;  // MB
   if (hugefiledir.empty())
     mm::MemoryManagerInitializer::Instance(0, main_size);
   else
@@ -1378,6 +1379,21 @@ void Engine::LogStat() {
     }
     msg = msg + "queries " + std::to_string(queries) + "/" + std::to_string(global_query_id);
     TIANMU_LOG(LogCtl_Level::INFO, msg.c_str());
+  }
+
+  {
+    const auto &&mem_info = MemoryStatisticsOS::Instance()->GetMemInfo();
+
+    uint64_t mem_available = mem_info.mem_available;
+    uint64_t swap_used = mem_info.swap_used;
+    int64_t mem_available_chg = mem_available - m_mem_available_;
+    int64_t swap_used_chg = swap_used - m_swap_used_;
+    m_mem_available_ = mem_available;
+    m_swap_used_ = swap_used;
+
+    TIANMU_LOG(LogCtl_Level::INFO, "mem_available_chg: %ld swap_used_chg: %ld", mem_available_chg, swap_used_chg);
+
+    memory_statistics_record("HEATBEAT", "UPDATE");
   }
 
   TIANMU_LOG(LogCtl_Level::DEBUG,

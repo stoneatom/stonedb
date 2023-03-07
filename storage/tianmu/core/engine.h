@@ -261,6 +261,8 @@ class Engine final {
   std::condition_variable cv_drop_;
   std::mutex cv_drop_mtx_;
   std::unique_ptr<TaskExecutor> task_executor;
+  uint64_t m_mem_available_ = 0;
+  uint64_t m_swap_used_ = 0;
 };
 
 class ResultSender {

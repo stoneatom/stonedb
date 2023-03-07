@@ -2494,6 +2494,10 @@ static MYSQL_SYSVAR_UINT(insert_max_buffered, tianmu_sysvar_insert_max_buffered,
 static MYSQL_SYSVAR_BOOL(compensation_start, tianmu_sysvar_compensation_start, PLUGIN_VAR_BOOL, "-", nullptr, nullptr,
                          FALSE);
 static MYSQL_SYSVAR_STR(hugefiledir, tianmu_sysvar_hugefiledir, PLUGIN_VAR_READONLY, "-", nullptr, nullptr, "");
+static MYSQL_SYSVAR_UINT(os_least_mem, tianmu_os_least_mem, PLUGIN_VAR_READONLY, "-", nullptr, nullptr, 1, 0,
+                         UINT32_MAX, 0);
+static MYSQL_SYSVAR_UINT(hugefilesize, tianmu_sysvar_hugefilesize, PLUGIN_VAR_READONLY, "-", nullptr, nullptr, 1, 0,
+                         UINT32_MAX, 0);
 static MYSQL_SYSVAR_UINT(cachinglevel, tianmu_sysvar_cachinglevel, PLUGIN_VAR_READONLY, "-", nullptr, nullptr, 1, 0,
                          512, 0);
 static MYSQL_SYSVAR_STR(mm_policy, tianmu_sysvar_mm_policy, PLUGIN_VAR_READONLY, "-", nullptr, nullptr, "");
@@ -2668,6 +2672,8 @@ static struct st_mysql_sys_var *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_thread
                                                      MYSQL_SYSVAR(groupby_parallel_rows_minimum),
                                                      MYSQL_SYSVAR(slow_query_record_interval),
                                                      MYSQL_SYSVAR(hugefiledir),
+                                                     MYSQL_SYSVAR(hugefilesize),
+                                                     MYSQL_SYSVAR(os_least_mem),
                                                      MYSQL_SYSVAR(index_cache_size),
                                                      MYSQL_SYSVAR(index_search),
                                                      MYSQL_SYSVAR(enable_rowstore),
