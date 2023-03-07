@@ -383,7 +383,7 @@ int mysql_load(THD *thd,sql_exchange *ex,TABLE_LIST *table_list,
       DBUG_RETURN(TRUE);
   }
 
-  if (!Tianmu::handler::ha_my_tianmu_load(thd, ex, table_list,
+  if (!Tianmu::DBHandler::ha_my_tianmu_load(thd, ex, table_list,
                                           (void *)&lf_info)) {
     DBUG_RETURN(FALSE);
   }
