@@ -32,63 +32,72 @@ void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint code, 
   push_warning(thd, level, code, msg);
 }
 
-// TODO:Here for args int `type`, we do not use enum directly as it'll caused compiling failed for the dependent
-// package. It will be changed back to enum type later
-// We use std::exception() but not commong::Exceptions here as it will raise infos like "internal error in storage
-// tianmu ..." on mysql client, this is not user friendly. Users has already get error msg from push_warning() func.
+// min MYSQL_TYPE_LONG value in tianmu is -2147483647, -2147483648 is used for null_32, so here we do not test signed
+// int min MYSQL_TYPE_LONGLONG value in tianmu is -9223372036854775806, -9223372036854775807 is used for null_64, so
+// here we do not test signed int We use std::exception() but not common::Exceptions here as it will raise infos like
+// "internal error in storage tianmu ..." on mysql client, this is not user friendly. Users has already get error msg
+// from push_warning() func.
 void PushWarningIfOutOfRange(THD *thd, std::string col_name, int64_t v, int type, bool unsigned_flag) {
   // below `0` is for min unsigned value.
   switch (type) {
-    case 1: {  // MYSQL_TYPE_TINY
-      if (unsigned_flag && (static_cast<uint64_t>(v) > TIANMU_TINYINT_MAX)) {
-        PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
-                    getErrMsg(col_name, 0, TIANMU_TINYINT_MAX, unsigned_flag, v).c_str());
-        throw std::exception();
+    case MYSQL_TYPE_TINY: {
+      if (unsigned_flag) {
+        if (static_cast<uint64_t>(v) > UINT_MAX8) {
+          PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
+                      getErrMsg(col_name, 0, UINT_MAX8, unsigned_flag, v).c_str());
+          throw std::exception();
+        }
       } else if (v > TIANMU_TINYINT_MAX || v < TIANMU_TINYINT_MIN) {
         PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
                     getErrMsg(col_name, TIANMU_TINYINT_MIN, TIANMU_TINYINT_MAX, unsigned_flag, v).c_str());
         throw std::exception();
       }
     } break;
-    case 2: {  // MYSQL_TYPE_SHORT
-      if (unsigned_flag && (static_cast<uint64_t>(v) > TIANMU_SMALLINT_MAX)) {
-        PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
-                    getErrMsg(col_name, 0, TIANMU_SMALLINT_MAX, unsigned_flag, v).c_str());
-        throw std::exception();
+    case MYSQL_TYPE_SHORT: {
+      if (unsigned_flag) {
+        if (static_cast<uint64_t>(v) > UINT_MAX16) {
+          PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
+                      getErrMsg(col_name, 0, UINT_MAX16, unsigned_flag, v).c_str());
+          throw std::exception();
+        }
       } else if (v > TIANMU_SMALLINT_MAX || v < TIANMU_SMALLINT_MIN) {
         PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
                     getErrMsg(col_name, TIANMU_SMALLINT_MIN, TIANMU_SMALLINT_MAX, unsigned_flag, v).c_str());
         throw std::exception();
       };
     } break;
-    case 9: {  // MYSQL_TYPE_INT24
-      if (unsigned_flag && (static_cast<uint64_t>(v) > TIANMU_MEDIUMINT_MAX)) {
-        PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
-                    getErrMsg(col_name, 0, TIANMU_MEDIUMINT_MAX, unsigned_flag, v).c_str());
-        throw std::exception();
+    case MYSQL_TYPE_INT24: {
+      if (unsigned_flag) {
+        if (static_cast<uint64_t>(v) > UINT_MAX24) {
+          PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
+                      getErrMsg(col_name, 0, UINT_MAX24, unsigned_flag, v).c_str());
+          throw std::exception();
+        }
       } else if (v > TIANMU_MEDIUMINT_MAX || v < TIANMU_MEDIUMINT_MIN) {
         PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
                     getErrMsg(col_name, TIANMU_MEDIUMINT_MIN, TIANMU_MEDIUMINT_MAX, unsigned_flag, v).c_str());
         throw std::exception();
       }
     } break;
-    case 3: {  // MYSQL_TYPE_LONG
-      if (unsigned_flag && (static_cast<uint64_t>(v) > TIANMU_INT_MAX)) {
-        PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
-                    getErrMsg(col_name, 0, TIANMU_INT_MAX, unsigned_flag, v).c_str());
-        throw std::exception();
+    case MYSQL_TYPE_LONG: {
+      if (unsigned_flag) {
+        if (static_cast<uint64_t>(v) > UINT_MAX32) {
+          PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
+                      getErrMsg(col_name, 0, UINT_MAX32, unsigned_flag, v).c_str());
+          throw std::exception();
+        }
       } else if (v > TIANMU_INT_MAX || v < TIANMU_INT_MIN) {
         PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
                     getErrMsg(col_name, TIANMU_INT_MIN, TIANMU_INT_MAX, unsigned_flag, v).c_str());
         throw std::exception();
       }
     } break;
-    case 8: {  // MYSQL_TYPE_LONGLONG
+    case MYSQL_TYPE_LONGLONG: {
       if (unsigned_flag && (static_cast<uint64_t>(v) > TIANMU_BIGINT_MAX)) {
         PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
                     getErrMsg(col_name, 0, TIANMU_BIGINT_MAX, unsigned_flag, v).c_str());
         throw std::exception();
-      } else if (v > TIANMU_BIGINT_MAX || v < TIANMU_BIGINT_MIN) {
+      } else if (v > TIANMU_BIGINT_MAX || v <= TIANMU_BIGINT_MIN) {
         PushWarning(thd, Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE,
                     getErrMsg(col_name, TIANMU_BIGINT_MIN, TIANMU_BIGINT_MAX, unsigned_flag, v).c_str());
         throw std::exception();
