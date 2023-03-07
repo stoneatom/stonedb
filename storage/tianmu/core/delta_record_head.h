@@ -32,9 +32,10 @@ enum class RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, Reco
 // Record header encoding and decoding
 class DeltaRecordHead {
  public:
-  virtual char *record_encode(char *ptr) = 0;
-  virtual const char *record_decode(const char *ptr) = 0;
+  virtual char *recordEncode(char *ptr) = 0;
+  virtual const char *recordDecode(const char *ptr) = 0;
   static RecordType GetRecordType(const char *ptr);
+  // Length of each column field
   uint32_t *field_len_ = nullptr;
 };
 
@@ -47,19 +48,24 @@ class DeltaRecordHeadForInsert : public DeltaRecordHead {
   DeltaRecordHeadForInsert() = default;
   ~DeltaRecordHeadForInsert() = default;
   DeltaRecordHeadForInsert(char is_deleted, size_t &field_count, uint32_t load_num = 1);
-  char *record_encode(char *ptr) override;
-  const char *record_decode(const char *ptr) override;
+  char *recordEncode(char *ptr) override;
+  const char *recordDecode(const char *ptr) override;
 
  public:
   RecordType record_type_ = RecordType::kInsert;
 
  public:
+  // The number of records represented by this record is 1 by default. Each Merge operation increases by 1
   uint32_t load_num_;
+  // The insert record is unique and identifies whether it is a deleted record n: normal record, d: deleted record
   char is_deleted_;
+  // The number of this record column
   size_t field_count_;
+  // Null value bitmap
   utils::BitSet null_mask_;
-
+  // Null-value offset in bitmap re-recording
   int null_offset_;
+  // Offset of the actual data of the record
   int field_offset_;
 };
 
@@ -76,8 +82,8 @@ class DeltaRecordHeadForUpdate : public DeltaRecordHead {
   DeltaRecordHeadForUpdate() = default;
   ~DeltaRecordHeadForUpdate() = default;
   DeltaRecordHeadForUpdate(size_t &field_count, uint32_t load_num = 1);
-  char *record_encode(char *ptr) override;
-  const char *record_decode(const char *ptr) override;
+  char *recordEncode(char *ptr) override;
+  const char *recordDecode(const char *ptr) override;
 
  public:
   RecordType record_type_ = RecordType::kUpdate;
@@ -85,6 +91,7 @@ class DeltaRecordHeadForUpdate : public DeltaRecordHead {
  public:
   uint32_t load_num_;
   size_t field_count_;
+  // The bitmap of the column needs to be updated
   utils::BitSet update_mask_;
   utils::BitSet null_mask_;
   int null_offset_;
@@ -97,8 +104,8 @@ class DeltaRecordHeadForDelete : public DeltaRecordHead {
   DeltaRecordHeadForDelete() = default;
   ~DeltaRecordHeadForDelete() = default;
   DeltaRecordHeadForDelete(uint32_t load_num);
-  char *record_encode(char *ptr) override;
-  const char *record_decode(const char *ptr) override;
+  char *recordEncode(char *ptr) override;
+  const char *recordDecode(const char *ptr) override;
 
  public:
   RecordType record_type_ = RecordType::kDelete;

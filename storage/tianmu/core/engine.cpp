@@ -586,7 +586,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, Field **field, si
   buf.reset(new char[size]);
   char *ptr = buf.get();
   DeltaRecordHeadForInsert deltaRecord(DELTA_RECORD_NORMAL, col);
-  ptr = deltaRecord.record_encode(ptr);
+  ptr = deltaRecord.recordEncode(ptr);
 
   for (uint i = 0; i < col; i++) {
     Field *f = field[i];
@@ -628,7 +628,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, Field **field, si
 
 bool Engine::DecodeInsertRecordToField(const char *ptr, Field **fields) {
   DeltaRecordHeadForInsert deltaRecord;
-  ptr = deltaRecord.record_decode(ptr);
+  ptr = deltaRecord.recordDecode(ptr);
 
   if (deltaRecord.is_deleted_ == DELTA_RECORD_DELETE) {
     return false;
@@ -652,7 +652,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, std::unordered_ma
   buf.reset(new char[buf_size]);
   char *ptr = buf.get();
   DeltaRecordHeadForUpdate deltaRecord(field_count);
-  ptr = deltaRecord.record_encode(ptr);
+  ptr = deltaRecord.recordEncode(ptr);
 
   // fields...
   for (uint i = 0; i < field_count; i++) {
@@ -701,7 +701,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, std::unordered_ma
 
 void Engine::DecodeUpdateRecordToField(const char *ptr, Field **fields) {
   DeltaRecordHeadForUpdate deltaRecord;
-  ptr = deltaRecord.record_decode(ptr);
+  ptr = deltaRecord.recordDecode(ptr);
   for (uint i = 0; i < deltaRecord.field_count_; i++) {
     if (deltaRecord.update_mask_[i]) {
       auto field = fields[i];
@@ -720,7 +720,7 @@ void Engine::EncodeDeleteRecord(std::unique_ptr<char[]> &buf, uint32_t &buf_size
   buf.reset(new char[buf_size]);
   char *ptr = buf.get();
   DeltaRecordHeadForDelete deltaRecord;
-  ptr = deltaRecord.record_encode(ptr);
+  ptr = deltaRecord.recordEncode(ptr);
 }
 
 std::unique_ptr<char[]> Engine::GetRecord(size_t &len) {
@@ -919,10 +919,10 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
 }
 
 void Engine::CommitTx(THD *thd, bool all) {
-  if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT)) {
+  if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) {
     GetTx(thd)->Commit(thd);
+    ClearTx(thd);
   }
-  ClearTx(thd);
 }
 
 void Engine::Rollback(THD *thd, bool all, bool force_error_message) {

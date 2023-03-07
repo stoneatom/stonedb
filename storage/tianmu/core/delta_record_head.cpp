@@ -24,7 +24,7 @@ namespace core {
 DeltaRecordHeadForInsert::DeltaRecordHeadForInsert(char is_deleted, size_t &field_count, uint32_t load_num)
     : load_num_(load_num), is_deleted_(is_deleted), field_count_(field_count), null_mask_(field_count) {}
 
-char *DeltaRecordHeadForInsert::record_encode(char *ptr) {
+char *DeltaRecordHeadForInsert::recordEncode(char *ptr) {
   if (ptr == nullptr)
     return ptr;
   char *ptr_begin = ptr;
@@ -51,7 +51,7 @@ char *DeltaRecordHeadForInsert::record_encode(char *ptr) {
   return ptr;
 }
 
-const char *DeltaRecordHeadForInsert::record_decode(const char *ptr) {
+const char *DeltaRecordHeadForInsert::recordDecode(const char *ptr) {
   if (ptr == nullptr)
     return ptr;
   record_type_ = *(RecordType *)(ptr);
@@ -77,7 +77,7 @@ const char *DeltaRecordHeadForInsert::record_decode(const char *ptr) {
 DeltaRecordHeadForUpdate::DeltaRecordHeadForUpdate(size_t &field_count, uint32_t load_num)
     : load_num_(load_num), field_count_(field_count), update_mask_(field_count), null_mask_(field_count) {}
 
-char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
+char *DeltaRecordHeadForUpdate::recordEncode(char *ptr) {
   if (ptr == nullptr)
     return ptr;
   char *ptr_begin = ptr;
@@ -104,7 +104,7 @@ char *DeltaRecordHeadForUpdate::record_encode(char *ptr) {
   return ptr;
 }
 
-const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
+const char *DeltaRecordHeadForUpdate::recordDecode(const char *ptr) {
   if (ptr == nullptr)
     return ptr;
   const char *ptr_begin = ptr;
@@ -134,7 +134,7 @@ const char *DeltaRecordHeadForUpdate::record_decode(const char *ptr) {
 
 DeltaRecordHeadForDelete::DeltaRecordHeadForDelete(uint32_t load_num) : load_num_(load_num) {}
 
-char *DeltaRecordHeadForDelete::record_encode(char *ptr) {
+char *DeltaRecordHeadForDelete::recordEncode(char *ptr) {
   if (ptr == nullptr)
     return ptr;
   char *ptr_begin = ptr;
@@ -147,7 +147,7 @@ char *DeltaRecordHeadForDelete::record_encode(char *ptr) {
   return ptr;
 }
 
-const char *DeltaRecordHeadForDelete::record_decode(const char *ptr) {
+const char *DeltaRecordHeadForDelete::recordDecode(const char *ptr) {
   if (ptr == nullptr)
     return ptr;
   record_type_ = *(RecordType *)(ptr);

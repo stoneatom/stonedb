@@ -66,7 +66,7 @@ class DeltaTable {
   } stat;
   std::atomic<uint64_t> load_id{0};
   std::atomic<uint64_t> merge_id{0};
-  std::atomic<uint64_t> row_id{0};
+  std::atomic<uint64_t> row_id{0};  // Autoincrement
 
  private:
   std::string fullname_;

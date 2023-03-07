@@ -185,7 +185,7 @@ class DelayedInsertParser final {
       }
       auto ptr = const_cast<const char *>((*vec)[processed].get());
       DeltaRecordHeadForInsert rec_head;
-      ptr = rec_head.record_decode(ptr);
+      ptr = rec_head.recordDecode(ptr);
       for (uint i = 0; i < attrs.size(); i++) {
         auto &vc = value_buffers[i];
         if (rec_head.is_deleted_ == DELTA_RECORD_DELETE) {
@@ -289,7 +289,7 @@ class DelayedUpdateParser final {
     for (auto &[row_id, row] : *update_rows) {
       auto row_ptr = const_cast<const char *>(row.get());
       DeltaRecordHeadForUpdate rec_head;
-      row_ptr = rec_head.record_decode(row_ptr);
+      row_ptr = rec_head.recordDecode(row_ptr);
       for (uint col_id = 0; col_id < attrs.size(); col_id++) {
         core::Value val;
         if (!rec_head.update_mask_[col_id]) {
