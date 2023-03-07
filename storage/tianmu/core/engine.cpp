@@ -919,10 +919,10 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
 }
 
 void Engine::CommitTx(THD *thd, bool all) {
-  if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) {
+  if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT)) {
     GetTx(thd)->Commit(thd);
-    ClearTx(thd);
   }
+  ClearTx(thd);
 }
 
 void Engine::Rollback(THD *thd, bool all, bool force_error_message) {

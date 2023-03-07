@@ -20,7 +20,7 @@
 
 // mysql <--> tianmu interface functions
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 
 enum class QueryRouteTo {
   kToMySQL = 0,
@@ -42,6 +42,6 @@ bool ha_my_tianmu_set_statement_allowed(THD *thd, LEX *lex);
 // processing the load operation.
 bool ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 
-}  // namespace handler
+}  // namespace DBHandler
 }  //  namespace Tianmu
 #endif  // TIANMU_HANDLER_HA_RCENGINE_H_
