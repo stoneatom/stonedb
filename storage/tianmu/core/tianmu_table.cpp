@@ -34,6 +34,7 @@
 #include "system/channel.h"
 #include "system/file_system.h"
 #include "system/net_stream.h"
+#include "tianmu_table.h"
 #include "types/value_parser4txt.h"
 #include "util/bitset.h"
 #include "util/timer.h"
@@ -41,6 +42,307 @@
 
 namespace Tianmu {
 namespace core {
+
+void TianmuTable::GetValueFromField(Field *f, Value &v, size_t col) {
+  if (f->is_null())
+    return;
+
+  switch (f->type()) {
+    case MYSQL_TYPE_TINY:
+    case MYSQL_TYPE_SHORT:
+    case MYSQL_TYPE_LONG:
+    case MYSQL_TYPE_INT24:
+    case MYSQL_TYPE_BIT:
+    case MYSQL_TYPE_LONGLONG: {
+      int64_t value = f->val_int();
+      common::PushWarningIfOutOfRange(current_txn_->Thd(), std::string(f->field_name), value, f->type(),
+                                      f->flags & UNSIGNED_FLAG);
+      if (m_attrs[col]->GetIfAutoInc() && value == 0) {
+        // Value of auto inc column was not assigned by user
+        value = m_attrs[col]->AutoIncNext();
+      }
+      if (m_attrs[col]->GetIfAutoInc()) {
+        // inc counter should be set to value of user assigned
+        if (static_cast<uint64_t>(value) > m_attrs[col]->GetAutoInc()) {
+          if (value > 0 || ((m_attrs[col]->TypeName() == common::ColumnType::BIGINT) && m_attrs[col]->GetIfUnsigned()))
+            m_attrs[col]->SetAutoInc(value);
+        }
+      }
+      f->store(value);
+      v.SetInt(value);
+      break;
+    }
+    case MYSQL_TYPE_DECIMAL:
+    case MYSQL_TYPE_FLOAT:
+    case MYSQL_TYPE_DOUBLE:
+      v.SetDouble(f->val_real());
+      break;
+    case MYSQL_TYPE_NEWDECIMAL: {
+      auto dec_f = dynamic_cast<Field_new_decimal *>(f);
+      v.SetInt(std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec)));
+      break;
+    }
+    case MYSQL_TYPE_TIMESTAMP: {
+      MYSQL_TIME my_time;
+      std::memset(&my_time, 0, sizeof(my_time));
+      f->get_time(&my_time);
+      // convert to UTC
+      if (!common::IsTimeStampZero(my_time)) {
+        my_bool myb;
+        my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
+        common::GMTSec2GMTTime(&my_time, secs_utc);
+      }
+      types::DT dt = {};
+      dt.year = my_time.year;
+      dt.month = my_time.month;
+      dt.day = my_time.day;
+      dt.hour = my_time.hour;
+      dt.minute = my_time.minute;
+      dt.second = my_time.second;
+      v.SetInt(dt.val);
+      break;
+    }
+    case MYSQL_TYPE_TIME:
+    case MYSQL_TYPE_TIME2:
+    case MYSQL_TYPE_DATE:
+    case MYSQL_TYPE_DATETIME:
+    case MYSQL_TYPE_NEWDATE:
+    case MYSQL_TYPE_TIMESTAMP2:
+    case MYSQL_TYPE_DATETIME2: {
+      MYSQL_TIME my_time;
+      std::memset(&my_time, 0, sizeof(my_time));
+      f->get_time(&my_time);
+      types::DT dt = {};
+      dt.year = my_time.year;
+      dt.month = my_time.month;
+      dt.day = my_time.day;
+      dt.hour = my_time.hour;
+      dt.minute = my_time.minute;
+      dt.second = my_time.second;
+      v.SetInt(dt.val);
+      break;
+    }
+    case MYSQL_TYPE_YEAR:  // what the hell?
+    {
+      types::DT dt = {};
+      dt.year = f->val_int();
+      v.SetInt(dt.val);
+      break;
+    }
+    case MYSQL_TYPE_VARCHAR:
+    case MYSQL_TYPE_TINY_BLOB:
+    case MYSQL_TYPE_MEDIUM_BLOB:
+    case MYSQL_TYPE_LONG_BLOB:
+    case MYSQL_TYPE_BLOB:
+    case MYSQL_TYPE_VAR_STRING:
+    case MYSQL_TYPE_STRING: {
+      String str;
+      f->val_str(&str);
+      v.SetString(const_cast<char *>(str.ptr()), str.length());
+      break;
+    }
+    case MYSQL_TYPE_SET:
+    case MYSQL_TYPE_ENUM:
+    case MYSQL_TYPE_GEOMETRY:
+    case MYSQL_TYPE_NULL:
+    default:
+      throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
+      break;
+  }
+}
+
+void TianmuTable::UpdateGetOldNewValue(TABLE *table, uint64_t col_id, Value &old_v, Value &new_v) {
+  std::shared_ptr<uchar[]> buffer;
+  buffer.reset(new uchar[table->s->reclength]);
+  std::memcpy(buffer.get(), table->record[0], table->s->reclength);
+  GetValueFromField(table->field[col_id], new_v, col_id);
+  std::memcpy(table->record[0], table->record[1], table->s->reclength);
+  GetValueFromField(table->field[col_id], old_v, col_id);
+  std::memcpy(table->record[0], buffer.get(), table->s->reclength);
+}
+
+/// record parser utils
+
+class DelayedInsertParser final {
+ public:
+  DelayedInsertParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs, std::vector<std::unique_ptr<char[]>> *vec,
+                      uint packsize, std::shared_ptr<index::TianmuTableIndex> index, core::Transaction *tx)
+      : pack_size(packsize), attrs(attrs), vec(vec), index_table(index), tx(tx) {}
+
+  uint GetRows(uint no_of_rows, std::vector<loader::ValueCache> &value_buffers) {
+    int64_t start_row = attrs[0]->NumOfObj();
+
+    value_buffers.reserve(attrs.size());
+    for (size_t i = 0; i < attrs.size(); i++) {
+      value_buffers.emplace_back(pack_size, pack_size * 128);
+    }
+
+    uint no_of_rows_returned;
+    for (no_of_rows_returned = 0; no_of_rows_returned < no_of_rows; no_of_rows_returned++) {
+      if (processed == vec->size()) {
+        // no more to parse
+        return no_of_rows_returned;
+      }
+      auto ptr = const_cast<const char *>((*vec)[processed].get());
+      DeltaRecordHeadForInsert rec_head;
+      ptr = rec_head.recordDecode(ptr);
+      for (uint i = 0; i < attrs.size(); i++) {
+        auto &vc = value_buffers[i];
+        if (rec_head.is_deleted_ == DELTA_RECORD_DELETE) {
+          vc.ExpectedDelete();
+          continue;
+        }
+        if (rec_head.null_mask_[i]) {
+          vc.ExpectedNull(true);
+          continue;
+        }
+        auto &attr(attrs[i]);
+        switch (attr->GetPackType()) {
+          case common::PackType::STR: {
+            uint32_t str_len = rec_head.field_len_[i];
+            auto buf = vc.Prepare(str_len);
+            if (buf == nullptr) {
+              throw std::bad_alloc();
+            }
+            std::memcpy(buf, ptr, str_len);
+            vc.ExpectedSize(str_len);
+            ptr += str_len;
+          } break;
+          case common::PackType::INT: {
+            if (attr->Type().Lookup()) {
+              uint32_t len = *(uint32_t *)ptr;
+              ptr += sizeof(uint32_t);
+              types::BString s(len == 0 ? "" : ptr, len);
+              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
+              *buf = attr->EncodeValue_T(s, true);
+              vc.ExpectedSize(sizeof(int64_t));
+              ptr += len;
+            } else {
+              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
+              *buf = *(int64_t *)ptr;
+
+              //              if (attr->GetIfAutoInc()) {
+              //                if (*buf == 0)  // Value of auto inc column was not assigned by user
+              //                  *buf = attr->AutoIncNext();
+              //                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
+              //                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) &&
+              //                  attr->GetIfUnsigned()))
+              //                    attr->SetAutoInc(*buf);
+              //                }
+              //              }
+              vc.ExpectedSize(sizeof(int64_t));
+              ptr += sizeof(int64_t);
+            }
+          } break;
+          default:
+            break;
+        }
+      }
+      for (auto &vc : value_buffers) {
+        vc.Commit();
+      }
+      processed++;
+    }
+    return no_of_rows_returned;
+  }
+
+  common::ErrorCode InsertIndex(std::vector<loader::ValueCache> &vcs, int64_t start_row) {
+    if (!index_table)
+      return common::ErrorCode::SUCCESS;
+
+    size_t row_idx = vcs[0].NumOfValues() - 1;
+    std::vector<uint> cols = index_table->KeyCols();
+    std::vector<std::string> index_fields;
+    for (auto &col : cols) {
+      index_fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
+    }
+
+    if (index_table->InsertIndex(tx, index_fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "Delay insert discard this row for duplicate key");
+      return common::ErrorCode::DUPP_KEY;
+    }
+    return common::ErrorCode::SUCCESS;
+  }
+
+ private:
+  uint processed = 0;
+  uint pack_size;
+  std::vector<std::unique_ptr<TianmuAttr>> &attrs;
+  std::vector<std::unique_ptr<char[]>> *vec;
+  std::shared_ptr<index::TianmuTableIndex> index_table;
+  core::Transaction *tx;
+};
+
+class DelayedUpdateParser final {
+ public:
+  DelayedUpdateParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs,
+                      std::map<uint64_t, std::unique_ptr<char[]>> *update_rows,
+                      std::shared_ptr<index::TianmuTableIndex> index)
+      : attrs(attrs), update_rows(update_rows), index_table(std::move(index)) {}
+
+  uint GetRows(std::vector<std::unordered_map<uint64_t, Value>> &update_cols_buf) {
+    update_cols_buf.reserve(attrs.size());
+    for (int i = 0; i < attrs.size(); i++) {
+      update_cols_buf.emplace_back(std::unordered_map<uint64_t, Value>());
+    }
+    uint update_row_num = update_rows->size();
+    for (auto &[row_id, row] : *update_rows) {
+      auto row_ptr = const_cast<const char *>(row.get());
+      DeltaRecordHeadForUpdate rec_head;
+      row_ptr = rec_head.recordDecode(row_ptr);
+      for (uint col_id = 0; col_id < attrs.size(); col_id++) {
+        core::Value val;
+        if (!rec_head.update_mask_[col_id]) {
+          continue;
+        }
+        if (rec_head.null_mask_[col_id]) {
+          update_cols_buf[col_id].emplace(row_id, val);
+          continue;
+        }
+        auto &update_row = update_rows[col_id];
+        auto &attr(attrs[col_id]);
+        switch (attr->GetPackType()) {
+          case common::PackType::STR: {
+            uint32_t str_len = rec_head.field_len_[col_id];
+            val.SetString(const_cast<char *>(row_ptr), str_len);
+            update_cols_buf[col_id].emplace(row_id, val);
+            row_ptr += str_len;
+          } break;
+          case common::PackType::INT: {
+            if (attr->Type().Lookup()) {
+              uint32_t len = *(uint32_t *)row_ptr;
+              row_ptr += sizeof(uint32_t);
+              types::BString s(len == 0 ? "" : row_ptr, len);
+              int64_t int_val = attr->EncodeValue_T(s, true);
+              row_ptr += len;
+            } else {
+              int64_t int_val = *(int64_t *)row_ptr;
+              if (attr->GetIfAutoInc()) {
+                if (int_val == 0)  // Value of auto inc column was not assigned by user
+                  int_val = attr->AutoIncNext();
+                if (static_cast<uint64_t>(int_val) > attr->GetAutoInc())
+                  attr->SetAutoInc(int_val);
+              }
+              val.SetInt(int_val);
+              update_cols_buf[col_id].emplace(row_id, val);
+              row_ptr += sizeof(int64_t);
+            }
+          } break;
+          default:
+            break;
+        }
+      }
+    }
+    return update_row_num;
+  }
+
+ private:
+  std::vector<std::unique_ptr<TianmuAttr>> &attrs;
+  std::map<uint64_t, std::unique_ptr<char[]>> *update_rows;
+  std::shared_ptr<index::TianmuTableIndex> index_table;
+};
+
+/// TianmuTable
 
 uint32_t TianmuTable::GetTableId(const fs::path &dir) {
   TABLE_META meta;
@@ -164,7 +466,7 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
 
 void TianmuTable::Truncate() {
   for (auto &attr : m_attrs) attr->Truncate();
-  m_mem_table->Truncate(m_tx);
+  m_delta->Truncate(m_tx);
 }
 
 TianmuTable::TianmuTable(std::string const &p, TableShare *s, Transaction *tx) : share(s), m_tx(tx), m_path(p) {
@@ -196,7 +498,7 @@ TianmuTable::TianmuTable(std::string const &p, TableShare *s, Transaction *tx) :
   if (!index::NormalizeName(table_name, normalized_path)) {
     throw common::Exception("Normalization wrong of table  " + share->Path());
   }
-  m_mem_table = ha_kvstore_->FindMemTable(normalized_path);
+  m_delta = ha_kvstore_->FindDeltaTable(normalized_path);
 }
 
 void TianmuTable::LockPackInfoForUse() {
@@ -435,96 +737,13 @@ void TianmuTable::DisplayRSI() {
   TIANMU_LOG(LogCtl_Level::DEBUG, "%s", ss.str().c_str());
 }
 
-TianmuTable::Iterator::Iterator(TianmuTable &table, std::shared_ptr<Filter> filter)
-    : table(&table), filter(filter), it(filter.get(), table.Getpackpower()) {}
+int64_t TianmuTable::NumOfObj() const { return m_attrs[0]->NumOfObj(); }
 
-void TianmuTable::Iterator::Initialize(const std::vector<bool> &attrs_) {
-  int attr_id = 0;
-  attrs.clear();
-  record.clear();
-  values_fetchers.clear();
+int64_t TianmuTable::NumOfDeleted() const { return m_attrs[0]->NumOfDeleted(); }
 
-  for (auto const iter : attrs_) {
-    if (iter) {
-      TianmuAttr *attr = table->GetAttr(attr_id);
-      attrs.push_back(attr);
-      record.emplace_back(attr->ValuePrototype(false).Clone());
-      values_fetchers.push_back(
-          std::bind(&TianmuAttr::GetValueData, attr, std::placeholders::_1, std::ref(*record[attr_id]), false));
-    } else {
-      record.emplace_back(table->GetAttr(attr_id)->ValuePrototype(false).Clone());
-    }
-    attr_id++;
-  }
-}
+int64_t TianmuTable::NumOfValues() const { return NumOfObj(); }
 
-bool TianmuTable::Iterator::operator==(const Iterator &iter) { return position == iter.position; }
-
-void TianmuTable::Iterator::operator++(int) {
-  ++it;
-  int64_t new_pos;
-  if (it.IsValid())
-    new_pos = *it;
-  else
-    new_pos = -1;
-  UnlockPacks(new_pos);
-  position = new_pos;
-  current_record_fetched = false;
-}
-
-void TianmuTable::Iterator::MoveToRow(int64_t row_id) {
-  UnlockPacks(row_id);
-  it.RewindToRow(row_id);
-  if (it.IsValid())
-    position = row_id;
-  else
-    position = -1;
-  current_record_fetched = false;
-}
-
-void TianmuTable::Iterator::FetchValues() {
-  if (!current_record_fetched) {
-    LockPacks();
-    for (auto &func : values_fetchers) {
-      func(position);
-    }
-    current_record_fetched = true;
-  }
-}
-
-void TianmuTable::Iterator::UnlockPacks(int64_t new_row_id) {
-  if (position != -1) {
-    uint32_t power = table->Getpackpower();
-    if (new_row_id == -1 || (position >> power) != (new_row_id >> power))
-      dp_locks.clear();
-  }
-}
-
-void TianmuTable::Iterator::LockPacks() {
-  if (dp_locks.empty() && position != -1) {
-    uint32_t power = table->Getpackpower();
-    for (auto &a : attrs) dp_locks.emplace_back(std::make_unique<DataPackLock>(a, int(position >> power)));
-  }
-}
-
-TianmuTable::Iterator TianmuTable::Iterator::CreateBegin(TianmuTable &table, std::shared_ptr<Filter> filter,
-                                                         const std::vector<bool> &attrs) {
-  TianmuTable::Iterator ret(table, filter);
-  ret.Initialize(attrs);
-  ret.it.Rewind();
-  if (ret.it.IsValid())
-    ret.position = *(ret.it);
-  else
-    ret.position = -1;
-  ret.conn = current_txn_;
-  return ret;
-}
-
-TianmuTable::Iterator TianmuTable::Iterator::CreateEnd() { return TianmuTable::Iterator(); }
-
-int64_t TianmuTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
-
-int64_t TianmuTable::NumOfDeleted() { return m_attrs[0]->NumOfDeleted(); }
+uint64_t TianmuTable::NextRowId() { return m_delta->row_id++; }
 
 void TianmuTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
@@ -550,6 +769,7 @@ types::TianmuValueObject TianmuTable::GetValue(int64_t obj, int attr, [[maybe_un
   return m_attrs[attr]->GetValue(obj, false);
 }
 
+bool TianmuTable::IsDelete(int64_t row) const { return m_attrs[0]->IsDelete(row); }
 uint TianmuTable::MaxStringSize(int n_a, Filter *f) {
   DEBUG_ASSERT(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
   if (NumOfObj() == 0)
@@ -559,19 +779,22 @@ uint TianmuTable::MaxStringSize(int n_a, Filter *f) {
 
 void TianmuTable::FillRowByRowid(TABLE *table, int64_t obj) {
   int col_id = 0;
-  assert((int64_t)obj <= NumOfObj());
-  for (Field **field = table->field; *field; field++, col_id++) {
-    LockPackForUse(col_id, obj >> m_attrs[col_id]->ValueOfPackPower());
-    std::shared_ptr<void> defer(nullptr,
-                                [this, col_id, obj](...) { UnlockPackFromUse(col_id, obj >> Getpackpower()); });
-    std::unique_ptr<types::TianmuDataType> value(m_attrs[col_id]->ValuePrototype(false).Clone());
-    m_attrs[col_id]->GetValueData(obj, *value);
-    if (bitmap_is_set(table->read_set, col_id)) {
-      Engine::ConvertToField(*field, *value, nullptr);
-    } else {
-      std::memset((*field)->ptr, 0, 2);
-      (*field)->set_null();
+  if (obj <= NumOfObj()) {
+    for (Field **field = table->field; *field; field++, col_id++) {
+      LockPackForUse(col_id, obj >> m_attrs[col_id]->ValueOfPackPower());
+      std::shared_ptr<void> defer(nullptr,
+                                  [this, col_id, obj](...) { UnlockPackFromUse(col_id, obj >> Getpackpower()); });
+      std::unique_ptr<types::TianmuDataType> value(m_attrs[col_id]->ValuePrototype(false).Clone());
+      m_attrs[col_id]->GetValueData(obj, *value);
+      if (bitmap_is_set(table->read_set, col_id)) {
+        Engine::ConvertToField(*field, *value, nullptr);
+      } else {
+        std::memset((*field)->ptr, 0, 2);
+        (*field)->set_null();
+      }
     }
+  } else {
+    m_delta->FillRowByRowid(m_tx, table, obj);
   }
 }
 
@@ -588,7 +811,7 @@ void TianmuTable::LoadDataInfile(system::IOParameters &iop) {
   if (iop.LoadDelayed()) {
     if (tianmu_sysvar_enable_rowstore) {
       current_txn_->SetLoadSource(common::LoadSource::LS_MemRow);
-      no_loaded_rows = MergeMemTable(iop);
+      no_loaded_rows = MergeDeltaTable(iop);
     } else {
       current_txn_->SetLoadSource(common::LoadSource::LS_InsertBuffer);
       no_loaded_rows = ProcessDelayed(iop);
@@ -612,13 +835,12 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG: {
       int64_t value = f->val_int();
-      common::PushWarningIfOutOfRange(m_tx->Thd(), std::string(f->field_name), value, f->type(),
+      common::PushWarningIfOutOfRange(current_txn_->Thd(), std::string(f->field_name), value, f->type(),
                                       f->flags & UNSIGNED_FLAG);
       if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
-        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = m_attrs[col]->AutoIncNext();
-      else
-        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
+        value = m_attrs[col]->AutoIncNext();
+      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
       vc.ExpectedSize(sizeof(int64_t));
       if (m_attrs[col]->GetIfAutoInc()) {
         // inc counter should be set to value of user assigned
@@ -627,6 +849,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
             m_attrs[col]->SetAutoInc(value);
         }
       }
+      f->store(value);
     } break;
     case MYSQL_TYPE_BIT: {
       int64_t value = f->val_int();
@@ -760,9 +983,58 @@ int TianmuTable::Insert(TABLE *table) {
   return 0;
 }
 
-void TianmuTable::UpdateItem(uint64_t row, uint64_t col, Value v, core::Transaction *current_transaction) {
+int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data) {
+  // todo(dfx): move to before for loop, need test
+  my_bitmap_map *org_bitmap2 = dbug_tmp_use_all_columns(table, table->read_set);
+  std::shared_ptr<void> defer(nullptr,
+                              [org_bitmap2, table](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap2); });
+  utils::result_set<void> res;
+  for (uint col_id = 0; col_id < table->s->fields; col_id++) {
+    if (!bitmap_is_set(table->write_set, col_id)) {
+      continue;
+    }
+    auto field = table->field[col_id];
+
+    if (field->real_maybe_null()) {
+      if (field->is_null_in_record(old_data) && field->is_null_in_record(new_data)) {
+        continue;
+      }
+
+      if (field->is_null_in_record(new_data)) {
+        core::Value old_v, new_v;
+        UpdateGetOldNewValue(table, col_id, old_v, new_v);
+        res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
+            &core::TianmuTable::UpdateItem, this, row_id, col_id, old_v, new_v, current_txn_));
+        continue;
+      }
+    }
+    auto o_ptr = field->ptr - table->record[0] + old_data;
+    auto n_ptr = field->ptr - table->record[0] + new_data;
+    if (field->is_null_in_record(old_data) || std::memcmp(o_ptr, n_ptr, field->pack_length()) != 0) {
+      core::Value old_v, new_v;
+      UpdateGetOldNewValue(table, col_id, old_v, new_v);
+      res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(&core::TianmuTable::UpdateItem, this, row_id,
+                                                                          col_id, old_v, new_v, current_txn_));
+    }
+  }
+  res.get_all_with_except();
+  return 0;
+}
+
+int TianmuTable::Delete(TABLE *table, uint64_t row_id) {
+  utils::result_set<void> res;
+  for (uint i = 0; i < table->s->fields; i++) {
+    res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(&core::TianmuTable::DeleteItem, this, row_id, i,
+                                                                        current_txn_));
+  }
+  res.get_all_with_except();
+  return 0;
+}
+
+void TianmuTable::UpdateItem(uint64_t row, uint64_t col, Value &old_v, Value &new_v,
+                             core::Transaction *current_transaction) {
   current_txn_ = current_transaction;
-  m_attrs[col]->UpdateData(row, v);
+  m_attrs[col]->UpdateData(row, old_v, new_v);
 }
 
 void TianmuTable::DeleteItem(uint64_t row, uint64_t col, core::Transaction *current_transaction) {
@@ -1151,128 +1423,12 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
   return 0;
 }
 
-class DelayedInsertParser final {
- public:
-  DelayedInsertParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs, std::vector<std::unique_ptr<char[]>> *vec,
-                      uint packsize, std::shared_ptr<index::TianmuTableIndex> index)
-      : pack_size(packsize), attrs(attrs), vec(vec), index_table(index) {}
-
-  uint GetRows(uint no_of_rows, std::vector<loader::ValueCache> &value_buffers) {
-    int64_t start_row = attrs[0]->NumOfObj();
-
-    value_buffers.reserve(attrs.size());
-    for (size_t i = 0; i < attrs.size(); i++) {
-      value_buffers.emplace_back(pack_size, pack_size * 128);
-    }
-
-    uint no_of_rows_returned;
-    for (no_of_rows_returned = 0; no_of_rows_returned < no_of_rows; no_of_rows_returned++) {
-      if (processed == vec->size()) {
-        // no more to parse
-        return no_of_rows_returned;
-      }
-
-      auto ptr = (*vec)[processed].get();
-      // int  tid = *(int32_t *)ptr;
-      ptr += sizeof(int32_t);
-      std::string path(ptr);
-      ptr += path.length() + 1;
-      utils::BitSet null_mask(attrs.size(), ptr);
-      ptr += null_mask.data_size();
-      for (uint i = 0; i < attrs.size(); i++) {
-        auto &vc = value_buffers[i];
-        if (null_mask[i]) {
-          vc.ExpectedNull(true);
-          continue;
-        }
-        auto &attr(attrs[i]);
-        switch (attr->GetPackType()) {
-          case common::PackType::STR: {
-            uint32_t len = *(uint32_t *)ptr;
-            ptr += sizeof(uint32_t);
-            auto buf = vc.Prepare(len);
-            if (buf == nullptr) {
-              throw std::bad_alloc();
-            }
-            std::memcpy(buf, ptr, len);
-            vc.ExpectedSize(len);
-            ptr += len;
-          } break;
-          case common::PackType::INT: {
-            if (attr->Type().Lookup()) {
-              uint32_t len = *(uint32_t *)ptr;
-              ptr += sizeof(uint32_t);
-              types::BString s(len == 0 ? "" : ptr, len);
-              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
-              *buf = attr->EncodeValue_T(s, true);
-              vc.ExpectedSize(sizeof(int64_t));
-              ptr += len;
-            } else {
-              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
-              *buf = *(int64_t *)ptr;
-
-              if (attr->GetIfAutoInc()) {
-                if (*buf == 0)  // Value of auto inc column was not assigned by user
-                  *buf = attr->AutoIncNext();
-                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
-                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) && attr->GetIfUnsigned()))
-                    attr->SetAutoInc(*buf);
-                }
-              }
-              vc.ExpectedSize(sizeof(int64_t));
-              ptr += sizeof(int64_t);
-            }
-          } break;
-          default:
-            break;
-        }
-      }
-      for (auto &vc : value_buffers) {
-        vc.Commit();
-      }
-
-      processed++;
-      // insert index into kvstore
-      if (InsertIndex(value_buffers, start_row) != common::ErrorCode::SUCCESS) {
-        for (auto &vc : value_buffers) {
-          vc.Rollback();
-        }
-      }
-    }
-    return no_of_rows_returned;
-  }
-
-  common::ErrorCode InsertIndex(std::vector<loader::ValueCache> &vcs, int64_t start_row) {
-    if (!index_table)
-      return common::ErrorCode::SUCCESS;
-
-    size_t row_idx = vcs[0].NumOfValues() - 1;
-    std::vector<uint> cols = index_table->KeyCols();
-    std::vector<std::string> fields;
-    for (auto &col : cols) {
-      fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
-    }
-
-    if (index_table->InsertIndex(current_txn_, fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
-      TIANMU_LOG(LogCtl_Level::DEBUG, "Delay insert discard this row for duplicate key");
-      return common::ErrorCode::DUPP_KEY;
-    }
-    return common::ErrorCode::SUCCESS;
-  }
-
- private:
-  uint processed = 0;
-  uint pack_size;
-  std::vector<std::unique_ptr<TianmuAttr>> &attrs;
-  std::vector<std::unique_ptr<char[]>> *vec;
-  std::shared_ptr<index::TianmuTableIndex> index_table;
-};
-
 uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
   std::string str(basename(const_cast<char *>(iop.Path())));
   auto vec = reinterpret_cast<std::vector<std::unique_ptr<char[]>> *>(std::stol(str));
 
-  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), ha_tianmu_engine_->GetTableIndex(share->Path()));
+  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), ha_tianmu_engine_->GetTableIndex(share->Path()),
+                             current_txn_);
   long no_loaded_rows = 0;
 
   uint to_prepare, no_of_rows_returned;
@@ -1307,70 +1463,162 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
   return no_loaded_rows;
 }
 
-void TianmuTable::InsertMemRow(std::unique_ptr<char[]> buf, uint32_t size) {
-  return m_mem_table->InsertRow(std::move(buf), size);
+void TianmuTable::InsertToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
+  return m_delta->AddInsertRecord(current_txn_, row_id, std::move(buf), size);
 }
 
-int TianmuTable::MergeMemTable(system::IOParameters &iop) {
+void TianmuTable::UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
+  return m_delta->AddRecord(current_txn_, row_id, std::move(buf), size);
+}
+
+void TianmuTable::DeleteToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
+  return m_delta->AddRecord(current_txn_, row_id, std::move(buf), size);
+}
+
+void TianmuTable::InsertIndexForDelta(TABLE *table, uint64_t row_id) {
+  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
+  if (tab) {
+    std::vector<std::string> fields;
+    std::vector<uint> cols = tab->KeyCols();
+    std::vector<loader::ValueCache> vcs;
+    vcs.reserve(cols.size());
+    int i = 0;
+    for (auto &col : cols) {
+      vcs.emplace_back(1, 128);
+      Field2VC(table->field[col], vcs[i], col);
+      vcs[i].Commit();
+      fields.emplace_back(vcs[i].GetDataBytesPointer(0), vcs[i].Size(0));
+      i++;
+    }
+
+    if (tab->InsertIndex(current_txn_, fields, row_id) == common::ErrorCode::DUPP_KEY) {
+      TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d, key: %s", row_id, fields[0].data());
+      throw common::DupKeyException("Insert duplicate key on row: " + std::to_string(row_id) +
+                                    ", pk: " + std::to_string(*(uint64_t *)(fields[0].data())));
+    }
+  }
+}
+
+void TianmuTable::UpdateIndexForDelta(TABLE *table, uint64_t row_id, uint64_t col) {
+  core::Value old_v, new_v;
+  UpdateGetOldNewValue(table, col, old_v, new_v);
+  m_attrs[col]->UpdateIfIndex(current_txn_, row_id, col, old_v, new_v);
+}
+
+void TianmuTable::DeleteIndexForDelta(TABLE *table, uint64_t row_id) {
+  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
+  if (tab) {
+    std::vector<std::string> fields;
+    std::vector<uint> cols = tab->KeyCols();
+    std::vector<loader::ValueCache> vcs;
+    vcs.reserve(cols.size());
+    int i = 0;
+    for (auto &col : cols) {
+      vcs.emplace_back(1, 128);
+      Field2VC(table->field[col], vcs[i], col);
+      vcs[i].Commit();
+      fields.emplace_back(vcs[i].GetDataBytesPointer(0), vcs[i].Size(0));
+      i++;
+    }
+
+    if (tab->DeleteIndex(current_txn_, fields, row_id) == common::ErrorCode::FAILED) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "Delete row: %s for primary key field", row_id);
+      throw common::Exception("Delete row: " + std::to_string(row_id) + " for primary key field");
+    }
+  }
+}
+
+uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   ASSERT(m_tx, "Transaction not generated.");
-  ASSERT(m_mem_table, "memory table not exist");
-  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
-
-  struct timespec t1, t2, t3;
+  ASSERT(m_delta, "memory table not exist");
+  struct timespec t1, t2;
   clock_gettime(CLOCK_REALTIME, &t1);
-  std::vector<std::unique_ptr<char[]>> vec;
+  std::vector<std::unique_ptr<char[]>> insert_records;
+  int insert_num = 0;
+  std::map<uint64_t, std::unique_ptr<char[]>> update_records;
+  int update_num = 0;
+  std::vector<uint64_t> delete_records;
+  int delete_num = 0;
+  uint64 expected_count = m_delta->CountRecords() < tianmu_sysvar_merge_rocks_expected_count
+                              ? m_delta->CountRecords()
+                              : tianmu_sysvar_merge_rocks_expected_count;
   {
-    uchar entry_key[32];
-    size_t key_pos = 0;
-    auto cf_handle = m_mem_table->GetCFHandle();
-    uint32_t mem_id = m_mem_table->GetMemID();
-    index::be_store_index(entry_key + key_pos, mem_id);
-    key_pos += sizeof(uint32_t);
-    index::be_store_byte(entry_key + key_pos, static_cast<uchar>(TianmuMemTable::RecordType::kInsert));
-    key_pos += sizeof(uchar);
-    rocksdb::Slice entry_slice((char *)entry_key, key_pos);
-
-    uchar upper_key[32];
-    size_t upper_pos = 0;
-    index::be_store_index(upper_key + upper_pos, mem_id);
-    upper_pos += sizeof(uint32_t);
-    uchar upkey = static_cast<int>(TianmuMemTable::RecordType::kInsert) + 1;
-    index::be_store_byte(upper_key + upper_pos, upkey);
-    upper_pos += sizeof(uchar);
-    rocksdb::Slice upper_slice((char *)upper_key, upper_pos);
-
-    m_mem_table->next_load_id_ = m_mem_table->next_insert_id_.load();
-    rocksdb::ReadOptions ropts;
-    ropts.iterate_upper_bound = &upper_slice;
-    std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(ropts, cf_handle));
-    iter->Seek(entry_slice);
-
-    while (iter->Valid()) {
+    // combine prefix key
+    uchar key_buf[sizeof(uint32_t)];
+    uint32_t delta_id = m_delta->GetDeltaTableID();
+    index::be_store_index(key_buf, delta_id);
+    rocksdb::Slice prefix((char *)key_buf, sizeof(uint32_t));
+    // rocksdb seek
+    auto cf_handle = m_delta->GetCFHandle();
+    rocksdb::ReadOptions r_opts;
+    r_opts.total_order_seek = true;
+    std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(r_opts, cf_handle));
+    iter->Seek(prefix);
+#ifndef NDEBUG
+    if (iter->Valid()) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "MergeDeltaTable curr table id: %d, row id: %d",
+                 index::be_to_uint32(reinterpret_cast<const uchar *>(iter->key().data())),
+                 index::be_to_uint64(reinterpret_cast<const uchar *>(iter->key().data()) + sizeof(uint32_t)));
+    }
+#endif
+    while (expected_count > 0 && iter->Valid() && iter->key().starts_with(prefix)) {
+      auto key = iter->key();
+      uint64_t row_id = index::be_to_uint64(reinterpret_cast<const uchar *>(key.data()) + sizeof(uint32_t));
       auto value = iter->value();
       std::unique_ptr<char[]> buf(new char[value.size()]);
       std::memcpy(buf.get(), value.data(), value.size());
-      vec.emplace_back(std::move(buf));
-      m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
-      m_mem_table->stat.read_cnt++;
-      m_mem_table->stat.read_bytes += value.size();
-
+      auto type = *reinterpret_cast<RecordType *>(buf.get());
+      auto load_num = *reinterpret_cast<uint32_t *>(buf.get() + sizeof(RecordType));
+      if (type == RecordType::kInsert) {
+        insert_records.emplace_back(std::move(buf));
+      } else if (type == RecordType::kUpdate) {
+        update_records.emplace(row_id, std::move(buf));
+      } else if (type == RecordType::kDelete) {
+        delete_records.emplace_back(row_id);
+      } else {
+        TIANMU_LOG(LogCtl_Level::ERROR, "record type (%d) cannot be processed, delete this record!", type);
+      }
+      m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());  // todo(dfx): change to DeleteRange
+      expected_count -= load_num;
+      m_delta->merge_id.fetch_add(load_num);
+      m_delta->stat.read_cnt++;
+      m_delta->stat.read_bytes += value.size();
+      if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
+        insert_num += AsyncParseInsertRecords(&iop, &insert_records);
+      }
+      if (update_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
+        update_num += AsyncParseUpdateRecords(&iop, &update_records);
+      }
+      if (delete_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
+        delete_num += AsyncParseDeleteRecords(delete_records);
+      }
       iter->Next();
-      if (vec.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered))
-        break;
-    }
-
-    if (iter->Valid() && iter->key().starts_with(entry_slice)) {
-      m_mem_table->next_load_id_ = index::be_to_uint64((uchar *)iter->key().data() + key_pos);
     }
   }
-
-  if (vec.empty())
-    return 0;
-
   clock_gettime(CLOCK_REALTIME, &t2);
+  if (!insert_records.empty()) {
+    insert_num += AsyncParseInsertRecords(&iop, &insert_records);
+  }
+  if (!update_records.empty()) {
+    update_num += AsyncParseUpdateRecords(&iop, &update_records);
+  }
+  if (!delete_records.empty()) {
+    delete_num += AsyncParseDeleteRecords(delete_records);
+  }
+  if (t2.tv_sec - t1.tv_sec > 15) {
+    TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_delta->GetCFHandle(), nullptr, nullptr);
+  }
 
-  DelayedInsertParser parser(m_attrs, &vec, share->PackSize(), index_table);
-  long no_loaded_rows = 0;
+  return insert_num + update_num + delete_num;
+}
+
+int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *insert_vec) {
+  struct timespec t1, t2;
+  clock_gettime(CLOCK_REALTIME, &t1);
+  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
+  DelayedInsertParser parser(m_attrs, insert_vec, share->PackSize(), index_table, m_tx);
+  uint64_t loaded_row_num = 0;
 
   uint to_prepare, no_of_rows_returned;
   do {
@@ -1386,32 +1634,159 @@ int TianmuTable::MergeMemTable(system::IOParameters &iop) {
             ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
       }
       res.get_all();
-      no_loaded_rows += real_loaded_rows;
-      if (real_loaded_rows > 0 && mysql_bin_log.is_open())
-        binlog_insert2load_block(vcs, real_loaded_rows, iop);
+      loaded_row_num += real_loaded_rows;
+      if (mysql_bin_log.is_open())
+        binlog_insert2load_block(vcs, real_loaded_rows, *iop);
     }
   } while (no_of_rows_returned == to_prepare);
-  clock_gettime(CLOCK_REALTIME, &t3);
-
-  if (no_loaded_rows > 0 && mysql_bin_log.is_open())
-    if (binlog_insert2load_log_event(iop) != 0) {
+  clock_gettime(CLOCK_REALTIME, &t2);
+  if (loaded_row_num > 0 && mysql_bin_log.is_open())
+    if (binlog_insert2load_log_event(*iop) != 0) {
       TIANMU_LOG(LogCtl_Level::ERROR, "Write insert to load binlog fail!");
       throw common::FormatException("Write insert to load binlog fail!");
     }
 
-  if (t2.tv_sec - t1.tv_sec > 15) {
-    TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_mem_table->GetCFHandle(), nullptr, nullptr);
-  }
-
-  if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
+  if ((t2.tv_sec - t1.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                share->Path().c_str());
     ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
                                         nullptr);
   }
+  return loaded_row_num;
+}
+int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
+                                         std::map<uint64_t, std::unique_ptr<char[]>> *update_records) {
+  struct timespec t1, t2;
+  clock_gettime(CLOCK_REALTIME, &t1);
+  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
+  DelayedUpdateParser parser(m_attrs, update_records, index_table);
+  std::vector<std::unordered_map<uint64_t, Value>> update_cols_buf;
+  int returned_row_num = parser.GetRows(update_cols_buf);
+  if (returned_row_num > 0) {
+    utils::result_set<void> res;
+    for (uint att = 0; att < m_attrs.size(); ++att) {
+      if (!update_cols_buf[att].empty()) {
+        res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
+            &TianmuAttr::UpdateBatchData, m_attrs[att].get(), current_txn_, update_cols_buf[att]));
+      }
+    }
+    res.get_all_with_except();
+  }
+  clock_gettime(CLOCK_REALTIME, &t2);
 
-  return no_loaded_rows;
+  if ((t2.tv_sec - t1.tv_sec > 15) && index_table) {
+    TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
+               share->Path().c_str());
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
+                                        nullptr);
+  }
+  return returned_row_num;
+}
+int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) {
+  if (!delete_records.empty()) {
+    utils::result_set<void> res;
+    for (uint att = 0; att < m_attrs.size(); ++att) {
+      res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
+          &TianmuAttr::DeleteBatchData, m_attrs[att].get(), current_txn_, delete_records));
+    }
+    res.get_all_with_except();
+  }
+  return delete_records.size();
+}
+
+/// TianmuIterator
+
+TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter &raw_filter)
+    : table(table), filter(std::make_shared<Filter>(raw_filter)), it(filter.get(), table->Getpackpower()) {
+  Initialize(attrs);
+  it.Rewind();
+  if (it.IsValid())
+    position = *(it);
+  else
+    position = -1;
+  conn = current_txn_;
+}
+
+TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs)
+    : table(table),
+      filter(std::make_shared<Filter>(table->NumOfObj(), table->Getpackpower(), true)),
+      it(filter.get(), table->Getpackpower()) {
+  Initialize(attrs);
+  it.Rewind();
+  if (it.IsValid())
+    position = *(it);
+  else
+    position = -1;
+  conn = current_txn_;
+}
+
+void TianmuIterator::Initialize(const std::vector<bool> &attrs_) {
+  int attr_id = 0;
+  attrs.clear();
+  record.clear();
+  values_fetchers.clear();
+
+  for (auto const iter : attrs_) {
+    if (iter) {
+      TianmuAttr *attr = table->GetAttr(attr_id);
+      attrs.push_back(attr);
+      record.emplace_back(attr->ValuePrototype(false).Clone());
+      values_fetchers.push_back(
+          std::bind(&TianmuAttr::GetValueData, attr, std::placeholders::_1, std::ref(*record[attr_id]), false));
+    } else {
+      record.emplace_back(table->GetAttr(attr_id)->ValuePrototype(false).Clone());
+    }
+    attr_id++;
+  }
+}
+
+bool TianmuIterator::operator==(const TianmuIterator &iter) { return position == iter.position; }
+
+void TianmuIterator::Next() {
+  ++it;
+  int64_t new_pos;
+  if (it.IsValid())
+    new_pos = *it;
+  else
+    new_pos = -1;
+  UnlockPacks(new_pos);
+  position = new_pos;
+  current_record_fetched = false;
+}
+
+void TianmuIterator::SeekTo(int64_t row_id) {
+  UnlockPacks(row_id);
+  it.RewindToRow(row_id);
+  if (it.IsValid())
+    position = row_id;
+  else
+    position = -1;
+  current_record_fetched = false;
+}
+
+void TianmuIterator::FetchValues() {
+  if (!current_record_fetched) {
+    LockPacks();
+    for (auto &func : values_fetchers) {
+      func(position);
+    }
+    current_record_fetched = true;
+  }
+}
+
+void TianmuIterator::UnlockPacks(int64_t new_row_id) {
+  if (position != -1) {
+    uint32_t power = table->Getpackpower();
+    if (new_row_id == -1 || (position >> power) != (new_row_id >> power))
+      dp_locks.clear();
+  }
+}
+
+void TianmuIterator::LockPacks() {
+  if (dp_locks.empty() && position != -1) {
+    uint32_t power = table->Getpackpower();
+    for (auto &a : attrs) dp_locks.emplace_back(std::make_unique<DataPackLock>(a, int(position >> power)));
+  }
 }
 
 }  // namespace core
