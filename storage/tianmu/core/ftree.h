@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-// Ftree - dictionary for strings
+// Ftree - dictionary for strings(can be persisted to disk)
 #ifndef TIANMU_CORE_FTREE_H_
 #define TIANMU_CORE_FTREE_H_
 #pragma once

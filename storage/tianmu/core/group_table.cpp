@@ -186,105 +186,116 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
         else
           aggregator[i] = new AggregatorCount32(int(desc.max_no_values));
 
-      } else  // SUM(...)				Note: strings are parsed
-              // to double
-          if (desc.operation == GT_Aggregation::GT_SUM) {
-        if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
-          aggregator[i] = new AggregatorSumD;
-        else
-          aggregator[i] = new AggregatorSum64;
+      } else {  // SUM(...)				Note: strings are parsed
+                // to double
+        if (desc.operation == GT_Aggregation::GT_SUM) {
+          if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
+            aggregator[i] = new AggregatorSumD;
+          else
+            aggregator[i] = new AggregatorSum64;
 
-      } else  // AVG(...)				Note: strings are parsed
-              // to double
+        } else {  // AVG(...)				Note: strings are parsed
+                  // to double
           if (desc.operation == GT_Aggregation::GT_AVG) {
-        if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
-          aggregator[i] = new AggregatorAvgD;
-        else if (desc.type == common::ColumnType::YEAR)
-          aggregator[i] = new AggregatorAvgYear;
-        else
-          aggregator[i] = new AggregatorAvg64(desc.precision);
+            if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
+              aggregator[i] = new AggregatorAvgD;
+            else if (desc.type == common::ColumnType::YEAR)
+              aggregator[i] = new AggregatorAvgYear;
+            else
+              aggregator[i] = new AggregatorAvg64(desc.precision);
 
-      } else  // MIN(...)
-          if (desc.operation == GT_Aggregation::GT_MIN) {
-        if (ATI::IsStringType(desc.type)) {
-          if (types::RequiresUTFConversions(desc.collation))
-            aggregator[i] = new AggregatorMinT_UTF(desc.size, desc.collation);
-          else
-            aggregator[i] = new AggregatorMinT(desc.size);
-        } else if (ATI::IsRealType(desc.type))
-          aggregator[i] = new AggregatorMinD;
-        else if (desc.min < std::numeric_limits<int>::min() || desc.max > std::numeric_limits<int>::max())
-          aggregator[i] = new AggregatorMin64;
-        else
-          aggregator[i] = new AggregatorMin32;
+          } else {  // MIN(...)
+            if (desc.operation == GT_Aggregation::GT_MIN) {
+              if (ATI::IsStringType(desc.type)) {
+                if (types::RequiresUTFConversions(desc.collation))
+                  aggregator[i] = new AggregatorMinT_UTF(desc.size, desc.collation);
+                else
+                  aggregator[i] = new AggregatorMinT(desc.size);
+              } else if (ATI::IsRealType(desc.type))
+                aggregator[i] = new AggregatorMinD;
+              else if (desc.min < std::numeric_limits<int>::min() || desc.max > std::numeric_limits<int>::max())
+                aggregator[i] = new AggregatorMin64;
+              else
+                aggregator[i] = new AggregatorMin32;
 
-      } else  // MAX(...)
-          if (desc.operation == GT_Aggregation::GT_MAX) {
-        if (ATI::IsStringType(desc.type)) {
-          if (types::RequiresUTFConversions(desc.collation))
-            aggregator[i] = new AggregatorMaxT_UTF(desc.size, desc.collation);
-          else
-            aggregator[i] = new AggregatorMaxT(desc.size);
-        } else if (ATI::IsRealType(desc.type))
-          aggregator[i] = new AggregatorMaxD;
-        else if (desc.min < std::numeric_limits<int>::min() || desc.max > std::numeric_limits<int>::max())
-          aggregator[i] = new AggregatorMax64;
-        else
-          aggregator[i] = new AggregatorMax32;
-      } else  // LIST - just a first value found
-          if (desc.operation == GT_Aggregation::GT_LIST) {
-        if (ATI::IsStringType(desc.type))
-          aggregator[i] = new AggregatorListT(desc.size);
-        else if (ATI::IsRealType(desc.type) ||
-                 (desc.min < std::numeric_limits<int>::min() || desc.max > std::numeric_limits<int>::max()))
-          aggregator[i] = new AggregatorList64;
-        else
-          aggregator[i] = new AggregatorList32;
+            } else {  // MAX(...)
+              if (desc.operation == GT_Aggregation::GT_MAX) {
+                if (ATI::IsStringType(desc.type)) {
+                  if (types::RequiresUTFConversions(desc.collation))
+                    aggregator[i] = new AggregatorMaxT_UTF(desc.size, desc.collation);
+                  else
+                    aggregator[i] = new AggregatorMaxT(desc.size);
+                } else if (ATI::IsRealType(desc.type))
+                  aggregator[i] = new AggregatorMaxD;
+                else if (desc.min < std::numeric_limits<int>::min() || desc.max > std::numeric_limits<int>::max())
+                  aggregator[i] = new AggregatorMax64;
+                else
+                  aggregator[i] = new AggregatorMax32;
+              } else {  // LIST - just a first value found
+                if (desc.operation == GT_Aggregation::GT_LIST) {
+                  if (ATI::IsStringType(desc.type))
+                    aggregator[i] = new AggregatorListT(desc.size);
+                  else if (ATI::IsRealType(desc.type) ||
+                           (desc.min < std::numeric_limits<int>::min() || desc.max > std::numeric_limits<int>::max()))
+                    aggregator[i] = new AggregatorList64;
+                  else
+                    aggregator[i] = new AggregatorList32;
 
-      } else  // VAR_POP(...)
-          if (desc.operation == GT_Aggregation::GT_VAR_POP) {
-        if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
-          aggregator[i] = new AggregatorVarPopD;
-        else
-          aggregator[i] = new AggregatorVarPop64(desc.precision);
+                } else {  // VAR_POP(...)
+                  if (desc.operation == GT_Aggregation::GT_VAR_POP) {
+                    if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
+                      aggregator[i] = new AggregatorVarPopD;
+                    else
+                      aggregator[i] = new AggregatorVarPop64(desc.precision);
 
-      } else  // VAR_SAMP(...)
-          if (desc.operation == GT_Aggregation::GT_VAR_SAMP) {
-        if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
-          aggregator[i] = new AggregatorVarSampD;
-        else
-          aggregator[i] = new AggregatorVarSamp64(desc.precision);
+                  } else {  // VAR_SAMP(...)
+                    if (desc.operation == GT_Aggregation::GT_VAR_SAMP) {
+                      if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
+                        aggregator[i] = new AggregatorVarSampD;
+                      else
+                        aggregator[i] = new AggregatorVarSamp64(desc.precision);
 
-      } else  // STD_POP(...)
-          if (desc.operation == GT_Aggregation::GT_STD_POP) {
-        if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
-          aggregator[i] = new AggregatorStdPopD;
-        else
-          aggregator[i] = new AggregatorStdPop64(desc.precision);
+                    } else {  // STD_POP(...)
+                      if (desc.operation == GT_Aggregation::GT_STD_POP) {
+                        if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
+                          aggregator[i] = new AggregatorStdPopD;
+                        else
+                          aggregator[i] = new AggregatorStdPop64(desc.precision);
 
-      } else  // STD_SAMP(...)
-          if (desc.operation == GT_Aggregation::GT_STD_SAMP) {
-        if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
-          aggregator[i] = new AggregatorStdSampD;
-        else
-          aggregator[i] = new AggregatorStdSamp64(desc.precision);
+                      } else {  // STD_SAMP(...)
+                        if (desc.operation == GT_Aggregation::GT_STD_SAMP) {
+                          if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
+                            aggregator[i] = new AggregatorStdSampD;
+                          else
+                            aggregator[i] = new AggregatorStdSamp64(desc.precision);
 
-      } else  // BIT_AND(...)
-          if (desc.operation == GT_Aggregation::GT_BIT_AND) {
-        aggregator[i] = new AggregatorBitAnd;
+                        } else {  // BIT_AND(...)
+                          if (desc.operation == GT_Aggregation::GT_BIT_AND) {
+                            aggregator[i] = new AggregatorBitAnd;
 
-      } else  // BIT_Or(...)
-          if (desc.operation == GT_Aggregation::GT_BIT_OR) {
-        aggregator[i] = new AggregatorBitOr;
+                          } else {  // BIT_Or(...)
+                            if (desc.operation == GT_Aggregation::GT_BIT_OR) {
+                              aggregator[i] = new AggregatorBitOr;
 
-      } else  // BIT_XOR(...)
-          if (desc.operation == GT_Aggregation::GT_BIT_XOR) {
-        aggregator[i] = new AggregatorBitXor;
-      } else  // GT_Aggregation::GT_GROUP_CONCAT(...)
-          if (desc.operation == GT_Aggregation::GT_GROUP_CONCAT) {
-        aggregator[i] = new AggregatorGroupConcat(desc.si, desc.type);
+                            } else {  // BIT_XOR(...)
+                              if (desc.operation == GT_Aggregation::GT_BIT_XOR) {
+                                aggregator[i] = new AggregatorBitXor;
+                              } else  // GT_Aggregation::GT_GROUP_CONCAT(...)
+                                if (desc.operation == GT_Aggregation::GT_GROUP_CONCAT) {
+                                  aggregator[i] = new AggregatorGroupConcat(desc.si, desc.type);
+                                }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
-
       if (aggregator[i]->IgnoreDistinct())
         desc.distinct = false;
     }

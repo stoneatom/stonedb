@@ -26,6 +26,7 @@
 
 #include "common/assert.h"
 #include "common/exception.h"
+#include "core/combined_iterator.h"
 #include "core/data_cache.h"
 #include "core/object_cache.h"
 #include "core/query.h"
@@ -69,7 +70,8 @@ class TableShare;
 class Transaction;
 class RSIndex;
 class TaskExecutor;
-class TianmuMemTable;
+class DeltaTable;
+class DeltaIterator;
 
 class Engine final {
  public:
@@ -100,9 +102,6 @@ class Engine final {
   std::vector<AttrInfo> GetTableAttributesInfo(const std::string &table_path, TABLE_SHARE *table_share);
   void UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                    CHARSET_INFO *cs);
-  void GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin,
-                        TianmuTable::Iterator &iter_end, std::shared_ptr<TianmuTable> &table, const std::vector<bool> &,
-                        THD *thd);
   common::TianmuError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
   void CommitTx(THD *thd, bool all);
   void Rollback(THD *thd, bool all, bool force_error_message = false);
@@ -114,10 +113,16 @@ class Engine final {
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
   std::shared_ptr<TianmuTable> GetTableRD(const std::string &table_path);
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
-  void InsertDelayed(const std::string &table_path, int table_id, TABLE *table);
-  void InsertMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
+  int UpdateRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
+                const uchar *old_data, uchar *new_data);
+  int DeleteRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id);
+  void InsertDelayed(const std::string &table_path, TABLE *table);
+  void InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
+  void UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id,
+                     const uchar *old_data, uchar *new_data);
+  void DeleteToDelta(std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id);
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
-  std::string RowStoreStat();
+  std::string DeltaStoreStat();
   void UnRegisterTable(const std::string &table_path);
   std::shared_ptr<TableShare> GetTableShare(const TABLE_SHARE *table_share);
   common::TX_ID MinXID() const { return min_xid; }
@@ -134,11 +139,11 @@ class Engine final {
   void DropSignal() { cv_drop_.notify_one(); }
   void ResetTaskExecutor(int percent);
   TaskExecutor *GetTaskExecutor() const { return task_executor.get(); }
-  void AddMemTable(TABLE *form, std::shared_ptr<TableShare> share);
-  void UnregisterMemTable(const std::string &from, const std::string &to);
+  void AddTableDelta(TABLE *form, std::shared_ptr<TableShare> share);
+  void UnregisterDeltaTable(const std::string &from, const std::string &to);
 
  public:
-  utils::thread_pool delay_insert_thread_pool;
+  utils::thread_pool bg_load_thread_pool;
   utils::thread_pool load_thread_pool;
   utils::thread_pool query_thread_pool;
   utils::thread_pool delete_or_update_thread_pool;
@@ -159,12 +164,17 @@ class Engine final {
                      bool unsigned_flag);
   static int Convert(int &is_null, double &value, types::TianmuDataType &tianmu_item);
   static int Convert(int &is_null, String *value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
+  static bool DecodeInsertRecordToField(const char *ptr, Field **fields);
+  static void DecodeUpdateRecordToField(const char *ptr, Field **fields);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
                                     TABLE *table = 0, void *arg = nullptr, bool for_exporter = false);
   static common::TianmuError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
+
+  static const char *StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num);
+  static char *FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd);
 
  private:
   void AddTx(Transaction *tx);
@@ -181,18 +191,27 @@ class Engine final {
   void LogStat();
   std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form, HA_CREATE_INFO *create_info);
   std::shared_ptr<TableShare> getTableShare(const std::string &table_path);
-  void ProcessDelayedInsert();
-  void ProcessDelayedMerge();
   std::unique_ptr<char[]> GetRecord(size_t &len);
-  void EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
-                    std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd);
+
+  static void EncodeInsertRecord(const std::string &table_path, Field **field, size_t col, size_t blobs,
+                                 std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd);
+  static void EncodeUpdateRecord(const std::string &table_path, std::unordered_map<uint, Field *> update_fields,
+                                 size_t field_count, size_t blobs, std::unique_ptr<char[]> &buf, uint32_t &buf_size,
+                                 THD *thd);
+  static void EncodeDeleteRecord(std::unique_ptr<char[]> &buf, uint32_t &buf_size);
+  void ProcessInsertBufferMerge();
+  void ProcessDeltaStoreMerge();
 
  private:
   struct TianmuStat {
     unsigned long loaded;
     unsigned long load_cnt;
-    unsigned long delayinsert;
-    unsigned long failed_delayinsert;
+    unsigned long delta_insert;
+    unsigned long failed_delta_insert;
+    unsigned long delta_update;
+    unsigned long failed_delta_update;
+    unsigned long delta_delete;
+    unsigned long failed_delta_delete;
     unsigned long select;
     unsigned long loaded_dup;
     unsigned long update;
@@ -254,7 +273,7 @@ class Engine final {
   unsigned long UT = 0;    // Update total
 
   std::unordered_map<std::string, std::shared_ptr<index::TianmuTableIndex>> m_table_keys;
-  std::unordered_map<std::string, std::shared_ptr<TianmuMemTable>> mem_table_map;
+  std::unordered_map<std::string, std::shared_ptr<DeltaTable>> m_table_deltas;
   std::shared_mutex tables_keys_mutex;
   std::shared_mutex mem_table_mutex;
   std::thread m_drop_idx_thread;
