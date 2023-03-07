@@ -226,10 +226,12 @@ bool mysql_create_or_drop_trigger(THD *thd, TABLE_LIST *tables, bool create)
   }
   table= tables->table;
   table->pos_in_table_list= tables;
-  if ((table->file && table->file->ht == tianmu_hton) &&
-      (!(thd->variables.sql_mode & MODE_NO_KEY_ERROR))) {
-    my_error(ER_TIANMU_NOT_SUPPORTED_TRIGGER, MYF(0));
-    goto end;
+  if ((table->file && table->file->ht == tianmu_hton)){
+    sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
+    if(!(sql_mode & MODE_NO_KEY_ERROR)) {
+      my_error(ER_TIANMU_NOT_SUPPORTED_TRIGGER, MYF(0));
+      goto end;
+    }
   }
 
   /* Later on we will need it to downgrade the lock */

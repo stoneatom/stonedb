@@ -26,6 +26,7 @@ namespace core {
 ColumnType::ColumnType(const DataType &dt) {
   if (dt.IsFixed()) {
     ColumnType ct(dt.attrtype, false, common::PackFmt::DEFAULT, QuickMath::precision10(dt.fixmax), dt.fixscale);
+    ct.SetUnsigned(dt.unsigned_flag_);
     std::swap(ct, *this);
   } else if (dt.IsFloat()) {
     ColumnType ct(common::ColumnType::REAL, false, common::PackFmt::DEFAULT, QuickMath::precision10(dt.fixmax), -1);
@@ -41,7 +42,7 @@ ColumnType::ColumnType(const DataType &dt) {
 }
 
 bool ColumnType::operator==(const ColumnType &ct2) const {
-  if (type == ct2.type && Lookup() == ct2.Lookup() &&
+  if (type == ct2.type && Lookup() == ct2.Lookup() && unsigned_flag_ == ct2.GetUnsigned() &&
       std::strcmp(collation.collation->csname, ct2.collation.collation->csname) == 0 &&
       (type != common::ColumnType::NUM ||
        (type == common::ColumnType::NUM && precision == ct2.precision && scale == ct2.scale)))

@@ -25,33 +25,38 @@ namespace Tianmu {
 namespace core {
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-DataType::DataType(common::ColumnType atype, int prec, int scale, DTCollation collation) : precision(prec) {
+// TODO: why not pass struct ColumnType& in column_type.h?
+DataType::DataType(common::ColumnType atype, int prec, int scale, DTCollation collation, bool unsigned_flag)
+    : precision(prec) {
   valtype = ValueType::VT_NOTKNOWN;
   attrtype = atype;
   fixscale = scale;
   fixmax = -1;
   this->collation = collation;
+  unsigned_flag_ = unsigned_flag;
 
+  // UINT_xxx from include/my_global.h
   switch (attrtype) {
     case common::ColumnType::INT:
       valtype = ValueType::VT_FIXED;
-      fixmax = MAX(std::numeric_limits<int>::max(), -TIANMU_INT_MIN);
+      fixmax = unsigned_flag ? UINT_MAX32 : MAX(std::numeric_limits<int>::max(), -TIANMU_INT_MIN);
       break;
     case common::ColumnType::BIGINT:
       valtype = ValueType::VT_FIXED;
-      fixmax = MAX(common::TIANMU_BIGINT_MAX, -common::TIANMU_BIGINT_MIN);
+      fixmax = unsigned_flag ? common::TIANMU_BIGINT_UNSIGNED_MAX
+                             : MAX(common::TIANMU_BIGINT_MAX, -common::TIANMU_BIGINT_MIN);
       break;
     case common::ColumnType::MEDIUMINT:
       valtype = ValueType::VT_FIXED;
-      fixmax = MAX(TIANMU_MEDIUMINT_MAX, -TIANMU_MEDIUMINT_MIN);
+      fixmax = unsigned_flag ? UINT_MAX24 : MAX(TIANMU_MEDIUMINT_MAX, -TIANMU_MEDIUMINT_MIN);
       break;
     case common::ColumnType::SMALLINT:
       valtype = ValueType::VT_FIXED;
-      fixmax = MAX(TIANMU_SMALLINT_MAX, -TIANMU_SMALLINT_MIN);
+      fixmax = unsigned_flag ? UINT_MAX16 : MAX(TIANMU_SMALLINT_MAX, -TIANMU_SMALLINT_MIN);
       break;
     case common::ColumnType::BYTEINT:
       valtype = ValueType::VT_FIXED;
-      fixmax = MAX(TIANMU_TINYINT_MAX, -TIANMU_TINYINT_MIN);
+      fixmax = unsigned_flag ? UINT_MAX8 : MAX(TIANMU_TINYINT_MAX, -TIANMU_TINYINT_MIN);
       break;
     case common::ColumnType::BIT:
       valtype = ValueType::VT_FIXED;
@@ -106,7 +111,7 @@ DataType &DataType::operator=(const ColumnType &ct) {
   if (!ct.IsKnown())
     return *this;
 
-  *this = DataType(ct.GetTypeName(), ct.GetPrecision(), ct.GetScale(), ct.GetCollation());
+  *this = DataType(ct.GetTypeName(), ct.GetPrecision(), ct.GetScale(), ct.GetCollation(), ct.GetUnsigned());
 
   if (valtype == ValueType::VT_NOTKNOWN) {
     char s[128];

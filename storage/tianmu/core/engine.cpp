@@ -836,7 +836,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
     case MYSQL_TYPE_DATE:
     case MYSQL_TYPE_NEWDATE:
       return AttributeTypeInfo(Engine::GetCorrespondingType(field), notnull, (ushort)field.field_length, 0, auto_inc,
-                               DTCollation(), fmt, filter);
+                               DTCollation(), fmt, filter, std::string(), field.flags & UNSIGNED_FLAG);
     case MYSQL_TYPE_TIME:
       return AttributeTypeInfo(common::ColumnType::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
     case MYSQL_TYPE_STRING:

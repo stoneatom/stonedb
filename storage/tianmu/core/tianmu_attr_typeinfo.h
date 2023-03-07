@@ -94,8 +94,9 @@ class AttributeTypeInfo {
   AttributeTypeInfo(common::ColumnType attrt, bool not_null, uint precision = 0, ushort scale = 0,
                     bool auto_inc = false, DTCollation collation = DTCollation(),
                     common::PackFmt fmt = common::PackFmt::DEFAULT, bool filter = false,
-                    std::string field_name = std::string())
+                    std::string field_name = std::string(), bool unsigned_flag = false)
       : attrt_(attrt), fmt_(fmt), precision_(precision), scale_(scale), collation_(collation), field_name_(field_name) {
+    unsigned_flag_ = unsigned_flag;
     flag_[static_cast<int>(enumATI::NOT_NULL)] = not_null;
     flag_[static_cast<int>(enumATI::BLOOM_FILTER)] = filter;
     flag_[static_cast<int>(enumATI::AUTO_INC)] = auto_inc;
@@ -124,6 +125,7 @@ class AttributeTypeInfo {
   bool Lookup() const { return fmt_ == common::PackFmt::LOOKUP; }
   unsigned char Flag() const { return flag_.to_ulong(); }
   void SetFlag(unsigned char v) { flag_ = std::bitset<std::numeric_limits<unsigned char>::digits>(v); }
+  bool GetUnsignedFlag() const { return unsigned_flag_; }
 
  private:
   common::ColumnType attrt_;
@@ -132,6 +134,7 @@ class AttributeTypeInfo {
   int scale_;
   DTCollation collation_;
   std::string field_name_;
+  bool unsigned_flag_ = false;
 
   std::bitset<std::numeric_limits<unsigned char>::digits> flag_;
 };

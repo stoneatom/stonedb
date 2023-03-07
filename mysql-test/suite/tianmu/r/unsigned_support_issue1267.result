@@ -1,0 +1,439 @@
+drop database if exists unsigned_support;
+Warnings:
+Note	1008	Can't drop database 'unsigned_support'; database doesn't exist
+create database unsigned_support;
+use unsigned_support;
+create table tiny(a tinyint, b tinyint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into tiny values(-128, 0);
+insert into tiny values(127, 127);
+insert into tiny values(0, 127);
+insert into tiny values(-0, -0);
+insert into tiny values(+0, +0);
+insert into tiny values(0, 129);
+insert into tiny values(0, 255);
+select * from tiny;
+a	b
+-128	0
+127	127
+0	127
+0	0
+0	0
+0	129
+0	255
+insert into tiny values(-129, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into tiny values(128, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into tiny values(1234, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into tiny values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into tiny values(0, -127);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into tiny values(0, 256);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into tiny values(0, 1234567);
+ERROR 22003: Out of range value for column 'b' at row 1
+select * from tiny;
+a	b
+-128	0
+127	127
+0	127
+0	0
+0	0
+0	129
+0	255
+select avg(b), sum(b), max(b), min(b), count(b) from tiny;
+avg(b)	sum(b)	max(b)	min(b)	count(b)
+91.1429	638	255	0	7
+select bit_and(b), bit_or(b), bit_xor(b), group_concat(b), std(b), stddev(b), stddev_pop(b), stddev_samp(b), var_pop(b), var_samp(b), variance(b) from tiny;
+bit_and(b)	bit_or(b)	bit_xor(b)	group_concat(b)	std(b)	stddev(b)	stddev_pop(b)	stddev_samp(b)	var_pop(b)	var_samp(b)	variance(b)
+0	255	126	0,127,127,0,0,129,255	89.26273990133777	89.26273990133777	89.26273990133777	96.41477855499916	7967.836734693878	9295.809523809525	7967.836734693878
+select a+0, b+0 from tiny where a = -128 and b = 0 limit 2;
+a+0	b+0
+-128	0
+select a+0, b+0 from tiny where a = 0 and b = -256;
+a+0	b+0
+select a+0, b+0 from tiny where a != 0 and b != 0 and a=b;
+a+0	b+0
+127	127
+select a+0, b+0 from tiny order by b desc;
+a+0	b+0
+0	255
+0	129
+127	127
+0	127
+-128	0
+0	0
+0	0
+select b * 12345678910111213 from tiny;
+b * 12345678910111213
+0
+1567901221584124051
+1567901221584124051
+0
+0
+1592592579404346477
+3148148122078359315
+select b * 123456789101112131 from tiny;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`tiny`.`b` * 123456789101112131)'
+select b * 12345678910111213123 from tiny;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`tiny`.`b` * 12345678910111213123)'
+select b * 12345678910111213123456 from tiny;
+ERROR HY000: Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+drop table tiny;
+create table small(a smallint, b smallint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into small values(-32768, 0);
+insert into small values(0, 0);
+insert into small values(122, 122);
+insert into small values(32767, 32767);
+insert into small values(-0, -0);
+insert into small values(+0, +0);
+insert into small values(0, 32769);
+insert into small values(0, 41234);
+insert into small values(0, 65535);
+select * from small;
+a	b
+-32768	0
+0	0
+122	122
+32767	32767
+0	0
+0	0
+0	32769
+0	41234
+0	65535
+insert into small values(-32769, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into small values(32768, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into small values(-3276911, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into small values(3276811, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into small values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into small values(0, -32768);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into small values(0, 65536);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into small values(0, 1234567);
+ERROR 22003: Out of range value for column 'b' at row 1
+select * from small;
+a	b
+-32768	0
+0	0
+122	122
+32767	32767
+0	0
+0	0
+0	32769
+0	41234
+0	65535
+select avg(b), sum(b), max(b), min(b), count(b) from small;
+avg(b)	sum(b)	max(b)	min(b)	count(b)
+19158.5556	172427	65535	0	9
+select bit_and(b), bit_or(b), bit_xor(b), group_concat(b), std(b), stddev(b), stddev_pop(b), stddev_samp(b), var_pop(b), var_samp(b), variance(b) from small;
+bit_and(b)	bit_or(b)	bit_xor(b)	group_concat(b)	std(b)	stddev(b)	stddev_pop(b)	stddev_samp(b)	var_pop(b)	var_samp(b)	variance(b)
+0	65535	41321	0,0,122,32767,0,0,32769,41234,65535	23187.94048691456	23187.94048691456	23187.94048691456	24594.524940071067	537680584.0246913	604890657.0277778	537680584.0246913
+select a+0, b+0 from small where a = -32768 and b = 0 limit 2;
+a+0	b+0
+-32768	0
+select a+0, b+0 from small where a = 0 and b = -32768;
+a+0	b+0
+select a+0, b+0 from small where a != 0 and b != 0 and a=b;
+a+0	b+0
+122	122
+32767	32767
+select a+0, b+0 from small order by b desc;
+a+0	b+0
+0	65535
+0	41234
+0	32769
+32767	32767
+122	122
+-32768	0
+0	0
+0	0
+0	0
+select b * 123456789101112 from small;
+b * 123456789101112
+0
+0
+15061728270335664
+4045308608476136904
+0
+0
+4045555522054339128
+5090617241795252208
+8090740673741374920
+select b * 123456789101112131 from small;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`small`.`b` * 123456789101112131)'
+select b * 12345678910111213123 from small;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`small`.`b` * 12345678910111213123)'
+select b * 12345678910111213123456 from small;
+ERROR HY000: Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+drop table small;
+create table medium(a mediumint, b mediumint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into medium values(-8388608, 0);
+insert into medium values(0, 0);
+insert into medium values(122, 122);
+insert into medium values(8388607, 8388607);
+insert into medium values(-0, -0);
+insert into medium values(+0, +0);
+insert into medium values(0, 8388609);
+insert into medium values(0, 8388610);
+insert into medium values(0, 16777215);
+select * from medium;
+a	b
+-8388608	0
+0	0
+122	122
+8388607	8388607
+0	0
+0	0
+0	8388609
+0	8388610
+0	16777215
+insert into medium values(-8388609, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into medium values(8388608, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into medium values(-8388608111, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into medium values(8388608111, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into medium values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into medium values(0, -8388608);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into medium values(0, 16777216);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into medium values(0, 1677721511);
+ERROR 22003: Out of range value for column 'b' at row 1
+select * from medium;
+a	b
+-8388608	0
+0	0
+122	122
+8388607	8388607
+0	0
+0	0
+0	8388609
+0	8388610
+0	16777215
+select avg(b), sum(b), max(b), min(b), count(b) from medium;
+avg(b)	sum(b)	max(b)	min(b)	count(b)
+4660351.4444	41943163	16777215	0	9
+select bit_and(b), bit_or(b), bit_xor(b), group_concat(b), std(b), stddev(b), stddev_pop(b), stddev_samp(b), var_pop(b), var_samp(b), variance(b) from medium;
+bit_and(b)	bit_or(b)	bit_xor(b)	group_concat(b)	std(b)	stddev(b)	stddev_pop(b)	stddev_samp(b)	var_pop(b)	var_samp(b)	variance(b)
+0	16777215	8388729	0,0,122,8388607,0,0,8388609,8388610,16777215	5745639.206166323	5745639.206166323	5745639.206166323	6094170.667397249	33012369887435.582	37138916123365.03	33012369887435.582
+select a+0, b+0 from medium where a = -8388608 and b = 0 limit 2;
+a+0	b+0
+-8388608	0
+select a+0, b+0 from medium where a = 0 and b = -8388608;
+a+0	b+0
+select a+0, b+0 from medium where a != 0 and b != 0 and a=b;
+a+0	b+0
+122	122
+8388607	8388607
+select a+0, b+0 from medium order by b desc;
+a+0	b+0
+0	16777215
+0	8388610
+0	8388609
+8388607	8388607
+122	122
+-8388608	0
+0	0
+0	0
+0	0
+select b * 123456789101 from medium;
+b * 123456789101
+0
+0
+15061728270322
+1035630485250172307
+0
+0
+1035630732163750509
+1035630855620539610
+2071261093957133715
+select b * 12345678910123 from medium;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`medium`.`b` * 12345678910123)'
+select b * 12345678910111213123 from medium;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`medium`.`b` * 12345678910111213123)'
+select b * 123456789101112131234 from medium;
+ERROR HY000: Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+drop table medium;
+create table int_(a int, b int unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into int_ values(-2147483647, 0);
+insert into int_ values(0, 0);
+insert into int_ values(122, 122);
+insert into int_ values(2147483647, 2147483647);
+insert into int_ values(-0, -0);
+insert into int_ values(+0, +0);
+insert into int_ values(0, 2147483649);
+insert into int_ values(0, 3294967295);
+insert into int_ values(0, 4294967295);
+select * from int_;
+a	b
+-2147483647	0
+0	0
+122	122
+2147483647	2147483647
+0	0
+0	0
+0	2147483649
+0	3294967295
+0	4294967295
+insert into int_ values(-2147483649, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into int_ values(2147483648, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into int_ values(-214748364811, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into int_ values(214748364811, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into int_ values(-2147483648, 0);
+ERROR 22003: Out of range[-2147483647, 2147483647] for column 'a' value: -2147483648
+insert into int_ values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into int_ values(0, -4294967295);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into int_ values(0, 4294967296);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into int_ values(0, 429496729611);
+ERROR 22003: Out of range value for column 'b' at row 1
+select * from int_;
+a	b
+-2147483647	0
+0	0
+122	122
+2147483647	2147483647
+0	0
+0	0
+0	2147483649
+0	3294967295
+0	4294967295
+select avg(b), sum(b), max(b), min(b), count(b) from int_;
+avg(b)	sum(b)	max(b)	min(b)	count(b)
+1320544667.5556	11884902008	4294967295	0	9
+select bit_and(b), bit_or(b), bit_xor(b), group_concat(b), std(b), stddev(b), stddev_pop(b), stddev_samp(b), var_pop(b), var_samp(b), variance(b) from int_;
+bit_and(b)	bit_or(b)	bit_xor(b)	group_concat(b)	std(b)	stddev(b)	stddev_pop(b)	stddev_samp(b)	var_pop(b)	var_samp(b)	variance(b)
+0	4294967295	3294967172	0,0,122,2147483647,0,0,2147483649,3294967295,4294967295	1592774713.9996257	1592774713.9996257	1592774713.9996257	1689392701.7573988	2.5369312895565896e18	2.8540477007511634e18	2.5369312895565896e18
+select a+0, b+0 from int_ where a = -2147483647 and b = 0 limit 2;
+a+0	b+0
+-2147483647	0
+select a+0, b+0 from int_ where a = 0 and b = -2147483648;
+a+0	b+0
+select a+0, b+0 from int_ where a != 0 and b != 0 and a=b;
+a+0	b+0
+122	122
+2147483647	2147483647
+select a+0, b+0 from int_ order by b desc;
+a+0	b+0
+0	4294967295
+0	3294967295
+0	2147483649
+2147483647	2147483647
+122	122
+-2147483647	0
+0	0
+0	0
+0	0
+select b * 1234567891 from int_;
+b * 1234567891
+0
+0
+150617282702
+2651214357033778477
+0
+0
+2651214359502914259
+4067860824302124845
+5302428715302124845
+select b * 12345678910 from int_;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`int_`.`b` * 12345678910)'
+select b * 12345678910123456789 from int_;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`unsigned_support`.`int_`.`b` * 12345678910123456789)'
+select b * 123456789101234567891 from int_;
+ERROR HY000: Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+drop table int_;
+CREATE TABLE t1(i1 TINYINT, i2 TINYINT UNSIGNED, i3 SMALLINT, i4 SMALLINT UNSIGNED, i5 MEDIUMINT, i6 MEDIUMINT UNSIGNED, i7 INT UNSIGNED);
+SET sql_mode = 'TRADITIONAL';
+INSERT INTO t1 VALUES(128, 256, 32768, 65536, 8388608, 16777216, 4294967296);
+ERROR 22003: Out of range value for column 'i1' at row 1
+INSERT INTO t1 VALUES(-129, -1, -32769, -1, -8388609, -1, 4294967296);
+ERROR 22003: Out of range value for column 'i1' at row 1
+SELECT * FROM t1;
+i1	i2	i3	i4	i5	i6	i7
+SET sql_mode = '';
+Warnings:
+Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
+INSERT INTO t1 VALUES(128, 256, 32768, 65536, 8388608, 16777216, 4294967296);
+Warnings:
+Warning	1264	Out of range value for column 'i1' at row 1
+Warning	1264	Out of range value for column 'i2' at row 1
+Warning	1264	Out of range value for column 'i3' at row 1
+Warning	1264	Out of range value for column 'i4' at row 1
+Warning	1264	Out of range value for column 'i5' at row 1
+Warning	1264	Out of range value for column 'i6' at row 1
+Warning	1264	Out of range value for column 'i7' at row 1
+INSERT INTO t1 VALUES(-129, -1, -32769, -1, -8388609, -1, -1);
+Warnings:
+Warning	1264	Out of range value for column 'i1' at row 1
+Warning	1264	Out of range value for column 'i2' at row 1
+Warning	1264	Out of range value for column 'i3' at row 1
+Warning	1264	Out of range value for column 'i4' at row 1
+Warning	1264	Out of range value for column 'i5' at row 1
+Warning	1264	Out of range value for column 'i6' at row 1
+Warning	1264	Out of range value for column 'i7' at row 1
+SELECT * FROM t1;
+i1	i2	i3	i4	i5	i6	i7
+127	255	32767	65535	8388607	16777215	4294967295
+-128	0	-32768	0	-8388608	0	0
+DROP TABLE t1;
+create table load_unsigned(
+`ut` tinyint(3) unsigned DEFAULT NULL,
+`us` smallint(5) unsigned DEFAULT NULL,
+`um` mediumint(8) unsigned DEFAULT NULL,
+`ui` int(10) unsigned DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/load_export_unsigned.txt' INTO TABLE load_unsigned FIELDS TERMINATED BY ',';
+Warnings:
+Warning	1264	Out of range value for column 'ut' at row 5
+Warning	1264	Out of range value for column 'us' at row 5
+Warning	1264	Out of range value for column 'um' at row 5
+Warning	1264	Out of range value for column 'ui' at row 5
+Warning	1264	Out of range value for column 'ut' at row 6
+Warning	1264	Out of range value for column 'us' at row 6
+Warning	1264	Out of range value for column 'um' at row 6
+Warning	1264	Out of range value for column 'ui' at row 6
+Warning	1264	Out of range value for column 'ut' at row 7
+Warning	1264	Out of range value for column 'us' at row 7
+Warning	1264	Out of range value for column 'um' at row 7
+Warning	1264	Out of range value for column 'ui' at row 7
+select * from load_unsigned;
+ut	us	um	ui
+0	0	0	0
+127	32767	8388607	2147483647
+128	32768	8388608	2147483648
+255	65535	16777215	4294967295
+0	0	0	0
+0	0	0	0
+255	65535	16777215	4294967295
+select * into outfile "MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt" from load_unsigned;
+truncate table load_unsigned;
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt' INTO TABLE load_unsigned FIELDS TERMINATED BY ';';
+select * from load_unsigned;
+ut	us	um	ui
+0	0	0	0
+127	32767	8388607	2147483647
+128	32768	8388608	2147483648
+255	65535	16777215	4294967295
+0	0	0	0
+0	0	0	0
+255	65535	16777215	4294967295
+drop table load_unsigned;
+drop database unsigned_support;

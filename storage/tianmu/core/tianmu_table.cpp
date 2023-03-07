@@ -549,7 +549,7 @@ std::vector<AttributeTypeInfo> TianmuTable::GetATIs([[maybe_unused]] bool orig) 
   for (uint j = 0; j < NumOfAttrs(); j++) {
     deas.emplace_back(m_attrs[j]->TypeName(), m_attrs[j]->Type().NotNull(), m_attrs[j]->Type().GetPrecision(),
                       m_attrs[j]->Type().GetScale(), false, m_attrs[j]->Type().GetCollation(), common::PackFmt::DEFAULT,
-                      false, m_attrs[j]->GetFieldName());
+                      false, m_attrs[j]->GetFieldName(), m_attrs[j]->Type().GetUnsigned());
   }
 
   return deas;

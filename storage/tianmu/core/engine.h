@@ -158,7 +158,10 @@ class Engine final {
   static bool IsTianmuTable(TABLE *table);
   static bool ConvertToField(Field *field, types::TianmuDataType &tianmu_item, std::vector<uchar> *blob_buf);
   static int Convert(int &is_null, my_decimal *value, types::TianmuDataType &tianmu_item, int output_scale = -1);
-  static int Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
+  // Add args unsigned_flag here is much more easier to construct TianmuNum in Convert function, another way is
+  // add unsigned_flag in TianmuNum, it's more complex.
+  static int Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type,
+                     bool unsigned_flag);
   static int Convert(int &is_null, double &value, types::TianmuDataType &tianmu_item);
   static int Convert(int &is_null, String *value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
   static bool DecodeInsertRecordToField(const char *ptr, Field **fields);

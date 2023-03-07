@@ -1,0 +1,163 @@
+include/master-slave.inc
+[connection master]
+DROP DATABASE IF EXISTS issue1325_test;
+include/sync_slave_sql_with_master.inc
+# on master:
+CREATE DATABASE issue1325_test;
+USE issue1325_test;
+include/sync_slave_sql_with_master.inc
+# on slave:
+USE issue1325_test;
+show databases;
+Database
+information_schema
+cache
+issue1325_test
+mtr
+mysql
+performance_schema
+sys
+sys_tianmu
+test
+set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU,NO_KEY_ERROR';
+#
+# Secondary INDEX
+# 
+# on master:
+create table ttt(id int primary key,name varchar(10),key idx_name(name))engine=innodb;
+drop table ttt;
+create table ttt(id int primary key,name varchar(10))engine=innodb;
+create index idx_name on ttt(name);
+alter table ttt rename index idx_name to new_idx_name;
+drop index new_idx_name on ttt;
+show create table ttt;
+Table	Create Table
+ttt	CREATE TABLE `ttt` (
+  `id` int(11) NOT NULL,
+  `name` varchar(10) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+include/sync_slave_sql_with_master.inc
+# on slave:
+# on master:
+show create table ttt;
+Table	Create Table
+ttt	CREATE TABLE `ttt` (
+  `id` int(11) NOT NULL,
+  `name` varchar(10) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+#
+# UNIQUE INDEX
+#
+# on master:
+create table xxx(id int,name varchar(10),unique key idx_id(id))engine=innodb;
+drop table xxx;
+create table xxx(id int,name varchar(10))engine=innodb;
+create unique index idx_id on xxx(id);
+alter table xxx rename index idx_id to new_idx_id;
+drop index new_idx_id on xxx;
+show create table xxx;
+Table	Create Table
+xxx	CREATE TABLE `xxx` (
+  `id` int(11) DEFAULT NULL,
+  `name` varchar(10) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+include/sync_slave_sql_with_master.inc
+# on slave:
+show create table xxx;
+Table	Create Table
+xxx	CREATE TABLE `xxx` (
+  `id` int(11) DEFAULT NULL,
+  `name` varchar(10) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+#
+# Full-text index
+#
+# on master:
+drop table ttt;
+create table ttt(id int primary key,name text,fulltext key idx_name(name))engine=innodb;
+drop table ttt;
+create table ttt(id int primary key,name text)engine=innodb;
+create fulltext index idx_name on ttt(name);
+Warnings:
+Warning	124	InnoDB rebuilding table to add column FTS_DOC_ID
+alter table ttt rename index idx_name to new_idx_name;
+show create table ttt;
+Table	Create Table
+ttt	CREATE TABLE `ttt` (
+  `id` int(11) NOT NULL,
+  `name` text,
+  PRIMARY KEY (`id`),
+  FULLTEXT KEY `new_idx_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+include/sync_slave_sql_with_master.inc
+# on slave:
+show create table ttt;
+Table	Create Table
+ttt	CREATE TABLE `ttt` (
+  `id` int(11) NOT NULL,
+  `name` text,
+  PRIMARY KEY (`id`),
+  FULLTEXT KEY `new_idx_name` (`name`)
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+#
+# foreign key
+#
+# on master:
+CREATE TABLE student
+(id int (11) primary key,
+name char(10),
+sex char(100),
+age int(11)
+)engine=innodb;
+create table student_score
+(id int primary key,
+class varchar(10),
+score char(100),
+student_id int,
+address text,
+unique key idx_uk(class),
+key idx_score(score),
+fulltext key idx_address(address),
+constraint s_id foreign key (student_id) references student(id)
+)engine=innodb;
+drop index idx_uk on student_score;
+drop index idx_score on student_score;
+alter table student_score rename index idx_address to new_idx_address;
+include/sync_slave_sql_with_master.inc
+# on slave:
+show tables;
+Tables_in_issue1325_test
+student
+student_score
+ttt
+xxx
+show create table student_score;
+Table	Create Table
+student_score	CREATE TABLE `student_score` (
+  `id` int(11) NOT NULL,
+  `class` varchar(10) DEFAULT NULL,
+  `score` char(100) DEFAULT NULL,
+  `student_id` int(11) DEFAULT NULL,
+  `address` text,
+  PRIMARY KEY (`id`),
+  KEY `s_id` (`student_id`),
+  FULLTEXT KEY `new_idx_address` (`address`)
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+# on master:
+DROP DATABASE issue1325_test;
+include/sync_slave_sql_with_master.inc
+# on slave:
+show databases;
+Database
+information_schema
+cache
+mtr
+mysql
+performance_schema
+sys
+sys_tianmu
+test
+tianmu_data
+stop slave;

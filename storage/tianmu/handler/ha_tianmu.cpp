@@ -1511,7 +1511,7 @@ bool ha_tianmu::check_if_notnull_of_added_column(TABLE *altered_table) {
     if (j < old_cols.size())  // column exists
       continue;
 
-    if ((*new_cols[i]).null_bit == 0)
+    if ((*new_cols[i]).null_bit == 0 || (*new_cols[i]).has_insert_default_function())
       return true;
   }
 
@@ -1566,11 +1566,13 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
         ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table: mix add/drop key
+    sql_mode_t sql_mode = ha_thd()->slave_thread ? global_system_variables.sql_mode : ha_thd()->variables.sql_mode;
     if ((ha_alter_info->handler_flags & Alter_inplace_info::ADD_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::DROP_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::ADD_UNIQUE_INDEX ||
+         ha_alter_info->handler_flags & Alter_inplace_info::RENAME_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::DROP_UNIQUE_INDEX) &&
-        (ha_thd()->variables.sql_mode & MODE_NO_KEY_ERROR))
+        (sql_mode & MODE_NO_KEY_ERROR))
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);
@@ -1720,41 +1722,59 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
     std::unique_ptr<char[]> buf(new char[length]);
     char *ptr = buf.get();
 
+    // TODO(gry): why truncate when v out of range? Is here need to keep consistent with write data?
+    auto unsigned_flag = f->flags & UNSIGNED_FLAG;
     switch (f->type()) {
       case MYSQL_TYPE_TINY: {
         int64_t v = f->val_int();
-        if (v > TIANMU_TINYINT_MAX)
-          v = TIANMU_TINYINT_MAX;
-        else if (v < TIANMU_TINYINT_MIN)
-          v = TIANMU_TINYINT_MIN;
-        *(int64_t *)ptr = v;
+        if (unsigned_flag) {
+          v = (v > UINT_MAX8) ? UINT_MAX8 : v;
+        } else {
+          if (v > TIANMU_TINYINT_MAX)
+            v = TIANMU_TINYINT_MAX;
+          else if (v < TIANMU_TINYINT_MIN)
+            v = TIANMU_TINYINT_MIN;
+        }
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_SHORT: {
         int64_t v = f->val_int();
-        if (v > TIANMU_SMALLINT_MAX)
-          v = TIANMU_SMALLINT_MAX;
-        else if (v < TIANMU_SMALLINT_MIN)
-          v = TIANMU_SMALLINT_MIN;
-        *(int64_t *)ptr = v;
+        if (unsigned_flag) {
+          v = (v > UINT_MAX16) ? UINT_MAX16 : v;
+        } else {
+          if (v > TIANMU_SMALLINT_MAX)
+            v = TIANMU_SMALLINT_MAX;
+          else if (v < TIANMU_SMALLINT_MIN)
+            v = TIANMU_SMALLINT_MIN;
+        }
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONG: {
         int64_t v = f->val_int();
-        if (v > std::numeric_limits<int>::max())
-          v = std::numeric_limits<int>::max();
-        else if (v < TIANMU_INT_MIN)
-          v = TIANMU_INT_MIN;
-        *(int64_t *)ptr = v;
+        if (unsigned_flag) {
+          v = (v > UINT_MAX32) ? UINT_MAX32 : v;
+        } else {
+          if (v > std::numeric_limits<int>::max())
+            v = std::numeric_limits<int>::max();
+          else if (v < TIANMU_INT_MIN)
+            v = TIANMU_INT_MIN;
+        }
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_INT24: {
         int64_t v = f->val_int();
-        if (v > TIANMU_MEDIUMINT_MAX)
-          v = TIANMU_MEDIUMINT_MAX;
-        else if (v < TIANMU_MEDIUMINT_MIN)
-          v = TIANMU_MEDIUMINT_MIN;
-        *(int64_t *)ptr = v;
+        if (unsigned_flag) {
+          v = (v > UINT_MAX24) ? UINT_MAX24 : v;
+        } else {
+          if (v > TIANMU_MEDIUMINT_MAX)
+            v = TIANMU_MEDIUMINT_MAX;
+          else if (v < TIANMU_MEDIUMINT_MIN)
+            v = TIANMU_MEDIUMINT_MIN;
+        }
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONGLONG: {
@@ -1763,7 +1783,7 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
           v = common::TIANMU_BIGINT_MAX;
         else if (v < common::TIANMU_BIGINT_MIN)
           v = common::TIANMU_BIGINT_MIN;
-        *(int64_t *)ptr = v;
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_BIT: {
