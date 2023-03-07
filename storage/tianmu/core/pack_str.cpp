@@ -156,6 +156,7 @@ void PackStr::TransformIntoArray() {
   if (pack_str_state_ == PackStrtate::kPackArray)
     return;
   data_.lens = alloc((data_.len_mode * (1 << col_share_->pss)), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+  std::memset(data_.lens, 0, data_.len_mode * (1 << col_share_->pss));
   data_.index =
       reinterpret_cast<char **>(alloc(sizeof(char *) * (1 << col_share_->pss), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED));
 
@@ -265,9 +266,22 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
   for (uint i = 0; i < total; i++) {
     if (vc->IsNull(i) && col_share_->ColType().IsNullable()) {
       SetNull(dpn_->numOfRecords);
-      SetPtr(dpn_->numOfRecords, nullptr);
+      SetPtrSize(dpn_->numOfRecords, nullptr, 0);
       dpn_->numOfRecords++;
       dpn_->numOfNulls++;
+      if (vc->IsDelete(i)) {
+        SetDeleted(dpn_->numOfRecords - 1);
+        dpn_->numOfDeleted++;
+      }
+      continue;
+    }
+    if (vc->IsDelete(i)) {
+      SetNull(dpn_->numOfRecords);
+      SetPtrSize(dpn_->numOfRecords, nullptr, 0);
+      dpn_->numOfNulls++;
+      SetDeleted(dpn_->numOfRecords);
+      dpn_->numOfDeleted++;
+      dpn_->numOfRecords++;
       continue;
     }
 
@@ -715,7 +729,7 @@ types::BString PackStr::GetStringValueTrie(int locationInPack) const {
 types::BString PackStr::GetValueBinary(int locationInPack) const {
   if (IsNull(locationInPack))
     return types::BString();
-  DEBUG_ASSERT(locationInPack < (int)dpn_->numOfRecords);
+  DEBUG_ASSERT(locationInPack <= (int)dpn_->numOfRecords);
   if (pack_str_state_ == PackStrtate::kPackTrie)
     return GetStringValueTrie(locationInPack);
   size_t str_size;

@@ -244,7 +244,7 @@ class TempTable : public JustATable {
   void ResumeDisplay();
   void LockPackForUse(unsigned attr, unsigned pack_no) override;
   void UnlockPackFromUse(unsigned attr [[maybe_unused]], unsigned pack_no [[maybe_unused]]) override {}
-  int64_t NumOfObj() override { return no_obj; }
+  int64_t NumOfObj() const override { return no_obj; }
   uint32_t Getpackpower() const override { return p_power; }
   int64_t NumOfMaterialized() { return no_materialized; }
   void SetNumOfObj(int64_t n) { no_obj = n; }

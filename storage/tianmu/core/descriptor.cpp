@@ -1717,10 +1717,11 @@ void Descriptor::CoerceColumnType(vcolumn::VirtualColumn *&for_typecast) {
 
   if (tcc) {
     if (tianmu_control_.isOn()) {
-      tianmu_control_.lock(current_txn_->GetThreadID())
-          << "Type conversion for VC:"
-          << (for_typecast == val1.vc ? val1.vc_id : for_typecast == val2.vc ? val2.vc_id : val1.vc_id)
-          << system::unlock;
+      tianmu_control_.lock(current_txn_->GetThreadID()) << "Type conversion for VC:"
+                                                        << (for_typecast == val1.vc   ? val1.vc_id
+                                                            : for_typecast == val2.vc ? val2.vc_id
+                                                                                      : val1.vc_id)
+                                                        << system::unlock;
     }
 
     table->AddVirtColumn(tcc);

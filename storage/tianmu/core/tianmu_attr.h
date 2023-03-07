@@ -91,12 +91,16 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
                      uint64_t auto_inc_value = 0);
 
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
-  void UpdateData(uint64_t row, Value &v);
-  void UpdateIfIndex(uint64_t row, uint64_t col, const Value &v);
+  void UpdateData(uint64_t row, Value &old_v, Value &new_v);
+  void UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, Value> &rows);
+  void UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v, const Value &new_v);
   void Truncate();
   void DeleteData(uint64_t row);
   void DeleteByPrimaryKey(uint64_t row, uint64_t col);
+  void DeleteBatchData(core::Transaction *tx, const std::vector<uint64_t> &rows);
   bool IsDelete(int64_t row);
+
+  void ResetMaxMin(DPN &dpn);
 
   const types::TianmuDataType &ValuePrototype(bool lookup_to_num) const {
     if ((Type().Lookup() && lookup_to_num) || ATI::IsNumericType(TypeName()))
@@ -226,10 +230,10 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
   bool GetIfUnsigned() const { return ct.GetUnsigned(); }
   uint64_t AutoIncNext() {
-    backup_auto_inc_next_ = hdr.auto_inc_next;
+    backup_auto_inc_next_ = m_share->auto_inc_.fetch_add(1);
     if (backup_auto_inc_next_ >= UINT64_MAX)
       return backup_auto_inc_next_;
-    uint64_t auto_inc_value = ++hdr.auto_inc_next;
+    uint64_t auto_inc_value = m_share->auto_inc_.load();
     uint64_t max_value{0};
     bool unsigned_flag = GetIfUnsigned();
     switch (TypeName()) {
@@ -256,15 +260,14 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   void RollBackIfAutoInc() {
     if (!GetIfAutoInc())
       return;
-    hdr.auto_inc_next = backup_auto_inc_next_;
+    m_share->auto_inc_.store(backup_auto_inc_next_);
     return;
   }
-
-  uint64_t GetAutoInc() const { return hdr.auto_inc_next; }
-  uint64_t GetAutoIncInfo() const { return hdr.auto_inc_next + 1; }  // for show create table 'auto_increment='
+  uint64_t GetAutoInc() const { return m_share->auto_inc_.load(); }
+  uint64_t GetAutoIncInfo() const { return m_share->auto_inc_.load() + 1; }
   void SetAutoInc(uint64_t v) {
-    backup_auto_inc_next_ = hdr.auto_inc_next;
-    hdr.auto_inc_next = v;
+    backup_auto_inc_next_ = m_share->auto_inc_.load();
+    m_share->auto_inc_.store(v);
   }
   // Original 0-level value (text, not null-terminated) and its length; binary
   // data types may be displayed as hex

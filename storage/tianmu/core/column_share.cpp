@@ -141,6 +141,9 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
 
   ASSERT(hdr.numOfPacks <= capacity, "bad dpn index");
 
+  // get column saved auto inc
+  auto_inc_.store(hdr.auto_inc);
+
   if (hdr.numOfPacks == 0) {
     for (uint32_t i = 0; i < capacity; i++) {
       start[i].reset();
