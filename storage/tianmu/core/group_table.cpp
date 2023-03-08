@@ -280,10 +280,11 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
                             } else {  // BIT_XOR(...)
                               if (desc.operation == GT_Aggregation::GT_BIT_XOR) {
                                 aggregator[i] = new AggregatorBitXor;
-                              } else  // GT_Aggregation::GT_GROUP_CONCAT(...)
+                              } else {  // GT_Aggregation::GT_GROUP_CONCAT(...)
                                 if (desc.operation == GT_Aggregation::GT_GROUP_CONCAT) {
                                   aggregator[i] = new AggregatorGroupConcat(desc.si, desc.type);
                                 }
+                              }
                             }
                           }
                         }
