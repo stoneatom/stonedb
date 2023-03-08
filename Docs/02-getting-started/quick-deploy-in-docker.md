@@ -14,7 +14,7 @@ The username and password for login are **root** and **stonedb123**.
 ### 1. Pull the image
 Run the following command:
 ```bash
-docker pull stoneatom/stonedb:v0.1
+docker pull stoneatom/stonedb:v1.0.2
 ```
 ### 2. Run the image
 Run the following command:
