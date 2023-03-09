@@ -60,6 +60,7 @@ void TianmuTable::GetValueFromField(Field *f, Value &v, size_t col) {
       if (m_attrs[col]->GetIfAutoInc() && value == 0) {
         // Value of auto inc column was not assigned by user
         value = m_attrs[col]->AutoIncNext();
+        f->store(value, true);
       }
       if (m_attrs[col]->GetIfAutoInc()) {
         // inc counter should be set to value of user assigned
@@ -68,7 +69,6 @@ void TianmuTable::GetValueFromField(Field *f, Value &v, size_t col) {
             m_attrs[col]->SetAutoInc(value);
         }
       }
-      f->store(value);
       v.SetInt(value);
       break;
     }
@@ -837,9 +837,11 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       int64_t value = f->val_int();
       common::PushWarningIfOutOfRange(current_txn_->Thd(), std::string(f->field_name), value, f->type(),
                                       f->flags & UNSIGNED_FLAG);
-      if (m_attrs[col]->GetIfAutoInc() && value == 0)
+      if (m_attrs[col]->GetIfAutoInc() && value == 0) {
         // Value of auto inc column was not assigned by user
         value = m_attrs[col]->AutoIncNext();
+        f->store(value, true);
+      }
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
       vc.ExpectedSize(sizeof(int64_t));
       if (m_attrs[col]->GetIfAutoInc()) {
@@ -849,7 +851,6 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
             m_attrs[col]->SetAutoInc(value);
         }
       }
-      f->store(value);
     } break;
     case MYSQL_TYPE_BIT: {
       int64_t value = f->val_int();
