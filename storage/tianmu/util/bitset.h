@@ -18,6 +18,7 @@
 #define TIANMU_UTIL_BITSET_H_
 #pragma once
 
+#include <string.h>
 namespace Tianmu {
 namespace utils {
 
@@ -30,6 +31,7 @@ class BitSet {
       allocated_ = false;
     } else {
       ptr_ = new char[(sz + NO_OF_BITS - 1) / NO_OF_BITS]();
+      memset(ptr_, 0, (sz + NO_OF_BITS - 1) / NO_OF_BITS);
       allocated_ = true;
     }
   }
@@ -48,6 +50,7 @@ class BitSet {
       allocated_ = false;
     } else {
       ptr_ = new char[(sz + NO_OF_BITS - 1) / NO_OF_BITS]();
+      memset(ptr_, 0, (sz + NO_OF_BITS - 1) / NO_OF_BITS);
       allocated_ = true;
     }
   }

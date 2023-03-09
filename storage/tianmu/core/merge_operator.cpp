@@ -124,6 +124,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
           n_updateRecord.null_mask_.set(i);
           n_updateRecord.update_mask_.set(i);
           n_updateRecord.field_len_[i] = 0;
+
           if (e_updateRecord.update_mask_[i]) {
             e_ptr += e_updateRecord.field_len_[i];
           }
@@ -145,6 +146,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
           std::memcpy(n_ptr, e_ptr, e_updateRecord.field_len_[i]);
           n_ptr += e_updateRecord.field_len_[i];
           e_ptr += e_updateRecord.field_len_[i];
+          n_updateRecord.update_mask_.set(i);
           n_updateRecord.field_len_[i] = e_updateRecord.field_len_[i];
         }
       }
