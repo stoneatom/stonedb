@@ -1,0 +1,25 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS composite_primary_key_test;
+--enable_warnings
+
+CREATE DATABASE composite_primary_key_test;
+
+USE composite_primary_key_test;
+
+--disable_warnings
+
+## DDL
+create table ttt(id int,c1 varchar(10),c2 varchar(10),primary key(id,c1)) ENGINE=TIANMU;
+
+## insert data
+insert into ttt values(1,'xxx','xxx');
+
+insert into ttt values(1,'','xxx');
+--error ER_DUP_ENTRY
+insert into ttt values(1,'','xxx');
+
+
+## clean test table
+DROP DATABASE composite_primary_key_test;
