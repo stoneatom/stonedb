@@ -34,14 +34,10 @@ a
 SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b=1);
 a
 1
-1
 SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b IN ( SELECT a FROM test1));
 a
 1
-1
 2
-3
-3
 3
 SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b NOT IN ( SELECT a FROM test1));
 a

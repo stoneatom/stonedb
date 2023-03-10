@@ -1,0 +1,9 @@
+DROP DATABASE IF EXISTS composite_primary_key_test;
+CREATE DATABASE composite_primary_key_test;
+USE composite_primary_key_test;
+create table ttt(id int,c1 varchar(10),c2 varchar(10),primary key(id,c1)) ENGINE=TIANMU;
+insert into ttt values(1,'xxx','xxx');
+insert into ttt values(1,'','xxx');
+insert into ttt values(1,'','xxx');
+ERROR 23000: Duplicate entry '1-' for key 'PRIMARY'
+DROP DATABASE composite_primary_key_test;
