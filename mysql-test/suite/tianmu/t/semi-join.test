@@ -1,0 +1,45 @@
+--source include/have_tianmu.inc
+--disable_warnings
+DROP DATABASE IF EXISTS test_db1;
+--enable_warnings
+CREATE DATABASE test_db1;
+USE test_db1;
+
+CREATE TABLE t1 (t1_int INT, t1_char CHAR(5), PRIMARY KEY (t1_int)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int INT, t2_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (1, 'aaa'),(2, 'aaa'),(3, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, ''),(7, 'eee');
+INSERT INTO t2 VALUES (1, 'eee'),(3, 'ccc'),(5, 'jjj'),(6, ''),(7, 'lll'),(9, 'eee'),(11, 'nnn');
+
+# in subquery
+SELECT t1_int FROM t1 WHERE t1_int IN (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int);
+
+# exists subquery
+SELECT t1_int FROM t1 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int);
+
+# subquery and order by
+SELECT t1_int FROM t1 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int) ORDER BY t1_int;
+
+# subquery and group by
+SELECT t1_int, count(*) FROM t1 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int) GROUP BY t1_int;
+
+drop table t1,t2;
+
+# in/exists subquery without PRIMARY KEY
+CREATE TABLE t1 (t1_int INT, t1_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int INT, t2_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (1, 'aaa'),(2, 'aaa'),(3, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, ''),(7, 'eee');
+INSERT INTO t2 VALUES (1, 'eee'),(3, 'ccc'),(5, 'jjj'),(6, ''),(7, 'lll'),(9, 'eee'),(11, 'nnn');
+
+# in subquery
+SELECT t1_int FROM t1 WHERE t1_int IN (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int);
+
+# exists subquery
+SELECT t1_int FROM t1 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int);
+
+# subquery and order by
+SELECT t1_int FROM t1 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int) ORDER BY t1_int;
+
+# subquery and group by
+SELECT t1_int, count(*) FROM t1 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int) GROUP BY t1_int;
+
+drop table t1,t2;
