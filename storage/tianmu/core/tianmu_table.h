@@ -24,6 +24,7 @@
 #include "core/delta_table.h"
 #include "core/just_a_table.h"
 #include "core/tianmu_attr.h"
+#include "index/tianmu_table_index.h"
 #include "util/fs.h"
 
 namespace Tianmu {
@@ -151,6 +152,8 @@ class TianmuTable final : public JustATable {
   int AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records);
 
   std::unique_lock<std::mutex> write_lock;
+
+  void GetKeys(TABLE *table, std::vector<std::string> &keys, std::shared_ptr<index::TianmuTableIndex> &indexTab);
 
  private:
   uint64_t ProceedNormal(system::IOParameters &iop);

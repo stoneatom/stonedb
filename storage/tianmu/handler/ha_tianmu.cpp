@@ -748,13 +748,15 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
     table->status = STATUS_NOT_FOUND;
     auto index = ha_tianmu_engine_->GetTableIndex(table_name_);
     if (index && (active_index == table_share->primary_key)) {
+      auto tab = ha_tianmu_engine_->GetTableRD(table_name_);
       std::vector<std::string> keys;
-      key_convert(key, key_len, index->KeyCols(), keys);
-      // support equality fullkey lookup over primary key, using full tuple
+      tab->GetKeys(table, keys, index);
+
       if (find_flag == HA_READ_KEY_EXACT) {
         uint64_t rowid;
         if (index->GetRowByKey(current_txn_, keys, rowid) == common::ErrorCode::SUCCESS) {
-          rc = fill_row_by_id(buf, rowid);
+          current_position_ = rowid;
+          rc = 0;
         }
         if (!rc)
           table->status = 0;
@@ -763,8 +765,10 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
         common::Operator op = (find_flag == HA_READ_AFTER_KEY) ? common::Operator::O_MORE : common::Operator::O_MORE_EQ;
         iter->ScanToKey(index, keys, op);
         uint64_t rowid;
-        iter->GetRowid(rowid);
-        rc = fill_row_by_id(buf, rowid);
+        if (iter->GetRowid(rowid) == common::ErrorCode::SUCCESS) {
+          current_position_ = rowid;
+          rc = 0;
+        }
         if (!rc)
           table->status = 0;
       } else {

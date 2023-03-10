@@ -1043,6 +1043,21 @@ void TianmuTable::DeleteItem(uint64_t row, uint64_t col, core::Transaction *curr
   m_attrs[col]->DeleteData(row);
 }
 
+void TianmuTable::GetKeys(TABLE *table, std::vector<std::string> &keys,
+                          std::shared_ptr<index::TianmuTableIndex> &indexTab) {
+  std::vector<uint> cols = indexTab->KeyCols();
+  std::vector<loader::ValueCache> vcs;
+  vcs.reserve(cols.size());
+  int i = 0;
+  for (auto &col : cols) {
+    vcs.emplace_back(1, 128);
+    Field2VC(table->field[col], vcs[i], col);
+    vcs[i].Commit();
+    keys.emplace_back(vcs[i].GetDataBytesPointer(0), vcs[i].Size(0));
+    i++;
+  }
+}
+
 uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
   std::unique_ptr<system::Stream> fs;
   if (iop.LocalLoad()) {
@@ -1480,17 +1495,7 @@ void TianmuTable::InsertIndexForDelta(TABLE *table, uint64_t row_id) {
   std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
   if (tab) {
     std::vector<std::string> fields;
-    std::vector<uint> cols = tab->KeyCols();
-    std::vector<loader::ValueCache> vcs;
-    vcs.reserve(cols.size());
-    int i = 0;
-    for (auto &col : cols) {
-      vcs.emplace_back(1, 128);
-      Field2VC(table->field[col], vcs[i], col);
-      vcs[i].Commit();
-      fields.emplace_back(vcs[i].GetDataBytesPointer(0), vcs[i].Size(0));
-      i++;
-    }
+    GetKeys(table, fields, tab);
 
     if (tab->InsertIndex(current_txn_, fields, row_id) == common::ErrorCode::DUPP_KEY) {
       TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d, key: %s", row_id, fields[0].data());
@@ -1510,17 +1515,7 @@ void TianmuTable::DeleteIndexForDelta(TABLE *table, uint64_t row_id) {
   std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
   if (tab) {
     std::vector<std::string> fields;
-    std::vector<uint> cols = tab->KeyCols();
-    std::vector<loader::ValueCache> vcs;
-    vcs.reserve(cols.size());
-    int i = 0;
-    for (auto &col : cols) {
-      vcs.emplace_back(1, 128);
-      Field2VC(table->field[col], vcs[i], col);
-      vcs[i].Commit();
-      fields.emplace_back(vcs[i].GetDataBytesPointer(0), vcs[i].Size(0));
-      i++;
-    }
+    GetKeys(table, fields, tab);
 
     if (tab->DeleteIndex(current_txn_, fields, row_id) == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete row: %s for primary key field", row_id);
