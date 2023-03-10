@@ -127,6 +127,10 @@ common::ErrorCode RdbKey::unpack_field_number(StringReader &key, std::string &fi
 }
 
 void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::string &field) {
+  //issue1374: bug: Failed to insert a null value to the composite primary key.
+  //the empty field of primary key will be ignored.
+  if (field.length() == 0) 
+    return;
   // version compatible
   if (index_ver_ == static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL)) {
     key.write((const uchar *)field.data(), field.length());
