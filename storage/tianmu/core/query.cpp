@@ -918,7 +918,8 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
 }
 
 QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondType filter_type, bool negative,
-                                Item *left_expr_for_subselect, common::Operator *oper_for_subselect) {
+                                Item *left_expr_for_subselect, common::Operator *oper_for_subselect,
+                                const TabID &base_table) {
   an_arg = UnRef(an_arg);
   if (an_arg->type() == Item::SUBSELECT_ITEM) {
     Item_subselect *item_subs = dynamic_cast<Item_subselect *>(an_arg);
@@ -999,7 +1000,16 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
     if (IsAggregationItem(an_arg) && HasAggregation(((Item_sum *)an_arg)->get_arg(0)))
       return QueryRouteTo::kToMySQL;
     if ((IsFieldItem(an_arg) || IsAggregationOverFieldItem(an_arg)) && cq->ExistsInTempTable(tab, tmp_table)) {
-      int col_num = AddColumnForPhysColumn(an_arg, tmp_table, oper, distinct, true);
+      int col_num = AddColumnForPhysColumn(an_arg, tmp_table, TabID(), oper, distinct, true);
+      auto phys_vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, AttrID(-col_num - 1));
+      if (phys_vc.first == common::NULL_VALUE_32) {
+        phys_vc.first = tmp_table.n;
+        cq->CreateVirtualColumn(phys_vc.second, tmp_table, tmp_table, AttrID(col_num));
+        phys2virt.insert(std::make_pair(std::pair<int, int>(tmp_table.n, -col_num - 1), phys_vc));
+      }
+      vc.n = phys_vc.second;
+    } else if ((IsFieldItem(an_arg) || IsAggregationOverFieldItem(an_arg)) && cq->ExistsInTempTable(tab, base_table)) {
+      int col_num = AddColumnForPhysColumn(an_arg, tmp_table, base_table, oper, distinct, true);
       auto phys_vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, AttrID(-col_num - 1));
       if (phys_vc.first == common::NULL_VALUE_32) {
         phys_vc.first = tmp_table.n;
@@ -1906,8 +1916,9 @@ QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const Tab
              : (join_type == JoinType::JO_RIGHT ? CondType::ON_RIGHT_FILTER : CondType::ON_INNER_FILTER));
     // in case of Right join MySQL changes order of tables. Right must be
     // switched back to left!
-    if (filter_type == CondType::ON_RIGHT_FILTER)
+    if (filter_type == CondType::ON_RIGHT_FILTER) {
       filter_type = CondType::ON_LEFT_FILTER;
+    }
     DEBUG_ASSERT(PrefixCheck(conds) != TableStatus::TABLE_YET_UNSEEN_INVOLVED &&
                  "Table not yet seen was involved in this condition");
 

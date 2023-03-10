@@ -53,8 +53,6 @@ t1_int	t1_char
 SELECT * FROM t1 WHERE t1_char IN (SELECT t1_char FROM t1 WHERE t1_char='aaa');
 t1_int	t1_char
 1	aaa
-1	aaa
-2	aaa
 2	aaa
 SELECT CASE t1_int WHEN t1_int=1 THEN t1_char ELSE t1_int END FROM t1;
 CASE t1_int WHEN t1_int=1 THEN t1_char ELSE t1_int END

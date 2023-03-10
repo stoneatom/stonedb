@@ -115,7 +115,7 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
 
   // auto_increment
   if (ati.AutoInc() && auto_inc_value != 0) {
-    hdr.auto_inc_next = --auto_inc_value;
+    hdr.auto_inc = --auto_inc_value;
   }
 
   // create version directory
@@ -180,6 +180,7 @@ void TianmuAttr::LoadVersion(common::TX_ID xid) {
 void TianmuAttr::Truncate() {
   no_change = false;
   hdr = {};
+  m_share->Truncate();
   if (ct.Lookup()) {
     hdr.dict_ver = 1;  // starting with 1 because 0 means n/a
     auto dict = std::make_unique<FTree>();
@@ -265,6 +266,7 @@ void TianmuAttr::SaveFilters() {
 bool TianmuAttr::SaveVersion() {
   ASSERT(m_tx != nullptr, "Attempt to modify table in read-only transaction");
 
+  // save modified pack data
   for (size_t i = 0; i < m_idx.size(); i++) {
     auto &dpn = get_dpn(i);
     if (dpn.IsLocal()) {
@@ -298,7 +300,7 @@ bool TianmuAttr::SaveVersion() {
     if (m_dict && m_dict->Changed()) {
       m_dict->SaveData(Path() / common::COL_DICT_DIR / std::to_string(hdr.dict_ver));
     }
-
+    hdr.auto_inc = m_share->auto_inc_.load();
     hdr.unique = IsUnique();
     hdr.unique_updated = IsUniqueUpdated();
     hdr.numOfPacks = m_idx.size();
@@ -311,6 +313,7 @@ bool TianmuAttr::SaveVersion() {
     });
   }
 
+  // save attr transaction version
   auto fname = Path() / common::COL_VERSION_DIR / m_tx->GetID().ToString();
   system::TianmuFile fattr;
   fattr.OpenCreate(fname);
@@ -919,6 +922,12 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   hdr.numOfRecords += nvs->NumOfValues();
   hdr.numOfNulls += (Type().NotNull() ? 0 : nvs->NumOfNulls());
   hdr.natural_size += nvs->SumarizedSize();
+  hdr.numOfDeleted += nvs->NumOfDeletes();
+#ifndef NDEBUG
+  TIANMU_LOG(LogCtl_Level::DEBUG,
+             "DELTA INSERT load_data_task tid: %d, cid: %d, pack index: %d, pack size: %d, write batch size: %d", m_tid,
+             m_cid, pi, (hdr.numOfRecords - pi * 65536), nvs->NumOfValues());
+#endif
 }
 
 void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
@@ -936,7 +945,7 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   size_t load_nulls = nv.has_value() ? 0 : nvs->NumOfNulls();
 
   // nulls only
-  if (load_nulls == load_values && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
+  if (load_nulls == load_values && nvs->NumOfDeletes() == 0 && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
     dpn.numOfRecords += load_values;
     dpn.numOfNulls += load_values;
     return;
@@ -962,7 +971,7 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   // now dpn->sum has been updated
 
   // uniform package
-  if ((dpn.numOfNulls + load_nulls) == 0 && load_min == load_max &&
+  if ((dpn.numOfNulls + load_nulls) == 0 && load_min == load_max && nvs->NumOfDeletes() == 0 &&
       (dpn.numOfRecords == 0 || (dpn.min_i == load_min && dpn.max_i == load_max))) {
     dpn.min_i = load_min;
     dpn.max_i = load_max;
@@ -1009,7 +1018,7 @@ void TianmuAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   auto cnt = nvs->NumOfValues();
 
   // no need to store any values - uniform package
-  if (load_nulls == cnt && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
+  if (load_nulls == cnt && nvs->NumOfDeletes() == 0 && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
     dpn.numOfRecords += cnt;
     dpn.numOfNulls += cnt;
     return;
@@ -1024,7 +1033,7 @@ void TianmuAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   get_packS(pi)->LoadValues(nvs);
 }
 
-void TianmuAttr::UpdateData(uint64_t row, Value &v) {
+void TianmuAttr::UpdateData(uint64_t row, Value &old_v, Value &new_v) {
   // rclog << lock << "update data for row " << row << " col " << m_cid <<
   // system::unlock;
   no_change = false;
@@ -1032,7 +1041,7 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
   auto pn = row2pack(row);
   FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
   // primary key process
-  UpdateIfIndex(row, ColId(), v);
+  UpdateIfIndex(nullptr, row, ColId(), old_v, new_v);
 
   CopyPackForWrite(pn);
 
@@ -1043,8 +1052,8 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
     ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
   }
 
-  if (ct.Lookup() && v.HasValue()) {
-    auto &str = v.GetString();
+  if (ct.Lookup() && new_v.HasValue()) {
+    auto &str = new_v.GetString();
     int code = m_dict->GetEncodedValue(str.data(), str.size());
     if (code < 0) {
       ASSERT(m_tx != nullptr, "attempt to update dictionary in readonly transaction");
@@ -1058,43 +1067,78 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
       }
       code = m_dict->Add(str.data(), str.size());
     }
-    v.SetInt(code);
+    new_v.SetInt(code);
   }
 
-  get_pack(pn)->UpdateValue(row2offset(row), v);
+  get_pack(pn)->UpdateValue(row2offset(row), new_v);
   dpn.synced = false;
 
   // update global data
   hdr.numOfNulls -= dpn_save.numOfNulls;
   hdr.numOfNulls += dpn.numOfNulls;
 
-  if (GetPackType() == common::PackType::INT) {
-    if (dpn.min_i < hdr.min) {
-      hdr.min = dpn.min_i;
+  ResetMaxMin(dpn);
+}
+
+void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, Value> &rows) {
+  no_change = false;
+
+  // group by pn
+  std::unordered_map<common::PACK_INDEX, std::unordered_map<uint64_t, Value>> packs;
+  for (const auto &row : rows) {
+    auto row_id = row.first;
+    auto row_val = row.second;
+    auto pn = row2pack(row_id);
+    auto pack = packs.find(pn);
+    if (pack != packs.end()) {
+      pack->second.emplace(row_id, row_val);
     } else {
-      // re-calculate the min
-      hdr.min = std::numeric_limits<int64_t>::max();
-      for (uint i = 0; i < m_idx.size(); i++) {
-        if (!get_dpn(i).NullOnly())
-          hdr.min = std::min(get_dpn(i).min_i, hdr.min);
-      }
+      packs.emplace(pn, std::unordered_map<uint64_t, Value>{{row_id, row_val}});
+    }
+  }
+
+  for (const auto &pack : packs) {
+    auto pn = pack.first;
+    FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
+    CopyPackForWrite(pn);
+    auto &dpn = get_dpn(pn);
+    auto dpn_save = dpn;
+    if (dpn.Trivial()) {
+      ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
     }
 
-    if (dpn.max_i > hdr.max) {
-      hdr.max = dpn.max_i;
-    } else {
-      // re-calculate the max
-      hdr.max = std::numeric_limits<int64_t>::min();
-      for (uint i = 0; i < m_idx.size(); i++) {
-        if (!get_dpn(i).NullOnly())
-          hdr.max = std::max(get_dpn(i).max_i, hdr.max);
+    for (const auto &row : pack.second) {
+      uint64_t row_id = row.first;
+      Value row_val = row.second;
+      if (ct.Lookup() && row_val.HasValue()) {
+        auto &str = row_val.GetString();
+        int code = m_dict->GetEncodedValue(str.data(), str.size());
+        if (code < 0) {
+          ASSERT(m_tx != nullptr, "attempt to update dictionary in readonly transaction");
+          if (!m_dict->Changed()) {
+            auto sp = m_dict;
+            m_dict = sp->Clone();
+            sp->Unlock();
+            hdr.dict_ver++;
+            ha_tianmu_engine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
+          }
+          code = m_dict->Add(str.data(), str.size());
+        }
+        row_val.SetInt(code);
       }
+      get_pack(pn)->UpdateValue(row2offset(row_id), row_val);
     }
 
-    // reset auto increment value
-    if (GetIfAutoInc() && (static_cast<uint64_t>(v.GetInt()) > GetAutoInc()))
-      hdr.auto_inc_next = static_cast<uint64_t>(v.GetInt());
-  } else {  // common::PackType::STR
+    dpn.synced = false;
+    // update global data
+    hdr.numOfNulls -= dpn_save.numOfNulls;
+    hdr.numOfNulls += dpn.numOfNulls;
+    ResetMaxMin(dpn);
+#ifndef NDEBUG
+    TIANMU_LOG(LogCtl_Level::DEBUG,
+               "DELTA UPDATE batch_update_task tid: %d, cid: %d, pack index: %d, write batch size: %d", m_tid, m_cid,
+               pn, pack.second.size());
+#endif
   }
 }
 
@@ -1135,7 +1179,51 @@ void TianmuAttr::DeleteData(uint64_t row) {
   hdr.numOfNulls -= dpn_save.numOfNulls;
   hdr.numOfNulls += dpn.numOfNulls;
   hdr.numOfDeleted++;
+  ResetMaxMin(dpn);
+}
 
+void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64_t> &rows) {
+  // group by pn
+  std::unordered_map<common::PACK_INDEX, std::vector<uint64_t>> packs;
+  //  for (const auto &[row, val] : rows) {
+  for (const auto &row_id : rows) {
+    auto pn = row2pack(row_id);
+    auto pack = packs.find(pn);
+    if (pack != packs.end()) {
+      pack->second.push_back(row_id);
+    } else {
+      packs.emplace(pn, std::vector<uint64_t>{row_id});
+    }
+  }
+
+  for (const auto &pack : packs) {
+    auto pn = pack.first;
+    FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
+    CopyPackForWrite(pn);
+    auto &dpn = get_dpn(pn);
+    auto dpn_save = dpn;
+    if (dpn.Trivial()) {
+      ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+    }
+
+    for (const auto &row_id : pack.second) {
+      get_pack(pn)->DeleteByRow(row2offset(row_id));
+    }
+    // update global data
+    hdr.numOfNulls -= dpn_save.numOfNulls;
+    hdr.numOfNulls += dpn.numOfNulls;
+    hdr.numOfDeleted -= dpn_save.numOfDeleted;
+    hdr.numOfNulls += dpn.numOfDeleted;
+    ResetMaxMin(dpn);
+#ifndef NDEBUG
+    TIANMU_LOG(LogCtl_Level::DEBUG,
+               "DELTA DELETE batch_delete_task tid: %d, cid: %d, pack index: %d, write batch size: %d", m_tid, m_cid,
+               pn, pack.second.size());
+#endif
+  }
+}
+
+void TianmuAttr::ResetMaxMin(DPN &dpn) {
   if (GetPackType() == common::PackType::INT) {
     if (dpn.min_i < hdr.min) {
       hdr.min = dpn.min_i;
@@ -1392,7 +1480,11 @@ std::shared_ptr<RSIndex_Bloom> TianmuAttr::GetFilter_Bloom() {
       FilterCoordinate(m_tid, m_cid, (int)FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
 }
 
-void TianmuAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
+void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v,
+                               const Value &new_v) {
+  if (tx == nullptr) {
+    tx = current_txn_;
+  }
   auto path = m_share->owner->Path();
   std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(path);
   // col is not primary key
@@ -1402,25 +1494,25 @@ void TianmuAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
   if (std::find(keycols.begin(), keycols.end(), col) == keycols.end())
     return;
 
-  if (!v.HasValue())
+  if (!new_v.HasValue())
     throw common::Exception("primary key not support null!");
 
   if (GetPackType() == common::PackType::STR) {
-    auto &vnew = v.GetString();
-    auto vold = GetValueString(row);
+    auto &vnew = new_v.GetString();
+    auto &vold = old_v.GetString();
     std::string nkey(vnew.data(), vnew.length());
-    std::string okey(vold.val_, vold.size());
-    common::ErrorCode returnCode = tab->UpdateIndex(current_txn_, nkey, okey, row);
+    std::string okey(vold.data(), vold.length());
+    common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
       throw common::DupKeyException("Duplicate entry: " + vnew + " for primary key");
     }
   } else {  // common::PackType::INT
-    int64_t vnew = v.GetInt();
-    int64_t vold = GetValueInt64(row);
+    int64_t vnew = new_v.GetInt();
+    int64_t vold = old_v.GetInt();
     std::string nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
     std::string okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
-    common::ErrorCode returnCode = tab->UpdateIndex(current_txn_, nkey, okey, row);
+    common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
       throw common::DupKeyException("Duplicate entry: " + std::to_string(vnew) + " for primary key");
@@ -1440,8 +1532,8 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
 
   if (GetPackType() == common::PackType::STR) {
     auto currentValue = GetValueString(row);
-    std::string currentRowKey(currentValue.val_, currentValue.size());
-    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    std::vector<std::string> fields{currentValue.ToString()};
+    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, fields, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %s for primary key", currentValue.GetDataBytesPointer());
       throw common::Exception("Delete: " + currentValue.ToString() + " for primary key");
@@ -1449,7 +1541,8 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
   } else {  // common::PackType::INT
     auto currentValue = GetValueInt64(row);
     std::string currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
-    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    std::vector<std::string> fields{currentRowKey};
+    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, fields, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %" PRId64 " for primary key", currentValue);
       throw common::Exception("Delete: " + std::to_string(currentValue) + " for primary key");

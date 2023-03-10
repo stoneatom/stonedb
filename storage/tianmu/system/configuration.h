@@ -90,6 +90,13 @@ extern char tianmu_sysvar_enable_histogram_cmap_bloom;
 extern unsigned int tianmu_sysvar_result_sender_rows;
 // Number of threads executing (delete_row) and (update_row) in parallel
 extern unsigned int tianmu_sysvar_delete_or_update_threads;
+
+extern unsigned int tianmu_sysvar_merge_rocks_expected_count;
+// Threshold to submit in insert request
+extern unsigned int tianmu_sysvar_insert_write_batch_size;
+
+extern unsigned int tianmu_sysvar_log_loop_interval;
+
 // The parallelism degree of multithreaded aggregation
 // the number of threads executing group by multithreaded aggregation
 extern unsigned int tianmu_sysvar_groupby_parallel_degree;

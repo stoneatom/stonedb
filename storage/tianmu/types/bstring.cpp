@@ -96,6 +96,9 @@ bool BString::Parse(BString &in, BString &out) {
 common::ColumnType BString::Type() const { return common::ColumnType::STRING; }
 
 void BString::PutString(char *&dest, ushort len, bool move_ptr) const {
+  if (this->len_ > len) {
+    ASSERT(this->len_ <= len, "should be 'this->len_ <= len'");
+  }
   ASSERT(this->len_ <= len, "should be 'this->len_ <= len'");
   if (this->len_ == 0)
     std::memset(dest, ' ', len);

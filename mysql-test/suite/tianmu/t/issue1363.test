@@ -1,0 +1,22 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+
+DROP DATABASE IF EXISTS issue1363_test;
+CREATE DATABASE issue1363_test;
+
+USE issue1363_test;
+
+create table t1 (a bigint unsigned not null, primary key(a));
+#issue 1363
+insert into t1 values (9223372036854775806);
+select * from t1;
+#issue 1369
+INSERT INTO t1 VALUES(1234),(97716021308405775),(97716021308405770),(97716021308405780);
+select * from t1;
+#issue 1362
+insert into t1 values (0xFFFFFFFFFFFFFF);
+select * from t1;
+drop table t1;
+
+DROP DATABASE issue1363_test;

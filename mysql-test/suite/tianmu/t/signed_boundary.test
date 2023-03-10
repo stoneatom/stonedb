@@ -8,6 +8,8 @@
 DROP DATABASE IF EXISTS signed_boundary;
 --enable_warnings
 
+CREATE DATABASE signed_boundary;
+USE signed_boundary;
 # int32 limit
 CREATE TABLE int32_(c_max int, c_min int) engine = tianmu;
 INSERT INTO int32_ values(-2147483647, 2147483647);
@@ -25,3 +27,30 @@ INSERT INTO int64_ values(-9223372036854775807, 9223372036854775807);
 --error 1264
 INSERT INTO int64_ values(-9223372036854775806, 9223372036854775808);
 DROP TABLE int64_;
+
+# fix issue #1344, select * from t where col = 9223372036854775807,1.797693134862315708e+308, -1.797693134862315708e+308
+create table t1 (
+    value64  bigint  not null,
+    value32  integer          not null
+    );
+
+insert into t1 values(9223372036854775806, 1);
+insert into t1 values(9223372036854775807, 2);
+insert into t1 values(-9223372036854775806, 2);
+select * from t1;
+select * from t1 where value64= 9223372036854775807;
+select * from t1 where value64= -9223372036854775806;
+select * from t1 where value64 between 9223372036854775806 and 9223372036854775807;
+drop table t1;
+
+create table txxx(a double);
+insert into txxx values(1.79769313486231570814527423731704357e+308);
+insert into txxx values(-1.79769313486231570814527423731704357e+308);
+select * from txxx;
+select * from txxx where a = -1.7976931348623157e308;
+select * from txxx where a = 1.7976931348623157e308;
+select * from txxx where a between 1.7976931348623157e308 and 1.7976931348623157e308;
+select * from txxx where a between -1.7976931348623157e308 and -1.7976931348623157e308;
+drop table txxx;
+
+DROP DATABASE signed_boundary;

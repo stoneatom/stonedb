@@ -22,7 +22,7 @@
 #include "core/engine.h"
 
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 
 // Class definition for the storage engine
 class ha_tianmu final : public handler {
@@ -175,9 +175,7 @@ class ha_tianmu final : public handler {
   core::JustATable *table_ptr_ = nullptr;
   std::unique_ptr<core::Filter> filter_ptr_;
   uint64_t current_position_ = 0;
-
-  core::TianmuTable::Iterator table_new_iter_;
-  core::TianmuTable::Iterator table_new_iter_end_;
+  std::unique_ptr<core::CombinedIterator> iterator_;
 
   std::unique_ptr<core::Query> query_;
   core::TabID tmp_table_;
@@ -186,7 +184,7 @@ class ha_tianmu final : public handler {
   std::vector<std::vector<uchar>> blob_buffers_;
 };
 
-}  // namespace handler
+}  // namespace DBHandler
 }  // namespace Tianmu
 
 #endif  // HA_TIANMU_H_

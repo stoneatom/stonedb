@@ -56,7 +56,7 @@ class TianmuTableIndex final {
   common::ErrorCode RenameIndexTable(const std::string &from, const std::string &to);
   common::ErrorCode InsertIndex(core::Transaction *tx, std::vector<std::string> &fields, uint64_t row);
   common::ErrorCode UpdateIndex(core::Transaction *tx, std::string &nkey, std::string &okey, uint64_t row);
-  common::ErrorCode DeleteIndex(core::Transaction *tx, std::string &currentRowKey, uint64_t row);
+  common::ErrorCode DeleteIndex(core::Transaction *tx, std::vector<std::string> &fields, uint64_t row);
   common::ErrorCode GetRowByKey(core::Transaction *tx, std::vector<std::string> &fields, uint64_t &row);
 
  public:

@@ -11,7 +11,7 @@ sidebar_position: 3.2
 默认登录账号密码为 root，stonedb123
 ### 1、docker pull
 ```bash
-docker pull stoneatom/stonedb:v0.1
+docker pull stoneatom/stonedb:v1.0.2
 ```
 ### 2、docker run
 参数说明：

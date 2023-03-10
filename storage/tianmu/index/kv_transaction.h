@@ -51,6 +51,9 @@ class KVTransaction {
   // stores the (key-value) to column_family.
   rocksdb::Status PutData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                           const rocksdb::Slice &value);
+  // merge the (key-value) to column_family.
+  rocksdb::Status MergeData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
+                            const rocksdb::Slice &value);
   // delete one 'row' by the key.
   rocksdb::Status SingleDeleteData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key);
   // gets the iterator of column_family with specific read options.
@@ -65,14 +68,14 @@ class KVTransaction {
   bool Commit();
   // rollback the transaction
   void Rollback();
+  //
+  void ResetWriteBatch();
 
  private:
   // writes 'rows' in batch with index.
   std::unique_ptr<rocksdb::WriteBatchWithIndex> index_batch_;
   // wites 'rows' in batch.
   std::unique_ptr<rocksdb::WriteBatch> data_batch_;
-  // writes options.
-  rocksdb::WriteOptions write_opts_;
   // reads options.
   rocksdb::ReadOptions read_opts_;
   // iterator of key.

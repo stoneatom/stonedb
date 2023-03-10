@@ -4973,20 +4973,6 @@ compare_errors:
       thd->killed= THD::NOT_KILLED;
     }
     /*
-      Tianmu engine as slave: ignore some errors
-    */    
-    else if(ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX == actual_error
-            || ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX  == actual_error
-            || ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX  == actual_error
-            || ER_TIANMU_NOT_SUPPORTED_TRIGGER == actual_error
-            || ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY == actual_error
-            || ER_TIANMU_NOT_FOUND_INDEX == actual_error)
-    {
-      DBUG_PRINT("info",("error ignored"));
-      clear_all_errors(thd, const_cast<Relay_log_info*>(rli));
-      thd->killed= THD::NOT_KILLED;
-    }
-    /*
       Other cases: mostly we expected no error and get one.
     */
     else if (thd->is_slave_error || thd->is_fatal_error)

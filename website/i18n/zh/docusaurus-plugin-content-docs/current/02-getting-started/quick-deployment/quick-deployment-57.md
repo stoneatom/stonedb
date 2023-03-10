@@ -6,11 +6,11 @@ sidebar_position: 3.12
 # 快速部署 StoneDB-5.7
 为方便用户快速上手，安装包是已经编译好的，只需要检查自己的环境是否缺少依赖。
 ## 下载安装包
-点击 [此处](https://static.stoneatom.com/custom/stonedb-ce-5.7-v1.0.1.el7.x86_64.tar.gz)下载最新的安装包。
+点击 [此处](https://static.stoneatom.com/custom/stonedb-ce-5.7-v1.0.2.el7.x86_64.tar.gz)下载最新的安装包。
 ## 上传tar包并解压
 ```shell
 cd /
-tar -zxvf stonedb-ce-5.7-v1.0.1.el7.x86_64.tar.gz
+tar -zxvf stonedb-ce-5.7-v1.0.2.el7.x86_64.tar.gz
 ```
 用户可根据安装规范将安装包上传至服务器，解压出来的目录是 stonedb57，示例中的安装路径是 /stonedb57。
 # 检查依赖文件
