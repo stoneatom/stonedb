@@ -76,4 +76,27 @@ t1_tinyint	t1_int	t1_bigint	t1_decimal	t1_text	t1_char	t1_varchar	t1_datetime
 SELECT * FROM t1 WHERE t1_text LIKE '%x%' AND t1_varchar LIKE '%b%';
 t1_tinyint	t1_int	t1_bigint	t1_decimal	t1_text	t1_char	t1_varchar	t1_datetime
 0	-1023456	-887654321	-222.32	xxxxxxxxxxxxxxxxxxxx	bbb	bbbbbbbbbbbbbbbbbbbb	1111-11-11 11:11:11
+CREATE TABLE `ttt` (
+`id` varchar(36) DEFAULT NULL,
+`c1` varchar(255) DEFAULT NULL,
+`c2` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO ttt VALUES ('1', 'XXX', '2023'),('2', 'XXX', '2023'),('3', 'XXX', '2023');
+select * from ttt where c2='2023' and 1=2;
+id	c1	c2
+select * from ttt where c2='2023' and 1=1;
+id	c1	c2
+1	XXX	2023
+2	XXX	2023
+3	XXX	2023
+select * from ttt where c2='2023' or 1=2;
+id	c1	c2
+1	XXX	2023
+2	XXX	2023
+3	XXX	2023
+select * from ttt where c2='2023' and 1=1;
+id	c1	c2
+1	XXX	2023
+2	XXX	2023
+3	XXX	2023
 DROP DATABASE where_conditions_test;

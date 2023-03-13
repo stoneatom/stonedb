@@ -10299,8 +10299,11 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
 
         if (cond_replace)
         {
-          if ((or_level && cond_value_equivalent)
-            || (and_level && (!cond_value_equivalent)))
+          // bug #1383: If the SQL syntax contains 1 = 2,the StoneDB's
+          // InnoDB storage engine maybe wrong result #1383.
+          // the and_level logic is not correct, remove it for now, and
+          // will find a better solution to solve the and 1=2 condition later.
+          if (or_level && cond_value_equivalent)
           {
             *cond_value = Item::COND_OK;
             *retcond = NULL;
