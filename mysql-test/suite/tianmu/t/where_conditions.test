@@ -48,5 +48,22 @@ SELECT * FROM t1 WHERE t1_datetime BETWEEN '111-11-10' AND '1111-11-12';
 SELECT * FROM t1 WHERE t1_text LIKE '%x%' OR t1_varchar LIKE '%a%';
 SELECT * FROM t1 WHERE t1_text LIKE '%x%' AND t1_varchar LIKE '%b%';
 
+# for bug 1383: If the SQL syntax contains 1 = 2,the StoneDB's InnoDB storage engine maybe wrong result
+CREATE TABLE `ttt` (
+  `id` varchar(36) DEFAULT NULL,
+  `c1` varchar(255) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO ttt VALUES ('1', 'XXX', '2023'),('2', 'XXX', '2023'),('3', 'XXX', '2023');
+
+select * from ttt where c2='2023' and 1=2;
+
+select * from ttt where c2='2023' and 1=1;
+
+select * from ttt where c2='2023' or 1=2;
+
+select * from ttt where c2='2023' and 1=1;
+
 # Clean UP
 DROP DATABASE where_conditions_test;
