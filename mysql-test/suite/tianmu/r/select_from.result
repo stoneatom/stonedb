@@ -208,4 +208,542 @@ q10	9
 q10	10
 drop table t2_test;
 drop table t1_test;
+create table tb(a bigint) engine=tianmu;
+insert into tb values(-9223372036854775806), (-922337203685477580), (-55), (-22), (-10), (-4), (0), (2), (6), (9223372036854775807);
+select * from tb;
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a < -10;
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+select * from tb where a > 4567890123456789;
+a
+9223372036854775807
+select * from tb where a > 0;
+a
+2
+6
+9223372036854775807
+select * from tb where a between -9223372036854775806 and 0;
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+select * from tb where a between -22 and 7;
+a
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a not in (3);
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a not in (-3,3);
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a not in (-3);
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a in (-3);
+a
+select * from tb where a in (-3, 3);
+a
+select * from tb where a is null;
+a
+select * from tb where a is not null;
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a in (not null);
+a
+select * from tb where a not in (null);
+a
+insert into tb values(null), (null);
+select * from tb;
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+NULL
+NULL
+select * from tb where a < -10;
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+select * from tb where a > 4567890123456789;
+a
+9223372036854775807
+select * from tb where a > 0;
+a
+2
+6
+9223372036854775807
+select * from tb where a between -9223372036854775806 and 0;
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+select * from tb where a between -22 and 7;
+a
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a not in (3);
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a not in (-3,3);
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a not in (-3);
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a in (-3);
+a
+select * from tb where a in (-3, 3);
+a
+select * from tb where a is null;
+a
+NULL
+NULL
+select * from tb where a is not null;
+a
+-9223372036854775806
+-922337203685477580
+-55
+-22
+-10
+-4
+0
+2
+6
+9223372036854775807
+select * from tb where a in (not null);
+a
+select * from tb where a not in (null);
+a
+drop table tb;
+create table tb(a bigint) engine=tianmu;
+insert into tb values(-55), (-22), (-10), (-4), (0), (2), (6);
+select * from tb;
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a < -55;
+a
+select * from tb where a < 0;
+a
+-55
+-22
+-10
+-4
+select * from tb where a > 6;
+a
+select * from tb where a > 0;
+a
+2
+6
+select * from tb where a between -9223372036854775806 and 0;
+a
+-55
+-22
+-10
+-4
+0
+select * from tb where a between -22 and 7;
+a
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a between 22 and 33;
+a
+select * from tb where a between -555 and -56;
+a
+select * from tb where a not in (3333);
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a not in (-3,3333);
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a not in (-33333);
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a in (-3);
+a
+select * from tb where a in (-3, 3);
+a
+select * from tb where a is null;
+a
+select * from tb where a is not null;
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a in (not null);
+a
+select * from tb where a not in (null);
+a
+insert into tb values(null), (null);
+select * from tb;
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+NULL
+NULL
+select * from tb where a < -55;
+a
+select * from tb where a < 0;
+a
+-55
+-22
+-10
+-4
+select * from tb where a > 6;
+a
+select * from tb where a > 0;
+a
+2
+6
+select * from tb where a between -9223372036854775806 and 0;
+a
+-55
+-22
+-10
+-4
+0
+select * from tb where a between -22 and 7;
+a
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a between 22 and 33;
+a
+select * from tb where a between -555 and -56;
+a
+select * from tb where a not in (3333);
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a not in (-3,3333);
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a not in (-33333);
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a in (-3);
+a
+select * from tb where a in (-3, 3);
+a
+select * from tb where a is null;
+a
+NULL
+NULL
+select * from tb where a is not null;
+a
+-55
+-22
+-10
+-4
+0
+2
+6
+select * from tb where a in (not null);
+a
+select * from tb where a not in (null);
+a
+drop table tb;
+create table tb(a bigint) engine=tianmu;
+insert into tb values(0), (0), (0);
+select * from tb;
+a
+0
+0
+0
+select * from tb where a < -55;
+a
+select * from tb where a > 0;
+a
+select * from tb where a > -1;
+a
+0
+0
+0
+select * from tb where a between -3 and -1;
+a
+select * from tb where a between 1 and 3;
+a
+select * from tb where a between 0 and 0;
+a
+0
+0
+0
+select * from tb where a between -1 and 3;
+a
+0
+0
+0
+select * from tb where a between -1 and 0;
+a
+0
+0
+0
+select * from tb where a between 0 and 3;
+a
+0
+0
+0
+select * from tb where a not in (3);
+a
+0
+0
+0
+select * from tb where a not in (-3,3);
+a
+0
+0
+0
+select * from tb where a not in (-125);
+a
+0
+0
+0
+select * from tb where a in (-3);
+a
+select * from tb where a in (-3, 3);
+a
+select * from tb where a is null;
+a
+select * from tb where a is not null;
+a
+0
+0
+0
+select * from tb where a in (not null);
+a
+select * from tb where a not in (null);
+a
+insert into tb values(null), (null);
+select * from tb;
+a
+0
+0
+0
+NULL
+NULL
+select * from tb where a < -55;
+a
+select * from tb where a > 0;
+a
+select * from tb where a > -1;
+a
+0
+0
+0
+select * from tb where a between -3 and -1;
+a
+select * from tb where a between 1 and 3;
+a
+select * from tb where a between 0 and 0;
+a
+0
+0
+0
+select * from tb where a between -1 and 3;
+a
+0
+0
+0
+select * from tb where a between -1 and 0;
+a
+0
+0
+0
+select * from tb where a between 0 and 3;
+a
+0
+0
+0
+select * from tb where a not in (3);
+a
+0
+0
+0
+select * from tb where a not in (-3,3);
+a
+0
+0
+0
+select * from tb where a not in (-125);
+a
+0
+0
+0
+select * from tb where a in (-3);
+a
+select * from tb where a in (-3, 3);
+a
+select * from tb where a is null;
+a
+NULL
+NULL
+select * from tb where a is not null;
+a
+0
+0
+0
+select * from tb where a in (not null);
+a
+select * from tb where a not in (null);
+a
+drop table tb;
 DROP DATABASE select_from_test;
