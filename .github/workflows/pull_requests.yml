@@ -82,21 +82,21 @@ jobs:
       image: stoneatom/stonedb_buildenv:${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-        with:
-          ssh-strict: 'false'
-      - name: compile stonedb
-        id: compile
-        run: |
+      - run: |
           case ${{ matrix.os }} in
             debian10_1.0.3)
-              apt-get update && apt-get install curl lcov bc  libssl-dev -y
+              apt-get --allow-releaseinfo-change update && apt-get install curl lcov bc  libssl-dev -y
               ;;
             centos7_1.0.3)
               yum install curl lcov.noarch bc.x86_64 -y
               rm -rf /usr/bin/gcc && ln -s /opt/rh/devtoolset-9/root/bin/gcc /usr/bin/gcc
             ;;
           esac
-
+        #with:
+        #  ssh-strict: 'false'
+      - name: compile stonedb
+        id: compile
+        run: |
           mkdir build && cd build
           git config --global --add safe.directory /__w/stonedb/stonedb
           git fetch --tags
