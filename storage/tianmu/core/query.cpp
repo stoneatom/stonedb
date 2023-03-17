@@ -1341,6 +1341,9 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
       if ((op == common::Operator::O_LIKE || op == common::Operator::O_NOT_LIKE) &&
           !(an_arg->field_type() == MYSQL_TYPE_VARCHAR || an_arg->field_type() == MYSQL_TYPE_STRING ||
             an_arg->field_type() == MYSQL_TYPE_VAR_STRING || an_arg->field_type() == MYSQL_TYPE_BLOB ||
+            // for issue 1385:  feature: The data type of the field is the text,
+            // the subquery does not support using the like fuzzy query.
+            an_arg->field_type() == MYSQL_TYPE_MEDIUM_BLOB || an_arg->field_type() == MYSQL_TYPE_LONG_BLOB ||
             an_arg->field_type() == MYSQL_TYPE_NULL)) {  // issue: #763, Argument of LIKE is NULL
         return CondID(-1);                               // Argument of LIKE is not a string or null, return to MySQL.
       }

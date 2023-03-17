@@ -1,0 +1,22 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1385_test;
+--enable_warnings
+
+CREATE DATABASE issue1385_test;
+
+USE issue1385_test;
+
+create table ttt(name text);
+
+insert into ttt values('XXXXX');
+insert into ttt values('yyyyy');
+
+select * from (select concat(ifnull(name,'')) as c1 from ttt) as x where x.c1 like '%XXXX%';
+select * from (select ifnull(name,'') as c1 from ttt) as x where x.c1 like '%XXXX%';
+select * from (select concat(name,'') as c1 from ttt) as x where x.c1 like '%XXXX%';
+
+drop table ttt;
+
+DROP DATABASE issue1385_test;
