@@ -878,10 +878,10 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
   int64_t pv1 = d.val1.vc->GetValueInt64(mit);  // e.g.: between pv1 and pv2
   int64_t pv2 = d.val2.vc->GetValueInt64(mit);  // e.g.: between pv1 and pv2
   uint64_t upv1, upv2;                          // used uint64_t to store level 2 encode, ranges from [0, uint64_max]
-  // Only used when rough check = RS_ALL(no numeric data matchs), but table has null, rough check will be reset RS_SOME,
+  // special case(pv2 < local_min): table has both numerics and null values,for between pv1 and pv2, if pv1<local_min,
+  // rough check = RS_ALL(no numeric data matchs), but table has null, rough check will be reset RS_SOME,
   // so function EvaluatePack_BetweenInt() still be called to filter nulls, but no data matchs. This is a tmp solution,
   // we may find a better way to deal with this case. Used with upv2.
-  bool empty_flag = true;
   int64_t local_min = dpn.min_i;
   int64_t local_max = dpn.max_i;
   if (common::MINUS_INF_64 == pv1 || pv1 <= local_min)
@@ -894,9 +894,8 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
     // case: local_min < local_max <= pv2, we also reserve PLUS_INF_64 for special case like pv1
     upv2 = local_max - local_min;
   else
-    // case: local_min <= pv2 < local_max or pv2 < local_min(see comment empty_flag)
+    // case: local_min <= pv2 < local_max or pv2 < local_min
     upv2 = pv2 - local_min;
-  empty_flag = (pv2 < local_min) ? true : false;  // no data matchs and upv2 get a invalid value
 
   if (local_min != local_max) {
     auto p = get_packN(pack);
@@ -909,7 +908,7 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
         // easy and fast case - no "if"s
         for (uint32_t n = 0; n < dpn.numOfRecords; n++) {
           uint64_t v = p->GetValInt(n);
-          if (empty_flag || v < upv1 || v > upv2)
+          if ((pv2 < local_min) || v < upv1 || v > upv2)
             filter->Reset(pack, n);
         }
       } else {
@@ -919,7 +918,7 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
             filter->Reset(pack, n);
           else {
             uint64_t v = p->GetValInt(n);
-            bool res = empty_flag ? false : (upv1 <= v && v <= upv2);
+            bool res = (pv2 < local_min) ? false : (upv1 <= v && v <= upv2);
             if (d.op == common::Operator::O_NOT_BETWEEN)
               res = !res;
             if (!res)
@@ -933,7 +932,7 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
         // easy and fast case - no "if"s
         do {
           uint64_t v = p->GetValInt(mit.GetCurInpack(dim));
-          if (empty_flag || v < upv1 || v > upv2)
+          if ((pv2 < local_min) || v < upv1 || v > upv2)
             mit.ResetCurrent();
           ++mit;
         } while (mit.IsValid() && !mit.PackrowStarted());
@@ -945,7 +944,7 @@ void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descr
             mit.ResetCurrent();
           else {
             uint64_t v = p->GetValInt(inpack);
-            bool res = (empty_flag ? false : upv1 <= v && v <= upv2);
+            bool res = ((pv2 < local_min) ? false : upv1 <= v && v <= upv2);
             if (d.op == common::Operator::O_NOT_BETWEEN)
               res = !res;
             if (!res)
