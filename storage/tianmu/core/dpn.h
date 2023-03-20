@@ -42,11 +42,14 @@ struct DPN final {
   uint8_t data_compressed : 1;
   uint8_t no_compress : 1;
   uint8_t padding[3];
-  uint32_t base;       // index of the DPN from which we copied, used by local pack
-  uint64_t addr;       // data start address
-  uint64_t len;        // data length
-  uint32_t nr;         // number of records
-  uint32_t nn;         // number of nulls
+
+  uint32_t base;          // index of the DPN from which we copied, used by local pack
+  uint32_t numOfRecords;  // number of records
+  uint32_t numOfNulls;    // number of nulls
+
+  uint64_t dataAddress;  // data start address
+  uint64_t dataLength;   // data length
+
   common::TX_ID xmin;  // creation trx id
   common::TX_ID xmax;  // delete trx id
   union {
@@ -77,8 +80,10 @@ struct DPN final {
   void SetPackPtr(uint64_t v) { tagged_ptr.store(v); }
   bool Trivial() const { return Uniform() || NullOnly(); }
   bool NotTrivial() const { return !Trivial(); }
-  bool Uniform() const { return nn == 0 && min_i == max_i; }  // for packN, all records are the same and not null
-  bool NullOnly() const { return nr == nn; }
+  bool Uniform() const {
+    return numOfNulls == 0 && min_i == max_i;
+  }  // for packN, all records are the same and not null
+  bool NullOnly() const { return numOfRecords == numOfNulls; }
   bool IsLocal() const { return local == 1; }
   void SetLocal(bool v) { local = v; }
 
