@@ -905,13 +905,12 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
       throw common::DatabaseException("Unknown pack type" + Path().string());
       break;
   }
-
   DPN &dpn = get_dpn(pi);
-  Pack *pack = get_pack(pi);
-  if (!dpn.Trivial()) {
-    pack->Save();
-  }
-  if (current_txn_->LoadSource() == common::LoadSource::LS_File) {
+  if (current_txn_->LoadSource() == common::LoadSource::LS_File || dpn.numOfRecords == (1U << pss)) {
+    Pack *pack = get_pack(pi);
+    if (!dpn.Trivial()) {
+      pack->Save();
+    }
     if (pack) {
       pack->Unlock();
     }
