@@ -19,7 +19,7 @@ Currently, this shell script applies only to StoneDB-5.7.
 
 1. Download the shell script.
 ```sql
-wget https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/shell.for.deploy.stonedb.as.replic.tar.gz
+wget https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/shell.for.deploy.stonedb.as.replic.tar.gz
 ```
 
 2. Download the package of the shell script.
