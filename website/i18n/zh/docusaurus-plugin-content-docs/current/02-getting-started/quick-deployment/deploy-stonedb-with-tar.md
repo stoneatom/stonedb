@@ -8,12 +8,12 @@ sidebar_position: 3.13
 ## 步骤 1：安装 StoneDB
 1. 下载 StoneDB 软件包。
 ```sql
-wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/stonedb-ce-5.7-v1.0.2.el7.x86_64.tar.gz
+wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz
 ```
 
 2. 解压软件包。
 ```sql
-tar -vxf stonedb-ce-5.7-v1.0.2.el7.x86_64.tar.gz -C /opt/
+tar -vxf stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz -C /opt/
 ```
 
 3. 映射依赖包。

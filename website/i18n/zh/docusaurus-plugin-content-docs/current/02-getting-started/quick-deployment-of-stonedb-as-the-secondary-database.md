@@ -23,12 +23,12 @@ sidebar_position: 3.5
 1. 下载 Shell 脚本。您可以通过以下两种方式进行下载：
    - GitHub 下载
 ```sql
-wget https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/shell.for.deploy.stonedb.as.replic.tar.gz
+wget https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/shell.for.deploy.stonedb.as.replic.tar.gz
 ```
 
    - Gitee 下载
 ```sql
-wget  https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.2-GA/shell.for.deploy.stonedb.as.replic.tar.gz
+wget  https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.3-GA/shell.for.deploy.stonedb.as.replic.tar.gz
 ```
 ## 解压 Shell 脚本安装包。
 ```sql

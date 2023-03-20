@@ -8,12 +8,12 @@ sidebar_position: 3.15
 ## Step 1. Install StoneDB
 1. Download the StoneDB software package. 
 ```sql
-wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/stonedb-ce-5.7-v1.0.2.el7.x86_64.rpm
+wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7-v1.0.3.el7.x86_64.rpm
 ```
 
 2. Install the RPM package.
 ```sql
-rpm -ivh stonedb-ce-5.7-v1.0.2.el7.x86_64.rpm
+rpm -ivh stonedb-ce-5.7-v1.0.3.el7.x86_64.rpm
 ```
 :::info
 If this step fails,  run `ldd /opt/stonedb57/install/bin/mysqld | grep 'not found'` to check whether any dependent libraries are missing. If yes, run `source /opt/stonedb57/install/bin/sourceenv` and then retry this step.
