@@ -5,6 +5,7 @@ sql/build_info.h
 VERSION.dep
 CMakeCache
 CMakeFiles
+cmake-build-debug/
 
 # next import from mysql-server 8.0
 # emacs backup files
