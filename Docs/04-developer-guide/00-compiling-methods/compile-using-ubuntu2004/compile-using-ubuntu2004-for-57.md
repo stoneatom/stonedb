@@ -251,9 +251,9 @@ Differences between **reinstall.sh** and **install.sh**:
 - **install.sh** is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as **reinstall.sh**, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
 :::
 
-4. Log in to StoneDB.
+4. Login to StoneDB.
 ```shell
-cat /stonedb57/install/log/mysqld.log |grep passwd
+cat /stonedb57/install/log/mysqld.log |grep password
 [Note] A temporary password is generated for root@localhost: ceMuEuj6l4+!
 
 /stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install/tmp/mysql.sock

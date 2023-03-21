@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { IconFont } from '@site/src/components/icon';
+import { IconFont } from '@site/src/components/iconFont';
 
 export default function IconLanguage(): JSX.Element {
   return (
