@@ -1977,10 +1977,7 @@ void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_
   auto iter = m_table_keys.find(table_path);
   if (iter == m_table_keys.end()) {
     std::shared_ptr<index::RCTableIndex> tab = std::make_shared<index::RCTableIndex>(table_path, table);
-    if (tab->Enable())
-      m_table_keys[table_path] = tab;
-    else
-      tab.reset();
+    m_table_keys[table_path] = tab;
   }
 }
 

@@ -42,8 +42,7 @@ rocksdb::Status KVTransaction::Put(rocksdb::ColumnFamilyHandle *column_family, c
 }
 
 rocksdb::Status KVTransaction::Delete(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key) {
-  index_batch_->Delete(column_family, key);
-  return rocksdb::Status::OK();
+  return index_batch_->Delete(column_family, key);
 }
 
 rocksdb::Iterator *KVTransaction::GetIterator(rocksdb::ColumnFamilyHandle *const column_family, bool skip_filter) {
@@ -64,15 +63,13 @@ rocksdb::Status KVTransaction::GetData(rocksdb::ColumnFamilyHandle *column_famil
 
 rocksdb::Status KVTransaction::PutData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                        const rocksdb::Slice &value) {
-  data_batch_->Put(column_family, key, value);
-  return rocksdb::Status::OK();
+  return data_batch_->Put(column_family, key, value);
 }
 
 rocksdb::Status KVTransaction::SingleDeleteData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key) {
   // notice: if a key is overwritten (by calling Put() multiple times), then the
   // result of calling SingleDelete() on this key is undefined, delete is better
-  data_batch_->SingleDelete(column_family, key);
-  return rocksdb::Status::OK();
+  return data_batch_->SingleDelete(column_family, key);
 }
 
 rocksdb::Iterator *KVTransaction::GetDataIterator(rocksdb::ReadOptions &ropts,
