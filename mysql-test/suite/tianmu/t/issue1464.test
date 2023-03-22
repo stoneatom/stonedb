@@ -1,0 +1,44 @@
+--source include/have_tianmu.inc
+--source include/have_binlog_format_row.inc
+--disable_warnings
+--source include/master-slave.inc
+--enable_warnings
+
+connection master;
+--echo # on master:
+--disable_warnings
+DROP DATABASE IF EXISTS issue1464_test;
+--enable_warnings
+CREATE DATABASE issue1464_test;
+USE issue1464_test;
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+USE issue1464_test;
+
+connection master;
+--echo # on master:
+create table ttt(id varchar(64) primary key,name varchar(10))engine=innodb;
+insert into ttt values('0000352b6b4f4011bd18da7176e22c03','AAA');
+insert into ttt values('000246c51ca745f893a705f1699e9b2a','BBB');
+insert into ttt values('00049c87d9c64c498e004f6b08f1dd38','CCC');
+delete from ttt where id='0000352b6b4f4011bd18da7176e22c03';
+select * from ttt order by id;
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show create table ttt;
+select * from ttt order by id;
+
+connection master;
+--echo # on master:
+insert into ttt values('0000352b6b4f4011bd18da7176e22c03','AAA');
+update ttt set name='name_' where id='000246c51ca745f893a705f1699e9b2a';
+select * from ttt order by id;
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+select * from ttt order by id;
+
+connection master;
+--echo # on master:
+DROP DATABASE issue1464_test;
+--source include/sync_slave_sql_with_master.inc
+stop slave;
