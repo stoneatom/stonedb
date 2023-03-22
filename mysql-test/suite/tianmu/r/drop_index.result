@@ -24,9 +24,9 @@ UNIQUE KEY `idx_uk` (`copy_id`),
 KEY `idx_firstname` (`first_name`),
 FULLTEXT KEY `idx_lastname` (`last_name`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
-set session sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set session tianmu_no_key_error=OFF;
 Warnings:
-Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+Warning	1287	'@@tianmu_no_key_error' is deprecated and will be removed in a future release.
 drop index idx_id on t1;
 ERROR HY000: Tianmu engine does not support unique index.
 drop index idx_name on t2;
