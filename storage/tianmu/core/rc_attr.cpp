@@ -875,8 +875,18 @@ void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
       break;
   }
 
-  if (!get_dpn(pi).Trivial())
-    get_pack(pi)->Save();
+  DPN &dpn = get_dpn(pi);
+  Pack *pack = get_pack(pi);
+  if (!dpn.Trivial()) {
+    pack->Save();
+  }
+  if (current_txn_->GetLoadSource() == common::LoadSource::LS_File) {
+    if (pack) {
+      pack->Unlock();
+    }
+    ha_rcengine_->cache.DropObject(get_pc(pi));
+    dpn.SetPackPtr(0);
+  }
 
   hdr.nr += nvs->NumOfValues();
   hdr.nn += (Type().NotNull() ? 0 : nvs->NumOfNulls());
