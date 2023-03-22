@@ -27,92 +27,22 @@
 namespace Tianmu {
 namespace index {
 
-const std::string generate_cf_name(uint index, TABLE *table) {
-  const char *comment = table->key_info[index].comment.str;
-  std::string key_comment = comment ? comment : "";
-  std::string cf_name = RdbKey::parse_comment(key_comment);
-  if (cf_name.empty() && !key_comment.empty())
-    return key_comment;
-
-  return cf_name;
-}
-
-void create_rdbkey(TABLE *table, uint i, std::shared_ptr<RdbKey> &new_key_def, rocksdb::ColumnFamilyHandle *cf_handle) {
-  uint index_id = ha_kvstore_->GetNextIndexId();
-  std::vector<ColAttr> vcols;
-  KEY *key_info = &table->key_info[i];
-  bool unsigned_flag;
-  for (uint n = 0; n < key_info->actual_key_parts; n++) {
-    Field *f = key_info->key_part[n].field;
-    switch (f->type()) {
-      case MYSQL_TYPE_LONGLONG:
-      case MYSQL_TYPE_LONG:
-      case MYSQL_TYPE_INT24:
-      case MYSQL_TYPE_SHORT:
-      case MYSQL_TYPE_TINY: {
-        unsigned_flag = ((Field_num *)f)->is_unsigned();  // stonedb8
-
-      } break;
-      default:
-        unsigned_flag = false;
-        break;
-    }
-    vcols.emplace_back(ColAttr{key_info->key_part[n].field->field_index(), f->type(), unsigned_flag});
-  }
-
-  const char *const key_name = table->key_info[i].name;
-  uchar index_type = (i == table->s->primary_key) ? static_cast<uchar>(IndexType::INDEX_TYPE_PRIMARY)
-                                                  : static_cast<uchar>(IndexType::INDEX_TYPE_SECONDARY);
-  uint16_t index_ver = (key_info->actual_key_parts > 1)
-                           ? static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_COLS)
-                           : static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL);
-  new_key_def = std::make_shared<RdbKey>(index_id, i, cf_handle, index_ver, index_type, false, key_name, vcols);
-}
-
-// Create structures needed for storing data in rocksdb. This is called when the
-// table is created.
-common::ErrorCode create_keys_and_cf(TABLE *table, std::shared_ptr<RdbTable> rdb_tbl) {
-  for (uint i = 0; i < rdb_tbl->GetRdbTableKeys().size(); i++) {
-    std::string cf_name = generate_cf_name(i, table);
-    if (cf_name == DEFAULT_SYSTEM_CF_NAME)
-      throw common::Exception("column family not valid for storing index data. cf: " + DEFAULT_SYSTEM_CF_NAME);
-
-    rocksdb::ColumnFamilyHandle *cf_handle = ha_kvstore_->GetCfHandle(cf_name);
-
-    if (!cf_handle) {
-      return common::ErrorCode::FAILED;
-    }
-    create_rdbkey(table, i, rdb_tbl->GetRdbTableKeys().at(i), cf_handle);
-  }
-
-  return common::ErrorCode::SUCCESS;
-}
-
-/* Returns index of primary key */
-uint pk_index(const TABLE *const table, std::shared_ptr<RdbTable> tbl_def) {
-  return table->s->primary_key == MAX_INDEXES ? tbl_def->GetRdbTableKeys().size() - 1 : table->s->primary_key;
-}
-
 RCTableIndex::RCTableIndex(const std::string &name, TABLE *table) {
   std::string fullname;
 
-  if (!NormalizeName(name, fullname)) {
-    TIANMU_LOG(LogCtl_Level::WARN, "normalize tablename %s fail!", name.c_str());
-    return;
-  }
+  // normalize the table name.
+  NormalizeName(name, fullname);
+  // does the table exists now.
   rocksdb_tbl_ = ha_kvstore_->FindTable(fullname);
-  if (rocksdb_tbl_ == nullptr) {
-    TIANMU_LOG(LogCtl_Level::WARN, "find table %s fail!", fullname.c_str());
-    return;
-  }
+  TIANMU_LOG(LogCtl_Level::WARN, "normalize tablename %s, table_full_name %s!", name.c_str(), fullname.c_str());
+
   keyid_ = table->s->primary_key;
-  rocksdb_key_ = rocksdb_tbl_->GetRdbTableKeys().at(pk_index(table, rocksdb_tbl_));
+  rocksdb_key_ = rocksdb_tbl_->GetRdbTableKeys().at(KVStore::pk_index(table, rocksdb_tbl_));
   // compatible version that primary key make up of one part
   if (table->key_info[keyid_].actual_key_parts == 1)
     index_of_columns_.push_back(table->key_info[keyid_].key_part[0].field->field_index());
   else
     rocksdb_key_->get_key_cols(index_of_columns_);
-  enable_ = true;
 }
 
 bool RCTableIndex::FindIndexTable(const std::string &name) {
@@ -145,7 +75,7 @@ common::ErrorCode RCTableIndex::CreateIndexTable(const std::string &name, TABLE 
   std::shared_ptr<RdbTable> tbl = std::make_shared<RdbTable>(str);
   tbl->GetRdbTableKeys().resize(table->s->keys);
 
-  if (create_keys_and_cf(table, tbl) != common::ErrorCode::SUCCESS) {
+  if (KVStore::create_keys_and_cf(table, tbl) != common::ErrorCode::SUCCESS) {
     return common::ErrorCode::FAILED;
   }
 
@@ -307,7 +237,7 @@ common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<s
 
 void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::string_view> &fields,
                             common::Operator op) {
-  if (!tab || !trans_) {
+  if (!tab || !txn_) {
     return;
   }
   StringWriter packkey, info;
@@ -316,7 +246,7 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
   rocksdb_key_->pack_key(packkey, fields, info);
   rocksdb::Slice key_slice((const char *)packkey.ptr(), packkey.length());
 
-  iter_ = std::shared_ptr<rocksdb::Iterator>(trans_->GetIterator(rocksdb_key_->get_cf(), true));
+  iter_ = std::shared_ptr<rocksdb::Iterator>(txn_->GetIterator(rocksdb_key_->get_cf(), true));
   switch (op) {
     case common::Operator::O_EQ:  //==
       iter_->Seek(key_slice);
@@ -348,12 +278,12 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
 }
 
 void KeyIterator::ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward) {
-  if (!tab || !trans_) {
+  if (!tab || !txn_) {
     return;
   }
   valid = true;
   rocksdb_key_ = tab->rocksdb_key_;
-  iter_ = std::shared_ptr<rocksdb::Iterator>(trans_->GetIterator(rocksdb_key_->get_cf(), true));
+  iter_ = std::shared_ptr<rocksdb::Iterator>(txn_->GetIterator(rocksdb_key_->get_cf(), true));
   std::string key = rocksdb_key_->get_boundary_key(forward);
 
   rocksdb::Slice key_slice((const char *)key.data(), key.length());

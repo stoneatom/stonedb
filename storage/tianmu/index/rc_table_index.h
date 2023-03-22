@@ -41,7 +41,6 @@ class RCTableIndex final {
   RCTableIndex() = delete;
   ~RCTableIndex() = default;
 
-  bool Enable() const { return enable_; }
   const std::vector<uint> &KeyCols() { return index_of_columns_; }
   static common::ErrorCode CreateIndexTable(const std::string &name, TABLE *table);
   static common::ErrorCode DropIndexTable(const std::string &name);
@@ -61,7 +60,6 @@ class RCTableIndex final {
   std::shared_ptr<RdbTable> rocksdb_tbl_;
   std::shared_ptr<RdbKey> rocksdb_key_;
   std::vector<uint> index_of_columns_;
-  bool enable_ = false;
   uint keyid_ = 0;
 };
 
@@ -69,7 +67,7 @@ class KeyIterator final {
  public:
   KeyIterator() = delete;
   KeyIterator(const KeyIterator &sec) : valid(sec.valid), iter_(sec.iter_), rocksdb_key_(sec.rocksdb_key_) {}
-  KeyIterator(KVTransaction *tx) : trans_(tx) {}
+  KeyIterator(KVTransaction *tx) : txn_(tx) {}
   void ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::string_view> &fields, common::Operator op);
   void ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward);
   common::ErrorCode GetCurKV(std::vector<std::string> &keys, uint64_t &row);
@@ -85,7 +83,7 @@ class KeyIterator final {
   bool valid = false;
   std::shared_ptr<rocksdb::Iterator> iter_;
   std::shared_ptr<RdbKey> rocksdb_key_;
-  KVTransaction *trans_;
+  KVTransaction *txn_;
 };
 
 }  // namespace index
