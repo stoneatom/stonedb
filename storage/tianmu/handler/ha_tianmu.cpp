@@ -1570,13 +1570,14 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
         ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table: mix add/drop key
-    sql_mode_t sql_mode = ha_thd()->slave_thread ? global_system_variables.sql_mode : ha_thd()->variables.sql_mode;
+    my_bool tianmu_no_key_error =
+        ha_thd()->slave_thread ? global_system_variables.tianmu_no_key_error : ha_thd()->variables.tianmu_no_key_error;
     if ((ha_alter_info->handler_flags & Alter_inplace_info::ADD_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::DROP_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::ADD_UNIQUE_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::RENAME_INDEX ||
          ha_alter_info->handler_flags & Alter_inplace_info::DROP_UNIQUE_INDEX) &&
-        (sql_mode & MODE_NO_KEY_ERROR))
+        tianmu_no_key_error)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);

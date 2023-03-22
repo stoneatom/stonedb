@@ -1,9 +1,9 @@
 use test;
 drop table IF EXISTS tmp_table;
 # 
-# sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+# tianmu_mandatory=OFF
 # 
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
 create table t_issue1131(c1 int,c2 varchar(255))engine=innodb;
 show create table t_issue1131;
 Table	Create Table
@@ -11,9 +11,6 @@ t_issue1131	CREATE TABLE `t_issue1131` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
-show variables like 'sql_mode';
-Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show variables like '%_engine';
 Variable_name	Value
 default_storage_engine	TIANMU
@@ -40,9 +37,9 @@ tmp_table	CREATE TEMPORARY TABLE `tmp_table` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 drop table tmp_table;
 # 
-# sql_mode='MANDATORY_TIANMU'
+# tianmu_mandatory=ON
 # 
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set tianmu_mandatory=ON;
 create table t_issue1131(c1 int,c2 varchar(255))engine=innodb;
 show create table t_issue1131;
 Table	Create Table
@@ -50,9 +47,6 @@ t_issue1131	CREATE TABLE `t_issue1131` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
-show variables like 'sql_mode';
-Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
 show variables like '%_engine';
 Variable_name	Value
 default_storage_engine	TIANMU
@@ -79,9 +73,9 @@ tmp_table	CREATE TEMPORARY TABLE `tmp_table` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 drop table tmp_table;
 # 
-# sql_mode='MANDATORY_TIANMU'
+# tianmu_mandatory=ON
 # set default_storage_engine=innodb;
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set tianmu_mandatory=ON;
 set default_storage_engine=innodb;
 create table t_issue1131(c1 int,c2 varchar(255));
 show create table t_issue1131;
@@ -90,9 +84,6 @@ t_issue1131	CREATE TABLE `t_issue1131` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
-show variables like 'sql_mode';
-Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
 show variables like '%_engine';
 Variable_name	Value
 default_storage_engine	InnoDB
@@ -119,10 +110,10 @@ tmp_table	CREATE TEMPORARY TABLE `tmp_table` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 drop table tmp_table;
 # 
-# sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+# tianmu_mandatory=OFF
 # 
 [on slave]
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
 create table t_issue1131(c1 int,c2 varchar(255));
 show create table t_issue1131;
 Table	Create Table
@@ -130,9 +121,6 @@ t_issue1131	CREATE TABLE `t_issue1131` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
-show variables like 'sql_mode';
-Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show variables like '%_engine';
 Variable_name	Value
 default_storage_engine	InnoDB

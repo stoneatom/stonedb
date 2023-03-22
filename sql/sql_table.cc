@@ -3933,17 +3933,16 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
     }
     (*key_count)++;
     tmp=file->max_key_parts();
-    sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
+    my_bool tianmu_no_key_error = thd->slave_thread ? global_system_variables.tianmu_no_key_error : 
+                                                                    thd->variables.tianmu_no_key_error;
     if ((create_info->db_type->db_type == DB_TYPE_TIANMU)) {
       if ((file->ha_table_flags() & HA_NON_SECONDARY_KEY) &&
-          (key->type == KEYTYPE_MULTIPLE) &&
-          !(sql_mode & MODE_NO_KEY_ERROR)) {
+          (key->type == KEYTYPE_MULTIPLE) && !tianmu_no_key_error) {
         my_error(ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX, MYF(0));
         DBUG_RETURN(TRUE);
       }
       if ((file->ha_table_flags() & HA_NON_UNIQUE_KEY) &&
-          (key->type == KEYTYPE_UNIQUE) &&
-          (!(sql_mode & MODE_NO_KEY_ERROR))) {
+          (key->type == KEYTYPE_UNIQUE) && !tianmu_no_key_error) {
         my_error(ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX, MYF(0));
         DBUG_RETURN(TRUE);
       }
@@ -4081,8 +4080,9 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
           DBUG_RETURN(TRUE);
         }
         if (create_info->db_type->db_type == DB_TYPE_TIANMU){
-          sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
-          if(!(sql_mode & MODE_NO_KEY_ERROR)) {
+          my_bool tianmu_no_key_error = thd->slave_thread ? global_system_variables.tianmu_no_key_error : 
+                                                                    thd->variables.tianmu_no_key_error;
+          if(!tianmu_no_key_error) {
             my_message(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX,
                       ER(ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX), MYF(0));
             DBUG_RETURN(TRUE);
@@ -8318,9 +8318,9 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
 	  !my_strcasecmp(system_charset_info,key_name, drop->name)) {
       // for issue 1342 and 1343, if sql_mode does not contains NO_KEY_ERROR, 
       // drop unique key, sencondary index, and fulltext index will return an error.
-      sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
-      if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
-            !(sql_mode & MODE_NO_KEY_ERROR)) {
+      my_bool tianmu_no_key_error = thd->slave_thread ? global_system_variables.tianmu_no_key_error : 
+                                                                    thd->variables.tianmu_no_key_error;
+      if ((create_info->db_type->db_type == DB_TYPE_TIANMU) && !tianmu_no_key_error) {
         if (key_info->flags & HA_SPATIAL){
           //key_type= KEYTYPE_SPATIAL; 
           //do nothing
@@ -8524,12 +8524,12 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
     // Now this contains only DROP for foreign keys and not-found objects
     Alter_drop *drop;
     drop_it.rewind();
-    sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
+    my_bool tianmu_no_key_error = thd->slave_thread ? global_system_variables.tianmu_no_key_error : 
+                                                                thd->variables.tianmu_no_key_error;
     while ((drop=drop_it++)) {
       switch (drop->type) {
       case Alter_drop::KEY:
-        if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
-            (!(sql_mode & MODE_NO_KEY_ERROR))) {
+        if ((create_info->db_type->db_type == DB_TYPE_TIANMU) && !tianmu_no_key_error) {
           my_error(ER_TIANMU_NOT_FOUND_INDEX, MYF(0));
           goto err;
         }
@@ -8539,8 +8539,7 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
                  alter_info->drop_list.head()->name);
         goto err;
       case Alter_drop::FOREIGN_KEY:
-        if ((create_info->db_type->db_type == DB_TYPE_TIANMU) &&
-            (!(sql_mode & MODE_NO_KEY_ERROR))) {
+        if ((create_info->db_type->db_type == DB_TYPE_TIANMU) && !tianmu_no_key_error) {
           my_error(ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY, MYF(0));
         }
         break;
@@ -8555,8 +8554,9 @@ mysql_prepare_alter_table(THD *thd, TABLE *table,
   if (rename_key_list.elements)
   {
     if (create_info->db_type->db_type == DB_TYPE_TIANMU){
-      sql_mode_t sql_mode = thd->slave_thread ? global_system_variables.sql_mode : thd->variables.sql_mode;
-      if(!(sql_mode & MODE_NO_KEY_ERROR)){
+      my_bool tianmu_no_key_error = thd->slave_thread ? global_system_variables.tianmu_no_key_error : 
+                                                                thd->variables.tianmu_no_key_error;
+      if(!tianmu_no_key_error){
         my_error(ER_TIANMU_NOT_FOUND_INDEX, MYF(0));
         goto err;
       }

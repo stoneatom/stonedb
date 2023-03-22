@@ -15,14 +15,6 @@ CREATE DATABASE issue1325_test;
 
 USE issue1325_test;
 
---source include/sync_slave_sql_with_master.inc
---echo # on slave:
-USE issue1325_test;
-show databases;
---disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU,NO_KEY_ERROR';
---enable_warnings
-
 --echo #
 --echo # Secondary INDEX
 --echo # 
@@ -40,8 +32,7 @@ show create table ttt;
 
 --source include/sync_slave_sql_with_master.inc
 --echo # on slave:
-connection master;
---echo # on master:
+USE issue1325_test;
 show create table ttt;
 
 --echo #
@@ -61,7 +52,6 @@ show create table xxx;
 --source include/sync_slave_sql_with_master.inc
 --echo # on slave:
 show create table xxx;
-
 
 --echo #
 --echo # Full-text index

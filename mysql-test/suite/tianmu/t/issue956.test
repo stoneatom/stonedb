@@ -5,14 +5,14 @@
 --enable_warnings
 
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # tianmu_mandatory=OFF
 --echo # default_storage_engine=innodb
 --echo # 
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 set global default_storage_engine=innodb;
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global tianmu_mandatory=OFF;
 --enable_warnings
 
 --echo [on master]
@@ -41,13 +41,13 @@ drop table t_issue956;
 
 
 --echo # 
---echo # sql_mode='MANDATORY_TIANMU'
+--echo # tianmu_mandatory=ON
 --echo # default_storage_engine=innodb
 --echo # 
 --echo [on slave]
 set global default_storage_engine=innodb;
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set global tianmu_mandatory=ON;
 --enable_warnings
 
 --echo [on master]
@@ -75,13 +75,13 @@ drop table t_issue956_2;
 --source include/sync_slave_sql_with_master.inc
 
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # tianmu_mandatory=OFF
 --echo # default_storage_engine=tianmu
 --echo # 
 --echo [on slave]
 set global default_storage_engine=tianmu;
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global tianmu_mandatory=OFF;
 --enable_warnings
 
 --echo [on master]
@@ -110,13 +110,13 @@ drop table t_issue956_3;
 --source include/sync_slave_sql_with_master.inc
 
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU'
+--echo # tianmu_mandatory=ON
 --echo # default_storage_engine=tianmu
 --echo # 
 --echo [on slave]
 set global default_storage_engine=tianmu;
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set global tianmu_mandatory=ON;
 --enable_warnings
 
 
@@ -146,13 +146,13 @@ drop table t_issue956_4;
 --source include/sync_slave_sql_with_master.inc
 
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # tianmu_mandatory=OFF
 --echo # default_storage_engine=MyISAM
 --echo # 
 --echo [on slave]
 set global default_storage_engine=MyISAM;
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global tianmu_mandatory=OFF;
 --enable_warnings
 
 --echo [on master]

@@ -3904,7 +3904,7 @@ static const char *sql_mode_names[]=
   "STRICT_ALL_TABLES", "NO_ZERO_IN_DATE", "NO_ZERO_DATE",
   "ALLOW_INVALID_DATES", "ERROR_FOR_DIVISION_BY_ZERO", "TRADITIONAL",
   "NO_AUTO_CREATE_USER", "HIGH_NOT_PRECEDENCE", "NO_ENGINE_SUBSTITUTION",
-  "PAD_CHAR_TO_FULL_LENGTH", "MANDATORY_TIANMU", "NO_KEY_ERROR",
+  "PAD_CHAR_TO_FULL_LENGTH",
   0
 };
 export bool sql_mode_string_representation(THD *thd, sql_mode_t sql_mode,
@@ -5991,6 +5991,26 @@ static Sys_var_mybool Sys_show_old_temporals(
        "table as a comment in COLUMN_TYPE field. "
        "This variable is deprecated and will be removed in a future release.",
         SESSION_VAR(show_old_temporals),
+        CMD_LINE(OPT_ARG, OPT_SHOW_OLD_TEMPORALS),
+        DEFAULT(FALSE), NO_MUTEX_GUARD, NOT_IN_BINLOG,
+        ON_CHECK(0), ON_UPDATE(0),
+        DEPRECATED_VAR(""));
+
+static Sys_var_mybool Sys_tianmu_mandatory(
+       "tianmu_mandatory",
+       "Specifies whether to enable mandatory Tianmu engine in table."
+       "if yes ,set tianmu_mandatory to ON, otherwise set the variable to OFF.",
+        SESSION_VAR(tianmu_mandatory),
+        CMD_LINE(OPT_ARG, OPT_SHOW_OLD_TEMPORALS),
+        DEFAULT(FALSE), NO_MUTEX_GUARD, NOT_IN_BINLOG,
+        ON_CHECK(0), ON_UPDATE(0),
+        DEPRECATED_VAR(""));
+
+static Sys_var_mybool Sys_tianmu_no_key_error(
+       "tianmu_no_key_error",
+       "Specifies whether to to directly skip DDL statements that are not supported by the SQL layer,"
+       "instead of reporting errors. if yes ,set tianmu_no_key_error to ON, otherwise set the variable to OFF.",
+        SESSION_VAR(tianmu_no_key_error),
         CMD_LINE(OPT_ARG, OPT_SHOW_OLD_TEMPORALS),
         DEFAULT(FALSE), NO_MUTEX_GUARD, NOT_IN_BINLOG,
         ON_CHECK(0), ON_UPDATE(0),
