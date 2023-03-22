@@ -19,7 +19,6 @@
 </div> 
 
 - [What is StoneDB](#what-is-stonedb)
-- [Contribution](#contribution)
 - [Getting Started](#getting-started)
   - [Supported Platform](#supported-platform)
   - [Build StoneDB from the Source Code](#build-stonedb-from-the-source-code)
@@ -33,6 +32,7 @@
   - [Create a StoneDB Table](#create-a-stonedb-table)
   - [Switch from MySQL to StoneDB in Production](#switch-from-mysql-to-stonedb-in-production)
 - [Documentation](#documentation)
+- [Contribution](#contribution)
 - [Discussion](#discussion)
 - [Join StoneDB Wechat Group](#join-stonedb-wechat-group)
 - [Code of Conduct](#code-of-conduct)
@@ -54,10 +54,6 @@ StoneDB is a MySQL-compatible high-performance hybrid transaction/analytical pro
 
 
 For more information about StoneDB, see [stonedb.io](https://stonedb.io/).
-
-# Contribution
-
-StoneDB welcomes all kinds of contributions, such as contributing code to the code base, sharing your experience on how to use StoneDB, and providing insights in the community on the Forums, or contributing to projects that make StoneDB a better project. For more specifics, see the [contributing guide](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CONTRIBUTING.md) for more specifics.
 
 # Getting Started
 
@@ -173,6 +169,10 @@ Online migration tools to move data between storage engines are not currently de
 # Documentation
 
 Documentation can be found online at [https://stonedb.io](https://stonedb.io/docs/about-stonedb/intro). The documentation provides you with StoneDB basics, extensive examples of using StoneDB, as well as other information that you may need during your usage of StoneDB.
+
+# Contribution
+
+StoneDB welcomes all kinds of contributions, such as contributing code to the code base, sharing your experience on how to use StoneDB, and providing insights in the community on the Forums, or contributing to projects that make StoneDB a better project. For more specifics, see the [contributing guide](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CONTRIBUTING.md) for more specifics.
 
 # Discussion
 

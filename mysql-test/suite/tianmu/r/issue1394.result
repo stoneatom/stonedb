@@ -1,0 +1,79 @@
+DROP DATABASE IF EXISTS issue1394_test;
+CREATE DATABASE issue1394_test;
+USE issue1394_test;
+create table c(c1 int, c2 varchar(2)) engine=TIANMU;
+create table d(d1 int, d2 varchar(2)) engine=TIANMU;
+insert into c values(1, 'c1');
+insert into c values(2, 'c2');
+insert into c values(null, 'c3');
+insert into d values(1, 'd1');
+insert into d values(2, 'd2');
+insert into d values(null, 'd3');
+select * from d;
+d1	d2
+1	d1
+2	d2
+NULL	d3
+select * from d limit 0;
+d1	d2
+select * from d limit 1;
+d1	d2
+1	d1
+select * from d where d1=1 limit 0;
+d1	d2
+select * from d where d1=1 limit 1;
+d1	d2
+1	d1
+select * from c where  exists ( select * from d where d1=1  limit 0);
+c1	c2
+1	c1
+2	c2
+NULL	c3
+select * from c where  exists ( select * from d where d1=1  limit 1);
+c1	c2
+1	c1
+2	c2
+NULL	c3
+select * from c where  exists ( select * from d where d1=1  limit 0,1) limit 0;
+c1	c2
+select * from c where  exists ( select * from d where d1=1  limit 0,1) limit 1;
+c1	c2
+1	c1
+select * from c where  exists ( select * from d where d1=1  limit 0) limit 0;
+c1	c2
+select * from c where  exists ( select * from d where d1=1  limit 1) limit 1;
+c1	c2
+1	c1
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL;
+c1	c2	d1	d2
+NULL	NULL	NULL	d3
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL limit 1;
+c1	c2	d1	d2
+NULL	NULL	NULL	d3
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL limit 0;
+c1	c2	d1	d2
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL;
+c1	c2	d1	d2
+1	c1	1	d1
+2	c2	2	d2
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL limit 1;
+c1	c2	d1	d2
+1	c1	1	d1
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL limit 0;
+c1	c2	d1	d2
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL;
+c1	c2	d1	d2
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL limit 1;
+c1	c2	d1	d2
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL limit 0;
+c1	c2	d1	d2
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL;
+c1	c2	d1	d2
+1	c1	1	d1
+2	c2	2	d2
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL limit 1;
+c1	c2	d1	d2
+1	c1	1	d1
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL limit 0;
+c1	c2	d1	d2
+DROP DATABASE issue1394_test;

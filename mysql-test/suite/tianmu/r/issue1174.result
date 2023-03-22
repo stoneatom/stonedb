@@ -31,6 +31,13 @@ id	name
 0	lllll
 [on slave]
 include/sync_slave_sql_with_master.inc
+show create table ttt;
+Table	Create Table
+ttt	CREATE TABLE `ttt` (
+  `id` int(11) NOT NULL,
+  `name` varchar(64) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
 select * from ttt where id in(1,3,2,0) order by id desc;
 id	name
 3	lllll

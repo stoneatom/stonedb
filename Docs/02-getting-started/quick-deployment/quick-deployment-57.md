@@ -5,14 +5,14 @@ sidebar_position: 3.12
 
 # Quick Deploy StoneDB-5.7
 ## 1. Download the installation package
-Click [here](https://static.stoneatom.com/custom/stonedb-ce-5.7-v1.0.2.el7.x86_64.tar.gz) to download the latest installation package of StoneDB. 
+Click [here](https://static.stoneatom.com/custom/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz) to download the latest installation package of StoneDB. 
 :::info
 To simplify deployment, the installation package provided here is pre-compiled to include all required dependencies.
 :::
 ## 2. Upload and decompress the TAR package
 ```shell
 cd /
-tar -zxvf stonedb-ce-5.7-v1.0.2.el7.x86_64.tar.gz
+tar -zxvf stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz
 ```
 You can upload the installation package to the server. The name of the folder extracted from the package is **stonedb57**. In this topic, **/stonedb57** is used as the installation package.
 ## 3. Check dependencies

@@ -10,12 +10,12 @@ sidebar_position: 3.14
 
 - GitHub 下载
 ```sql
-wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
 ```
 
    - Gitee 下载
 ```sql
-wget https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.2-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+wget https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
 ```
 
 2. 使用 DPKG 命令进行安装。

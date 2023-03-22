@@ -1,0 +1,176 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1332;
+--enable_warnings
+CREATE DATABASE issue1332;
+USE issue1332;
+
+--disable_warnings
+drop table if exists tb;
+--enable_warnings
+
+
+# fix between ... and ... : https://github.com/stoneatom/stonedb/issues/1332
+# test values with boundary, with not null, tinyint~mediumint never be overflow, decimal cond has been tested in where_conditions.test.
+create table tb(a bigint, b int, c DATETIME) engine=tianmu;
+insert into tb values(-9223372036854775806, 2147483647, '1111-11-11 11:11:11'),
+       (-922337203685477580, -2147483647, '1111-11-11 11:11:11'),
+       (-55, -55, '1111-11-11 11:11:11'),
+       (-22, 22, '1111-11-11 11:11:11'),
+       (-10, 33, '1111-11-11 11:11:11'),
+       (-4, 44, '1111-11-11 11:11:11'),
+       (0, 0, '1111-11-11 11:11:11'),
+       (2, 2, '1111-11-11 11:11:11'),
+       (6, 6, '1111-11-11 11:11:11'),
+       (9223372036854775807, 8, '1111-11-11 11:11:11');
+select * from tb;
+select * from tb where a < -10;
+select * from tb where a > 4567890123456789;
+select * from tb where a > 0;
+select * from tb where a between -9223372036854775806 and 0;
+select * from tb where a between -9223372036854775807 and 0; # NULL_VALUE
+select * from tb where a between -9223372036854775808 and 9223372036854775807; # min~max
+select * from tb where a between -22 and 7;
+select * from tb where a not in (3);
+select * from tb where a not in (-3,3);
+select * from tb where a not in (-3);
+select * from tb where a in (-3);
+select * from tb where a in (-3, 3);
+select * from tb where a in (select sum(b) from tb where b < 6);
+select * from tb where a is null; # emtpy
+select * from tb where a is not null; # emtpy
+select * from tb where a in (not null); # emtpy
+select * from tb where a not in (null); # emtpy
+
+select * from tb where b < -10;
+select * from tb where b < 2147483647;
+select * from tb where b > -2147483647;
+select * from tb where b > 0;
+select * from tb where b between -2147483647 and 0;
+select * from tb where b between -22 and 7;
+select * from tb where b not in (3);
+select * from tb where b not in (-3,3);
+select * from tb where b not in (-3);
+select * from tb where b in (-3);
+select * from tb where b in (-3, 3);
+select * from tb where b is null; # emtpy
+select * from tb where b is not null; # emtpy
+select * from tb where b in (not null); # emtpy
+select * from tb where b not in (null); # emtpy
+SELECT * FROM tb WHERE c BETWEEN '111-11-10' AND '1111-11-12';
+
+# test with null
+insert into tb values(null, null, null), (null, null, null);
+select * from tb;
+select * from tb where a < -10;
+select * from tb where a > 4567890123456789;
+select * from tb where a > 0;
+select * from tb where a between -9223372036854775806 and 0;
+select * from tb where a between -22 and 7;
+select * from tb where a not in (3);
+select * from tb where a not in (-3,3);
+select * from tb where a not in (-3);
+select * from tb where a in (-3);
+select * from tb where a in (-3, 3);
+select * from tb where a is null; # emtpy
+select * from tb where a is not null; # emtpy
+select * from tb where a in (not null); # emtpy
+select * from tb where a not in (null); # emtpy
+
+drop table tb;
+
+# test normal values, with not null
+create table tb(a bigint) engine=tianmu;
+insert into tb values(-55), (-22), (-10), (-4), (0), (2), (6);
+select * from tb;
+select * from tb where a < -55;
+select * from tb where a < 0;
+select * from tb where a > 6;
+select * from tb where a > 0;
+select * from tb where a between -9223372036854775806 and 0;
+select * from tb where a between -22 and 7;
+select * from tb where a between 22 and 33;
+select * from tb where a between -555 and -56;
+select * from tb where a not in (3333);
+select * from tb where a not in (-3,3333);
+select * from tb where a not in (-33333);
+select * from tb where a in (-3);
+select * from tb where a in (-3, 3);
+select * from tb where a is null; # emtpy
+select * from tb where a is not null; # emtpy
+select * from tb where a in (not null); # emtpy
+select * from tb where a not in (null); # emtpy
+
+# test with null
+insert into tb values(null), (null);
+select * from tb;
+select * from tb where a < -55;
+select * from tb where a < 0;
+select * from tb where a > 6;
+select * from tb where a > 0;
+select * from tb where a between -9223372036854775806 and 0;
+select * from tb where a between -9223372036854775807 and 0;
+select * from tb where a between -22 and 7;
+select * from tb where a between 22 and 33;
+select * from tb where a between -555 and -56;
+select * from tb where a not in (3333);
+select * from tb where a not in (-3,3333);
+select * from tb where a not in (-33333);
+select * from tb where a in (-3);
+select * from tb where a in (-3, 3);
+select * from tb where a is null; # emtpy
+select * from tb where a is not null; # emtpy
+select * from tb where a in (not null); # emtpy
+select * from tb where a not in (null); # emtpy
+
+drop table tb;
+
+# test max=min, with not null
+create table tb(a bigint) engine=tianmu;
+insert into tb values(0), (0), (0);
+select * from tb;
+select * from tb where a < -55;
+select * from tb where a > 0;
+select * from tb where a > -1;
+select * from tb where a between -3 and -1;
+select * from tb where a between 1 and 3;
+select * from tb where a between 0 and 0;
+select * from tb where a between -1 and 3;
+select * from tb where a between -1 and 0;
+select * from tb where a between 0 and 3;
+select * from tb where a not in (3);
+select * from tb where a not in (-3,3);
+select * from tb where a not in (-125);
+select * from tb where a in (-3);
+select * from tb where a in (-3, 3);
+select * from tb where a is null; # emtpy
+select * from tb where a is not null; # emtpy
+select * from tb where a in (not null); # emtpy
+select * from tb where a not in (null); # emtpy
+
+# test with null
+insert into tb values(null), (null);
+select * from tb;
+select * from tb where a < -55;
+select * from tb where a > 0;
+select * from tb where a > -1;
+select * from tb where a between -3 and -1;
+select * from tb where a between 1 and 3;
+select * from tb where a between 0 and 0;
+select * from tb where a between -1 and 3;
+select * from tb where a between -1 and 0;
+select * from tb where a between 0 and 3;
+select * from tb where a not in (3);
+select * from tb where a not in (-3,3);
+select * from tb where a not in (-125);
+select * from tb where a in (-3);
+select * from tb where a in (-3, 3);
+select * from tb where a is null; # emtpy
+select * from tb where a is not null; # emtpy
+select * from tb where a in (not null); # emtpy
+select * from tb where a not in (null); # emtpy
+
+drop table tb;
+
+DROP DATABASE issue1332;
