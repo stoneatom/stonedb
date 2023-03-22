@@ -1301,7 +1301,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
   if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rdbkey_->get_cf(), nullptr,
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
                                         nullptr);
   }
 

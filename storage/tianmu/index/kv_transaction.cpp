@@ -94,15 +94,22 @@ void KVTransaction::Releasesnapshot() {
 
 bool KVTransaction::Commit() {
   bool res = true;
+  // firstly, release the snapshot.
   Releasesnapshot();
+  // if we have data to commit, then do writing index data ops by KVWriteBatch.
   auto index_write_batch = index_batch_->GetWriteBatch();
   if (index_write_batch && index_write_batch->Count() > 0 &&
       !ha_kvstore_->KVWriteBatch(write_opts_, index_write_batch)) {
+    // write failed.
     res = false;
   }
+  // write the data.
   if (res && data_batch_->Count() > 0 && !ha_kvstore_->KVWriteBatch(write_opts_, data_batch_.get())) {
+    // write failed.
     res = false;
   }
+
+  // writes the data sucessfully, then clean up xxx_batch.
   index_batch_->Clear();
   data_batch_->Clear();
   return res;

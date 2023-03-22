@@ -92,6 +92,7 @@ class KVStore final {
     return txn_db_->NewIterator(ropts, cf);
   }
 
+  // write mult-rows in batch mode with write options.
   bool KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch);
   // gets snapshot from rocksdb.
   const rocksdb::Snapshot *GetRdbSnapshot() { return txn_db_->GetSnapshot(); }
