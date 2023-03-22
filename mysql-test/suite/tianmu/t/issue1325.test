@@ -110,5 +110,4 @@ DROP DATABASE issue1325_test;
 
 --source include/sync_slave_sql_with_master.inc
 --echo # on slave:
-show databases;
 stop slave;

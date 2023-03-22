@@ -134,15 +134,4 @@ student_score	CREATE TABLE `student_score` (
 DROP DATABASE issue1325_test;
 include/sync_slave_sql_with_master.inc
 # on slave:
-show databases;
-Database
-information_schema
-cache
-mtr
-mysql
-performance_schema
-sys
-sys_tianmu
-test
-tianmu_data
 stop slave;

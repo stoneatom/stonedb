@@ -1035,7 +1035,6 @@ void ha_tianmu::position([[maybe_unused]] const uchar *record) {
   if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES) {
     /* Copy primary key as the row reference */
     KEY *key_info = table->key_info + table->s->primary_key;
-    key_copy(ref, (uchar *)record, key_info, key_info->key_length);
     ref_length = key_info->key_length;
     active_index = table->s->primary_key;
   } else {
