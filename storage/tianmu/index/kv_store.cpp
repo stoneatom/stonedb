@@ -198,7 +198,7 @@ common::ErrorCode KVStore::KVDelTableMeta(const std::string &tablename) {
 
   // Remove the table entry in data dictionary (this will also remove it from
   // the persistent data dictionary).
-  dict_manager_.add_drop_table(tbl->m_rdbkeys, batch);
+  dict_manager_.add_drop_table(tbl->GetRdbTableKeys(), batch);
   ddl_manager_.remove(tbl, batch);
   if (!dict_manager_.commit(batch)) {
     return common::ErrorCode::FAILED;
