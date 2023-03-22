@@ -56,8 +56,8 @@ void GroupDistinctTable::InitializeVC(int64_t max_no_groups, vcolumn::VirtualCol
   DEBUG_ASSERT(!initialized);
   if (max_bytes > 0)
     max_total_size = max_bytes;
-  if (max_bytes > 2000000000)  // possible for large aggregation settings, but
-                               // not allowed here - limit to 1 GB
+  if (max_bytes > 2_GB)  // possible for large aggregation settings, but
+                         // not allowed here - limit to 1 GB
     max_total_size = 1_GB;
   if (max_no_rows == common::NULL_VALUE_64)
     max_no_rows = 0;  // not known
@@ -137,9 +137,10 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
     no_rows++;
   rows_limit = int64_t(no_rows * 0.9);  // rows_limit is used to determine whether the table is full
 
-  t = (unsigned char *)alloc(total_width * no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
+  t = static_cast<unsigned char *>(alloc(total_width * no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY));
   //	t = new BlockedRowMemStorage(total_width, &mem_mngr, no_rows);
-  input_buffer = (unsigned char *)(new int[total_width / 4 + 1]);  // ensure proper memory alignment
+  input_buffer = reinterpret_cast<unsigned char *>(new int[total_width / 4 + 1]);  // ensure proper memory alignment
+  memset(input_buffer, 0, total_width / 4 + 1);
   rc_control_.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), "
                                           << group_bytes << "+" << value_bytes << " bytes." << system::unlock;
   Clear();
@@ -163,7 +164,7 @@ GDTResult GroupDistinctTable::Find(int64_t group, int64_t val)  // numeric value
     return GDTResult::GBIMODE_AS_TEXT;  // "Added" means "found" here.
   }
   group += 1;  // offset; 0 means empty position
-  std::memmove(input_buffer, (unsigned char *)(&group), group_bytes);
+  std::memmove(input_buffer, reinterpret_cast<unsigned char *>(&group), group_bytes);
   bool encoded = encoder->PutValue64(input_buffer + group_bytes, val, false);
   ASSERT(encoded, "encode failed!");
   return FindCurrentRow(true);
@@ -179,7 +180,7 @@ GDTResult GroupDistinctTable::Add(int64_t group, MIIterator &mit) {
     return GDTResult::GBIMODE_AS_TEXT;
   }
   group += 1;  // offset; 0 means empty position
-  std::memmove(input_buffer, (unsigned char *)(&group), group_bytes);
+  std::memmove(input_buffer, reinterpret_cast<unsigned char *>(&group), group_bytes);
   encoder->Encode(input_buffer + group_bytes, mit, nullptr, true);
   return FindCurrentRow();
 }
@@ -195,7 +196,7 @@ GDTResult GroupDistinctTable::Add(int64_t group, int64_t val)  // numeric values
     return GDTResult::GBIMODE_AS_TEXT;
   }
   group += 1;  // offset; 0 means empty position
-  std::memmove(input_buffer, (unsigned char *)(&group), group_bytes);
+  std::memmove(input_buffer, reinterpret_cast<unsigned char *>(&group), group_bytes);
   bool encoded = encoder->PutValue64(input_buffer + group_bytes, val, false, true);
   ASSERT(encoded, "encode failed!");
   return FindCurrentRow();
@@ -224,7 +225,7 @@ int64_t GroupDistinctTable::GroupNoFromInput()  // decode group number from the
                                                 // current input vector
 {
   int64_t group = 0;
-  std::memcpy((unsigned char *)(&group), input_buffer, group_bytes);
+  std::memcpy(reinterpret_cast<unsigned char *>(&group), input_buffer, group_bytes);
   group -= 1;  // offset; 0 means empty position
   return group;
 }
