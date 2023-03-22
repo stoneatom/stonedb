@@ -25,8 +25,6 @@ KEY `idx_firstname` (`first_name`),
 FULLTEXT KEY `idx_lastname` (`last_name`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
 set session tianmu_no_key_error=OFF;
-Warnings:
-Warning	1287	'@@tianmu_no_key_error' is deprecated and will be removed in a future release.
 drop index idx_id on t1;
 ERROR HY000: Tianmu engine does not support unique index.
 drop index idx_name on t2;

@@ -6001,20 +6001,18 @@ static Sys_var_mybool Sys_tianmu_mandatory(
        "Specifies whether to enable mandatory Tianmu engine in table."
        "if yes ,set tianmu_mandatory to ON, otherwise set the variable to OFF.",
         SESSION_VAR(tianmu_mandatory),
-        CMD_LINE(OPT_ARG, OPT_SHOW_OLD_TEMPORALS),
+        CMD_LINE(OPT_ARG),
         DEFAULT(FALSE), NO_MUTEX_GUARD, NOT_IN_BINLOG,
-        ON_CHECK(0), ON_UPDATE(0),
-        DEPRECATED_VAR(""));
+        ON_CHECK(0), ON_UPDATE(0));
 
 static Sys_var_mybool Sys_tianmu_no_key_error(
        "tianmu_no_key_error",
        "Specifies whether to to directly skip DDL statements that are not supported by the SQL layer,"
        "instead of reporting errors. if yes ,set tianmu_no_key_error to ON, otherwise set the variable to OFF.",
         SESSION_VAR(tianmu_no_key_error),
-        CMD_LINE(OPT_ARG, OPT_SHOW_OLD_TEMPORALS),
+        CMD_LINE(OPT_ARG),
         DEFAULT(FALSE), NO_MUTEX_GUARD, NOT_IN_BINLOG,
-        ON_CHECK(0), ON_UPDATE(0),
-        DEPRECATED_VAR(""));
+        ON_CHECK(0), ON_UPDATE(0));
 
 static Sys_var_charptr Sys_disabled_storage_engines(
        "disabled_storage_engines",
