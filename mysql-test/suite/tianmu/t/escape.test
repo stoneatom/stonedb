@@ -41,7 +41,7 @@ SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "a_", "%") ESCAPE "a";
 
 SELECT * FROM st1 WHERE NAME LIKE "a%_" ESCAPE "a" ;
 SELECT * FROM st1 WHERE NAME LIKE "a%a" ESCAPE "a" ;
-#bug1157 SELECT * FROM st1 WHERE NAME LIKE "a%a_" ESCAPE "a";
+SELECT * FROM st1 WHERE NAME LIKE "a%a_" ESCAPE "a";
 
 drop table st1;
 CREATE TABLE `st1` (
@@ -61,7 +61,7 @@ select * from st1;
 select * from st1 where name like '%hello%';
 select * from st1 where name like '_hello';
 select * from st1 where name like 'hello12_';
-#bug1157 select * from st1 where name like '/_hello' escape '/';
+select * from st1 where name like '/_hello' escape '/';
 
 
 create table st2(id int ,column_2 varchar(10),column_3 varchar(10));
@@ -80,11 +80,11 @@ select * from st2 where column_2 like '%\_%' ;
 
 select * from st2 where column_2 like '%?_%'  escape '?';
 
-#bug1162 select * from st2 where column_2 like '%?_a\\%';
-#bug1162 select * from st2 where column_2 like '%\_a\\%';
+select * from st2 where column_2 like '%?_a\\%';
+select * from st2 where column_2 like '%\_a\\%';
 
-#bug1162 select * from st2 where column_2 like '%?_a?\%';
-#bug1162 select * from st2 where column_2 like '%\_a\\%';
+select * from st2 where column_2 like '%?_a?\%';
+select * from st2 where column_2 like '%\_a\\%';
 
 # clean up
 DROP DATABASE escape_test;
