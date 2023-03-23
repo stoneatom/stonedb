@@ -1,0 +1,236 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test integer range
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS integer_range_test;
+--enable_warnings
+
+CREATE DATABASE integer_range_test;
+USE integer_range_test;
+
+--echo #
+--echo # INT1 tinyint
+--echo #
+
+CREATE TABLE int1_tbl(f1 int1);
+INSERT INTO int1_tbl(f1) VALUES ('0   ');
+INSERT INTO int1_tbl(f1) VALUES ('  14 ');
+INSERT INTO int1_tbl(f1) VALUES ('    -14');
+INSERT INTO int1_tbl(f1) VALUES ('34.5');
+
+# largest and smallest values
+INSERT INTO int1_tbl(f1) VALUES ('-128');
+INSERT INTO int1_tbl(f1) VALUES ('127');
+INSERT INTO int1_tbl(f1) VALUES ('-127');
+INSERT INTO int1_tbl(f1) VALUES ('126');
+
+# out of range
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int1_tbl(f1) VALUES ('-129');
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int1_tbl(f1) VALUES ('128');
+
+# bad input values -- should give errors
+--error 1264
+INSERT INTO int1_tbl(f1) VALUES ('100000');
+--error 1366
+INSERT INTO int1_tbl(f1) VALUES ('asdf');
+--error 1366
+INSERT INTO int1_tbl(f1) VALUES ('    ');
+--error 1366
+INSERT INTO int1_tbl(f1) VALUES ('- 1234');
+--error 1265
+INSERT INTO int1_tbl(f1) VALUES ('4 444');
+--error 1265
+INSERT INTO int1_tbl(f1) VALUES ('123 dt');
+--error 1366
+INSERT INTO int1_tbl(f1) VALUES ('');
+select * from int1_tbl;
+
+
+--echo #
+--echo # INT2 smallint
+--echo #
+
+CREATE TABLE int2_tbl(f1 int2);
+INSERT INTO int2_tbl(f1) VALUES ('0   ');
+INSERT INTO int2_tbl(f1) VALUES ('  1234 ');
+INSERT INTO int2_tbl(f1) VALUES ('    -1234');
+INSERT INTO int2_tbl(f1) VALUES ('34.5');
+
+# largest and smallest values
+INSERT INTO int2_tbl(f1) VALUES ('32767');
+INSERT INTO int2_tbl(f1) VALUES ('32766');
+INSERT INTO int2_tbl(f1) VALUES ('-32768');
+INSERT INTO int2_tbl(f1) VALUES ('-32767');
+
+# out of range
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int2_tbl(f1) VALUES ('32768');
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int2_tbl(f1) VALUES ('-32769');
+
+# bad input values -- should give errors
+--error 1264
+INSERT INTO int2_tbl(f1) VALUES ('100000');
+--error 1366
+INSERT INTO int2_tbl(f1) VALUES ('asdf');
+--error 1366
+INSERT INTO int2_tbl(f1) VALUES ('    ');
+--error 1366
+INSERT INTO int2_tbl(f1) VALUES ('- 1234');
+--error 1265
+INSERT INTO int2_tbl(f1) VALUES ('4 444');
+--error 1265
+INSERT INTO int2_tbl(f1) VALUES ('123 dt');
+--error 1366
+INSERT INTO int2_tbl(f1) VALUES ('');
+select * from int2_tbl;
+
+--echo #
+--echo # INT3 mediumint
+--echo #
+CREATE TABLE int3_tbl(f1 int3);
+INSERT INTO int3_tbl(f1) VALUES ('0   ');
+INSERT INTO int3_tbl(f1) VALUES ('  14123 ');
+INSERT INTO int3_tbl(f1) VALUES ('    -14123');
+INSERT INTO int3_tbl(f1) VALUES ('3413.5');
+
+# largest and smallest values
+INSERT INTO int3_tbl(f1) VALUES ('-8388608');
+INSERT INTO int3_tbl(f1) VALUES ('8388607');
+INSERT INTO int3_tbl(f1) VALUES ('-8388607');
+INSERT INTO int3_tbl(f1) VALUES ('8388606');
+
+# out of range
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int3_tbl(f1) VALUES ('-8388609');
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int3_tbl(f1) VALUES ('8388608');
+
+# bad input values -- should give errors
+--error 1264
+INSERT INTO int3_tbl(f1) VALUES ('1000000000');
+--error 1366
+INSERT INTO int3_tbl(f1) VALUES ('asdf');
+--error 1366
+INSERT INTO int3_tbl(f1) VALUES ('    ');
+--error 1366
+INSERT INTO int3_tbl(f1) VALUES ('- 1234');
+--error 1265
+INSERT INTO int3_tbl(f1) VALUES ('4 444');
+--error 1265
+INSERT INTO int3_tbl(f1) VALUES ('123 dt');
+--error 1366
+INSERT INTO int3_tbl(f1) VALUES ('');
+select * from int3_tbl;
+
+--echo #
+--echo # INT4 int[-2147483647, 2147483647]
+--echo #
+
+CREATE TABLE int4_tbl(f1 int4);
+INSERT INTO int4_tbl(f1) VALUES ('   0  ');
+INSERT INTO int4_tbl(f1) VALUES ('123456     ');
+INSERT INTO int4_tbl(f1) VALUES ('    -123456');
+INSERT INTO int4_tbl(f1) VALUES ('34.5');
+
+# largest and smallest values
+INSERT INTO int4_tbl(f1) VALUES ('2147483647');
+INSERT INTO int4_tbl(f1) VALUES ('2147483646');
+INSERT INTO int4_tbl(f1) VALUES ('-2147483647');
+INSERT INTO int4_tbl(f1) VALUES ('-2147483646');
+
+# out of range
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int4_tbl(f1) VALUES ('2147483648');
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int4_tbl(f1) VALUES ('-2147483648');
+
+# bad input values -- should give errors
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int4_tbl(f1) VALUES ('1000000000000');
+--error 1366
+INSERT INTO int4_tbl(f1) VALUES ('asdf');
+--error 1366
+INSERT INTO int4_tbl(f1) VALUES ('     ');
+--error 1366
+INSERT INTO int4_tbl(f1) VALUES ('   asdf   ');
+--error 1366
+INSERT INTO int4_tbl(f1) VALUES ('- 1234');
+--error 1265
+INSERT INTO int4_tbl(f1) VALUES ('123       5');
+--error 1366
+INSERT INTO int4_tbl(f1) VALUES ('');
+select * from int4_tbl;
+
+--echo #
+--echo # INT8 bigint[-9223372036854775806, 9223372036854775807]
+--echo #
+
+CREATE TABLE int8_tbl(q1 int8, q2 int8);
+INSERT INTO int8_tbl VALUES('  123   ','  456');
+INSERT INTO int8_tbl VALUES('123   ','4567890123456789');
+INSERT INTO int8_tbl VALUES('4567890123456789','123');
+INSERT INTO int8_tbl VALUES(+4567890123456789,'4567890123456789');
+INSERT INTO int8_tbl VALUES('+4567890123456789','-4567890123456789');
+
+# largest and smallest values
+INSERT INTO int8_tbl VALUES ('9223372036854775807','9223372036854775806');
+INSERT INTO int8_tbl VALUES ('-9223372036854775806','-9223372036854775805');
+
+# out of range
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int8_tbl VALUES ('-9223372036854775807','-9223372036854775807');
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int8_tbl VALUES ('9223372036854775808','9223372036854775808');
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO int8_tbl VALUES ('-9223372036854775806','-9223372036854775807');
+
+# bad inputs
+--error 1366
+INSERT INTO int8_tbl(q1) VALUES ('      ');
+--error 1366
+INSERT INTO int8_tbl(q1) VALUES ('xxx');
+--error 1264
+INSERT INTO int8_tbl(q1) VALUES ('3908203590239580293850293850329485');
+--error 1264
+INSERT INTO int8_tbl(q1) VALUES ('-1204982019841029840928340329840934');
+--error 1366
+INSERT INTO int8_tbl(q1) VALUES ('- 123');
+--error 1265
+INSERT INTO int8_tbl(q1) VALUES ('  345     5');
+--error 1366
+INSERT INTO int8_tbl(q1) VALUES ('');
+INSERT INTO int8_tbl(q1) VALUES (null);
+SELECT * FROM int8_tbl;
+
+# int8/int8 cmp
+SELECT * FROM int8_tbl WHERE q2 = 4567890123456789;
+SELECT * FROM int8_tbl WHERE q2 <> 4567890123456789;
+#bug1332 SELECT * FROM int8_tbl WHERE q2 < 4567890123456789;
+SELECT * FROM int8_tbl WHERE q2 > 4567890123456789;
+#bug1332 SELECT * FROM int8_tbl WHERE q2 <= 4567890123456789;
+SELECT * FROM int8_tbl WHERE q2 >= 4567890123456789;
+
+# int8/int4 cmp
+SELECT * FROM int8_tbl WHERE q2 = 456;
+SELECT * FROM int8_tbl WHERE q2 <> 456;
+#bug1332 SELECT * FROM int8_tbl WHERE q2 < 456;
+SELECT * FROM int8_tbl WHERE q2 > 456;
+#bug1332 SELECT * FROM int8_tbl WHERE q2 <= 456;
+SELECT * FROM int8_tbl WHERE q2 >= 456;
+
+# int4/int8 cmp
+SELECT * FROM int8_tbl WHERE 123 = q1;
+SELECT * FROM int8_tbl WHERE 123 <> q1;
+SELECT * FROM int8_tbl WHERE 123 < q1;
+#bug1332 SELECT * FROM int8_tbl WHERE 123 > q1;
+SELECT * FROM int8_tbl WHERE 123 <= q1;
+#bug1332 SELECT * FROM int8_tbl WHERE 123 >= q1;
+
+# cleanup
+drop DATABASE integer_range_test;

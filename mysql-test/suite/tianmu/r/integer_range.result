@@ -1,0 +1,275 @@
+#
+# Test integer range
+#
+DROP DATABASE IF EXISTS integer_range_test;
+CREATE DATABASE integer_range_test;
+USE integer_range_test;
+#
+# INT1 tinyint
+#
+CREATE TABLE int1_tbl(f1 int1);
+INSERT INTO int1_tbl(f1) VALUES ('0   ');
+INSERT INTO int1_tbl(f1) VALUES ('  14 ');
+INSERT INTO int1_tbl(f1) VALUES ('    -14');
+INSERT INTO int1_tbl(f1) VALUES ('34.5');
+INSERT INTO int1_tbl(f1) VALUES ('-128');
+INSERT INTO int1_tbl(f1) VALUES ('127');
+INSERT INTO int1_tbl(f1) VALUES ('-127');
+INSERT INTO int1_tbl(f1) VALUES ('126');
+INSERT INTO int1_tbl(f1) VALUES ('-129');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int1_tbl(f1) VALUES ('128');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int1_tbl(f1) VALUES ('100000');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int1_tbl(f1) VALUES ('asdf');
+ERROR HY000: Incorrect integer value: 'asdf' for column 'f1' at row 1
+INSERT INTO int1_tbl(f1) VALUES ('    ');
+ERROR HY000: Incorrect integer value: '    ' for column 'f1' at row 1
+INSERT INTO int1_tbl(f1) VALUES ('- 1234');
+ERROR HY000: Incorrect integer value: '- 1234' for column 'f1' at row 1
+INSERT INTO int1_tbl(f1) VALUES ('4 444');
+ERROR 01000: Data truncated for column 'f1' at row 1
+INSERT INTO int1_tbl(f1) VALUES ('123 dt');
+ERROR 01000: Data truncated for column 'f1' at row 1
+INSERT INTO int1_tbl(f1) VALUES ('');
+ERROR HY000: Incorrect integer value: '' for column 'f1' at row 1
+select * from int1_tbl;
+f1
+0
+14
+-14
+35
+-128
+127
+-127
+126
+#
+# INT2 smallint
+#
+CREATE TABLE int2_tbl(f1 int2);
+INSERT INTO int2_tbl(f1) VALUES ('0   ');
+INSERT INTO int2_tbl(f1) VALUES ('  1234 ');
+INSERT INTO int2_tbl(f1) VALUES ('    -1234');
+INSERT INTO int2_tbl(f1) VALUES ('34.5');
+INSERT INTO int2_tbl(f1) VALUES ('32767');
+INSERT INTO int2_tbl(f1) VALUES ('32766');
+INSERT INTO int2_tbl(f1) VALUES ('-32768');
+INSERT INTO int2_tbl(f1) VALUES ('-32767');
+INSERT INTO int2_tbl(f1) VALUES ('32768');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int2_tbl(f1) VALUES ('-32769');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int2_tbl(f1) VALUES ('100000');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int2_tbl(f1) VALUES ('asdf');
+ERROR HY000: Incorrect integer value: 'asdf' for column 'f1' at row 1
+INSERT INTO int2_tbl(f1) VALUES ('    ');
+ERROR HY000: Incorrect integer value: '    ' for column 'f1' at row 1
+INSERT INTO int2_tbl(f1) VALUES ('- 1234');
+ERROR HY000: Incorrect integer value: '- 1234' for column 'f1' at row 1
+INSERT INTO int2_tbl(f1) VALUES ('4 444');
+ERROR 01000: Data truncated for column 'f1' at row 1
+INSERT INTO int2_tbl(f1) VALUES ('123 dt');
+ERROR 01000: Data truncated for column 'f1' at row 1
+INSERT INTO int2_tbl(f1) VALUES ('');
+ERROR HY000: Incorrect integer value: '' for column 'f1' at row 1
+select * from int2_tbl;
+f1
+0
+1234
+-1234
+35
+32767
+32766
+-32768
+-32767
+#
+# INT3 mediumint
+#
+CREATE TABLE int3_tbl(f1 int3);
+INSERT INTO int3_tbl(f1) VALUES ('0   ');
+INSERT INTO int3_tbl(f1) VALUES ('  14123 ');
+INSERT INTO int3_tbl(f1) VALUES ('    -14123');
+INSERT INTO int3_tbl(f1) VALUES ('3413.5');
+INSERT INTO int3_tbl(f1) VALUES ('-8388608');
+INSERT INTO int3_tbl(f1) VALUES ('8388607');
+INSERT INTO int3_tbl(f1) VALUES ('-8388607');
+INSERT INTO int3_tbl(f1) VALUES ('8388606');
+INSERT INTO int3_tbl(f1) VALUES ('-8388609');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int3_tbl(f1) VALUES ('8388608');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int3_tbl(f1) VALUES ('1000000000');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int3_tbl(f1) VALUES ('asdf');
+ERROR HY000: Incorrect integer value: 'asdf' for column 'f1' at row 1
+INSERT INTO int3_tbl(f1) VALUES ('    ');
+ERROR HY000: Incorrect integer value: '    ' for column 'f1' at row 1
+INSERT INTO int3_tbl(f1) VALUES ('- 1234');
+ERROR HY000: Incorrect integer value: '- 1234' for column 'f1' at row 1
+INSERT INTO int3_tbl(f1) VALUES ('4 444');
+ERROR 01000: Data truncated for column 'f1' at row 1
+INSERT INTO int3_tbl(f1) VALUES ('123 dt');
+ERROR 01000: Data truncated for column 'f1' at row 1
+INSERT INTO int3_tbl(f1) VALUES ('');
+ERROR HY000: Incorrect integer value: '' for column 'f1' at row 1
+select * from int3_tbl;
+f1
+0
+14123
+-14123
+3414
+-8388608
+8388607
+-8388607
+8388606
+#
+# INT4 int[-2147483647, 2147483647]
+#
+CREATE TABLE int4_tbl(f1 int4);
+INSERT INTO int4_tbl(f1) VALUES ('   0  ');
+INSERT INTO int4_tbl(f1) VALUES ('123456     ');
+INSERT INTO int4_tbl(f1) VALUES ('    -123456');
+INSERT INTO int4_tbl(f1) VALUES ('34.5');
+INSERT INTO int4_tbl(f1) VALUES ('2147483647');
+INSERT INTO int4_tbl(f1) VALUES ('2147483646');
+INSERT INTO int4_tbl(f1) VALUES ('-2147483647');
+INSERT INTO int4_tbl(f1) VALUES ('-2147483646');
+INSERT INTO int4_tbl(f1) VALUES ('2147483648');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int4_tbl(f1) VALUES ('-2147483648');
+ERROR 22003: Out of range[-2147483647, 2147483647] for column 'f1' value: -2147483648
+INSERT INTO int4_tbl(f1) VALUES ('1000000000000');
+ERROR 22003: Out of range value for column 'f1' at row 1
+INSERT INTO int4_tbl(f1) VALUES ('asdf');
+ERROR HY000: Incorrect integer value: 'asdf' for column 'f1' at row 1
+INSERT INTO int4_tbl(f1) VALUES ('     ');
+ERROR HY000: Incorrect integer value: '     ' for column 'f1' at row 1
+INSERT INTO int4_tbl(f1) VALUES ('   asdf   ');
+ERROR HY000: Incorrect integer value: '   asdf   ' for column 'f1' at row 1
+INSERT INTO int4_tbl(f1) VALUES ('- 1234');
+ERROR HY000: Incorrect integer value: '- 1234' for column 'f1' at row 1
+INSERT INTO int4_tbl(f1) VALUES ('123       5');
+ERROR 01000: Data truncated for column 'f1' at row 1
+INSERT INTO int4_tbl(f1) VALUES ('');
+ERROR HY000: Incorrect integer value: '' for column 'f1' at row 1
+select * from int4_tbl;
+f1
+0
+123456
+-123456
+35
+2147483647
+2147483646
+-2147483647
+-2147483646
+#
+# INT8 bigint[-9223372036854775806, 9223372036854775807]
+#
+CREATE TABLE int8_tbl(q1 int8, q2 int8);
+INSERT INTO int8_tbl VALUES('  123   ','  456');
+INSERT INTO int8_tbl VALUES('123   ','4567890123456789');
+INSERT INTO int8_tbl VALUES('4567890123456789','123');
+INSERT INTO int8_tbl VALUES(+4567890123456789,'4567890123456789');
+INSERT INTO int8_tbl VALUES('+4567890123456789','-4567890123456789');
+INSERT INTO int8_tbl VALUES ('9223372036854775807','9223372036854775806');
+INSERT INTO int8_tbl VALUES ('-9223372036854775806','-9223372036854775805');
+INSERT INTO int8_tbl VALUES ('-9223372036854775807','-9223372036854775807');
+ERROR 22003: Out of range[-9223372036854775806, 9223372036854775807] for column 'q1' value: -9223372036854775807
+INSERT INTO int8_tbl VALUES ('9223372036854775808','9223372036854775808');
+ERROR 22003: Out of range value for column 'q1' at row 1
+INSERT INTO int8_tbl VALUES ('-9223372036854775806','-9223372036854775807');
+ERROR 22003: Out of range[-9223372036854775806, 9223372036854775807] for column 'q2' value: -9223372036854775807
+INSERT INTO int8_tbl(q1) VALUES ('      ');
+ERROR HY000: Incorrect integer value: '      ' for column 'q1' at row 1
+INSERT INTO int8_tbl(q1) VALUES ('xxx');
+ERROR HY000: Incorrect integer value: 'xxx' for column 'q1' at row 1
+INSERT INTO int8_tbl(q1) VALUES ('3908203590239580293850293850329485');
+ERROR 22003: Out of range value for column 'q1' at row 1
+INSERT INTO int8_tbl(q1) VALUES ('-1204982019841029840928340329840934');
+ERROR 22003: Out of range value for column 'q1' at row 1
+INSERT INTO int8_tbl(q1) VALUES ('- 123');
+ERROR HY000: Incorrect integer value: '- 123' for column 'q1' at row 1
+INSERT INTO int8_tbl(q1) VALUES ('  345     5');
+ERROR 01000: Data truncated for column 'q1' at row 1
+INSERT INTO int8_tbl(q1) VALUES ('');
+ERROR HY000: Incorrect integer value: '' for column 'q1' at row 1
+INSERT INTO int8_tbl(q1) VALUES (null);
+SELECT * FROM int8_tbl;
+q1	q2
+123	456
+123	4567890123456789
+4567890123456789	123
+4567890123456789	4567890123456789
+4567890123456789	-4567890123456789
+9223372036854775807	9223372036854775806
+-9223372036854775806	-9223372036854775805
+NULL	NULL
+SELECT * FROM int8_tbl WHERE q2 = 4567890123456789;
+q1	q2
+123	4567890123456789
+4567890123456789	4567890123456789
+SELECT * FROM int8_tbl WHERE q2 <> 4567890123456789;
+q1	q2
+123	456
+4567890123456789	123
+4567890123456789	-4567890123456789
+9223372036854775807	9223372036854775806
+-9223372036854775806	-9223372036854775805
+SELECT * FROM int8_tbl WHERE q2 > 4567890123456789;
+q1	q2
+9223372036854775807	9223372036854775806
+SELECT * FROM int8_tbl WHERE q2 >= 4567890123456789;
+q1	q2
+123	4567890123456789
+4567890123456789	4567890123456789
+9223372036854775807	9223372036854775806
+SELECT * FROM int8_tbl WHERE q2 = 456;
+q1	q2
+123	456
+SELECT * FROM int8_tbl WHERE q2 <> 456;
+q1	q2
+123	4567890123456789
+4567890123456789	123
+4567890123456789	4567890123456789
+4567890123456789	-4567890123456789
+9223372036854775807	9223372036854775806
+-9223372036854775806	-9223372036854775805
+SELECT * FROM int8_tbl WHERE q2 > 456;
+q1	q2
+123	4567890123456789
+4567890123456789	4567890123456789
+9223372036854775807	9223372036854775806
+SELECT * FROM int8_tbl WHERE q2 >= 456;
+q1	q2
+123	456
+123	4567890123456789
+4567890123456789	4567890123456789
+9223372036854775807	9223372036854775806
+SELECT * FROM int8_tbl WHERE 123 = q1;
+q1	q2
+123	456
+123	4567890123456789
+SELECT * FROM int8_tbl WHERE 123 <> q1;
+q1	q2
+4567890123456789	123
+4567890123456789	4567890123456789
+4567890123456789	-4567890123456789
+9223372036854775807	9223372036854775806
+-9223372036854775806	-9223372036854775805
+SELECT * FROM int8_tbl WHERE 123 < q1;
+q1	q2
+4567890123456789	123
+4567890123456789	4567890123456789
+4567890123456789	-4567890123456789
+9223372036854775807	9223372036854775806
+SELECT * FROM int8_tbl WHERE 123 <= q1;
+q1	q2
+123	456
+123	4567890123456789
+4567890123456789	123
+4567890123456789	4567890123456789
+4567890123456789	-4567890123456789
+9223372036854775807	9223372036854775806
+drop DATABASE integer_range_test;

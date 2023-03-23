@@ -1,0 +1,229 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test bigint unsigned
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS bigint_unsigned_test;
+--enable_warnings
+
+CREATE DATABASE bigint_unsigned_test;
+USE bigint_unsigned_test;
+
+# Test of reading of bigint values
+
+select 0,256,00000000000000065536,2147483647,-2147483648,2147483648,+4294967296;
+select 9223372036854775807,-009223372036854775808;
+select +9999999999999999999,-9999999999999999999;
+select cast(9223372036854775808 as unsigned)+1;
+select 9223372036854775808+1;
+select -(0-3),round(-(0-3)), round(9999999999999999999);
+select 1,11,101,1001,10001,100001,1000001,10000001,100000001,1000000001,10000000001,100000000001,1000000000001,10000000000001,100000000000001,1000000000000001,10000000000000001,100000000000000001,1000000000000000001,10000000000000000001;
+select -1,-11,-101,-1001,-10001,-100001,-1000001,-10000001,-100000001,-1000000001,-10000000001,-100000000001,-1000000000001,-10000000000001,-100000000000001,-1000000000000001,-10000000000000001,-100000000000000001,-1000000000000000001,-10000000000000000001;
+select conv(1,10,16),conv((1<<2)-1,10,16),conv((1<<10)-2,10,16),conv((1<<16)-3,10,16),conv((1<<25)-4,10,16),conv((1<<31)-5,10,16),conv((1<<36)-6,10,16),conv((1<<47)-7,10,16),conv((1<<48)-8,10,16),conv((1<<55)-9,10,16),conv((1<<56)-10,10,16),conv((1<<63)-11,10,16);
+
+# bigint test range[0, 9223372036854775807]
+
+create table t1 (a bigint unsigned not null, primary key(a));
+insert into t1 values (9223372036854775807), (0xFFFFFFFFFFFFFF), (9223372036854775806), (9223372036854775805);
+select * from t1 order by 1;
+select * from t1 where a=9223372036854775807;
+select * from t1 where a='9223372036854775807';
+delete from t1 where a=9223372036854775807;
+select * from t1 order by 1;
+drop table t1;
+
+create table t1 ( a int not null default 1, big bigint );
+insert into t1 (big) values (-1),(12345678901234567),(9223372036854775807),(9223372036854775805);
+select * from t1;
+select min(big),max(big),max(big)-1 from t1;
+select min(big),max(big),max(big)-1 from t1 group by a;
+--error 1264
+alter table t1 modify big bigint unsigned not null;
+select min(big),max(big),max(big)-1 from t1;
+select min(big),max(big),max(big)-1 from t1 group by a;
+insert into t1 (big) values (9223372036854775807);
+select * from t1;
+select min(big),max(big),max(big)-1 from t1;
+select min(big),max(big),max(big)-1 from t1 group by a;
+select min(big),max(big),max(big)-1 from t1;
+select min(big),max(big),max(big)-1 from t1 group by a;
+alter table t1 modify big bigint not null;
+select * from t1;
+select min(big),max(big),max(big)-1 from t1;
+select min(big),max(big),max(big)-1 from t1 group by a;
+drop table t1;
+
+# Test problem with big values for auto_increment
+
+create table t1 (id bigint auto_increment primary key, a int) auto_increment=9999999999;
+insert into t1 values (null,1);
+select * from t1;
+select * from t1 limit 9999999999;
+drop table t1;
+
+# precisions for bigints
+
+CREATE TABLE t1 (quantity decimal(18,0));
+insert into t1 values (100000000000000);
+insert into t1 values (10000000000000.0);
+insert into t1 values ('10000000000000');
+select * from t1;
+drop table t1;
+
+SELECT '0x8000000000000001'+0;
+
+# Test for join BIGINT UNSIGNED
+
+create table t1 (
+ value64  bigint unsigned  not null,
+ value32  integer          not null,
+ primary key(value64, value32)
+);
+
+create table t2 (
+ value64  bigint unsigned  not null,
+ value32  integer          not null,
+ primary key(value64, value32)
+);
+
+insert into t1 values(9223372036854775806, 1);
+insert into t1 values(9223372036854775807, 2);
+insert into t2 values(9223372036854775806, 3);
+insert into t2 values(9223372036854775807, 4);
+
+select * from t1;
+select * from t2;
+select * from t1, t2 where t1.value64=9223372036854775806 and t2.value64=9223372036854775806;
+select * from t1, t2 where t1.value64=9223372036854775806 and t2.value64=t1.value64;
+select * from t1, t2 where t1.value64= 9223372036854775807 and t2.value64=9223372036854775807;
+select * from t1, t2 where t1.value64= 9223372036854775807 and t2.value64=t1.value64;
+drop table t1, t2;
+
+# Test bigint 
+
+create table t1 (sint64 bigint not null);
+insert into t1 values (-9223372036854775806);
+select * from t1;
+drop table t1;
+
+create table t1 (a char(100), b varchar(100), c text, d blob);
+insert into t1 values(
+  18446744073709551615,18446744073709551615,
+  18446744073709551615, 18446744073709551615
+);
+insert into t1 values (-1 | 0,-1 | 0,-1 | 0 ,-1 | 0);
+select * from t1;
+drop table t1;
+
+create table t1 (quantity decimal(2) unsigned);
+insert into t1 values (50), (0), (1);
+select * from t1;
+drop table t1;
+
+#mod is signed with bigint
+
+select cast(9223372036854775807 as unsigned) mod 50 as result;
+create table t1 (c1 bigint unsigned);
+insert into t1 values (9223372036854775807);
+select c1 mod 50 as result from t1;
+drop table t1;
+
+#use bigint unsigned as input to cast
+
+select cast(19999999999999999999 as signed);
+select cast(-19999999999999999999 as signed);
+
+select -9223372036854775808;
+select -(9223372036854775808);
+select -((9223372036854775808));
+select -(-(9223372036854775808));
+select --9223372036854775808, ---9223372036854775808, ----9223372036854775808;
+select -(-9223372036854775808), -(-(-9223372036854775808));
+
+CREATE TABLE t1 (id INT AUTO_INCREMENT PRIMARY KEY,
+                 a BIGINT(20) UNSIGNED,
+                 b VARCHAR(20));
+INSERT INTO t1 (a) VALUES
+  (0),
+  (CAST(0x7FFFFFFFFFFFFFF AS UNSIGNED)),
+  (CAST(0x800000000000000 AS UNSIGNED)),
+  (CAST(0xFFFFFFFFFFFFFFF AS UNSIGNED));
+UPDATE t1 SET b = a;
+select * from t1;
+DROP TABLE t1;
+
+# DECIMAL COMPARISON
+
+CREATE TABLE t_bigint(id BIGINT);
+INSERT INTO t_bigint VALUES (1), (2);
+
+SELECT id, id >= 1.1 FROM t_bigint;
+SELECT id, 1.1 <= id FROM t_bigint;
+
+SELECT id, id = 1.1 FROM t_bigint;
+SELECT id, 1.1 = id FROM t_bigint;
+
+SELECT * from t_bigint WHERE id = 1.1;
+SELECT * from t_bigint WHERE id = 1.1e0;
+#bug1346 SELECT * from t_bigint WHERE id = '1.1';
+#bug1346 SELECT * from t_bigint WHERE id = '1.1e0';
+SELECT * from t_bigint WHERE id IN (1.1, 2.2);
+SELECT * from t_bigint WHERE id IN (1.1e0, 2.2e0);
+#bug1346 SELECT * from t_bigint WHERE id IN ('1.1', '2.2');
+#bug1346 SELECT * from t_bigint WHERE id IN ('1.1e0', '2.2e0');
+SELECT * from t_bigint WHERE id BETWEEN 1.1 AND 1.9;
+SELECT * from t_bigint WHERE id BETWEEN 1.1e0 AND 1.9e0;
+#bug1346 SELECT * from t_bigint WHERE id BETWEEN '1.1' AND '1.9';
+#bug1346 SELECT * from t_bigint WHERE id BETWEEN '1.1e0' AND '1.9e0';
+DROP TABLE t_bigint;
+
+CREATE TABLE t1 (a BIGINT);
+INSERT INTO t1 VALUES (1);
+SELECT * FROM t1 WHERE coalesce(a) BETWEEN 0 and 0.9;
+SELECT * FROM t1 WHERE coalesce(a)=0.9;
+SELECT * FROM t1 WHERE coalesce(a) in (0.8,0.9);
+SELECT * FROM t1 WHERE a BETWEEN 0 AND 0.9;
+SELECT * FROM t1 WHERE a=0.9;
+SELECT * FROM t1 WHERE a IN (0.8,0.9);
+DROP TABLE t1;
+
+# between...and againest bigint unsigned 
+
+create table t (id bigint unsigned, b int);
+insert into t values(7223372036854775807,1);
+insert into t values(7223372036854775806,2);
+insert into t values(9223372036854775805,3);
+select count(*) from t 
+where id>=7223372036854775806 and id <=9223372036854775807;
+select count(*) from t 
+where id between 7223372036854775806 and 9223372036854775807;
+alter table t add primary key (id);
+select count(*) from t 
+where id>=7223372036854775806 and id <=9223372036854775807;
+select count(*) from t 
+where id between 7223372036854775806 and 9223372036854775807;
+drop table t;
+
+SELECT (184467440737095 BETWEEN 0 AND 18446744073709551500);
+SELECT 184467440737095 >= 0;
+SELECT 0 <= 18446744073709551500;
+
+#select cast(100 as unsigned) between 1 and -1 returns true
+
+SELECT CAST(100 AS UNSIGNED) BETWEEN 1 AND -1;
+SELECT CAST(100 AS UNSIGNED) NOT BETWEEN 1 AND -1;
+SELECT CAST(0 AS UNSIGNED) BETWEEN 0 AND -1;
+SELECT CAST(0 AS UNSIGNED) NOT BETWEEN 0 AND -1;
+
+select -9223372036854775808 mod 9223372036854775810 as result;
+select bin(convert(-9223372036854775808 using ucs2));
+SELECT ( 9223372036854775808 BETWEEN 9223372036854775808 AND 9223372036854775808 );
+SELECT ( 9223372036854775807 BETWEEN 9223372036854775808 AND 1 );
+SELECT ( -1 BETWEEN 9223372036854775808 AND 1 );
+SELECT ( 0 BETWEEN 9223372036854775808 AND 1 );
+SELECT ( 1 BETWEEN 9223372036854775808 AND 1 );
+
+# cleanup
+drop DATABASE bigint_unsigned_test;
