@@ -3570,7 +3570,7 @@ public:
   enum_field_types field_type() const { return MYSQL_TYPE_NEWDECIMAL; }
   longlong val_int();
   double val_real();
-  String *val_str(String*);
+  virtual String *val_str(String*);
   my_decimal *val_decimal(my_decimal *val) { return &decimal_value; }
   bool get_date(MYSQL_TIME *ltime, my_time_flags_t fuzzydate)
   {
