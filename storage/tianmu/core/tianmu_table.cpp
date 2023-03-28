@@ -980,8 +980,8 @@ int TianmuTable::Insert(TABLE *table) {
   }
   utils::result_set<void> res;
   for (uint i = 0; i < NumOfAttrs(); i++) {
-    res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[i].get(),
-                                                                &vcs[i], current_txn_));
+    res.insert(
+        ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[i].get(), &vcs[i], current_txn_));
   }
   res.get_all_with_except();
   return 0;
