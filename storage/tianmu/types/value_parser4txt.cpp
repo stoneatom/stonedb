@@ -698,7 +698,8 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
         (at == common::ColumnType::TIMESTAMP &&
          RCDateTime::IsCorrectTIANMUTimestamp((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
                                               RCDateTime::GetSpecialValue(at).Minute(),
-                                              RCDateTime::GetSpecialValue(at).Second())))
+                                              RCDateTime::GetSpecialValue(at).Second())) ||
+        (at == common::ColumnType::DATE && RCDateTime::IsCorrectTIANMUDate((short)year, month, day)))
       rcv = RCDateTime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
                        RCDateTime::GetSpecialValue(at).Minute(), RCDateTime::GetSpecialValue(at).Second(), at);
     return common::ErrorCode::OUT_OF_RANGE;
@@ -1081,11 +1082,10 @@ common::ErrorCode ValueParserForText::ParseDateTime(const BString &rcs, RCDateTi
   switch (at) {
     case common::ColumnType::TIMESTAMP:
     case common::ColumnType::DATETIME:
+    case common::ColumnType::DATE:
       return ValueParserForText::ParseDateTimeOrTimestamp(rcs, rcv, at);
     case common::ColumnType::TIME:
       return ValueParserForText::ParseTime(rcs, rcv);
-    case common::ColumnType::DATE:
-      return ValueParserForText::ParseDate(rcs, rcv);
     default:  // case common::ColumnType::YEAR :
       return ValueParserForText::ParseYear(rcs, rcv);
   }
