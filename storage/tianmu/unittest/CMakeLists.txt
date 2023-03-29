@@ -1,0 +1,6 @@
+MESSAGE(STATUS "Building unittest")
+MESSAGE(STATUS "CMAKE_SOURCE_DIR ${CMAKE_SOURCE_DIR}")
+
+SET(LINK_LIBS  gtest pthread)
+ADD_EXECUTABLE(testgmock testgmock.cpp)
+TARGET_LINK_LIBRARIES(testgmock ${LINK_LIBS})
