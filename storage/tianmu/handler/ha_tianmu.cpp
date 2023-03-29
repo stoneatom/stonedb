@@ -1466,11 +1466,22 @@ int ha_tianmu::reset() {
 
 enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
                                                                       Alter_inplace_info *ha_alter_info) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
-    return HA_ALTER_ERROR;
+    // support alter table column type
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table column exceeded length
+    if ((ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_EQUAL_PACK_LENGTH))
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table column default
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_DEFAULT)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+
+    DBUG_RETURN(HA_ALTER_ERROR);
   }
-  return HA_ALTER_INPLACE_EXCLUSIVE_LOCK;
+  DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
 }
 
 bool ha_tianmu::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
