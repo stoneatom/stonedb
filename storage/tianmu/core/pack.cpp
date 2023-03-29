@@ -24,8 +24,8 @@
 namespace Tianmu {
 namespace core {
 Pack::Pack(DPN *dpn, PackCoordinate pc, ColumnShare *col_share) : col_share_(col_share), dpn_(dpn) {
-  kNullSize_ = (1 << col_share_->pss) / 8;
-  nulls_ptr_ = std::make_unique<uint32_t[]>(kNullSize_ / sizeof(uint32_t));
+  bitmapSize_ = (1 << col_share_->pss) / 8;
+  nulls_ptr_ = std::make_unique<uint32_t[]>(bitmapSize_ / sizeof(uint32_t));
   // nulls MUST be initialized in the constructor, there are 3 cases in total:
   //   1. All values are nullptr. It is initialized here by InitNull();
   //   2. All values are uniform. Then it would be all zeros already.
@@ -39,9 +39,9 @@ Pack::Pack(const Pack &ap, const PackCoordinate &pc)
     : mm::TraceableObject(ap), col_share_(ap.col_share_), dpn_(ap.dpn_) {
   m_coord.ID = COORD_TYPE::PACK;
   m_coord.co.pack = pc;
-  kNullSize_ = ap.kNullSize_;
-  nulls_ptr_ = std::make_unique<uint32_t[]>(kNullSize_ / sizeof(uint32_t));
-  std::memcpy(nulls_ptr_.get(), ap.nulls_ptr_.get(), kNullSize_);
+  bitmapSize_ = ap.bitmapSize_;
+  nulls_ptr_ = std::make_unique<uint32_t[]>(bitmapSize_ / sizeof(uint32_t));
+  std::memcpy(nulls_ptr_.get(), ap.nulls_ptr_.get(), bitmapSize_);
 }
 
 int64_t Pack::GetValInt([[maybe_unused]] int n) const {
@@ -65,7 +65,8 @@ void Pack::Release() {
 }
 
 bool Pack::ShouldNotCompress() const {
-  return (dpn_->nr < (1U << col_share_->pss)) || (col_share_->ColType().GetFmt() == common::PackFmt::NOCOMPRESS);
+  return (dpn_->numOfRecords < (1U << col_share_->pss)) ||
+         (col_share_->ColType().GetFmt() == common::PackFmt::NOCOMPRESS);
 }
 }  // namespace core
 }  // namespace Tianmu
