@@ -1153,30 +1153,21 @@ CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const Table
     return CondID(-1);
 
   CondID filter;
-  if (!and_me_filter)
-    cq->CreateConds(filter, tmp_table, first_term, common::Operator::O_EQ, zero_term, CQTerm(),
-                    is_or_subtree || filter_type == CondType::HAVING_COND);
-  else {
-    if (is_or_subtree)
-      cq->Or(*and_me_filter, tmp_table, first_term, common::Operator::O_EQ, zero_term);
-    else
-      cq->And(*and_me_filter, tmp_table, first_term, common::Operator::O_EQ, zero_term);
-  }
+  cq->CreateConds(filter, tmp_table, first_term, common::Operator::O_EQ, zero_term, CQTerm(),
+                  is_or_subtree || filter_type == CondType::HAVING_COND);
 
   while (li != conds->get_fields().end()) {
     ifield = &*(li++);
     if (Item2CQTerm(ifield, next_term, tmp_table, filter_type) == QueryRouteTo::TO_MYSQL)
       return CondID(-1);
-    if (!and_me_filter) {
-      if (is_or_subtree)
-        cq->Or(filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
-      else
-        cq->And(filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
+    cq->And(filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
+  }
+
+  if (and_me_filter) {
+    if (is_or_subtree) {
+      cq->Or(*and_me_filter, tmp_table, filter);
     } else {
-      if (is_or_subtree)
-        cq->Or(*and_me_filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
-      else
-        cq->And(*and_me_filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
+      cq->And(*and_me_filter, tmp_table, filter);
     }
   }
 
