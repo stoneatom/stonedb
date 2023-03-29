@@ -167,7 +167,7 @@ void RSIndex_CMap::Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack) 
     // system::unlock;
   }
   ClearPack(pi);
-  for (size_t i = 0; i < dpn.nr; i++)
+  for (size_t i = 0; i < dpn.numOfRecords; i++)
     if (pack->NotNull(i)) {
       if (dpn.Trivial() || pack->IsNull(i))
         continue;

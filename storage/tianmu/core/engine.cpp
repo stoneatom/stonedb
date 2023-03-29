@@ -1496,6 +1496,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
       }
       tianmu_stat.delayinsert++;
     } else {
+      current_txn_->SetLoadSource(common::LoadSource::LS_Direct);
       auto rct = current_txn_->GetTableByPath(table_path);
       ret = rct->Insert(table);
     }
