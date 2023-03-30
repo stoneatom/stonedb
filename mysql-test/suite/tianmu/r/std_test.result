@@ -1,0 +1,193 @@
+#
+# std floor VAR_SAMP func test
+#
+DROP DATABASE IF EXISTS std_test;
+CREATE DATABASE std_test;
+USE std_test;
+create table t1 (
+col_signed tinyint,
+col_unsigned tinyint unsigned
+);
+LOAD DATA LOCAL infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/tinyint_range.tbl' INTO TABLE t1 FIELDS TERMINATED BY '|';
+ALTER TABLE t1 ADD COLUMN col_small_signed SMALLINT;
+ALTER TABLE t1 ADD COLUMN col_small_unsigned SMALLINT UNSIGNED;
+ALTER TABLE t1 ADD COLUMN col_med_signed MEDIUMINT;
+ALTER TABLE t1 ADD COLUMN col_med_unsigned MEDIUMINT UNSIGNED;
+ALTER TABLE t1 ADD COLUMN col_int_signed INT;
+ALTER TABLE t1 ADD COLUMN col_int_unsigned INT UNSIGNED;
+ALTER TABLE t1 ADD COLUMN col_big_signed BIGINT;
+ALTER TABLE t1 ADD COLUMN col_big_unsigned BIGINT UNSIGNED;
+ALTER TABLE t1 ADD COLUMN col_dec_signed DECIMAL(17,0);
+ALTER TABLE t1 ADD COLUMN col_dec_unsigned DECIMAL(17,0) UNSIGNED;
+ALTER TABLE t1 ADD COLUMN col_float_signed FLOAT;
+ALTER TABLE t1 ADD COLUMN col_float_unsigned FLOAT UNSIGNED;
+ALTER TABLE t1 ADD COLUMN col_double_signed DOUBLE;
+ALTER TABLE t1 ADD COLUMN col_double_unsigned DOUBLE UNSIGNED;
+UPDATE t1 SET col_small_signed=col_signed + sign(col_signed) * 32000;
+UPDATE t1 SET col_small_unsigned=col_unsigned + 65000;
+UPDATE t1 SET col_med_signed=col_signed + sign(col_signed) * 8388000;
+UPDATE t1 SET col_med_unsigned=col_unsigned + 16776000;
+UPDATE t1 SET col_int_signed=col_signed + sign(col_signed) * 2147483000;
+UPDATE t1 SET col_int_unsigned=col_unsigned + 4294000000;
+UPDATE t1 SET col_big_signed=col_signed + sign(col_signed) * 9223372036854775000;
+UPDATE t1 SET col_float_signed=col_signed + 0.637 + sign(col_signed) * 8388000;
+UPDATE t1 SET col_float_unsigned=col_unsigned + 0.637 + 16776000;
+UPDATE t1 SET col_double_signed=col_signed + 0.637 + sign(col_signed) * 2147483000;
+UPDATE t1 SET col_double_unsigned=col_unsigned + 0.637 + 4294000000;
+SELECT 'q1', floor(STD(col_signed)) FROM t1;
+q1	floor(STD(col_signed))
+q1	73
+SELECT 'q2', floor(STD(col_unsigned)) FROM t1;
+q2	floor(STD(col_unsigned))
+q2	73
+SELECT 'q3', floor(STD(col_small_signed)) FROM t1;
+q3	floor(STD(col_small_signed))
+q3	32000
+SELECT 'q4', floor(STD(col_small_unsigned)) FROM t1;
+q4	floor(STD(col_small_unsigned))
+q4	73
+SELECT 'q5', floor(STD(col_med_signed)) FROM t1;
+q5	floor(STD(col_med_signed))
+q5	8371470
+SELECT 'q6', floor(STD(col_med_unsigned)) FROM t1;
+q6	floor(STD(col_med_unsigned))
+q6	73
+SELECT 'q7', floor(STD(col_int_signed)) FROM t1;
+q7	floor(STD(col_int_signed))
+q7	2143234889
+SELECT 'q8', floor(STD(col_int_unsigned)) FROM t1;
+q8	floor(STD(col_int_unsigned))
+q8	73
+SELECT 'q9', floor(STD(col_big_signed)) FROM t1;
+q9	floor(STD(col_big_signed))
+q9	9205126264421171000
+SELECT 'q13', floor(STD(col_float_signed)) FROM t1;
+q13	floor(STD(col_float_signed))
+q13	8371470
+SELECT 'q14', floor(STD(col_float_unsigned)) FROM t1;
+q14	floor(STD(col_float_unsigned))
+q14	73
+SELECT 'q15', floor(STD(col_double_signed)) FROM t1;
+q15	floor(STD(col_double_signed))
+q15	2143234889
+SELECT 'q16', floor(STD(col_double_unsigned)) FROM t1;
+q16	floor(STD(col_double_unsigned))
+q16	73
+SELECT 'q17', floor(STDDEV_SAMP(col_signed)) FROM t1;
+q17	floor(STDDEV_SAMP(col_signed))
+q17	73
+SELECT 'q18', floor(STDDEV_SAMP(col_unsigned)) FROM t1;
+q18	floor(STDDEV_SAMP(col_unsigned))
+q18	73
+SELECT 'q19', floor(STDDEV_SAMP(col_small_signed)) FROM t1;
+q19	floor(STDDEV_SAMP(col_small_signed))
+q19	32063
+SELECT 'q20', floor(STDDEV_SAMP(col_small_unsigned)) FROM t1;
+q20	floor(STDDEV_SAMP(col_small_unsigned))
+q20	73
+SELECT 'q21', floor(STDDEV_SAMP(col_med_signed)) FROM t1;
+q21	floor(STDDEV_SAMP(col_med_signed))
+q21	8387998
+SELECT 'q22', floor(STDDEV_SAMP(col_med_unsigned)) FROM t1;
+q22	floor(STDDEV_SAMP(col_med_unsigned))
+q22	73
+SELECT 'q23', floor(STDDEV_SAMP(col_int_signed)) FROM t1;
+q23	floor(STDDEV_SAMP(col_int_signed))
+q23	2147466354
+SELECT 'q24', floor(STDDEV_SAMP(col_int_unsigned)) FROM t1;
+q24	floor(STDDEV_SAMP(col_int_unsigned))
+q24	73
+SELECT 'q25', floor(STDDEV_SAMP(col_big_signed)) FROM t1;
+q25	floor(STDDEV_SAMP(col_big_signed))
+q25	9223300272764650000
+SELECT 'q29', floor(STDDEV_SAMP(col_float_signed)) FROM t1;
+q29	floor(STDDEV_SAMP(col_float_signed))
+q29	8387998
+SELECT 'q30', floor(STDDEV_SAMP(col_float_unsigned)) FROM t1;
+q30	floor(STDDEV_SAMP(col_float_unsigned))
+q30	73
+SELECT 'q31', floor(STDDEV_SAMP(col_double_signed)) FROM t1;
+q31	floor(STDDEV_SAMP(col_double_signed))
+q31	2147466354
+SELECT 'q32', floor(STDDEV_SAMP(col_double_unsigned)) FROM t1;
+q32	floor(STDDEV_SAMP(col_double_unsigned))
+q32	73
+SELECT 'q33', floor(VAR_POP(col_signed)) FROM t1;
+q33	floor(VAR_POP(col_signed))
+q33	5376
+SELECT 'q34', floor(VAR_POP(col_unsigned)) FROM t1;
+q34	floor(VAR_POP(col_unsigned))
+q34	5376
+SELECT 'q35', floor(VAR_POP(col_small_signed)) FROM t1;
+q35	floor(VAR_POP(col_small_signed))
+q35	1024021882
+SELECT 'q36', floor(VAR_POP(col_small_unsigned)) FROM t1;
+q36	floor(VAR_POP(col_small_unsigned))
+q36	5376
+SELECT 'q37', floor(VAR_POP(col_med_signed)) FROM t1;
+q37	floor(VAR_POP(col_med_signed))
+q37	70081516547007
+SELECT 'q38', floor(VAR_POP(col_med_unsigned)) FROM t1;
+q38	floor(VAR_POP(col_med_unsigned))
+q38	5376
+SELECT 'q39', floor(VAR_POP(col_int_signed)) FROM t1;
+q39	floor(VAR_POP(col_int_signed))
+q39	4593455793567980000
+SELECT 'q40', floor(VAR_POP(col_int_unsigned)) FROM t1;
+q40	floor(VAR_POP(col_int_unsigned))
+q40	5376
+SELECT 'q41', floor(VAR_POP(col_big_signed)) FROM t1;
+q41	floor(VAR_POP(col_big_signed))
+q41	84734349543936470000000000000000000000
+SELECT 'q45', floor(VAR_POP(col_float_signed)) FROM t1;
+q45	floor(VAR_POP(col_float_signed))
+q45	70081516546971
+SELECT 'q46', floor(VAR_POP(col_float_unsigned)) FROM t1;
+q46	floor(VAR_POP(col_float_unsigned))
+q46	5376
+SELECT 'q47', floor(VAR_POP(col_double_signed)) FROM t1;
+q47	floor(VAR_POP(col_double_signed))
+q47	4593455793567980000
+SELECT 'q48', floor(VAR_POP(col_double_unsigned)) FROM t1;
+q48	floor(VAR_POP(col_double_unsigned))
+q48	5376
+SELECT 'q49', floor(VAR_SAMP(col_signed)) FROM t1;
+q49	floor(VAR_SAMP(col_signed))
+q49	5397
+SELECT 'q50', floor(VAR_SAMP(col_unsigned)) FROM t1;
+q50	floor(VAR_SAMP(col_unsigned))
+q50	5397
+SELECT 'q51', floor(VAR_SAMP(col_small_signed)) FROM t1;
+q51	floor(VAR_SAMP(col_small_signed))
+q51	1028069399
+SELECT 'q52', floor(VAR_SAMP(col_small_unsigned)) FROM t1;
+q52	floor(VAR_SAMP(col_small_unsigned))
+q52	5397
+SELECT 'q53', floor(VAR_SAMP(col_med_signed)) FROM t1;
+q53	floor(VAR_SAMP(col_med_signed))
+q53	70358518588695
+SELECT 'q54', floor(VAR_SAMP(col_med_unsigned)) FROM t1;
+q54	floor(VAR_SAMP(col_med_unsigned))
+q54	5397
+SELECT 'q55', floor(VAR_SAMP(col_int_signed)) FROM t1;
+q55	floor(VAR_SAMP(col_int_signed))
+q55	4611611745321213400
+SELECT 'q56', floor(VAR_SAMP(col_int_unsigned)) FROM t1;
+q56	floor(VAR_SAMP(col_int_unsigned))
+q56	5397
+SELECT 'q57', floor(VAR_SAMP(col_big_signed)) FROM t1;
+q57	floor(VAR_SAMP(col_big_signed))
+q57	85069267921580480000000000000000000000
+SELECT 'q61', floor(VAR_SAMP(col_float_signed)) FROM t1;
+q61	floor(VAR_SAMP(col_float_signed))
+q61	70358518588659
+SELECT 'q62', floor(VAR_SAMP(col_float_unsigned)) FROM t1;
+q62	floor(VAR_SAMP(col_float_unsigned))
+q62	5397
+SELECT 'q63', floor(VAR_SAMP(col_double_signed)) FROM t1;
+q63	floor(VAR_SAMP(col_double_signed))
+q63	4611611745321213400
+SELECT 'q64', floor(VAR_SAMP(col_double_unsigned)) FROM t1;
+q64	floor(VAR_SAMP(col_double_unsigned))
+q64	5397
+DROP DATABASE std_test;
