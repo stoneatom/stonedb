@@ -22,6 +22,7 @@
 
 namespace Tianmu {
 namespace vcolumn {
+thread_local core::MysqlExpression::var_buf_t ExpressionColumn::tls_var_buf_; //chenhui
 ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable *temp_table, int temp_table_alias,
                                    core::MultiIndex *multi_index)
     : VirtualColumn(core::ColumnType(), multi_index),
@@ -50,6 +51,7 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
         var_types_[v] = (*tables)[ndx]->GetColumnType(var_map_[var_map_.size() - 1].col_ndx);
         var_buf_[v] = std::vector<core::MysqlExpression::value_or_null_info_t>();  // now empty, pointers
                                                                                    // inserted by SetBufs()
+        //tls_var_buf_[v] = std::vector<core::MysqlExpression::value_or_null_info_t>();  // chenhui
       } else if (v.tab == temp_table_alias) {
         var_map_.push_back(VarMap(v, temp_table, 0));
         if (only_dim_number == -2 || only_dim_number == 0)
@@ -60,6 +62,7 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
         var_types_[v] = temp_table->GetColumnType(var_map_[var_map_.size() - 1].col_ndx);
         var_buf_[v] = std::vector<core::MysqlExpression::value_or_null_info_t>();  // now empty, pointers
                                                                                    // inserted by SetBufs()
+        //tls_var_buf_[v] = std::vector<core::MysqlExpression::value_or_null_info_t>();  // chenhui
       } else {
         // parameter
         // parameter type is not available here, must be set later (EvalType())
@@ -93,6 +96,63 @@ ExpressionColumn::ExpressionColumn(const ExpressionColumn &ec)
 
 void ExpressionColumn::SetParamTypes(core::MysqlExpression::TypOfVars *types) { expr_->EvalType(types); }
 
+//B_chenhui
+void ExpressionColumn::InitTLSVarBufImpl() {
+  
+  for (auto it : var_buf_) {
+    tls_var_buf_.insert(it);
+  }
+
+  for (auto it : tls_var_buf_) {
+    auto var_id = it.first;
+    auto vec = it.second;
+    //TIANMU_LOG(LogCtl_Level::ERROR, "xxx ExpressionColumn::InitTLSValBuf(), var_id: tab:%d, col:%d", var_id.tab, var_id.col);  
+    for (auto v : vec) {
+      auto v1 = v.first;
+      auto v2 = v.second; 
+      //TIANMU_LOG(LogCtl_Level::ERROR, "xxx ExpressionColumn::InitTLSValBuf(), v1:%p, v2:%p", v1, v2);  
+    }
+  }
+  
+  //using value_or_null_info_t = std::pair<ValueOrNull, ValueOrNull *>;
+  //using var_buf_t = std::map<VarID, std::vector<value_or_null_info_t>>;
+  /*
+    using value_or_null_info_t = std::pair<ValueOrNull, ValueOrNull *>;
+  using var_buf_t = std::map<VarID, std::vector<value_or_null_info_t>>;
+  for()
+    auto buf_set = bufs->find(it.first);
+    if (buf_set != bufs->end()) {
+      // for each tianmuitem* in the vector it->second put its buffer to
+      // buf_set.second
+      for (auto &tianmufield : it.second) {
+        ValueOrNull *von;
+        tianmufield->SetBuf(von);
+        buf_set->second.push_back(value_or_null_info_t(ValueOrNull(), von));
+      }
+    }
+  }
+  */
+}
+
+bool ExpressionColumn::IsTLSVarBufEmpty() {
+  int size =tls_var_buf_.size();
+  /*
+  TIANMU_LOG(LogCtl_Level::ERROR, "xxx ExpressionColumn::IsTLSVarBufEmpty(), size:%d", size);
+    for (auto it : tls_var_buf_) {
+    auto var_id = it.first;
+    auto vec = it.second;
+    TIANMU_LOG(LogCtl_Level::ERROR, "xxx ExpressionColumn::InitTLSValBuf(), var_id: tab:%d, col:%d", var_id.tab, var_id.col);  
+    for (auto v : vec) {
+      auto v1 = v.first;
+      auto v2 = v.second; 
+      TIANMU_LOG(LogCtl_Level::ERROR, "xxx ExpressionColumn::InitTLSValBuf(), v1:%p, v2:%p", v1, v2);  
+    }
+  }
+  */
+  return size == 0;
+}
+//E_chenhui
+
 bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
   bool diff = first_eval_;
   if (mit.Type() == core::MIIterator::MIIteratorType::MII_LOOKUP) {
@@ -104,11 +164,39 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
   for (auto &it : var_map_) {
     core::ValueOrNull v(it.just_a_table_ptr->GetComplexValue(mit[it.dim], it.col_ndx));
     v.MakeStringOwner();
-    auto cache = var_buf_.find(it.var_id);
-    DEBUG_ASSERT(cache != var_buf_.end());
-    diff = diff || (v != cache->second.begin()->first);
-    if (diff)
-      for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
+    
+    //B_chenhui
+    if (IsTLSVarBufEmpty()) {
+      auto cache = var_buf_.find(it.var_id);
+      DEBUG_ASSERT(cache != var_buf_.end());
+      diff = diff || (v != cache->second.begin()->first);
+    
+      if (diff)
+        for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
+    } else {
+      auto cache = tls_var_buf_.find(it.var_id);
+      diff = diff || (v != cache->second.begin()->first);
+      if (diff)
+        for (auto &val_it : cache->second) {
+          val_it.first = v;
+        }
+    }
+    
+    //auto cache = var_buf_.find(it.var_id);
+    //DEBUG_ASSERT(cache != var_buf_.end());
+    //diff = diff || (v != cache->second.begin()->first);
+    
+    //if (diff)
+    //  for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
+      
+     //B_chenhui
+    //if (diff)
+    //  for (auto &val_it : cache->second) {
+    //    //*(val_it.second) = v; 
+    //    val_it.first = v;
+    //    *(val_it.second) = v; 
+    //    }
+      //E_chenhui
   }
   first_eval_ = false;
   return (diff || !deterministic_);
