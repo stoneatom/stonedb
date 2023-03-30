@@ -14,16 +14,16 @@ The username and password for login are **root** and **stonedb123**.
 ### 1. Pull the image
 Run the following command:
 ```bash
-docker pull stoneatom/stonedb:v1.0.2
+docker pull stoneatom/stonedb:v1.0.3
 ```
 ### 2. Run the image
 Run the following command:
 ```bash
-docker run -p 13306:3306 -v $stonedb_volumn_dir/data/:/stonedb56/install/data/ -it -d stoneatom/stonedb:v0.1 /bin/bash
+docker run -p 13306:3306 -v $stonedb_volumn_dir/data/:/stonedb57/install/data/ -it -d stoneatom/stonedb:v1.0.3 /bin/bash
 ```
 Altenatively, run the following command:
 ```bash
-docker run -p 13306:3306 -it -d stoneatom/stonedb:v0.1 /bin/bash
+docker run -p 13306:3306 -it -d stoneatom/stonedb:v1.0.3 /bin/bash
 ```
 Parameter description:
 
@@ -32,7 +32,7 @@ Parameter description:
 - **-i**: the interaction.
 - **-t**: the terminal.
 - **-d**: Do not enter the container upon startup. If you want to enter the container upon startup, run the  docker exec command.
-### **3. Log in to StoneDB in the container**
+### 3. Log in to StoneDB in the container
 ```bash
 # Obtain the Docker container ID.
 docker ps

@@ -6,7 +6,7 @@ sidebar_position: 11.0
 # Release Notes
 
 ## StoneDB-5.7-V1.0.3
-Release date： March 15,2023
+Release date： March 20,2023
 
 - Reconstructed the binlog mechanism to filter out DDL statements that are not supported by the Tianmu storage engine.
 - Added an argument named **NO_KEY_ERROR** for SQL mode to directly skip DDL statements that are not supported by the SQL layer, instead of reporting errors.
