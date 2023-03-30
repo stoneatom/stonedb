@@ -1,0 +1,126 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test in subquery with pk
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS in_withpk_test;
+--enable_warnings
+
+CREATE DATABASE in_withpk_test;
+USE in_withpk_test;
+
+create table t0 (a int);
+insert into t0 values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+
+create table t1 (
+  a int, 
+  b int,
+  primary key(a)
+) ;
+insert into t1 values (1,1),(3,3),(2,2);
+
+create table t2 (
+  a int,
+  b int
+) ;
+insert into t2 select a, a/2 from t0;
+select * from t1 order by 1;
+select * from t2;
+select * from t2 where b in (select a from t1);
+
+create table t3 (
+   a int, 
+   b int,
+   pk1 char(50), pk2 char(50), pk3 char(50),
+   primary key(pk1, pk2, pk3)
+) ;
+insert into t3 select a,a, a,a,a from t0;
+
+select * from t3 where b in (select a from t1);
+
+drop table t3;
+create table t3 (
+   a int, 
+   b int,
+   pk1 char(100), pk2 char(100),
+   primary key(pk1, pk2)
+) ;
+insert into t3 select 
+  A.a + 10*B.a, A.a + 10*B.a, A.a + 10*B.a, A.a + 10*B.a 
+from t0 A, t0 B where B.a <5;
+select * from t3 where b in (select a from t0);
+select * from t3 where b in (select A.a+B.a from t0 A, t0 B where B.a<5) order by a,b;
+
+select * from t1 where a in (select b from t2) order by a;
+
+drop table t0, t1, t2, t3;
+create table t1 (a int);
+insert into t1 values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+
+create table t2 (a char(50), b char(50), c char(50), primary key (a,b,c)) ;
+insert into t2 select concat(a, repeat('X',48)),repeat('B',50),repeat('B',50) from t1;
+insert into t2 select concat(a, repeat('Y',48)),repeat('B',50),repeat('B',50) from t1;
+alter table t2 add filler1 int;
+
+insert into t1 select A.a + 2*(B.a + 2*C.a) from t1 A, t1 B, t1 C;
+
+select * from t2 where filler1 in ( select a from t1);
+drop table t1, t2; 
+
+create table t1 (c6 timestamp);
+create table t2 (c2 double);
+insert into t2 values(12.4);
+select 1 from t2 where c2 = any (select log10(null) from t1 where c6 <null);
+drop table t1, t2;
+
+create table t3 ( c1 year) ;
+insert into t3 values (2135),(2142);
+create table t2 (c1 binary,c2 binary,c6 timestamp) ;
+select 1 from t2 where 
+  c2 in (select 1 from t3, t2) and
+  c1 in (select convert(c6,char(1)) from t2);
+drop table t2, t3;
+
+CREATE TABLE test_table (
+    id INT PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+INSERT INTO test_table (id, name) 
+VALUES
+    (1, 'Alice'),
+    (2, 'Bob'),
+    (3, 'Charlie'),
+    (4, 'David');
+INSERT INTO test_table (id, name)
+VALUES
+    (5, 'Alice'),
+    (6, 'Bob'),
+    (7, 'Charlie'),
+    (8, NULL);
+
+SELECT * FROM test_table WHERE id IN(SELECT id FROM test_table WHERE name LIKE '%b%');
+
+SELECT * FROM test_table AS t1 WHERE NOT EXISTS (
+    SELECT 1
+    FROM test_table AS t2
+    WHERE t1.id = t2.id
+    AND t2.name LIKE '%b%'
+);
+
+SELECT * FROM test_table WHERE id NOT IN (
+    SELECT id
+    FROM test_table
+    WHERE name LIKE '%b%'
+);
+
+SELECT * FROM test_table WHERE id NOT IN (
+    SELECT id
+    FROM test_table
+    WHERE name LIKE '%b%'
+);
+
+# cleanup
+drop database in_withpk_test;

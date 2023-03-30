@@ -255,6 +255,7 @@ const config = {
       },
     ],
   ],
+  scripts:["https://hm.baidu.com/hm.js?7bd24ad933c7b555361696ce01e3e8ff"]
 };
 
 module.exports = config;
