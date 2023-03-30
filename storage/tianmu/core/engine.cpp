@@ -28,10 +28,9 @@
 #include "common/mysql_gate.h"
 #include "core/delta_table.h"
 #include "core/table_share.h"
-#include "core/task_executor.h"
 #include "core/temp_table.h"
-#include "core/tools.h"
 #include "core/transaction.h"
+#include "executor/task_executor.h"
 #include "mm/initializer.h"
 #include "mm/memory_statistics.h"
 #include "mysql/thread_pool_priv.h"
@@ -43,6 +42,7 @@
 #include "util/bitset.h"
 #include "util/fs.h"
 #include "util/thread_pool.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace DBHandler {
@@ -84,7 +84,7 @@ fs::path Engine::GetNextDataDir() {
 
   if (tianmu_data_dirs.empty()) {
     // fall back to use MySQL data directory
-    auto p = ha_tianmu_engine_->tianmu_data_dir / TIANMU_DATA_DIR;
+    auto p = this->tianmu_data_dir / TIANMU_DATA_DIR;
     if (!fs::is_directory(p))
       fs::create_directory(p);
     return p;
@@ -241,8 +241,9 @@ int Engine::Init(uint engine_slot) {
   m_resourceManager = new system::ResourceManager();
 
   // init the tianmu key-value store, aka, rocksdb engine.
-  ha_kvstore_ = new index::KVStore();
-  ha_kvstore_->Init();
+  store_ = new index::KVStore();
+  assert(store_);
+  store_->Init();
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
   fet = new FunctionsExecutionTimes();
@@ -378,8 +379,20 @@ Engine::~Engine() {
   table_share_map.clear();
   m_table_deltas.clear();
   m_table_keys.clear();
-  delete m_resourceManager;
-  delete the_filter_block_owner;
+  if (m_resourceManager) {
+    delete m_resourceManager;
+    m_resourceManager = nullptr;
+  }
+
+  if (store_) {
+    delete store_;
+    store_ = nullptr;
+  }
+
+  if (the_filter_block_owner) {
+    delete the_filter_block_owner;
+    the_filter_block_owner = nullptr;
+  }
 
   try {
     mm::MemoryManagerInitializer::EnsureNoLeakedTraceableObject();
@@ -634,15 +647,18 @@ bool Engine::DecodeInsertRecordToField(const char *ptr, Field **fields) {
   if (deltaRecord.is_deleted_ == DELTA_RECORD_DELETE) {
     return false;
   }
+
   for (uint i = 0; i < deltaRecord.field_count_; i++) {
     auto field = fields[i];
     if (deltaRecord.null_mask_[i]) {
       field->set_null();
       continue;
     }
+
     field->set_notnull();
     ptr = StrToFiled(ptr, field, &deltaRecord, i);
   }
+
   return true;
 }
 
@@ -786,7 +802,52 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
 }
 
 void Engine::CreateTable(const std::string &table, TABLE *form, HA_CREATE_INFO *create_info) {
-  TianmuTable::CreateNew(GetTableOption(table, form, create_info));
+  std::shared_ptr<TableOption> opt = std::move(GetTableOption(table, form, create_info));
+
+  uint32_t tid = GetNextTableId();
+  auto &path(opt->path);
+  uint32_t no_attrs = opt->atis.size();
+  uint64_t auto_inc_value = opt->create_info->auto_increment_value;
+  fs::create_directory(path);
+
+  TABLE_META meta{common::FILE_MAGIC, common::TABLE_DATA_VERSION, tid, opt->pss};
+
+  system::TianmuFile ftbl;
+  ftbl.OpenCreateEmpty(path / common::TABLE_DESC_FILE);
+  ftbl.WriteExact(&meta, sizeof(meta));
+  ftbl.Flush();
+  ftbl.Close();
+
+  auto zero = common::TABLE_VERSION_PREFIX + common::TX_ID(0).ToString();
+  std::ofstream ofs(path / zero);
+  common::TX_ID zid(0);
+  for (size_t idx = 0; idx < no_attrs; idx++) {
+    ofs.write(reinterpret_cast<char *>(&zid), sizeof(zid));
+  }
+  ofs.flush();
+
+  fs::create_symlink(zero, path / common::TABLE_VERSION_FILE);
+
+  auto column_path = path / common::COLUMN_DIR;
+  fs::create_directories(column_path);
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+
+  for (size_t idx = 0; idx < no_attrs; idx++) {
+    auto dir = eng->GetNextDataDir();
+    dir /= std::to_string(tid) + "." + std::to_string(idx);
+    if (system::DoesFileExist(dir)) {
+      throw common::DatabaseException("Directory " + dir.string() + " already exists!");
+    }
+    fs::create_directory(dir);
+    auto lnk = column_path / std::to_string(idx);
+    fs::create_symlink(dir, lnk);
+
+    TianmuAttr::Create(lnk, opt->atis[idx], opt->pss, 0, auto_inc_value);
+    // TIANMU_LOG(LogCtl_Level::INFO, "Column %zu at %s", idx, dir.c_str());
+  }
+  TIANMU_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);
+
+  // tianmu_tb->CreateNew();
 }
 
 AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
@@ -1279,7 +1340,8 @@ void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field 
   HandleDeferredJobs();
 
   auto tab = current_txn_->GetTableByPath(table_path);
-  TianmuTable::Alter(table_path, new_cols, old_cols, tab->NumOfObj());
+
+  tab->Alter(table_path, new_cols, old_cols, tab->NumOfObj());
   cache.ReleaseTable(tab->GetID());
   UnRegisterTable(table_path);
 }
@@ -1376,8 +1438,12 @@ static void HandleDelayedLoad(uint32_t table_id, std::vector<std::unique_ptr<cha
 
 void DistributeLoad(std::unordered_map<uint32_t, std::vector<std::unique_ptr<char[]>>> &tm) {
   utils::result_set<void> res;
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   for (auto &it : tm) {
-    res.insert(ha_tianmu_engine_->bg_load_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
+    res.insert(eng->bg_load_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
   }
   res.get_all();
   tm.clear();
@@ -1469,7 +1535,7 @@ void Engine::ProcessDeltaStoreMerge() {
           uint64_t record_count = delta_table->CountRecords();
           if ((record_count >= tianmu_sysvar_insert_numthreshold ||
                (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold))) {
-            auto share = ha_tianmu_engine_->getTableShare(name);
+            auto share = this->getTableShare(name);
             auto table_id = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());
             std::unique_ptr<char[]> buf(new char[sizeof(uint32_t) + name.size() + 1 + null_mask.data_size()]);
@@ -1944,10 +2010,6 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
   return true;
 }
 
-bool Engine::IsTianmuTable(TABLE *table) {
-  return table && table->s->db_type() == tianmu_hton;  // table->db_type is always nullptr
-}
-
 const char *Engine::GetFilename(SELECT_LEX *selects_list, int &is_dumpfile) {
   // if the function returns a filename <> nullptr
   // additionally is_dumpfile indicates whether it was 'select into OUTFILE' or
@@ -1971,7 +2033,7 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
     data_dir = "";
     data_path = path;
   } else {
-    data_dir = ha_tianmu_engine_->tianmu_data_dir;
+    data_dir = this->tianmu_data_dir;
     std::string db_name, tab_name;
     std::tie(db_name, tab_name) = GetNames(path);
     data_path += db_name;
@@ -2251,8 +2313,8 @@ std::shared_ptr<TableShare> Engine::GetTableShare(const TABLE_SHARE *table_share
 
 void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_unused]] THD *thd) {
   std::unique_lock<std::shared_mutex> guard(tables_keys_mutex);
-  if (!index::TianmuTableIndex::FindIndexTable(table_path)) {
-    index::TianmuTableIndex::CreateIndexTable(table_path, table);
+  if (!store_->FindIndexTable(table_path)) {
+    store_->CreateIndexTable(table_path, table);
   }
   auto iter = m_table_keys.find(table_path);
   if (iter == m_table_keys.end()) {
@@ -2267,9 +2329,10 @@ bool Engine::DeleteTableIndex(const std::string &table_path, [[maybe_unused]] TH
   }
 
   std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
-  if (index::TianmuTableIndex::FindIndexTable(table_path)) {
-    index::TianmuTableIndex::DropIndexTable(table_path);
+  if (store_->FindIndexTable(table_path)) {
+    store_->DropIndexTable(table_path);
   }
+
   if (m_table_keys.find(table_path) != m_table_keys.end()) {
     m_table_keys.erase(table_path);
   }

@@ -21,18 +21,18 @@
 #include <vector>
 
 #include "common/common_definitions.h"
-#include "core/cq_term.h"
-#include "core/descriptor.h"
 #include "core/just_a_table.h"
-#include "core/mi_updating_iterator.h"
-#include "core/multi_index.h"
 #include "core/mysql_expression.h"
-#include "core/pack_orderer.h"
 #include "core/parameterized_filter.h"
-#include "core/physical_column.h"
-#include "core/sorter_wrapper.h"
+#include "data/pack_orderer.h"
 #include "exporter/data_exporter.h"
+#include "index/multi_index.h"
+#include "optimizer/compile/cq_term.h"
+#include "optimizer/compile/descriptor.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "system/large_buffer.h"
+#include "util/sorter_wrapper.h"
+#include "vc/physical_column.h"
 
 namespace Tianmu {
 namespace core {

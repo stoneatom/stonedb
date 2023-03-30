@@ -97,14 +97,18 @@ class KVStore final {
   // release the specific snapshot
   void ReleaseRdbSnapshot(const rocksdb::Snapshot *snapshot) { txn_db_->ReleaseSnapshot(snapshot); }
   // gets the column family name by table handler.
-  static std::string generate_cf_name(uint index, TABLE *table);
+  std::string generate_cf_name(uint index, TABLE *table);
   // creates a ith key of rocksdb table.
-  static void create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def,
-                            rocksdb::ColumnFamilyHandle *cf_handle);
+  void create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def,
+                     rocksdb::ColumnFamilyHandle *cf_handle);
   // create keys and column family for a rocksdb table.
-  static common::ErrorCode create_keys_and_cf(TABLE *table, std::shared_ptr<RdbTable> rdb_tbl);
+  common::ErrorCode create_keys_and_cf(TABLE *table, std::shared_ptr<RdbTable> rdb_tbl);
   // Returns index of primary key
-  static uint pk_index(const TABLE *const table, std::shared_ptr<RdbTable> tbl_def);
+  uint pk_index(const TABLE *const table, std::shared_ptr<RdbTable> tbl_def);
+
+  common::ErrorCode CreateIndexTable(const std::string &name, TABLE *table);
+  common::ErrorCode DropIndexTable(const std::string &name);
+  bool FindIndexTable(const std::string &name);
 
  private:
   // initializationed?

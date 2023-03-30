@@ -27,16 +27,17 @@
 namespace Tianmu {
 namespace index {
 
-TianmuTableIndex::TianmuTableIndex(const std::string &name, TABLE *table) {
+TianmuTableIndex::TianmuTableIndex(const std::string &name, TABLE *table) : tbl_(table) {
   std::string fullname;
   // normalize the table name.
   NormalizeName(name, fullname);
   // does the table exists now.
-  rocksdb_tbl_ = ha_kvstore_->FindTable(fullname);
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tbl_->file->ht->data);
+  rocksdb_tbl_ = eng->getStore()->FindTable(fullname);
   TIANMU_LOG(LogCtl_Level::WARN, "normalize tablename %s, table_full_name %s!", name.c_str(), fullname.c_str());
 
   keyid_ = table->s->primary_key;
-  rocksdb_key_ = rocksdb_tbl_->GetRdbTableKeys().at(KVStore::pk_index(table, rocksdb_tbl_));
+  rocksdb_key_ = rocksdb_tbl_->GetRdbTableKeys().at(eng->getStore()->pk_index(table, rocksdb_tbl_));
   // compatible version that primary key make up of one part
   if (table->key_info[keyid_].actual_key_parts == 1)
     index_of_columns_.push_back(table->key_info[keyid_].key_part[0].field->field_index);
@@ -44,60 +45,15 @@ TianmuTableIndex::TianmuTableIndex(const std::string &name, TABLE *table) {
     rocksdb_key_->get_key_cols(index_of_columns_);
 }
 
-bool TianmuTableIndex::FindIndexTable(const std::string &name) {
-  std::string str;
-  if (!NormalizeName(name, str)) {
-    throw common::Exception("Normalization wrong of table  " + name);
-  }
-  if (ha_kvstore_->FindTable(str)) {
-    return true;
-  }
-
-  return false;
-}
-
-common::ErrorCode TianmuTableIndex::CreateIndexTable(const std::string &name, TABLE *table) {
-  std::string str;
-  if (!NormalizeName(name, str)) {
-    throw common::Exception("Normalization wrong of table  " + name);
-  }
-
-  // ref from mariadb: https://mariadb.com/kb/en/uniqueness-within-a-columnstore-table
-  // ColumnStore like many other analytical database engines does not support unique constraints.
-  // This helps with performance and scaling out to much larger volumes than innodb supports.
-  // It is assumed that your data preparation / ETL phase will ensure correct data being fed into columnstore.
-  if (table->s->keys > 1) {
-    TIANMU_LOG(LogCtl_Level::WARN, "Table :%s have other keys except primary key, only use primary key!", name.data());
-  }
-
-  //  Create table/key descriptions and put them into the data dictionary
-  std::shared_ptr<RdbTable> tbl = std::make_shared<RdbTable>(str);
-  tbl->GetRdbTableKeys().resize(table->s->keys);
-
-  if (KVStore::create_keys_and_cf(table, tbl) != common::ErrorCode::SUCCESS) {
-    return common::ErrorCode::FAILED;
-  }
-
-  return ha_kvstore_->KVWriteTableMeta(tbl);
-}
-
-common::ErrorCode TianmuTableIndex::DropIndexTable(const std::string &name) {
-  std::string str;
-  if (!NormalizeName(name, str)) {
-    throw common::Exception("Exception: table name  " + name);
-  }
-
-  //  Find the table in the hash
-  return ha_kvstore_->KVDelTableMeta(str);
-}
-
 common::ErrorCode TianmuTableIndex::RefreshIndexTable(const std::string &name) {
   std::string fullname;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tbl_->file->ht->data);
 
   if (!NormalizeName(name, fullname)) {
     return common::ErrorCode::FAILED;
   }
-  rocksdb_tbl_ = ha_kvstore_->FindTable(fullname);
+
+  rocksdb_tbl_ = eng->getStore()->FindTable(fullname);
   if (rocksdb_tbl_ == nullptr) {
     TIANMU_LOG(LogCtl_Level::WARN, "table %s init ddl error", fullname.c_str());
     return common::ErrorCode::FAILED;
@@ -108,6 +64,7 @@ common::ErrorCode TianmuTableIndex::RefreshIndexTable(const std::string &name) {
 
 common::ErrorCode TianmuTableIndex::RenameIndexTable(const std::string &from, const std::string &to) {
   std::string sname, dname;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tbl_->file->ht->data);
 
   if (!NormalizeName(from, sname)) {
     return common::ErrorCode::FAILED;
@@ -116,18 +73,20 @@ common::ErrorCode TianmuTableIndex::RenameIndexTable(const std::string &from, co
     return common::ErrorCode::FAILED;
   }
 
-  return ha_kvstore_->KVRenameTableMeta(sname, dname);
+  return eng->getStore()->KVRenameTableMeta(sname, dname);
 }
 
 void TianmuTableIndex::TruncateIndexTable() {
   rocksdb::WriteOptions wopts;
   rocksdb::ReadOptions ropts;
   ropts.total_order_seek = true;
-  uchar key_buf[INDEX_NUMBER_SIZE];
+  uchar key_buf[INDEX_NUMBER_SIZE] = {0};
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tbl_->file->ht->data);
   for (auto &rocksdb_key_ : rocksdb_tbl_->GetRdbTableKeys()) {
     be_store_index(key_buf, rocksdb_key_->get_gl_index_id().index_id);
     auto cf = rocksdb_key_->get_cf();
-    std::unique_ptr<rocksdb::Iterator> it(ha_kvstore_->GetScanIter(ropts, cf));
+    std::unique_ptr<rocksdb::Iterator> it(eng->getStore()->GetScanIter(ropts, cf));
     it->Seek({(const char *)key_buf, INDEX_NUMBER_SIZE});
 
     while (it->Valid()) {
@@ -135,7 +94,7 @@ void TianmuTableIndex::TruncateIndexTable() {
       if (!rocksdb_key_->covers_key(key)) {
         break;
       }
-      if (!ha_kvstore_->KVDeleteKey(wopts, cf, key)) {
+      if (!eng->getStore()->KVDeleteKey(wopts, cf, key)) {
         throw common::Exception("Rdb delete key fail!");
       }
       it->Next();

@@ -18,11 +18,11 @@
 #define TIANMU_CORE_PARAMETERIZED_FILTER_H_
 #pragma once
 
-#include "core/condition.h"
-#include "core/cq_term.h"
-#include "core/joiner.h"
 #include "core/just_a_table.h"
-#include "core/multi_index.h"
+#include "index/multi_index.h"
+#include "optimizer/compile/cq_term.h"
+#include "optimizer/condition.h"
+#include "optimizer/joiner.h"
 
 namespace Tianmu {
 namespace core {

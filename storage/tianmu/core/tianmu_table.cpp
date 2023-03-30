@@ -23,11 +23,10 @@
 #include "common/common_definitions.h"
 #include "common/exception.h"
 #include "core/engine.h"
-#include "core/pack_guardian.h"
 #include "core/table_share.h"
-#include "core/tianmu_attr.h"
 #include "core/tianmu_table.h"
 #include "core/transaction.h"
+#include "data/pack_guardian.h"
 #include "handler/ha_tianmu.h"
 #include "loader/load_parser.h"
 #include "log_event.h"
@@ -38,6 +37,7 @@
 #include "types/value_parser4txt.h"
 #include "util/bitset.h"
 #include "util/timer.h"
+#include "vc/tianmu_attr.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -352,50 +352,6 @@ uint32_t TianmuTable::GetTableId(const fs::path &dir) {
   return meta.id;
 }
 
-void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
-  uint32_t tid = ha_tianmu_engine_->GetNextTableId();
-  auto &path(opt->path);
-  uint32_t no_attrs = opt->atis.size();
-  uint64_t auto_inc_value = opt->create_info->auto_increment_value;
-  fs::create_directory(path);
-
-  TABLE_META meta{common::FILE_MAGIC, common::TABLE_DATA_VERSION, tid, opt->pss};
-
-  system::TianmuFile ftbl;
-  ftbl.OpenCreateEmpty(path / common::TABLE_DESC_FILE);
-  ftbl.WriteExact(&meta, sizeof(meta));
-  ftbl.Flush();
-  ftbl.Close();
-
-  auto zero = common::TABLE_VERSION_PREFIX + common::TX_ID(0).ToString();
-  std::ofstream ofs(path / zero);
-  common::TX_ID zid(0);
-  for (size_t idx = 0; idx < no_attrs; idx++) {
-    ofs.write(reinterpret_cast<char *>(&zid), sizeof(zid));
-  }
-  ofs.flush();
-
-  fs::create_symlink(zero, path / common::TABLE_VERSION_FILE);
-
-  auto column_path = path / common::COLUMN_DIR;
-  fs::create_directories(column_path);
-
-  for (size_t idx = 0; idx < no_attrs; idx++) {
-    auto dir = Engine::GetNextDataDir();
-    dir /= std::to_string(tid) + "." + std::to_string(idx);
-    if (system::DoesFileExist(dir)) {
-      throw common::DatabaseException("Directory " + dir.string() + " already exists!");
-    }
-    fs::create_directory(dir);
-    auto lnk = column_path / std::to_string(idx);
-    fs::create_symlink(dir, lnk);
-
-    TianmuAttr::Create(lnk, opt->atis[idx], opt->pss, 0, auto_inc_value);
-    // TIANMU_LOG(LogCtl_Level::INFO, "Column %zu at %s", idx, dir.c_str());
-  }
-  TIANMU_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);
-}
-
 void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                         size_t no_objs) {
   fs::path tmp_dir = table_path + ".tmp";
@@ -414,7 +370,9 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
     f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
     f.ReadExact(&meta, sizeof(meta));
   }
-  meta.id = ha_tianmu_engine_->GetNextTableId();  // only table id is updated
+
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+  meta.id = eng->GetNextTableId();  // only table id is updated
 
   {
     system::TianmuFile tempf;
@@ -447,13 +405,16 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
     }
     new_versions.push_back(0);
     // new column
-    auto dir = Engine::GetNextDataDir();
+
+    auto dir = eng->GetNextDataDir();
     dir /= std::to_string(meta.id) + "." + std::to_string(i);
     fs::create_directory(dir);
     fs::create_symlink(dir, column_dir);
+
     TianmuAttr::Create(column_dir, Engine::GetAttrTypeInfo(*new_cols[i]), meta.pss, no_objs);
     TIANMU_LOG(LogCtl_Level::INFO, "Add column %s at %s", new_cols[i]->field_name, dir.c_str());
   }
+
   {
     system::TianmuFile f;
     f.OpenCreate(tmp_dir / common::TABLE_VERSION_FILE);
@@ -498,7 +459,10 @@ TianmuTable::TianmuTable(std::string const &p, TableShare *s, Transaction *tx) :
   if (!index::NormalizeName(table_name, normalized_path)) {
     throw common::Exception("Normalization wrong of table  " + share->Path());
   }
-  m_delta = ha_kvstore_->FindDeltaTable(normalized_path);
+
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+  assert(eng);
+  m_delta = eng->getStore()->FindDeltaTable(normalized_path);
 }
 
 void TianmuTable::LockPackInfoForUse() {
@@ -587,8 +551,9 @@ void TianmuTable::CommitVersion() {
 
   utils::result_set<bool> res;
   bool no_except = true;
-  for (auto &attr : m_attrs)
-    res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::SaveVersion, attr.get()));
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+
+  for (auto &attr : m_attrs) res.insert(eng->load_thread_pool.add_task(&TianmuAttr::SaveVersion, attr.get()));
 
   std::vector<size_t> changed_columns;
   changed_columns.reserve(m_attrs.size());
@@ -965,7 +930,9 @@ int TianmuTable::Insert(TABLE *table) {
     vcs[i].Commit();
   }
 
-  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+
+  std::shared_ptr<index::TianmuTableIndex> tab = eng->GetTableIndex(share->Path());
   if (tab) {
     std::vector<std::string> fields;
     std::vector<uint> cols = tab->KeyCols();
@@ -980,8 +947,7 @@ int TianmuTable::Insert(TABLE *table) {
   }
   utils::result_set<void> res;
   for (uint i = 0; i < NumOfAttrs(); i++) {
-    res.insert(
-        ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[i].get(), &vcs[i], current_txn_));
+    res.insert(eng->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[i].get(), &vcs[i], current_txn_));
   }
   res.get_all_with_except();
   return 0;
@@ -993,6 +959,8 @@ int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uc
   std::shared_ptr<void> defer(nullptr,
                               [org_bitmap2, table](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap2); });
   utils::result_set<void> res;
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+
   for (uint col_id = 0; col_id < table->s->fields; col_id++) {
     if (!bitmap_is_set(table->write_set, col_id)) {
       continue;
@@ -1007,18 +975,19 @@ int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uc
       if (field->is_null_in_record(new_data)) {
         core::Value old_v, new_v;
         UpdateGetOldNewValue(table, col_id, old_v, new_v);
-        res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
-            &core::TianmuTable::UpdateItem, this, row_id, col_id, old_v, new_v, current_txn_));
+        res.insert(eng->delete_or_update_thread_pool.add_task(&core::TianmuTable::UpdateItem, this, row_id, col_id,
+                                                              old_v, new_v, current_txn_));
         continue;
       }
     }
+
     auto o_ptr = field->ptr - table->record[0] + old_data;
     auto n_ptr = field->ptr - table->record[0] + new_data;
     if (field->is_null_in_record(old_data) || std::memcmp(o_ptr, n_ptr, field->pack_length()) != 0) {
       core::Value old_v, new_v;
       UpdateGetOldNewValue(table, col_id, old_v, new_v);
-      res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(&core::TianmuTable::UpdateItem, this, row_id,
-                                                                          col_id, old_v, new_v, current_txn_));
+      res.insert(eng->delete_or_update_thread_pool.add_task(&core::TianmuTable::UpdateItem, this, row_id, col_id, old_v,
+                                                            new_v, current_txn_));
     }
   }
   res.get_all_with_except();
@@ -1027,9 +996,11 @@ int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uc
 
 int TianmuTable::Delete(TABLE *table, uint64_t row_id) {
   utils::result_set<void> res;
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+
   for (uint i = 0; i < table->s->fields; i++) {
-    res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(&core::TianmuTable::DeleteItem, this, row_id, i,
-                                                                        current_txn_));
+    res.insert(
+        eng->delete_or_update_thread_pool.add_task(&core::TianmuTable::DeleteItem, this, row_id, i, current_txn_));
   }
   res.get_all_with_except();
   return 0;
@@ -1071,6 +1042,7 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
   }
 
   loader::LoadParser parser(m_attrs, iop, share->PackSize(), fs);
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
 
   uint to_prepare;
   uint no_of_rows_returned;
@@ -1084,8 +1056,8 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
     if (parser.GetNoRow() > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(),
-                                                                &value_buffers[att], current_txn_));
+        res.insert(eng->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &value_buffers[att],
+                                                  current_txn_));
       }
       res.get_all();
     }
@@ -1445,9 +1417,9 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
 uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
   std::string str(basename(const_cast<char *>(iop.Path())));
   auto vec = reinterpret_cast<std::vector<std::unique_ptr<char[]>> *>(std::stol(str));
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
 
-  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), ha_tianmu_engine_->GetTableIndex(share->Path()),
-                             current_txn_);
+  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), eng->GetTableIndex(share->Path()), current_txn_);
   long no_loaded_rows = 0;
 
   uint to_prepare, no_of_rows_returned;
@@ -1461,8 +1433,7 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att],
-                                                                current_txn_));
+        res.insert(eng->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], current_txn_));
       }
 
       res.get_all();
@@ -1495,7 +1466,8 @@ void TianmuTable::DeleteToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, ui
 }
 
 void TianmuTable::InsertIndexForDelta(TABLE *table, uint64_t row_id) {
-  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+  std::shared_ptr<index::TianmuTableIndex> tab = eng->GetTableIndex(share->Path());
   if (tab) {
     std::vector<std::string> fields;
     GetKeys(table, fields, tab);
@@ -1515,7 +1487,8 @@ void TianmuTable::UpdateIndexForDelta(TABLE *table, uint64_t row_id, uint64_t co
 }
 
 void TianmuTable::DeleteIndexForDelta(TABLE *table, uint64_t row_id) {
-  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+  std::shared_ptr<index::TianmuTableIndex> tab = eng->GetTableIndex(share->Path());
   if (tab) {
     std::vector<std::string> fields;
     GetKeys(table, fields, tab);
@@ -1594,6 +1567,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       iter->Next();
     }
   }
+
   clock_gettime(CLOCK_REALTIME, &t2);
   if (!insert_records.empty()) {
     insert_num += AsyncParseInsertRecords(&iop, &insert_records);
@@ -1604,9 +1578,11 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   if (!delete_records.empty()) {
     delete_num += AsyncParseDeleteRecords(delete_records);
   }
+
   if (t2.tv_sec - t1.tv_sec > 15) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_delta->GetCFHandle(), nullptr, nullptr);
+    Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+    eng->getStore()->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_delta->GetCFHandle(), nullptr, nullptr);
   }
 
   return insert_num + update_num + delete_num;
@@ -1615,7 +1591,8 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
 int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *insert_vec) {
   struct timespec t1, t2;
   clock_gettime(CLOCK_REALTIME, &t1);
-  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+  auto index_table = eng->GetTableIndex(share->Path());
   DelayedInsertParser parser(m_attrs, insert_vec, share->PackSize(), index_table, m_tx);
   uint64_t loaded_row_num = 0;
 
@@ -1629,8 +1606,7 @@ int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(
-            ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
+        res.insert(eng->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
       }
       res.get_all();
       loaded_row_num += real_loaded_rows;
@@ -1648,8 +1624,9 @@ int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<
   if ((t2.tv_sec - t1.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
-                                        nullptr);
+    Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+    eng->getStore()->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(),
+                                            nullptr, nullptr);
   }
   return loaded_row_num;
 }
@@ -1657,7 +1634,9 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
                                          std::map<uint64_t, std::unique_ptr<char[]>> *update_records) {
   struct timespec t1, t2;
   clock_gettime(CLOCK_REALTIME, &t1);
-  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+
+  auto index_table = eng->GetTableIndex(share->Path());
   DelayedUpdateParser parser(m_attrs, update_records, index_table);
   std::vector<std::unordered_map<uint64_t, Value>> update_cols_buf;
   int returned_row_num = parser.GetRows(update_cols_buf);
@@ -1665,8 +1644,8 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
     utils::result_set<void> res;
     for (uint att = 0; att < m_attrs.size(); ++att) {
       if (!update_cols_buf[att].empty()) {
-        res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
-            &TianmuAttr::UpdateBatchData, m_attrs[att].get(), current_txn_, update_cols_buf[att]));
+        res.insert(eng->delete_or_update_thread_pool.add_task(&TianmuAttr::UpdateBatchData, m_attrs[att].get(),
+                                                              current_txn_, update_cols_buf[att]));
       }
     }
     res.get_all_with_except();
@@ -1676,17 +1655,20 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
   if ((t2.tv_sec - t1.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
-                                        nullptr);
+    Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+    eng->getStore()->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(),
+                                            nullptr, nullptr);
   }
   return returned_row_num;
 }
 int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) {
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+
   if (!delete_records.empty()) {
     utils::result_set<void> res;
     for (uint att = 0; att < m_attrs.size(); ++att) {
-      res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
-          &TianmuAttr::DeleteBatchData, m_attrs[att].get(), current_txn_, delete_records));
+      res.insert(eng->delete_or_update_thread_pool.add_task(&TianmuAttr::DeleteBatchData, m_attrs[att].get(),
+                                                            current_txn_, delete_records));
     }
     res.get_all_with_except();
   }
@@ -1699,10 +1681,12 @@ TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attr
     : table(table), filter(std::make_shared<Filter>(raw_filter)), it(filter.get(), table->Getpackpower()) {
   Initialize(attrs);
   it.Rewind();
+
   if (it.IsValid())
     position = *(it);
   else
     position = -1;
+
   conn = current_txn_;
 }
 

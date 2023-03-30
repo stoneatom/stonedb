@@ -55,6 +55,15 @@ AUX_SOURCE_DIRECTORY(base/core SOURCE_base_core)
 AUX_SOURCE_DIRECTORY(base/fmt SOURCE_base_fmt)
 AUX_SOURCE_DIRECTORY(base/net SOURCE_base_net)
 AUX_SOURCE_DIRECTORY(base/util SOURCE_base_util)
+AUX_SOURCE_DIRECTORY(optimizer SOURCE_optimizer)
+AUX_SOURCE_DIRECTORY(optimizer/compile SOURCE_compile)
+AUX_SOURCE_DIRECTORY(optimizer/iterators SOURCE_iterators)
+AUX_SOURCE_DIRECTORY(optimizer/statistics SOURCE_statistics)
+AUX_SOURCE_DIRECTORY(optimizer/plan SOURCE_plan)
+AUX_SOURCE_DIRECTORY(executor SOURCE_executor)
+AUX_SOURCE_DIRECTORY(data SOURCE_data)
+AUX_SOURCE_DIRECTORY(sql SOURCE_sql)
+
 
 SET(TIANMU_SOURCES ${SOURCE_common}
 			${SOURCE_compress}
@@ -72,7 +81,16 @@ SET(TIANMU_SOURCES ${SOURCE_common}
 			${SOURCE_base_core}
 			${SOURCE_base_fmt}
 			${SOURCE_base_net}
-			${SOURCE_base_util})
+			${SOURCE_base_util}
+            ${SOURCE_optimizer}
+            ${SOURCE_compile}
+            ${SOURCE_iterators}
+            ${SOURCE_statistics}
+            ${SOURCE_plan}
+            ${SOURCE_executor}
+            ${SOURCE_data}
+			${SOURCE_sql}
+            )
 
 MYSQL_ADD_PLUGIN(tianmu ${TIANMU_SOURCES}
 			STORAGE_ENGINE

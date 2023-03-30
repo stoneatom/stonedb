@@ -24,7 +24,7 @@
 namespace Tianmu {
 namespace DBHandler {
 
-// Class definition for the storage engine
+/** The class defining a handle to an tianmu table */
 class ha_tianmu final : public handler {
  public:
   ha_tianmu(handlerton *hton, TABLE_SHARE *table_arg);
@@ -180,6 +180,7 @@ class ha_tianmu final : public handler {
   std::unique_ptr<core::Query> query_;
   core::TabID tmp_table_;
   std::unique_ptr<core::CompiledQuery> cq_;
+  bool start_of_scan_{false};
   bool result_ = false;
   std::vector<std::vector<uchar>> blob_buffers_;
 };

@@ -20,12 +20,12 @@
 
 #include <vector>
 
-#include "core/column.h"
 #include "core/just_a_table.h"
-#include "core/multi_index.h"
 #include "core/mysql_expression.h"
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
+#include "index/multi_index.h"
 #include "types/text_stat.h"
+#include "vc/column.h"
 
 namespace Tianmu {
 namespace core {

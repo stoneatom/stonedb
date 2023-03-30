@@ -19,8 +19,8 @@
 
 #include "common/assert.h"
 #include "core/engine.h"
-#include "core/tianmu_attr.h"
 #include "system/large_buffer.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 namespace exporter {
@@ -33,9 +33,10 @@ void DataExporter::Init(std::shared_ptr<system::LargeBuffer> buffer, std::vector
   this->source_attr_infos_ = source_deas;
   this->attr_infos_ = result_deas;
   this->no_attrs_ = int(attr_infos_.size());
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
 
   for (size_t i = 0; i < attr_infos_.size(); ++i) {
-    common::ColumnType f_at = ha_tianmu_engine_->GetCorrespondingType(fields[i]);
+    common::ColumnType f_at = eng->GetCorrespondingType(fields[i]);
     if (core::ATI::IsStringType(attr_infos_[i].Type()) && !core::ATI::IsStringType(f_at))
       this->attr_infos_[i] = core::AttributeTypeInfo(f_at, attr_infos_[i].NotNull());
   }

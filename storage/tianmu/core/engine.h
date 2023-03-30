@@ -26,13 +26,13 @@
 
 #include "common/assert.h"
 #include "common/exception.h"
-#include "core/combined_iterator.h"
 #include "core/data_cache.h"
 #include "core/object_cache.h"
 #include "core/query.h"
 #include "core/table_share.h"
 #include "core/temp_table.h"
 #include "core/tianmu_table.h"
+#include "executor/combined_iterator.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
 #include "index/tianmu_table_index.h"
@@ -77,6 +77,7 @@ class Engine final {
  public:
   Engine();
   ~Engine();
+  index::KVStore *getStore() const { return store_; }
 
   int Init(uint engine_slot);
   void CreateTable(const std::string &table, TABLE *from, HA_CREATE_INFO *create_info);
@@ -155,7 +156,7 @@ class Engine final {
   static AttributeTypeInfo GetCorrespondingATI(Field &field);
   static AttributeTypeInfo GetAttrTypeInfo(const Field &field);
   static common::ColumnType GetCorrespondingType(const enum_field_types &eft);
-  static bool IsTianmuTable(TABLE *table);
+
   static bool ConvertToField(Field *field, types::TianmuDataType &tianmu_item, std::vector<uchar> *blob_buf);
   static int Convert(int &is_null, my_decimal *value, types::TianmuDataType &tianmu_item, int output_scale = -1);
   // Add args unsigned_flag here is much more easier to construct TianmuNum in Convert function, another way is
@@ -168,10 +169,10 @@ class Engine final {
   static void DecodeUpdateRecordToField(const char *ptr, Field **fields);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
-  static common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                    TABLE *table = 0, void *arg = nullptr, bool for_exporter = false);
+  common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
+                             TABLE *table = 0, void *arg = nullptr, bool for_exporter = false);
   static common::TianmuError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
-  static fs::path GetNextDataDir();
+  fs::path GetNextDataDir();
 
   static const char *StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num);
   static char *FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd);
@@ -186,8 +187,8 @@ class Engine final {
   static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
                             int &in_case_of_failure_can_go_to_mysql, int with_insert);
   static const char *GetFilename(SELECT_LEX *selects_list, int &is_dumpfile);
-  static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
-  static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
+  std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
+  std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
   void LogStat();
   std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form, HA_CREATE_INFO *create_info);
   std::shared_ptr<TableShare> getTableShare(const std::string &table_path);
@@ -282,6 +283,8 @@ class Engine final {
   std::unique_ptr<TaskExecutor> task_executor;
   uint64_t m_mem_available_ = 0;
   uint64_t m_swap_used_ = 0;
+
+  index::KVStore *store_;
 };
 
 class ResultSender {

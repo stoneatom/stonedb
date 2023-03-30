@@ -28,7 +28,8 @@
 namespace Tianmu {
 namespace core {
 class Transaction;
-}
+class TianmuTable;
+}  // namespace core
 
 namespace index {
 class RdbKey;
@@ -45,10 +46,6 @@ class TianmuTableIndex final {
   virtual ~TianmuTableIndex() = default;
 
   const std::vector<uint> &KeyCols() { return index_of_columns_; }
-
-  static common::ErrorCode CreateIndexTable(const std::string &name, TABLE *table);
-  static common::ErrorCode DropIndexTable(const std::string &name);
-  static bool FindIndexTable(const std::string &name);
 
   void TruncateIndexTable();
 
@@ -68,6 +65,9 @@ class TianmuTableIndex final {
 
  private:
   common::ErrorCode CheckUniqueness(core::Transaction *tx, const rocksdb::Slice &pk_slice);
+
+  // which table this index belong to.
+  TABLE *tbl_;
 };
 
 class KeyIterator final {
@@ -75,6 +75,7 @@ class KeyIterator final {
   KeyIterator() = delete;
   KeyIterator(const KeyIterator &sec) : valid(sec.valid), iter_(sec.iter_), rocksdb_key_(sec.rocksdb_key_){};
   KeyIterator(KVTransaction *tx) : txn_(tx){};
+
   void ScanToKey(std::shared_ptr<TianmuTableIndex> tab, std::vector<std::string> &fields, common::Operator op);
   void ScanToEdge(std::shared_ptr<TianmuTableIndex> tab, bool forward);
   common::ErrorCode GetCurKV(std::vector<std::string> &keys, uint64_t &row);
@@ -82,6 +83,7 @@ class KeyIterator final {
     std::vector<std::string> keys;
     return GetCurKV(keys, row);
   }
+
   bool IsValid() const { return valid; }
   KeyIterator &operator++();
   KeyIterator &operator--();

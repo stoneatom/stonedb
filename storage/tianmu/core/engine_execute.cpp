@@ -19,12 +19,14 @@
 #include <sys/syscall.h>
 #include <time.h>
 
-#include "core/compilation_tools.h"
-#include "core/compiled_query.h"
 #include "core/engine.h"
 #include "core/query.h"
 #include "core/transaction.h"
 #include "exporter/export2file.h"
+#include "optimizer/compile/compilation_tools.h"
+#include "optimizer/compile/compiled_query.h"
+#include "optimizer/compile/compiler.h"
+#include "optimizer/plan/query_plan.h"
 #include "util/log_ctl.h"
 #include "vc/virtual_column.h"
 
@@ -70,16 +72,16 @@ class KillTimer {
 };
 
 /*
-Handles a single query
-If an error appears during query preparation/optimization
-query structures are cleaned up and the function returns information about the
-error through res'. If the query can not be compiled by Tianmu engine
-QueryRouteTo::kToMySQL is returned and MySQL engine continues query
-execution.
+Handles a single query If an error appears during query preparation/optimization query structures are cleaned up and the
+function returns information about the error through res'. If the query can not be compiled by Tianmu engine
+QueryRouteTo::kToMySQL is returned and MySQL engine continues query execution.
 */
 QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
                                   int &is_optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
   KillTimer timer(thd, tianmu_sysvar_max_execution_time);
+
+  Optimizer::Tianmu_compiler tianmu_cp = Optimizer::CompilerF<Optimizer::Tianmu_compiler>::instance();
+  Optimizer::QueryPlan *plan = tianmu_cp.Optimize(thd, lex, result);
 
   int in_case_of_failure_can_go_to_mysql;
 
@@ -92,9 +94,6 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
 
   if (tianmu_sysvar_pushdown)
     thd->variables.optimizer_switch |= OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
-  if (!IsTIANMURoute(thd, lex->query_tables, lex->select_lex, in_case_of_failure_can_go_to_mysql, with_insert)) {
-    return QueryRouteTo::kToMySQL;
-  }
 
   if (lock_tables(thd, thd->lex->query_tables, thd->lex->table_count, 0)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd->query().str);
@@ -130,14 +129,12 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
           // optimize derived table
           SELECT_LEX *first_select = cursor->derived_unit()->first_select();
           if (first_select->next_select() && first_select->next_select()->linkage == UNION_TYPE) {  //?? only if union
-            if (lex->is_explain() || cursor->derived_unit()->item) {  //??called for explain
-              // OR there is subselect(?)
+            if (lex->is_explain() || cursor->derived_unit()->item) {  //??called for explain OR there is subselect(?)
               route = QueryRouteTo::kToMySQL;
               goto ret_derived;
             }
             if (!cursor->derived_unit()->is_executed() ||
-                cursor->derived_unit()->uncacheable) {  //??not already executed (not
-                                                        // materialized?)
+                cursor->derived_unit()->uncacheable) {  //??not already executed (not materialized?)
               // OR not cacheable (meaning not yet in cache, i.e. not
               // materialized it seems to boil down to NOT MATERIALIZED(?)
               res = cursor->derived_unit()->optimize_for_tianmu();  //===exec()
@@ -186,9 +183,11 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
         int old_executed = unit->is_executed();
         res = unit->optimize_for_tianmu();  //====exec()
         is_optimize_after_tianmu = TRUE;
+        Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+
         if (!res) {
           try {
-            route = ha_tianmu_engine_->Execute(unit->thd, unit->thd->lex, result, unit);
+            route = eng->Execute(unit->thd, unit->thd->lex, result, unit);
             if (route == QueryRouteTo::kToMySQL) {
               if (in_case_of_failure_can_go_to_mysql)
                 if (old_executed)
@@ -458,8 +457,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
 
   try {
     std::shared_ptr<TianmuTable> rct;
-    if (lex->sql_command == SQLCOM_INSERT_SELECT &&
-        Engine::IsTianmuTable(((Query_tables_list *)lex)->query_tables->table)) {
+    if (lex->sql_command == SQLCOM_INSERT_SELECT && IsTianmuTable(((Query_tables_list *)lex)->query_tables->table)) {
       std::string table_path = Engine::GetTablePath(((Query_tables_list *)lex)->query_tables->table);
       rct = current_txn_->GetTableByPathIfExists(table_path);
     }

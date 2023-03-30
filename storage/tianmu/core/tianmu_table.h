@@ -20,12 +20,13 @@
 
 #include <string>
 
+#include "../../sql/handler.h"
 #include "common/common_definitions.h"
 #include "core/delta_table.h"
 #include "core/just_a_table.h"
-#include "core/tianmu_attr.h"
 #include "index/tianmu_table_index.h"
 #include "util/fs.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 
@@ -61,6 +62,7 @@ class DataPackLock : public FunctionExecutor {
 };
 
 class TableShare;
+class ::handler;
 
 class TianmuTable final : public JustATable {
  public:
@@ -69,10 +71,8 @@ class TianmuTable final : public JustATable {
   ~TianmuTable() = default;
 
   // Create the physical file of table
-  static void CreateNew(const std::shared_ptr<TableOption> &opt);
   static uint32_t GetTableId(const fs::path &dir);
-  static void Alter(const std::string &path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
-                    size_t no_objs);
+  void Alter(const std::string &path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols, size_t no_objs);
   void Truncate();
   void UpdateItem(uint64_t row, uint64_t col, Value &old_v, Value &new_v, core::Transaction *current_transaction);
   void DeleteItem(uint64_t row, uint64_t col, core::Transaction *current_transaction);

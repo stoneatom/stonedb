@@ -23,16 +23,16 @@
 #include "common/assert.h"
 #include "common/data_format.h"
 #include "core/engine.h"
-#include "core/pack_guardian.h"
-#include "core/sorter_wrapper.h"
 #include "core/temp_table.h"
 #include "core/transaction.h"
+#include "data/pack_guardian.h"
 #include "exporter/data_exporter.h"
 #include "system/fet.h"
 #include "system/io_parameters.h"
 #include "system/tianmu_system.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"
+#include "util/sorter_wrapper.h"
 #include "util/thread_pool.h"
 #include "vc/expr_column.h"
 #include "vc/virtual_column.h"
@@ -211,10 +211,11 @@ bool TempTable::OrderByAndMaterialize(
 
     for (int i = 0; i < task_num; i++) subsorted_table[i].InitSorter(*(filter.mind_), false);
 
+    Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
-                                                               current_txn_, &subsorted_table[i]));
+      res.insert(eng->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i], current_txn_,
+                                                 &subsorted_table[i]));
     if (filter.mind_->m_conn->Killed())
       throw common::KilledException("Query killed by user");
 
@@ -404,11 +405,13 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
         outer_iterator_updated = true;
       }
     }
+
+    Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
     utils::result_set<void> res;
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
-        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i],
-                                                                 current_txn_, &page_start, start_row, page_end));
+        res.insert(eng->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
+                                                   &page_start, start_row, page_end));
       }
     }
     res.get_all_with_except();

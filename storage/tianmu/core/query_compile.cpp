@@ -18,12 +18,12 @@
 #include <algorithm>
 
 #include "common/mysql_gate.h"
-#include "core/compilation_tools.h"
-#include "core/compiled_query.h"
 #include "core/engine.h"
 #include "core/mysql_expression.h"
 #include "core/query.h"
 #include "core/transaction.h"
+#include "optimizer/compile/compilation_tools.h"
+#include "optimizer/compile/compiled_query.h"
 
 namespace Tianmu {
 namespace core {
@@ -1170,7 +1170,7 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
       TABLE_LIST *tables = sl->leaf_tables ? sl->leaf_tables : (TABLE_LIST *)sl->table_list.first;
       for (TABLE_LIST *table_ptr = tables; table_ptr; table_ptr = table_ptr->next_leaf) {
         if (!table_ptr->is_view_or_derived()) {
-          if (!Engine::IsTianmuTable(table_ptr->table))
+          if (!IsTianmuTable(table_ptr->table))
             throw CompilationError();
           std::string path = TablePath(table_ptr);
           if (path2num.find(path) == path2num.end()) {

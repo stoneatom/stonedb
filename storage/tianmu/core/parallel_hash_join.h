@@ -22,10 +22,10 @@
 #include <list>
 #include <vector>
 
-#include "core/column_bin_encoder.h"
 #include "core/hash_table.h"
-#include "core/joiner.h"
-#include "core/multi_index_builder.h"
+#include "index/multi_index_builder.h"
+#include "optimizer/joiner.h"
+#include "vc/column_bin_encoder.h"
 
 namespace Tianmu {
 namespace core {

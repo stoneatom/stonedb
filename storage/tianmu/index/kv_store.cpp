@@ -18,7 +18,7 @@
 #include "index/kv_store.h"
 
 #include "core/engine.h"
-#include "core/merge_operator.h"
+#include "executor/merge_operator.h"
 
 namespace Tianmu {
 namespace index {
@@ -327,7 +327,7 @@ std::string KVStore::generate_cf_name(uint index, TABLE *table) {
 void KVStore::create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def,
                             rocksdb::ColumnFamilyHandle *cf_handle) {
   // assign a new id for this index.
-  uint index_id = ha_kvstore_->GetNextIndexId();
+  uint index_id = GetNextIndexId();
 
   std::vector<ColAttr> vcols;
   KEY *key_info = &table->key_info[pos];
@@ -371,7 +371,7 @@ common::ErrorCode KVStore::create_keys_and_cf(TABLE *table, std::shared_ptr<RdbT
       throw common::Exception("column family not valid for storing index data. cf: " + DEFAULT_SYSTEM_CF_NAME);
 
     // isnot default cf, then get the cf name.
-    rocksdb::ColumnFamilyHandle *cf_handle = ha_kvstore_->GetCfHandle(cf_name);
+    rocksdb::ColumnFamilyHandle *cf_handle = GetCfHandle(cf_name);
 
     if (!cf_handle) {
       return common::ErrorCode::FAILED;
@@ -393,9 +393,10 @@ bool IndexCompactFilter::Filter([[maybe_unused]] int level, const rocksdb::Slice
   GlobalId gl_index_id;
   gl_index_id.cf_id = cf_id_;
   gl_index_id.index_id = be_to_uint32(reinterpret_cast<const uchar *>(key.data()));
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
 
   if (gl_index_id.index_id != prev_index_.index_id) {
-    should_delete_ = ha_kvstore_->IndexDroping(gl_index_id);
+    should_delete_ = store->IndexDroping(gl_index_id);
     prev_index_ = gl_index_id;
   }
 
@@ -404,6 +405,53 @@ bool IndexCompactFilter::Filter([[maybe_unused]] int level, const rocksdb::Slice
   }
 
   return false;
+}
+
+common::ErrorCode KVStore::CreateIndexTable(const std::string &name, TABLE *table) {
+  std::string str;
+
+  if (!NormalizeName(name, str)) {
+    throw common::Exception("Normalization wrong of table  " + name);
+  }
+
+  // ref from mariadb: https://mariadb.com/kb/en/uniqueness-within-a-columnstore-table
+  // ColumnStore like many other analytical database engines does not support unique constraints.
+  // This helps with performance and scaling out to much larger volumes than innodb supports.
+  // It is assumed that your data preparation / ETL phase will ensure correct data being fed into columnstore.
+  if (table->s->keys > 1) {
+    TIANMU_LOG(LogCtl_Level::WARN, "Table :%s have other keys except primary key, only use primary key!", name.data());
+  }
+
+  //  Create table/key descriptions and put them into the data dictionary
+  std::shared_ptr<RdbTable> tbl = std::make_shared<RdbTable>(str);
+  tbl->GetRdbTableKeys().resize(table->s->keys);
+
+  if (KVStore::create_keys_and_cf(table, tbl) != common::ErrorCode::SUCCESS) {
+    return common::ErrorCode::FAILED;
+  }
+
+  return KVWriteTableMeta(tbl);
+}
+
+common::ErrorCode KVStore::DropIndexTable(const std::string &name) {
+  std::string str;
+
+  if (!NormalizeName(name, str)) {
+    throw common::Exception("Exception: table name  " + name);
+  }
+
+  //  Find the table in the hash
+  return KVDelTableMeta(str);
+}
+
+bool KVStore::FindIndexTable(const std::string &name) {
+  std::string str;
+
+  if (!NormalizeName(name, str)) {
+    throw common::Exception("Normalization wrong of table  " + name);
+  }
+
+  return (FindTable(str)) ? true : false;
 }
 
 }  // namespace index
