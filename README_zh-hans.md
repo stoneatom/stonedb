@@ -22,11 +22,11 @@
 - [贡献指南](#贡献指南)
 - [快速开始](#快速开始)
   - [支持平台](#支持平台)
+  - [在 Docker 容器中通过源码编译 StoneDB](#在-docker-容器中通过源码编译-stonedb)
   - [通过源码编译 StoneDB](#通过源码编译-stonedb)
     - [Ubuntu 20.04 下编译 StoneDB](#ubuntu-2004-下编译-stonedb)
     - [CentOS 7.x 下编译 StoneDB](#centos-7x-下编译-stonedb)
     - [RedHat 7.x 下编译 StoneDB](#redhat-7x-下编译-stonedb)
-  - [在 Docker 容器中通过源码编译 StoneDB](#在-docker-容器中通过源码编译-stonedb)
   - [配置 StoneDB](#配置-stonedb)
   - [初始化数据库](#初始化数据库)
   - [启动数据库实例](#启动数据库实例)
@@ -84,6 +84,12 @@ StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享
 - RocksDB 6.12.6
 - Boost 1.66
 
+## 在 Docker 容器中通过源码编译 StoneDB
+
+更多信息，可以查看 [Compile StoneDB in a Docker Container](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-docker)。
+
+当然，您也可以直接通过 [Dockershub](https://hub.docker.com/r/stoneatom/stonedb) 来快速安装部署 StoneDB，只要两分钟，详情可以看[官网文档](https://stonedb.io/zh/docs/getting-started/quick-deploy-in-docker)。
+
 ## 通过源码编译 StoneDB
 
 ### Ubuntu 20.04 下编译 StoneDB
@@ -97,9 +103,6 @@ StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享
 ### RedHat 7.x 下编译 StoneDB
 更多信息，可以查看 [Compile StoneDB on RHEL 7](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57)。
 
-## 在 Docker 容器中通过源码编译 StoneDB
-
-更多信息，可以查看 [Compile StoneDB in a Docker Container](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-docker)。
 
 ## 配置 StoneDB
 
