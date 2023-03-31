@@ -183,6 +183,7 @@ void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
         last_pack_thread_[thread_id] = std::move(pack_value);
       }
     } else {
+      std::scoped_lock lock(mx_thread_);
       auto &lock_thread = last_pack_thread_[thread_id];
       auto &lock_dim = lock_thread[cur_dim];
       lock_dim[col_index] = cur_pack;

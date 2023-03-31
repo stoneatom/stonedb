@@ -19,6 +19,7 @@
 #pragma once
 
 #include <map>
+#include <mutex>
 #include <set>
 
 #include "common/common_definitions.h"
@@ -133,10 +134,12 @@ class Item_tianmudecimal : public Item_decimal {
   Item_tianmudecimal(DataType t);
 
   void Set(int64_t val);
+  String *val_str(String *) override;
 
  private:
   int scale;
   int64_t scaleCoef;
+  std::mutex mtx;
 };
 
 //! Base class for TIANMU's Item classes to store date/time values of columns
