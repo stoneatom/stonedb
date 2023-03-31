@@ -751,11 +751,6 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
       auto tab = ha_tianmu_engine_->GetTableRD(table_name_);
       std::vector<std::string> keys;
       tab->GetKeys(table, keys, index);
-      //B_chenhui
-      for (int i = 0; i < keys.size(); i++) {
-        TIANMU_LOG(LogCtl_Level::ERROR, "xxx in ha_tianmu::index_read(), key[%d]:%s ",i,keys[i].c_str());  
-      }
-      //E_chenhui
 
       if (find_flag == HA_READ_KEY_EXACT) {
         uint64_t rowid;

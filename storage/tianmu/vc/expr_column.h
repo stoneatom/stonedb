@@ -80,7 +80,7 @@ class ExpressionColumn : public VirtualColumn {
 
   Item *GetItem() override { return expr_->GetItem(); }
 
-  void InitTLSVarBufImpl() override;//chenhui
+  void InitTLSVarBufImpl() override; // chenhui
   bool IsTLSVarBufEmpty();
 
   /////////////// Data access //////////////////////
@@ -135,10 +135,9 @@ class ExpressionColumn : public VirtualColumn {
   core::MysqlExpression::SetOfVars vars_;
   core::MysqlExpression::TypOfVars var_types_;
   mutable core::MysqlExpression::var_buf_t var_buf_;
-  //B_chenhui
-  //std::map<uint64, core::MysqlExpression::var_buf_t> var_buf_map;
+  // B_chenhui
   static thread_local core::MysqlExpression::var_buf_t tls_var_buf_; 
-  //E_chenhui
+  // E_chenhui
 
   //! value for a given row is always the same or not? e.g. currenttime() is not
   //! deterministic

@@ -611,10 +611,9 @@ int64_t ParallelHashJoiner::AsyncTraverseDim(TraverseTaskParams *params) {
   MIIterator &miter(*params->task_miter->GetIter());
 
   int traversed_rows = 0;
-  //B_chenhui
-  for (int index = 0; index < cond_hashed_; index++) 
-      vc1_[index]->InitTLSVarBuf();
-  //E_chenhui
+  // B_chenhui
+  for (int index = 0; index < cond_hashed_; index++) vc1_[index]->InitTLSVarBuf();
+  // E_chenhui
   while (params->task_miter->IsValid()) {
     if (m_conn->Killed())
       break;

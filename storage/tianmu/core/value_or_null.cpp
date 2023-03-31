@@ -75,13 +75,8 @@ ValueOrNull::ValueOrNull(ValueOrNull const &von)
     : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null) {
   if (string_owner) {
     sp = new char[len + 1];
-    //B_chenhui
-    assert(sp != nullptr);//chenhui
     std::memcpy(sp, von.sp, len);
     int ret = strncmp(sp, von.sp, len);
-    //TIANMU_LOG(LogCtl_Level::ERROR, "sp:%p, %s", sp,sp);
-    assert(ret == 0);
-    //E_chenhui
     sp[len] = 0;
   } else {
     sp = von.sp;
@@ -111,8 +106,6 @@ ValueOrNull::ValueOrNull(types::BString const &tianmu_s)
 }
 
 void ValueOrNull::Swap(ValueOrNull &von) {
-  //TIANMU_LOG(LogCtl_Level::ERROR, "sp:%p, von.sp:%p", sp, von.sp);//chenhui
-  char *tmp = sp;//chenhui
   if (&von != this) {
     std::swap(null, von.null);
     std::swap(x, von.x);
@@ -120,8 +113,6 @@ void ValueOrNull::Swap(ValueOrNull &von) {
     std::swap(len, von.len);
     std::swap(string_owner, von.string_owner);
   }
-  //TIANMU_LOG(LogCtl_Level::ERROR, "sp:%p, von.sp:%p", sp, von.sp);//chenhui
-  assert(von.sp==tmp);//chenhui
 }
 }  // namespace core
 }  // namespace Tianmu
