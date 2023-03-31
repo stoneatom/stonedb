@@ -238,6 +238,7 @@ Item_tianmudecimal::Item_tianmudecimal(DataType t) : Item_decimal(0, false) {
 }
 
 void Item_tianmudecimal::Set(int64_t val) {
+  std::scoped_lock guard(mtx);
   std::fill(decimal_value.buf, decimal_value.buf + decimal_value.len, 0);
   if (val) {
     int2my_decimal((uint)-1, val, 0, &decimal_value);
@@ -246,6 +247,11 @@ void Item_tianmudecimal::Set(int64_t val) {
     my_decimal_set_zero(&decimal_value);
   }
   decimal_value.frac = scale;
+}
+
+String *Item_tianmudecimal::val_str(String *str) {
+  std::scoped_lock guard(mtx);
+  return Item_decimal::val_str(str);
 }
 
 my_decimal *Item_tianmudatetime_base::val_decimal(my_decimal *d) {
