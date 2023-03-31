@@ -5,7 +5,10 @@ sidebar_position: 3.12
 
 # Quick Deploy StoneDB-5.7
 ## 1. Download the installation package
-Click [here](https://static.stoneatom.com/custom/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz) to download the latest installation package of StoneDB. 
+
+Click [Github](https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz) or [Gitee](https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz) to download the latest installation package of StoneDB. 
+
+
 :::info
 To simplify deployment, the installation package provided here is pre-compiled to include all required dependencies.
 :::
@@ -31,6 +34,8 @@ Users can start StoneDB in two ways: manual installation and automatic installat
 ```shell
 groupadd mysql
 useradd -g mysql mysql
+
+# Here are the optional execution statements
 passwd mysql
 ```
 ### 4.2 Manually install StoneDB

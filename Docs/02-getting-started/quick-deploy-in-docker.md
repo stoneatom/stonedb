@@ -5,11 +5,11 @@ sidebar_position: 3.2
 
 # Quick Deployment in a Docker Container
 ## Prerequisites
-The image of StoneDB is downloaded from Docker Hub.You can read the Dockerhub documentation, which must be up to date.
+The image of StoneDB is downloaded from Docker Hub. You can read the Dockerhub documentation, which must be up to date.
 [Docker Hub](https://hub.docker.com/r/stoneatom/stonedb)
 
 ## Procedure
-The username and password for login are **root** and **stonedb123**.
+The username and password for login are **root**. The **password** is customized by yourself.
 
 Make sure your CPU supports AVX
 
