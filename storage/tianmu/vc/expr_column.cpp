@@ -22,7 +22,7 @@
 
 namespace Tianmu {
 namespace vcolumn {
-thread_local core::MysqlExpression::var_buf_t ExpressionColumn::tls_var_buf_; // chenhui
+thread_local core::MysqlExpression::var_buf_t ExpressionColumn::tls_var_buf_;  // chenhui
 ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable *temp_table, int temp_table_alias,
                                    core::MultiIndex *multi_index)
     : VirtualColumn(core::ColumnType(), multi_index),
@@ -105,7 +105,7 @@ bool ExpressionColumn::IsTLSVarBufEmpty() {
   int size = tls_var_buf_.size();
   return size == 0;
 }
-//E_chenhui
+// E_chenhui
 
 bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
   bool diff = first_eval_;
@@ -118,7 +118,6 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
   for (auto &it : var_map_) {
     core::ValueOrNull v(it.just_a_table_ptr->GetComplexValue(mit[it.dim], it.col_ndx));
     v.MakeStringOwner();
-    
     // B_chenhui
     if (IsTLSVarBufEmpty()) {
       auto cache = var_buf_.find(it.var_id);
