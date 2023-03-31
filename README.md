@@ -21,11 +21,11 @@
 - [What is StoneDB](#what-is-stonedb)
 - [Getting Started](#getting-started)
   - [Supported Platform](#supported-platform)
+  - [Build StoneDB from Source Code in a Docker Container](#build-stonedb-from-source-code-in-a-docker-container)
   - [Build StoneDB from the Source Code](#build-stonedb-from-the-source-code)
     - [On Ubuntu 20.04](#on-ubuntu-2004)
     - [On CentOS 7.X](#on-centos-7x)
     - [On RedHat 7.X](#on-redhat-7x)
-  - [Build StoneDB from Source Code in a Docker Container](#build-stonedb-from-source-code-in-a-docker-container)
   - [Configure StoneDB](#configure-stonedb)
   - [Initialize the Database](#initialize-the-database)
   - [Start the Database Instance](#start-the-database-instance)
@@ -79,6 +79,12 @@ The following packages we verify our builds with:
 - RocksDB 6.12.6
 - Boost 1.66
 
+## Build StoneDB from Source Code in a Docker Container
+
+For more information, see [Compile StoneDB in a Docker Container](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-docker).
+
+Of course, you can also quickly install and deploy StoneDB directly from [Dockershub](https://hub.docker.com/r/stoneatom/stonedb) in just two minutes. See our [documentation](https://stonedb.io/docs/getting-started/quick-deploy-in-docker) for details.
+
 ## Build StoneDB from the Source Code
 
 ### On Ubuntu 20.04
@@ -91,9 +97,6 @@ For more information, see [Compile StoneDB on CentOS 7.x](https://stonedb.io/doc
 
 ### On RedHat 7.X
 For more information, see [Compile StoneDB on RedHat 7.x](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57/).
-## Build StoneDB from Source Code in a Docker Container
-
-For more information, see [Compile StoneDB in a Docker Container](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-docker).
 
 ## Configure StoneDB
 After StoneDB is installed, you need to configure at least the following parameters in the **my.cnf** file:
