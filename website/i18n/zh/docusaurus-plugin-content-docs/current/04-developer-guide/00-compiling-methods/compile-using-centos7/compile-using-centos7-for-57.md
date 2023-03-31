@@ -1,5 +1,5 @@
 ---
-id: compile-using-centos7-57
+id: compile-using-centos7-for-57
 sidebar_position: 5.121
 ---
 

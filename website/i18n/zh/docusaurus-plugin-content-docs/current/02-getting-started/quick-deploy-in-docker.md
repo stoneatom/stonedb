@@ -3,14 +3,14 @@ id: quick-deploy-in-docker
 sidebar_position: 3.2
 ---
 
-# Docker快速部署StoneDB
+# Docker 快速部署 StoneDB
 ## StoneDB Docker Hub地址
 
 建议您阅读Docker hub的最新文档。
 [Docker Hub](https://hub.docker.com/r/stoneatom/stonedb)
 
 ## 使用方法
-默认登录账号密码为 root，密码会随机生成，也可以自定义。
+默认登录账号密码为 root，密码有您自己定义。
 
 确保你的 CPU 支持 AVX
 

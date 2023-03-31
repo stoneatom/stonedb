@@ -1,5 +1,5 @@
 ---
-id: compile-using-centos7-56
+id: compile-using-centos7-for-56
 sidebar_position: 5.122
 ---
 
