@@ -100,7 +100,7 @@ user = test_user4
 ##############################################
 # Tests for mysql_config_editor's help command
 ##############################################
-Copyright (c) 2021, 2022 StoneAtom Group Holding Limited
+Copyright (c) 2021-Right Now, StoneAtom Group Holding Limited
 MySQL Configuration Utility.
   -?, --help          Display this help and exit.
   -v, --verbose       Write more information.
