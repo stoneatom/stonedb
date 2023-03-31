@@ -112,7 +112,7 @@ class VirtualColumnBase : public core::Column {
   inline bool IsNull(const core::MIIterator &mit) { return IsNullImpl(mit); }
   virtual void InitTLSVarBufImpl(){};                          // chenhui
   inline void InitTLSVarBuf() { return InitTLSVarBufImpl(); }  // chenhui
-  
+
   /*! \brief Get a non null-terminated String from a column
    *
    * \pre necessary datapacks (containing rows pointed by \e mit) are loaded and
