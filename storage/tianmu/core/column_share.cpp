@@ -27,8 +27,31 @@
 
 namespace Tianmu {
 namespace core {
+
+/*
+  The size of the current DPN structure object is used to prevent the structure of
+  the DPN from being changed arbitrarily.
+  If modification is required,
+  please consider the size of PAGT_CNT and COL_DN_FILE_SIZE to
+  prevent space waste and give consideration to IO efficiency
+*/
+static constexpr size_t DPN_SIZE = 88;
 // make sure the struct is not modified by mistake
-static_assert(sizeof(DPN) == 80, "Bad struct size of DPN");
+static_assert(sizeof(DPN) == DPN_SIZE, "Bad struct size of DPN");
+
+// Operating system page size
+// should get page size at run time with sysconf(_SC_PAGE_SIZE) but for
+// efficiency...
+static constexpr size_t PAGE_SIZE = 4096;
+// Number of pages per allocation
+static constexpr size_t PAGE_CNT = 11;
+// Size of DPN memory allocation
+static constexpr size_t ALLOC_UNIT = PAGE_CNT * PAGE_SIZE;
+
+// Ensure that the allocated memory is an integer multiple of the DPN size
+static_assert(ALLOC_UNIT % sizeof(DPN) == 0);
+// Number of dpns allocated each time
+static constexpr size_t DPN_INC_CNT = ALLOC_UNIT / sizeof(DPN);
 
 ColumnShare::~ColumnShare() {
   if (start != nullptr) {
@@ -192,16 +215,6 @@ void ColumnShare::init_dpn(DPN &dpn, const common::TX_ID xid, const DPN *from) {
   dpn.xmax = common::MAX_XID;
   dpn.SetPackPtr(0);
 }
-
-// should get page size at run time with sysconf(_SC_PAGE_SIZE) but for
-// efficiency...
-static constexpr size_t PAGE_SIZE = 4096;
-static constexpr size_t PAGE_CNT = 5;
-static constexpr size_t ALLOC_UNIT = PAGE_CNT * PAGE_SIZE;
-
-static_assert(ALLOC_UNIT % sizeof(DPN) == 0);
-
-static constexpr size_t DPN_INC_CNT = ALLOC_UNIT / sizeof(DPN);
 
 int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
   for (uint32_t i = 0; i < capacity; i++) {

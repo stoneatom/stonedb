@@ -51,6 +51,7 @@ class RCTableIndex final {
   void TruncateIndexTable();
   common::ErrorCode InsertIndex(core::Transaction *tx, std::vector<std::string_view> &fields, uint64_t row);
   common::ErrorCode UpdateIndex(core::Transaction *tx, std::string_view &nkey, std::string_view &okey, uint64_t row);
+  common::ErrorCode DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey, uint64_t row);
   common::ErrorCode GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields, uint64_t &row);
 
  private:

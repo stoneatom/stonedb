@@ -513,6 +513,8 @@ RCTable::Iterator RCTable::Iterator::CreateEnd() { return RCTable::Iterator(); }
 
 int64_t RCTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
 
+int64_t RCTable::NumOfDeleted() { return m_attrs[0]->NumOfDeleted(); }
+
 void RCTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
   DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
@@ -739,6 +741,8 @@ int RCTable::Insert(TABLE *table) {
 }
 
 void RCTable::UpdateItem(uint64_t row, uint64_t col, Value &v) { m_attrs[col]->UpdateData(row, v); }
+
+void RCTable::DeleteItem(uint64_t row, uint64_t col) { m_attrs[col]->DeleteData(row); }
 
 uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
   std::unique_ptr<system::Stream> fs;

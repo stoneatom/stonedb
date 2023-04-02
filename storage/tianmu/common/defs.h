@@ -42,7 +42,15 @@ constexpr const char *COL_FILTER_HIST_DIR = "hist";
 constexpr const char *COL_KN_FILE = "KN";
 constexpr const char *COL_META_FILE = "META";
 constexpr const char *COL_DN_FILE = "DN";
-constexpr size_t COL_DN_FILE_SIZE = 10 * 1024 * 1024;  // given the pack size is 64K, we support up to 8G rows
+/*
+   The size of the file where the DPN metadata resides, in bytes. At present, the size of a single
+   DPN is 88 bytes, and the storage limit is 8.589 billion rows(8G)
+   one pack rows = 64K = 65536
+   a data file limit to 8G rows = 8.589 billion rows
+   so the dpn nums for a data file = 8G / 64K = 131072 = 128K
+   if sizeof(dpn) changes, the COL_DN_FILE_SIZE should alse changes.
+*/
+constexpr size_t COL_DN_FILE_SIZE = 11 * 1024 * 1024;
 constexpr const char *COL_DATA_FILE = "DATA";
 constexpr const char *COL_VERSION_DIR = "v";
 constexpr uint32_t COL_FILE_VERSION = 3;

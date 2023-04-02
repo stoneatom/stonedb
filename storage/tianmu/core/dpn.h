@@ -39,13 +39,16 @@ struct DPN final {
   uint8_t synced : 1;  // if the pack data in memory is up to date with the
                        // version on disk
   uint8_t null_compressed : 1;
+  uint8_t delete_compressed : 1;
   uint8_t data_compressed : 1;
   uint8_t no_compress : 1;
-  uint8_t padding[3];
+  uint8_t padding_bit : 1;  // Memory aligned padding has no practical effect
+  uint8_t padding[7];       // Memory aligned padding has no practical effect
 
   uint32_t base;          // index of the DPN from which we copied, used by local pack
   uint32_t numOfRecords;  // number of records
   uint32_t numOfNulls;    // number of nulls
+  uint32_t numOfDeleted;  // number of deletes
 
   uint64_t dataAddress;  // data start address
   uint64_t dataLength;   // data length
@@ -78,7 +81,9 @@ struct DPN final {
   bool CAS(uint64_t &expected, uint64_t desired) { return tagged_ptr.compare_exchange_weak(expected, desired); }
   uint64_t GetPackPtr() const { return tagged_ptr.load(); }
   void SetPackPtr(uint64_t v) { tagged_ptr.store(v); }
-  bool Trivial() const { return Uniform() || NullOnly(); }
+  // Because the delete bitmap is in the pack, when there are deleted records in the pack,
+  // the package must be stored persistently.
+  bool Trivial() const { return (0 == numOfDeleted) && (Uniform() || NullOnly()); }
   bool NotTrivial() const { return !Trivial(); }
   bool Uniform() const {
     return numOfNulls == 0 && min_i == max_i;
