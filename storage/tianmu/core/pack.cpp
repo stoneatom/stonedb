@@ -83,7 +83,6 @@ bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, s
                             uint32_t &dpn_num1) {
   // Because the maximum size of dpn_->numofrecords is 65536, the buffer used by bitmaps is also limited
   comp_buf_size = ((dpn_->numOfRecords + kPadding) / kBitsInBytes);
-
   comp_buf = mm::MMGuard<uchar>(
       static_cast<uchar *>(alloc((comp_buf_size + sizeof(ushort)) * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY)),
       *this);
