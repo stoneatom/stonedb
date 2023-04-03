@@ -1,6 +1,6 @@
 ---
 id: compile-using-docker
-sidebar_position: 5.15
+sidebar_position: 5.16
 ---
 
 # Docker 下编译使用 StoneDB
