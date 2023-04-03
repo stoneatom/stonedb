@@ -198,7 +198,7 @@ common::ErrorCode KVStore::KVDelTableMeta(const std::string &tablename) {
 
   // Remove the table entry in data dictionary (this will also remove it from
   // the persistent data dictionary).
-  dict_manager_.add_drop_table(tbl->m_rdbkeys, batch);
+  dict_manager_.add_drop_table(tbl->GetRdbTableKeys(), batch);
   ddl_manager_.remove(tbl, batch);
   if (!dict_manager_.commit(batch)) {
     return common::ErrorCode::FAILED;
@@ -308,6 +308,78 @@ bool KVStore::KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *ba
   }
 
   return true;
+}
+
+std::string KVStore::generate_cf_name(uint index, TABLE *table) {
+  const char *comment = table->key_info[index].comment.str;
+  std::string key_comment = comment ? comment : "";
+  std::string cf_name = RdbKey::parse_comment(key_comment);
+  if (cf_name.empty() && !key_comment.empty())
+    return key_comment;
+
+  return cf_name;
+}
+void KVStore::create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def,
+                            rocksdb::ColumnFamilyHandle *cf_handle) {
+  // assign a new id for this index.
+  uint index_id = ha_kvstore_->GetNextIndexId();
+
+  std::vector<ColAttr> vcols;
+  KEY *key_info = &table->key_info[pos];
+  bool unsigned_flag;
+
+  for (uint n = 0; n < key_info->actual_key_parts; n++) {
+    Field *f = key_info->key_part[n].field;
+    switch (f->type()) {
+      case MYSQL_TYPE_LONGLONG:
+      case MYSQL_TYPE_LONG:
+      case MYSQL_TYPE_INT24:
+      case MYSQL_TYPE_SHORT:
+      case MYSQL_TYPE_TINY: {
+        unsigned_flag = ((Field_num *)f)->is_unsigned();
+
+      } break;
+      default:
+        unsigned_flag = false;
+        break;
+    }
+    vcols.emplace_back(ColAttr{key_info->key_part[n].field->field_index(), f->type(), unsigned_flag});
+  }
+
+  const char *const key_name = table->key_info[pos].name;
+  ///* primary_key: Primary key index number(aka:pos), used in TABLE::key_info[] */
+  uchar index_type = (pos == table->s->primary_key) ? static_cast<uchar>(IndexType::INDEX_TYPE_PRIMARY)
+                                                    : static_cast<uchar>(IndexType::INDEX_TYPE_SECONDARY);
+  uint16_t index_ver = (key_info->actual_key_parts > 1)
+                           ? static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_COLS)
+                           : static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL);
+
+  new_key_def = std::make_shared<RdbKey>(index_id, pos, cf_handle, index_ver, index_type, false, key_name, vcols);
+}
+
+common::ErrorCode KVStore::create_keys_and_cf(TABLE *table, std::shared_ptr<RdbTable> rdb_tbl) {
+  // processing the all indexes in order.
+  for (uint pos = 0; pos < rdb_tbl->GetRdbTableKeys().size(); pos++) {
+    // gens the column family(cf) name of ith key.
+    std::string cf_name = generate_cf_name(pos, table);
+    if (cf_name == DEFAULT_SYSTEM_CF_NAME)
+      throw common::Exception("column family not valid for storing index data. cf: " + DEFAULT_SYSTEM_CF_NAME);
+
+    // isnot default cf, then get the cf name.
+    rocksdb::ColumnFamilyHandle *cf_handle = ha_kvstore_->GetCfHandle(cf_name);
+
+    if (!cf_handle) {
+      return common::ErrorCode::FAILED;
+    }
+    // create the ith index key with cf.
+    create_rdbkey(table, pos, rdb_tbl->GetRdbTableKeys().at(pos), cf_handle);
+  }
+
+  return common::ErrorCode::SUCCESS;
+}
+
+uint KVStore::pk_index(const TABLE *const table, std::shared_ptr<RdbTable> tbl_def) {
+  return table->s->primary_key == MAX_INDEXES ? tbl_def->GetRdbTableKeys().size() - 1 : table->s->primary_key;
 }
 
 bool IndexCompactFilter::Filter([[maybe_unused]] int level, const rocksdb::Slice &key,

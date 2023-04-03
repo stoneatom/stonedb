@@ -210,7 +210,7 @@ void RSIndex_Hist::Update(common::PACK_INDEX pi, DPN &dpn, const PackInt *pack) 
     interval_len = (dpn.max_d - dpn.min_d) / double(RSI_HIST_BITS);
   }
 
-  for (size_t i = 0; i < dpn.nr; i++) {
+  for (size_t i = 0; i < dpn.numOfRecords; i++) {
     if (pack->IsNull(i))
       continue;
 

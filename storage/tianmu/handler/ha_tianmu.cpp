@@ -1887,6 +1887,8 @@ int tianmu_init_func(void *p) {
     // kv related
     ha_kvstore_ = new index::KVStore();
     ha_kvstore_->Init();
+
+    // startup tianmu engine.
     ha_rcengine_ = new core::Engine();
     ret = ha_rcengine_->Init(tianmu_hton->slot);
     {

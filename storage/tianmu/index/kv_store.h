@@ -92,11 +92,21 @@ class KVStore final {
     return txn_db_->NewIterator(ropts, cf);
   }
 
+  // write mult-rows in batch mode with write options.
   bool KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch);
   // gets snapshot from rocksdb.
   const rocksdb::Snapshot *GetRdbSnapshot() { return txn_db_->GetSnapshot(); }
   // release the specific snapshot
   void ReleaseRdbSnapshot(const rocksdb::Snapshot *snapshot) { txn_db_->ReleaseSnapshot(snapshot); }
+  // gets the column family name by table handler.
+  static std::string generate_cf_name(uint index, TABLE *table);
+  // creates a ith key of rocksdb table.
+  static void create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def,
+                            rocksdb::ColumnFamilyHandle *cf_handle);
+  // create keys and column family for a rocksdb table.
+  static common::ErrorCode create_keys_and_cf(TABLE *table, std::shared_ptr<RdbTable> rdb_tbl);
+  // Returns index of primary key
+  static uint pk_index(const TABLE *const table, std::shared_ptr<RdbTable> tbl_def);
 
  private:
   // initializationed?
