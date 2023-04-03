@@ -771,15 +771,17 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
         }
         case CompiledQuery::StepType::APPLY_CONDS: {
           int64_t cur_limit = -1;
+          auto *tb = (TempTable *)ta[-step.t1.n - 1].get();
+
           if (qu.FindDistinct(step.t1.n))
-            ((TempTable *)ta[-step.t1.n - 1].get())->SetMode(TMParameter::TM_DISTINCT, 0, 0);
+            tb->SetMode(TMParameter::TM_DISTINCT, 0, 0);
           if (qu.NoAggregationOrderingAndDistinct(step.t1.n))
             cur_limit = qu.FindLimit(step.t1.n);
 
-          if (cur_limit != -1 && ((TempTable *)ta[-step.t1.n - 1].get())->GetFilterP()->NoParameterizedDescs())
+          ParameterizedFilter *filter = tb->GetFilterP();
+          if (cur_limit != -1 && filter->NoParameterizedDescs())
             cur_limit = -1;
 
-          ParameterizedFilter *filter = ((TempTable *)ta[-step.t1.n - 1].get())->GetFilterP();
           std::set<int> used_dims = qu.GetUsedDims(step.t1, ta);
 
           // no need any more to check WHERE for not used dims
@@ -794,11 +796,10 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           }
 
           if (IsRoughQuery()) {
-            ((TempTable *)ta[-step.t1.n - 1].get())->GetFilterP()->RoughUpdateParamFilter();
-          } else
-            ((TempTable *)ta[-step.t1.n - 1].get())
-                ->GetFilterP()
-                ->UpdateMultiIndex(qu.CountColumnOnly(step.t1), cur_limit);
+            filter->RoughUpdateParamFilter();
+          } else {
+            filter->UpdateMultiIndex(qu.CountColumnOnly(step.t1), cur_limit);
+          }
           break;
         }
         case CompiledQuery::StepType::ADD_COLUMN: {
