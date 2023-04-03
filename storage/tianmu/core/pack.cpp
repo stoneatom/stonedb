@@ -103,11 +103,15 @@ bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, s
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 bool Pack::CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
                             CprsErr res) {
 =======
 bool Pack::CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint& comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf, CprsErr res) {
 >>>>>>> feat(tianmu): mv func from public to protected(stoneatom#1501)
+=======
+bool Pack::CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint& comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf, CprsErr res) {
+>>>>>>> 6f3eda421df0f293050eca30e0304e1517e03302
   if (res == CprsErr::CPRS_SUCCESS)
     return true;
   else if (res == CprsErr::CPRS_ERR_BUF) {
