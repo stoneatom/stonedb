@@ -103,16 +103,15 @@ class Pack : public mm::TraceableObject {
   PackCoordinate GetPackCoordinate() const { return m_coord.co.pack; }
   void SetDPN(DPN *new_dpn) { dpn_ = new_dpn; }
 
-  // Compress bitmap
-  bool CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
-                        uint32_t &dpn_num1);
-
  protected:
   Pack(DPN *dpn, PackCoordinate pc, ColumnShare *col_share);
   Pack(const Pack &ap, const PackCoordinate &pc);
   virtual std::pair<UniquePtr, size_t> Compress() = 0;
   virtual void Destroy() = 0;
 
+  bool CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
+                        uint32_t &dpn_num1);
+  bool CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint& comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf, CprsErr res);
   bool ShouldNotCompress() const;
   bool IsModeNullsCompressed() const { return dpn_->null_compressed; }
   bool IsModeDeletesCompressed() const { return dpn_->delete_compressed; }
