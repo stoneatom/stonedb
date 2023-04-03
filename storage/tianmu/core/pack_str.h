@@ -383,8 +383,8 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     comp_len_buf = mm::MMGuard<uint>(
         reinterpret_cast<uint *>(alloc(sizeof(uint) * kDeleteOrNullBitmap, mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
 =======
-    comp_len_buf =
-        mm::MMGuard<uint>(reinterpret_cast<uint *>(alloc(sizeof(uint) * kDeleteOrNullBitmap, mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
+    comp_len_buf = mm::MMGuard<uint>(
+        reinterpret_cast<uint *>(alloc(sizeof(uint) * kDeleteOrNullBitmap, mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
 <<<<<<< HEAD
 >>>>>>> feat(tianmu): mv func from public to protected(stoneatom#1501)
 =======
