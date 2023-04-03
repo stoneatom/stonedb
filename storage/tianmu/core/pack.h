@@ -1,15 +1,12 @@
 /* Copyright (c) 2022 StoneAtom, Inc. All rights reserved.
    Use is subject to license terms
-
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 of the License.
-
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
@@ -103,16 +100,16 @@ class Pack : public mm::TraceableObject {
   PackCoordinate GetPackCoordinate() const { return m_coord.co.pack; }
   void SetDPN(DPN *new_dpn) { dpn_ = new_dpn; }
 
-  // Compress bitmap
-  bool CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
-                        uint32_t &dpn_num1);
-
  protected:
   Pack(DPN *dpn, PackCoordinate pc, ColumnShare *col_share);
   Pack(const Pack &ap, const PackCoordinate &pc);
   virtual std::pair<UniquePtr, size_t> Compress() = 0;
   virtual void Destroy() = 0;
 
+  bool CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
+                        uint32_t &dpn_num1);
+  bool CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
+                        CprsErr res);
   bool ShouldNotCompress() const;
   bool IsModeNullsCompressed() const { return dpn_->null_compressed; }
   bool IsModeDeletesCompressed() const { return dpn_->delete_compressed; }
