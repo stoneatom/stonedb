@@ -23,8 +23,6 @@ INSERT INTO t_test2(id,first_name,last_name,sex,score,copy_id) VALUES (new.id,ne
 END|
 CALL mtr.add_suppression(".*Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column.*");
 INSERT INTO t_test1 values(1,'张','三','1',100,1);
-Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column. Inserted values cannot be logged correctly.
 SELECT id FROM t_test2;
 id
 1
