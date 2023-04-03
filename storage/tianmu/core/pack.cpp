@@ -102,8 +102,12 @@ bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, s
   return CheckCompressRes(comp_buf, comp_buf_size, ptr_buf, res);
 }
 
+<<<<<<< HEAD
 bool Pack::CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
                             CprsErr res) {
+=======
+bool Pack::CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint& comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf, CprsErr res) {
+>>>>>>> feat(tianmu): mv func from public to protected(stoneatom#1501)
   if (res == CprsErr::CPRS_SUCCESS)
     return true;
   else if (res == CprsErr::CPRS_ERR_BUF) {

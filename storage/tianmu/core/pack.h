@@ -111,8 +111,12 @@ class Pack : public mm::TraceableObject {
 
   bool CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
                         uint32_t &dpn_num1);
+<<<<<<< HEAD
   bool CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
                         CprsErr res);
+=======
+  bool CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint& comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf, CprsErr res);
+>>>>>>> feat(tianmu): mv func from public to protected(stoneatom#1501)
   bool ShouldNotCompress() const;
   bool IsModeNullsCompressed() const { return dpn_->null_compressed; }
   bool IsModeDeletesCompressed() const { return dpn_->delete_compressed; }
