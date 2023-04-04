@@ -1488,7 +1488,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
                       std::shared_ptr<TableShare> &share) {
   int ret = 0;
   try {
-    if (tianmu_sysvar_insert_delayed) {
+    if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
       if (tianmu_sysvar_enable_rowstore) {
         InsertMemRow(table_path, share, table);
       } else {

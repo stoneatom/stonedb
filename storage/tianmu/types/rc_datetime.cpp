@@ -73,8 +73,9 @@ RCDateTime::RCDateTime(short yh, short mm, short ds, common::ColumnType at) : at
 RCDateTime::RCDateTime(short year, short month, short day, short hour, short minute, short second,
                        common::ColumnType at)
     : at_(at) {
-  ASSERT(at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP,
-         "should be 'at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP'");
+  ASSERT(at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP || at == common::ColumnType::DATE,
+         "should be 'at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP || at == "
+         "common::ColumnType::DATE'");
   null_ = false;
   dt_.year = std::abs(year);
   dt_.month = std::abs(month);
@@ -85,8 +86,9 @@ RCDateTime::RCDateTime(short year, short month, short day, short hour, short min
 }
 
 RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::ColumnType at) {
-  ASSERT(at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP,
-         "should be 'at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP'");
+  ASSERT(at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP || at == common::ColumnType::DATE,
+         "should be 'at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP || at == "
+         "common::ColumnType::DATE'");
   null_ = false;
 
   dt_.year = myt.year;
