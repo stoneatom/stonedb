@@ -37,7 +37,8 @@
 
 namespace Tianmu {
 namespace core {
-const int kDeleteOrNullBitmap = 2;
+const uint kDeleteOrNullBitmap = 2;
+
 PackStr::PackStr(DPN *dpn, PackCoordinate pc, ColumnShare *col_share) : Pack(dpn, pc, col_share) {
   auto t = col_share->ColType().GetTypeName();
 
@@ -381,7 +382,6 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     comp_len_buf_size = tmp_comp_len_buf_size + 8;
   } else {
     comp_len_buf_size = 8;
-    comp_len_buf_size = 8;
     comp_len_buf = mm::MMGuard<uint>(
         reinterpret_cast<uint *>(alloc(sizeof(uint) * kDeleteOrNullBitmap, mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
   }
@@ -432,6 +432,7 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
 
   size_t comp_buf_size = comp_null_buf_size > 0 ? sizeof(ushort) + comp_null_buf_size : 0;
   comp_buf_size += comp_delete_buf_size > 0 ? sizeof(ushort) + comp_delete_buf_size : 0;
+  comp_buf_size += comp_len_buf_size + sizeof(uint32_t) * kDeleteOrNullBitmap + dlen;
 
   UniquePtr compressed_buf = alloc_ptr(comp_buf_size, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   uchar *p = reinterpret_cast<uchar *>(compressed_buf.get());
@@ -521,7 +522,7 @@ void PackStr::Save() {
                  pc_table(GetCoordinate().co.pack), pc_column(GetCoordinate().co.pack), pc_dp(GetCoordinate().co.pack),
                  data_.sum_len);
       SetModeNoCompression();
-      SetModeNoCompression();
+      dpn_->dataLength = bitmap_size_ * kDeleteOrNullBitmap + data_.sum_len + (data_.len_mode * (1 << col_share_->pss));
     } else if (col_share_->ColType().GetFmt() == common::PackFmt::TRIE) {
       CompressTrie();
     } else {
@@ -531,7 +532,7 @@ void PackStr::Save() {
     }
   } else {
     SetModeNoCompression();
-    SetModeNoCompression();
+    dpn_->dataLength = bitmap_size_ * kDeleteOrNullBitmap + data_.sum_len + (data_.len_mode * (1 << col_share_->pss));
   }
   col_share_->alloc_seg(dpn_);
   system::TianmuFile f;
@@ -747,7 +748,7 @@ void PackStr::LoadUncompressed(system::Stream *f) {
   auto sz = dpn_->dataLength;
   f->ReadExact(nulls_ptr_.get(), bitmap_size_);
   f->ReadExact(deletes_ptr_.get(), bitmap_size_);
-  f->ReadExact(deletes_ptr_.get(), bitmap_size_);
+  sz -= (bitmap_size_ * kDeleteOrNullBitmap);
   f->ReadExact(data_.lens, (data_.len_mode * (1 << col_share_->pss)));
   sz -= (data_.len_mode * (1 << col_share_->pss));
 
