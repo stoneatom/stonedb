@@ -92,7 +92,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
 
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
   void UpdateData(uint64_t row, Value &old_v, Value &new_v);
-  void UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, Value> &rows);
+  void UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, std::shared_ptr<Value>> &rows);
   void UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v, const Value &new_v);
   void Truncate();
   void DeleteData(uint64_t row);

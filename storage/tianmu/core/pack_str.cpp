@@ -188,6 +188,11 @@ void PackStr::UpdateValue(size_t locationInPack, const Value &v) {
   dpn_->synced = false;
 
   if (IsNull(locationInPack)) {
+    // In the delta layer, there may be situations where null
+    // values are updated with null values, so when encountering this situation, it is directly returned
+    if (!v.HasValue())
+      return;
+
     // update null to non-null
 
     // first non-null value?
@@ -195,7 +200,7 @@ void PackStr::UpdateValue(size_t locationInPack, const Value &v) {
       dpn_->max_i = -1;
     }
 
-    ASSERT(v.HasValue());
+    // ASSERT(v.HasValue(), col_share_->DataFile() + " locationInPack: " + std::to_string(locationInPack));
     UnsetNull(locationInPack);
     dpn_->numOfNulls--;
     auto &str = v.GetString();

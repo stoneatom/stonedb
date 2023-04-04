@@ -209,30 +209,10 @@ class DelayedInsertParser final {
             ptr += str_len;
           } break;
           case common::PackType::INT: {
-            if (attr->Type().Lookup()) {
-              uint32_t len = *(uint32_t *)ptr;
-              ptr += sizeof(uint32_t);
-              types::BString s(len == 0 ? "" : ptr, len);
-              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
-              *buf = attr->EncodeValue_T(s, true);
-              vc.ExpectedSize(sizeof(int64_t));
-              ptr += len;
-            } else {
-              int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
-              *buf = *(int64_t *)ptr;
-
-              //              if (attr->GetIfAutoInc()) {
-              //                if (*buf == 0)  // Value of auto inc column was not assigned by user
-              //                  *buf = attr->AutoIncNext();
-              //                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
-              //                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) &&
-              //                  attr->GetIfUnsigned()))
-              //                    attr->SetAutoInc(*buf);
-              //                }
-              //              }
-              vc.ExpectedSize(sizeof(int64_t));
-              ptr += sizeof(int64_t);
-            }
+            int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
+            *buf = *(int64_t *)ptr;
+            vc.ExpectedSize(sizeof(int64_t));
+            ptr += sizeof(int64_t);
           } break;
           default:
             break;
@@ -280,10 +260,10 @@ class DelayedUpdateParser final {
                       std::shared_ptr<index::TianmuTableIndex> index)
       : attrs(attrs), update_rows(update_rows), index_table(std::move(index)) {}
 
-  uint GetRows(std::vector<std::unordered_map<uint64_t, Value>> &update_cols_buf) {
+  uint GetRows(std::vector<std::unordered_map<uint64_t, std::shared_ptr<Value>>> &update_cols_buf) {
     update_cols_buf.reserve(attrs.size());
     for (int i = 0; i < attrs.size(); i++) {
-      update_cols_buf.emplace_back(std::unordered_map<uint64_t, Value>());
+      update_cols_buf.emplace_back(std::unordered_map<uint64_t, std::shared_ptr<Value>>());
     }
     uint update_row_num = update_rows->size();
     for (auto &[row_id, row] : *update_rows) {
@@ -291,7 +271,7 @@ class DelayedUpdateParser final {
       DeltaRecordHeadForUpdate rec_head;
       row_ptr = rec_head.recordDecode(row_ptr);
       for (uint col_id = 0; col_id < attrs.size(); col_id++) {
-        core::Value val;
+        std::shared_ptr<Value> val = std::make_shared<Value>();
         if (!rec_head.update_mask_[col_id]) {
           continue;
         }
@@ -304,29 +284,21 @@ class DelayedUpdateParser final {
         switch (attr->GetPackType()) {
           case common::PackType::STR: {
             uint32_t str_len = rec_head.field_len_[col_id];
-            val.SetString(const_cast<char *>(row_ptr), str_len);
+            val->SetString(const_cast<char *>(row_ptr), str_len);
             update_cols_buf[col_id].emplace(row_id, val);
             row_ptr += str_len;
           } break;
           case common::PackType::INT: {
-            if (attr->Type().Lookup()) {
-              uint32_t len = *(uint32_t *)row_ptr;
-              row_ptr += sizeof(uint32_t);
-              types::BString s(len == 0 ? "" : row_ptr, len);
-              int64_t int_val = attr->EncodeValue_T(s, true);
-              row_ptr += len;
-            } else {
-              int64_t int_val = *(int64_t *)row_ptr;
-              if (attr->GetIfAutoInc()) {
-                if (int_val == 0)  // Value of auto inc column was not assigned by user
-                  int_val = attr->AutoIncNext();
-                if (static_cast<uint64_t>(int_val) > attr->GetAutoInc())
-                  attr->SetAutoInc(int_val);
-              }
-              val.SetInt(int_val);
-              update_cols_buf[col_id].emplace(row_id, val);
-              row_ptr += sizeof(int64_t);
+            int64_t int_val = *(int64_t *)row_ptr;
+            if (attr->GetIfAutoInc()) {
+              if (int_val == 0)  // Value of auto inc column was not assigned by user
+                int_val = attr->AutoIncNext();
+              if (static_cast<uint64_t>(int_val) > attr->GetAutoInc())
+                attr->SetAutoInc(int_val);
             }
+            val->SetInt(int_val);
+            update_cols_buf[col_id].emplace(row_id, val);
+            row_ptr += sizeof(int64_t);
           } break;
           default:
             break;
@@ -1659,7 +1631,8 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
   clock_gettime(CLOCK_REALTIME, &t1);
   auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
   DelayedUpdateParser parser(m_attrs, update_records, index_table);
-  std::vector<std::unordered_map<uint64_t, Value>> update_cols_buf;
+  std::vector<std::unordered_map<uint64_t, std::shared_ptr<Value>>> update_cols_buf;
+
   int returned_row_num = parser.GetRows(update_cols_buf);
   if (returned_row_num > 0) {
     utils::result_set<void> res;

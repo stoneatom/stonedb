@@ -1046,10 +1046,6 @@ void TianmuAttr::UpdateData(uint64_t row, Value &old_v, Value &new_v) {
 
   auto &dpn = get_dpn(pn);
   auto dpn_save = dpn;
-  if (dpn.Trivial()) {
-    // need to create pack struct for previous trivial pack
-    ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
-  }
 
   if (ct.Lookup() && new_v.HasValue()) {
     auto &str = new_v.GetString();
@@ -1079,11 +1075,12 @@ void TianmuAttr::UpdateData(uint64_t row, Value &old_v, Value &new_v) {
   ResetMaxMin(dpn);
 }
 
-void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, Value> &rows) {
+void TianmuAttr::UpdateBatchData(core::Transaction *tx,
+                                 const std::unordered_map<uint64_t, std::shared_ptr<Value>> &rows) {
   no_change = false;
 
   // group by pn
-  std::unordered_map<common::PACK_INDEX, std::unordered_map<uint64_t, Value>> packs;
+  std::unordered_map<common::PACK_INDEX, std::unordered_map<uint64_t, std::shared_ptr<Value>>> packs;
   for (const auto &row : rows) {
     auto row_id = row.first;
     auto row_val = row.second;
@@ -1092,7 +1089,7 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
     if (pack != packs.end()) {
       pack->second.emplace(row_id, row_val);
     } else {
-      packs.emplace(pn, std::unordered_map<uint64_t, Value>{{row_id, row_val}});
+      packs.emplace(pn, std::unordered_map<uint64_t, std::shared_ptr<Value>>{{row_id, row_val}});
     }
   }
 
@@ -1102,15 +1099,12 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
     CopyPackForWrite(pn);
     auto &dpn = get_dpn(pn);
     auto dpn_save = dpn;
-    if (dpn.Trivial()) {
-      ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
-    }
 
     for (const auto &row : pack.second) {
       uint64_t row_id = row.first;
-      Value row_val = row.second;
-      if (ct.Lookup() && row_val.HasValue()) {
-        auto &str = row_val.GetString();
+      std::shared_ptr<Value> row_val = row.second;
+      if (ct.Lookup() && row_val->HasValue()) {
+        auto &str = row_val->GetString();
         int code = m_dict->GetEncodedValue(str.data(), str.size());
         if (code < 0) {
           ASSERT(m_tx != nullptr, "attempt to update dictionary in readonly transaction");
@@ -1123,9 +1117,9 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
           }
           code = m_dict->Add(str.data(), str.size());
         }
-        row_val.SetInt(code);
+        row_val->SetInt(code);
       }
-      get_pack(pn)->UpdateValue(row2offset(row_id), row_val);
+      get_pack(pn)->UpdateValue(row2offset(row_id), *row_val);
     }
 
     dpn.synced = false;
@@ -1168,10 +1162,6 @@ void TianmuAttr::DeleteData(uint64_t row) {
   CopyPackForWrite(pn);
   auto &dpn = get_dpn(pn);
   auto dpn_save = dpn;
-  if (dpn.Trivial()) {
-    // need to create pack struct for previous trivial pack
-    ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
-  }
   get_pack(pn)->DeleteByRow(row2offset(row));
 
   // update global data
@@ -1201,9 +1191,6 @@ void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64
     CopyPackForWrite(pn);
     auto &dpn = get_dpn(pn);
     auto dpn_save = dpn;
-    if (dpn.Trivial()) {
-      ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
-    }
 
     for (const auto &row_id : pack.second) {
       get_pack(pn)->DeleteByRow(row2offset(row_id));
@@ -1260,9 +1247,6 @@ void TianmuAttr::CopyPackForWrite(common::PACK_INDEX pi) {
   // update current view
   m_idx[pi] = pos;
   auto &dpn(get_dpn(pi));
-
-  //  if (dpn.Trivial())
-  //      return;
 
   const PackCoordinate pc_old(m_tid, m_cid, m_share->GetPackIndex(&old_dpn));
   const PackCoordinate pc_new(get_pc(pi));
