@@ -65,6 +65,7 @@ bool tianmu_sysvar_orderby_speedup;
 bool tianmu_sysvar_parallel_filloutput;
 bool tianmu_sysvar_parallel_mapjoin;
 bool tianmu_sysvar_qps_log;
+bool tianmu_sysvar_large_prefix;
 unsigned int tianmu_sysvar_lookup_max_size;
 unsigned long tianmu_sysvar_dist_policy;
 bool tianmu_sysvar_force_hashjoin;
