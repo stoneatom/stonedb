@@ -42,10 +42,10 @@ class PackStr final : public Pack {
   // overrides
   std::unique_ptr<Pack> Clone(const PackCoordinate &pc) const override;
   void LoadDataFromFile(system::Stream *fcurfile) override;
-  void UpdateValue(size_t i, const Value &v) override;
+  void UpdateValue(size_t locationInPack, const Value &v) override;
   void Save() override;
 
-  types::BString GetValueBinary(int i) const override;
+  types::BString GetValueBinary(int locationInPack) const override;
 
   void LoadValues(const loader::ValueCache *vc);
   bool IsTrie() const { return pack_str_state_ == PackStrtate::kPackTrie; }
@@ -66,27 +66,27 @@ class PackStr final : public Pack {
   void Prepare(int no_nulls);
   void AppendValue(const char *value, uint size) {
     if (size == 0) {
-      SetPtrSize(dpn_->nr, nullptr, 0);
+      SetPtrSize(dpn_->numOfRecords, nullptr, 0);
     } else {
-      SetPtrSize(dpn_->nr, Put(value, size), size);
+      SetPtrSize(dpn_->numOfRecords, Put(value, size), size);
       data_.sum_len += size;
     }
-    dpn_->nr++;
+    dpn_->numOfRecords++;
   }
 
   size_t CalculateMaxLen() const;
-  types::BString GetStringValueTrie(int ono) const;
-  size_t GetSize(int ono) {
+  types::BString GetStringValueTrie(int locationInPack) const;
+  size_t GetSize(int locationInPack) {
     if (data_.len_mode == sizeof(ushort))
-      return data_.lens16[ono];
+      return data_.lens16[locationInPack];
     else
-      return data_.lens32[ono];
+      return data_.lens32[locationInPack];
   }
-  void SetSize(int ono, uint size) {
+  void SetSize(int locationInPack, uint size) {
     if (data_.len_mode == sizeof(uint16_t))
-      data_.lens16[ono] = (ushort)size;
+      data_.lens16[locationInPack] = (ushort)size;
     else
-      data_.lens32[ono] = (uint)size;
+      data_.lens32[locationInPack] = (uint)size;
   }
   void SetMinS(const types::BString &s);
   void SetMaxS(const types::BString &s);
@@ -108,11 +108,11 @@ class PackStr final : public Pack {
     }
   };
 
-  char *GetPtr(int i) const { return data_.index[i]; }
-  void SetPtr(int i, void *addr) { data_.index[i] = reinterpret_cast<char *>(addr); }
-  void SetPtrSize(int i, void *addr, uint size) {
-    SetPtr(i, addr);
-    SetSize(i, size);
+  char *GetPtr(int locationInPack) const { return data_.index[locationInPack]; }
+  void SetPtr(int locationInPack, void *addr) { data_.index[locationInPack] = reinterpret_cast<char *>(addr); }
+  void SetPtrSize(int locationInPack, void *addr, uint size) {
+    SetPtr(locationInPack, addr);
+    SetSize(locationInPack, size);
   }
 
   enum class PackStrtate { kPackArray = 0, kPackTrie };

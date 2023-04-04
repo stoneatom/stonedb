@@ -55,27 +55,27 @@ class Pack : public mm::TraceableObject {
   virtual double GetValDouble(int n) const;
   virtual types::BString GetValueBinary(int i) const;
 
-  void SetNull(int i) {
-    int mask = 1 << (i % 32);
-    ASSERT((nulls_ptr_[i >> 5] & mask) == 0);
-    nulls_ptr_[i >> 5] |= mask;
+  void SetNull(int locationInPack) {
+    int mask = 1 << (locationInPack % 32);
+    ASSERT((nulls_ptr_[locationInPack >> 5] & mask) == 0);
+    nulls_ptr_[locationInPack >> 5] |= mask;
   }
 
-  void UnsetNull(int i) {
-    int mask = ~(1 << (i % 32));
-    ASSERT(IsNull(i), "already null!");
-    nulls_ptr_[i >> 5] &= mask;
+  void UnsetNull(int locationInPack) {
+    int mask = ~(1 << (locationInPack % 32));
+    ASSERT(IsNull(locationInPack), "already null!");
+    nulls_ptr_[locationInPack >> 5] &= mask;
   }
 
-  bool IsNull(int i) const {
-    if (dpn_->nn == dpn_->nr)
+  bool IsNull(int locationInPack) const {
+    if (dpn_->numOfNulls == dpn_->numOfRecords)
       return true;
-    return ((nulls_ptr_[i >> 5] & ((uint32_t)(1) << (i % 32))) != 0);
+    return ((nulls_ptr_[locationInPack >> 5] & ((uint32_t)(1) << (locationInPack % 32))) != 0);
   }
   bool NotNull(int i) const { return !IsNull(i); }
   void InitNull() {
     if (dpn_->NullOnly()) {
-      for (uint i = 0; i < dpn_->nn; i++) SetNull(i);
+      for (uint i = 0; i < dpn_->numOfNulls; i++) SetNull(i);
     }
   }
   PackCoordinate GetPackCoordinate() const { return m_coord.co.pack; }
@@ -113,7 +113,7 @@ class Pack : public mm::TraceableObject {
 
  protected:
   ColumnShare *col_share_ = nullptr;
-  size_t kNullSize_;
+  size_t bitmapSize_;
   DPN *dpn_ = nullptr;
 
   std::unique_ptr<uint32_t[]> nulls_ptr_;

@@ -1488,7 +1488,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
                       std::shared_ptr<TableShare> &share) {
   int ret = 0;
   try {
-    if (tianmu_sysvar_insert_delayed) {
+    if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
       if (tianmu_sysvar_enable_rowstore) {
         InsertMemRow(table_path, share, table);
       } else {
@@ -1496,6 +1496,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
       }
       tianmu_stat.delayinsert++;
     } else {
+      current_txn_->SetLoadSource(common::LoadSource::LS_Direct);
       auto rct = current_txn_->GetTableByPath(table_path);
       ret = rct->Insert(table);
     }
@@ -1976,10 +1977,7 @@ void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_
   auto iter = m_table_keys.find(table_path);
   if (iter == m_table_keys.end()) {
     std::shared_ptr<index::RCTableIndex> tab = std::make_shared<index::RCTableIndex>(table_path, table);
-    if (tab->Enable())
-      m_table_keys[table_path] = tab;
-    else
-      tab.reset();
+    m_table_keys[table_path] = tab;
   }
 }
 

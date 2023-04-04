@@ -61,7 +61,7 @@ void ColumnShare::map_dpn() {
   }
 
   ASSERT(sb.st_size % sizeof(DPN) == 0);
-  cap = sb.st_size / sizeof(DPN);
+  capacity = sb.st_size / sizeof(DPN);
 
   auto addr = ::mmap(0, common::COL_DN_FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dn_fd, 0);
   if (addr == MAP_FAILED) {
@@ -117,20 +117,20 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
   fv.OpenReadOnly(m_path / common::COL_VERSION_DIR / xid.ToString());
   fv.ReadExact(&hdr, sizeof(hdr));
 
-  ASSERT(hdr.np <= cap, "bad dpn index");
+  ASSERT(hdr.numOfPacks <= capacity, "bad dpn index");
 
-  if (hdr.np == 0) {
-    for (uint32_t i = 0; i < cap; i++) {
+  if (hdr.numOfPacks == 0) {
+    for (uint32_t i = 0; i < capacity; i++) {
       start[i].reset();
     }
     return;
   }
 
-  auto arr = std::make_unique<common::PACK_INDEX[]>(hdr.np);
-  fv.ReadExact(arr.get(), hdr.np * sizeof(common::PACK_INDEX));
-  auto end = arr.get() + hdr.np;
+  auto arr = std::make_unique<common::PACK_INDEX[]>(hdr.numOfPacks);
+  fv.ReadExact(arr.get(), hdr.numOfPacks * sizeof(common::PACK_INDEX));
+  auto end = arr.get() + hdr.numOfPacks;
 
-  for (uint32_t i = 0; i < cap; i++) {
+  for (uint32_t i = 0; i < capacity; i++) {
     auto found = std::find(arr.get(), end, i);
     if (found == end) {
       start[i].reset();
@@ -144,8 +144,8 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
         TIANMU_LOG(LogCtl_Level::WARN, "uncommited pack found: %s %d", m_path.c_str(), i);
         start[i].local = 0;
       }
-      if (start[i].addr != DPN_INVALID_ADDR) {
-        segs.push_back({start[i].addr, start[i].len, i});
+      if (start[i].dataAddress != DPN_INVALID_ADDR) {
+        segs.push_back({start[i].dataAddress, start[i].dataLength, i});
       } else {
       }
     }
@@ -172,7 +172,7 @@ void ColumnShare::init_dpn(DPN &dpn, const common::TX_ID xid, const DPN *from) {
     dpn = *from;
   } else {
     dpn.reset();
-    dpn.addr = DPN_INVALID_ADDR;
+    dpn.dataAddress = DPN_INVALID_ADDR;
     if (pt == common::PackType::INT) {
       dpn.min_i = common::PLUS_INF_64;
       dpn.max_i = common::MINUS_INF_64;
@@ -204,7 +204,7 @@ static_assert(ALLOC_UNIT % sizeof(DPN) == 0);
 static constexpr size_t DPN_INC_CNT = ALLOC_UNIT / sizeof(DPN);
 
 int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
-  for (uint32_t i = 0; i < cap; i++) {
+  for (uint32_t i = 0; i < capacity; i++) {
     if (start[i].used == 1) {
       if (!(start[i].xmax < ha_rcengine_->MinXID()))
         continue;
@@ -215,17 +215,17 @@ int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
     return i;
   }
 
-  ASSERT((cap + DPN_INC_CNT) <= (common::COL_DN_FILE_SIZE / sizeof(DPN)),
+  ASSERT((capacity + DPN_INC_CNT) <= (common::COL_DN_FILE_SIZE / sizeof(DPN)),
          "Failed to allocate new DN: " + m_path.string());
-  cap += DPN_INC_CNT;
+  capacity += DPN_INC_CNT;
 
   //  NOTICE:
   // It is not portable to enlarge the file size after mmapping, but it seems to
   // work well on Linux. Otherwise we'll need to remmap the file, which in turn
   // requires locking because other threads may read simultaneously.
-  ftruncate(dn_fd, cap * sizeof(DPN));
-  init_dpn(start[cap - 1], xid, from);
-  return cap - 1;
+  ftruncate(dn_fd, capacity * sizeof(DPN));
+  init_dpn(start[capacity - 1], xid, from);
+  return capacity - 1;
 }
 
 void ColumnShare::alloc_seg(DPN *dpn) {
@@ -233,15 +233,15 @@ void ColumnShare::alloc_seg(DPN *dpn) {
 
   uint64_t prev = 0;
   for (auto it = segs.cbegin(); it != segs.cend(); ++it) {
-    if (it->offset - prev > dpn->len) {
-      segs.insert(it, {prev, dpn->len, i});
-      dpn->addr = prev;
+    if (it->offset - prev > dpn->dataLength) {
+      segs.insert(it, {prev, dpn->dataLength, i});
+      dpn->dataAddress = prev;
       return;
     }
     prev = it->offset + it->len;
   }
-  segs.push_back({prev, dpn->len, i});
-  dpn->addr = prev;
+  segs.push_back({prev, dpn->dataLength, i});
+  dpn->dataAddress = prev;
 }
 
 void ColumnShare::sync_dpns() {

@@ -267,8 +267,9 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
   if (thd->lex->sql_command == SQLCOM_LOCK_TABLES)
     DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 
-  if (is_delay_insert(thd) && lock_type == F_WRLCK)
+  if (is_delay_insert(thd) && table_share->tmp_table == NO_TMP_TABLE && lock_type == F_WRLCK) {
     DBUG_RETURN(0);
+  }
 
   try {
     if (lock_type == F_UNLCK) {
@@ -1466,11 +1467,22 @@ int ha_tianmu::reset() {
 
 enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
                                                                       Alter_inplace_info *ha_alter_info) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
-    return HA_ALTER_ERROR;
+    // support alter table column type
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table column exceeded length
+    if ((ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_EQUAL_PACK_LENGTH))
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table column default
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_DEFAULT)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+
+    DBUG_RETURN(HA_ALTER_ERROR);
   }
-  return HA_ALTER_INPLACE_EXCLUSIVE_LOCK;
+  DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
 }
 
 bool ha_tianmu::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
@@ -1886,6 +1898,8 @@ int tianmu_init_func(void *p) {
     // kv related
     ha_kvstore_ = new index::KVStore();
     ha_kvstore_->Init();
+
+    // startup tianmu engine.
     ha_rcengine_ = new core::Engine();
     ret = ha_rcengine_->Init(tianmu_hton->slot);
     {

@@ -11,7 +11,7 @@ connect-timeout=            60
 # Set it to 1 so that no restrictions are enforced on
 # stored function creation.
 log-bin-trust-function-creators=1
-binlog-format=statement
+binlog-format=row
 character-set-server=utf8mb4
 
 # Running MTR with --mem causes var directories to be created in memory.

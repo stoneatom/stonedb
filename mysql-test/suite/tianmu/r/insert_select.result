@@ -14,7 +14,6 @@ insert ignore into t2 (payoutID) SELECT payoutID+10 FROM t1;
 Warnings:
 Warning	1062	Duplicate entry '16' for key 't2.PRIMARY'
 Warning	1062	Duplicate entry '22' for key 't2.PRIMARY'
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. INSERT IGNORE... SELECT is unsafe because the order in which rows are retrieved by the SELECT determines which (if any) rows are ignored. This order cannot be predicted and may differ on master and the slave.
 select * from t2;
 payoutID
 6
@@ -546,7 +545,6 @@ call mtr.add_suppression(".*ON DUPLICATE KEY UPDATE is unsafe because the order 
 insert into t1(x,y) select x,z from t2 on duplicate key update x=values(x);
 Warnings:
 Warning	1287	'VALUES function' is deprecated and will be removed in a future release. Please use an alias (INSERT INTO ... VALUES (...) AS alias) and replace VALUES(col) in the ON DUPLICATE KEY UPDATE clause with alias.col instead
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. INSERT... SELECT... ON DUPLICATE KEY UPDATE is unsafe because the order in which rows are retrieved by the SELECT determines which (if any) rows are updated. This order cannot be predicted and may differ on master and the slave.
 insert into t1(x,y) select x,z from t2 on duplicate key update x=values(z);
 ERROR 42S22: Unknown column 'z' in 'field list'
 insert into t1(x,y) select x,z from t2 on duplicate key update x=values(t2.x);
@@ -560,8 +558,6 @@ INSERT INTO t1 values (1), (2);
 flush status;
 call mtr.add_suppression(".*This is unsafe because the set of rows included cannot be predicted.*");
 INSERT INTO t1 SELECT a + 2 FROM t1 LIMIT 1;
-Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses a LIMIT clause. This is unsafe because the set of rows included cannot be predicted.
 show status like 'Handler_read%';
 Variable_name	Value
 Handler_read_first	0
@@ -635,8 +631,6 @@ call mtr.add_suppression(".*ON DUPLICATE KEY UPDATE is unsafe because the order 
 INSERT INTO t2 (f1, f2)
 SELECT f1, f1 FROM t2 src WHERE f1 < 2
 ON DUPLICATE KEY UPDATE f1 = 100 + src.f1;
-Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. INSERT... SELECT... ON DUPLICATE KEY UPDATE is unsafe because the order in which rows are retrieved by the SELECT determines which (if any) rows are updated. This order cannot be predicted and may differ on master and the slave.
 SELECT * FROM t2;
 f1	f2
 101	1
@@ -673,9 +667,6 @@ call mtr.add_suppression(".*Statements writing to a table with an auto-increment
 INSERT INTO t1 (prev_id) SELECT id
 FROM t2 LEFT JOIN t1 ON t1.join_id = t2.join_id
 ORDER BY id DESC LIMIT 1;
-Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. The statement is unsafe because it uses a LIMIT clause. This is unsafe because the set of rows included cannot be predicted.
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statements writing to a table with an auto-increment column after selecting from another table are unsafe because the order in which rows are retrieved determines what (if any) rows will be written. This order cannot be predicted and may differ on master and the slave.
 SELECT * FROM t1;
 id	prev_id	join_id
 1	NULL	0
