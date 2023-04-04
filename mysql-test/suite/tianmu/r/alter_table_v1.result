@@ -89,8 +89,6 @@ t1	1	n4	3	n2	NULL	NULL	NULL	NULL	YES	SE_SPECIFIC			YES	NULL
 t1	1	n4	4	n3	NULL	NULL	NULL	NULL	YES	SE_SPECIFIC			YES	NULL
 call mtr.add_suppression(".*Statement is unsafe because it uses a system function that may return a different value on the slave.*");
 insert into t1 values(RAND()*100,RAND()*100,RAND()*10,RAND()*10);
-Warnings:
-Note	1592	Unsafe statement written to the binary log using statement format since BINLOG_FORMAT = STATEMENT. Statement is unsafe because it uses a system function that may return a different value on the slave.
 alter table t1 enable keys;
 Warnings:
 Note	1031	Table storage engine for 't1' doesn't have this option

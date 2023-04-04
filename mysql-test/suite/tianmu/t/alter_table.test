@@ -4,6 +4,11 @@
 #ALTER TABLE table_name MODIFY ...
 #
 --disable_warnings
+DROP DATABASE IF EXISTS alter_table;
+--enable_warnings
+CREATE DATABASE alter_table;
+USE alter_table;
+--disable_warnings
 DROP TABLE IF EXISTS t_test;
 --enable_warnings
 
@@ -15,7 +20,7 @@ CREATE TABLE `t_test` (
   `score` int,
   `copy_id` int,
   PRIMARY KEY (`id`)
-) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 #
 #ALTER TABLE: COLUMN TYPE
@@ -41,7 +46,7 @@ show create table t_test;
 #CLOSE STRICT MODE
 #
 
-set sql_mode="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION";
+set sql_mode="NO_ENGINE_SUBSTITUTION";
 
 alter table t_test modify first_name char(20);
 
@@ -54,3 +59,7 @@ show create table t_test;
 alter table t_test modify sex smallint;
 
 show create table t_test;
+
+drop table t_test;
+
+DROP DATABASE alter_table;
