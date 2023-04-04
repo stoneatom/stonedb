@@ -777,6 +777,13 @@ int ha_tianmu::close() {
   DBUG_RETURN(free_share());
 }
 
+uint ha_tianmu::max_supported_key_part_length(HA_CREATE_INFO *create_info) const {
+  if (tianmu_sysvar_large_prefix)
+    return (Tianmu::common::TIANMU_MAX_INDEX_COL_LEN_LARGE);
+  else
+    return (Tianmu::common::TIANMU_MAX_INDEX_COL_LEN_SMALL);
+}
+
 int ha_tianmu::fill_row_by_id([[maybe_unused]] uchar *buf, uint64_t rowid) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_KEY_NOT_FOUND;
@@ -2335,6 +2342,11 @@ static MYSQL_SYSVAR_UINT(result_sender_rows, tianmu_sysvar_result_sender_rows, P
                          "queries like select xxx from yyya",
                          nullptr, nullptr, 65536, 1024, 131072, 0);
 
+static MYSQL_SYSVAR_BOOL(large_prefix, tianmu_sysvar_large_prefix, PLUGIN_VAR_RQCMDARG,
+                         "Support large index prefix length of 3072 bytes. If off, the maximum "
+                         "index prefix length is 767.",
+                         NULL, NULL, false);
+
 void debug_update(MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr, const void *save) {
   if (ha_rcengine_) {
     auto cur_conn = ha_rcengine_->GetTx(thd);
@@ -2430,6 +2442,7 @@ static struct SYS_VAR *tianmu_system_variables[] = {MYSQL_SYSVAR(bg_load_threads
                                                     MYSQL_SYSVAR(enable_histogram_cmap_bloom),
                                                     MYSQL_SYSVAR(join_parallel),
                                                     MYSQL_SYSVAR(join_splitrows),
+                                                    MYSQL_SYSVAR(large_prefix),
                                                     MYSQL_SYSVAR(load_threads),
                                                     MYSQL_SYSVAR(lookup_max_size),
                                                     MYSQL_SYSVAR(max_execution_time),
