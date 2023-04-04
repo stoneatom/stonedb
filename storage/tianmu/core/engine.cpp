@@ -920,9 +920,18 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
 }
 
 void Engine::CommitTx(THD *thd, bool all) {
+  /*
+  Currently, the tianmu engine does not support manual transactions,
+  and there is a problem with the current determination of automatic commit.
+  After auto commit is turned off, tianmu will not commit the transaction.
+  Therefore, it is modified to the default automatic commit statement level transaction.
+  In the future, this logic will be modified after manual transactions are supported.
+
   if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT)) {
     GetTx(thd)->Commit(thd);
   }
+  */
+  GetTx(thd)->Commit(thd);
   ClearTx(thd);
 }
 
