@@ -42,9 +42,9 @@ Pack::Pack(DPN *dpn, PackCoordinate pc, ColumnShare *col_share) : col_share_(col
 }
 
 // Number of bits in bytes
-const int kBitsInBytes = 8;
+const uint kBitsInBytes = 8;
 // Fill in values to prevent boundary errors
-const int kPadding = kBitsInBytes - 1;
+const uint kPadding = kBitsInBytes - 1;
 
 Pack::Pack(const Pack &ap, const PackCoordinate &pc)
     : mm::TraceableObject(ap), col_share_(ap.col_share_), dpn_(ap.dpn_) {
