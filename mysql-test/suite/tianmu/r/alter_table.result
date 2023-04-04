@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS alter_table;
+CREATE DATABASE alter_table;
+USE alter_table;
 DROP TABLE IF EXISTS t_test;
 CREATE TABLE `t_test` (
 `id` int NOT NULL AUTO_INCREMENT,
@@ -7,7 +10,7 @@ CREATE TABLE `t_test` (
 `score` int,
 `copy_id` int,
 PRIMARY KEY (`id`)
-) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 alter table t_test modify sex char(5);
 show create table t_test;
 Table	Create Table
@@ -19,7 +22,7 @@ t_test	CREATE TABLE `t_test` (
   `score` int DEFAULT NULL,
   `copy_id` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=TIANMU DEFAULT CHARSET=utf8
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 alter table t_test modify first_name varchar(20);
 show create table t_test;
 Table	Create Table
@@ -31,7 +34,7 @@ t_test	CREATE TABLE `t_test` (
   `score` int DEFAULT NULL,
   `copy_id` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=TIANMU DEFAULT CHARSET=utf8
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 alter table t_test modify first_name varchar(5);
 show create table t_test;
 Table	Create Table
@@ -43,8 +46,8 @@ t_test	CREATE TABLE `t_test` (
   `score` int DEFAULT NULL,
   `copy_id` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=TIANMU DEFAULT CHARSET=utf8
-set sql_mode="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION";
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+set sql_mode="NO_ENGINE_SUBSTITUTION";
 alter table t_test modify first_name char(20);
 show create table t_test;
 Table	Create Table
@@ -56,7 +59,7 @@ t_test	CREATE TABLE `t_test` (
   `score` int DEFAULT NULL,
   `copy_id` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=TIANMU DEFAULT CHARSET=utf8
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 alter table t_test modify first_name char(5);
 show create table t_test;
 Table	Create Table
@@ -68,7 +71,7 @@ t_test	CREATE TABLE `t_test` (
   `score` int DEFAULT NULL,
   `copy_id` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=TIANMU DEFAULT CHARSET=utf8
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 alter table t_test modify sex smallint;
 show create table t_test;
 Table	Create Table
@@ -80,4 +83,6 @@ t_test	CREATE TABLE `t_test` (
   `score` int DEFAULT NULL,
   `copy_id` int DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=TIANMU DEFAULT CHARSET=utf8
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+drop table t_test;
+DROP DATABASE alter_table;

@@ -1,4 +1,10 @@
-use test;
+--disable_warnings
+drop database if exists issue228;
+create database issue228;
+use issue228;
+--enable_warnings
 create table t1 (a varchar(11) charset utf8 collate utf8_bin not null,primary key (a)) select 'test' as a ;
 select a from t1;
 drop table t1;
+
+drop database issue228;
