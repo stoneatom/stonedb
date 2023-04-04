@@ -34,7 +34,10 @@ namespace Tianmu {
 namespace core {
 namespace {
 const int kJoinSplittedMinPacks = 5;
-const int kTraversedPacksPerFragment = 30;
+// bug 1476:  change this threhold from 30 to INT_MAX32 to disable the parallel hash join
+// because the result is sometimes wrong if parallel hash join is enabled.
+// we'll re-enable the hash join later if the bug is fixed in near future.
+const int kTraversedPacksPerFragment = INT_MAX32 / 2;
 
 int EvaluateTraversedFragments(int packs_count) {
   const int kMaxTraversedFragmentCount = 8;
