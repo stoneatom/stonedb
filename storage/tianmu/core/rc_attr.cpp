@@ -92,6 +92,7 @@ void RCAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t p
       no_rows,  // no_obj
       no_rows,  // no_nulls
       no_pack,  // no of packs
+      0,        // no of deleted
       0,        // auto_inc next
       0,        // min
       0,        // max
@@ -1066,6 +1067,69 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
   }
 }
 
+bool RCAttr::IsDelete(int64_t row) {
+  if (row == common::NULL_VALUE_64)
+    return true;
+  DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(row));
+  auto pack = row2pack(row);
+  const auto &dpn = get_dpn(pack);
+
+  if (dpn.numOfDeleted == 0)
+    return false;
+
+  if (dpn.numOfDeleted > 0) {
+    FunctionExecutor fe([this, pack]() { LockPackForUse(pack); }, [this, pack]() { UnlockPackFromUse(pack); });
+    return get_pack(pack)->IsDeleted(row2offset(row));
+  }
+  return false;
+}
+
+void RCAttr::DeleteData(uint64_t row) {
+  auto pn = row2pack(row);
+  FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
+
+  // primary key process
+  DeleteByPrimaryKey(row, ColId());
+
+  CopyPackForWrite(pn);
+  auto &dpn = get_dpn(pn);
+  auto dpn_save = dpn;
+  if (dpn.Trivial()) {
+    // need to create pack struct for previous trivial pack
+    ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+  }
+  get_pack(pn)->DeleteByRow(row2offset(row));
+
+  // update global data
+  hdr.numOfNulls -= dpn_save.numOfNulls;
+  hdr.numOfNulls += dpn.numOfNulls;
+  hdr.numOfDeleted++;
+
+  if (GetPackType() == common::PackType::INT) {
+    if (dpn.min_i < hdr.min) {
+      hdr.min = dpn.min_i;
+    } else {
+      // re-calculate the min
+      hdr.min = std::numeric_limits<int64_t>::max();
+      for (uint i = 0; i < m_idx.size(); i++) {
+        if (!get_dpn(i).NullOnly())
+          hdr.min = std::min(get_dpn(i).min_i, hdr.min);
+      }
+    }
+    if (dpn.max_i > hdr.max) {
+      hdr.max = dpn.max_i;
+    } else {
+      // re-calculate the max
+      hdr.max = std::numeric_limits<int64_t>::min();
+      for (uint i = 0; i < m_idx.size(); i++) {
+        if (!get_dpn(i).NullOnly())
+          hdr.max = std::max(get_dpn(i).max_i, hdr.max);
+      }
+    }
+  } else {  // common::PackType::STR
+  }
+}
+
 void RCAttr::CopyPackForWrite(common::PACK_INDEX pi) {
   if (get_dpn(pi).IsLocal())
     return;
@@ -1328,6 +1392,35 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     if (ret_code == common::ErrorCode::DUPP_KEY || ret_code == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
       throw common::DupKeyException("Duplicate entry: " + std::to_string(vnew) + " for primary key");
+    }
+  }
+}
+
+void RCAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
+  auto path = m_share->owner->Path();
+  std::shared_ptr<index::RCTableIndex> tab = ha_rcengine_->GetTableIndex(path);
+  // col is not primary key
+  if (!tab)
+    return;
+  std::vector<uint> keycols = tab->KeyCols();
+  if (std::find(keycols.begin(), keycols.end(), col) == keycols.end())
+    return;
+
+  if (GetPackType() == common::PackType::STR) {
+    auto currentValue = GetValueString(row);
+    std::string_view currentRowKey(currentValue.val_, currentValue.size());
+    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    if (returnCode == common::ErrorCode::FAILED) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %s for primary key", currentValue.GetDataBytesPointer());
+      throw common::Exception("Delete: " + currentValue.ToString() + " for primary key");
+    }
+  } else {  // common::PackType::INT
+    auto currentValue = GetValueInt64(row);
+    std::string_view currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
+    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    if (returnCode == common::ErrorCode::FAILED) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %" PRId64 " for primary key", currentValue);
+      throw common::Exception("Delete: " + std::to_string(currentValue) + " for primary key");
     }
   }
 }

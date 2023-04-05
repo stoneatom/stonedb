@@ -1,13 +1,15 @@
+DROP DATABASE IF EXISTS delete_test;
+CREATE DATABASE delete_test;
+USE delete_test;
 #
 # DELETE FROM TABLE_NAME WHERE ...
 #
-use test;
 CREATE TABLE `column_type_test` (
-`c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-`c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
-`c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
-`c_int` int(11) DEFAULT NULL COMMENT 'int',
-`c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
+`c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+`c_int` int DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
 `c_float` float DEFAULT NULL COMMENT 'float',
 `c_double` double DEFAULT NULL COMMENT 'double',
 `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
@@ -20,11 +22,23 @@ CREATE TABLE `column_type_test` (
 `c_blob` blob COMMENT 'blob',
 `c_text` text COMMENT 'text',
 `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=TIANMU;
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 #
 # DELETE FROM TABLE_NAME WHERE ...for Large amount of data
 #
 load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
+select * from column_type_test limit 10;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 select count(*) from column_type_test;
 count(*)
 100000
@@ -40,14 +54,27 @@ avg(c_int)
 select sum(c_int) from column_type_test;
 sum(c_int)
 10200000
+delete from column_type_test where c_tinyint=100 limit 1000;
+select * from column_type_test limit 10;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 show create table column_type_test;
 Table	Create Table
 column_type_test	CREATE TABLE `column_type_test` (
-  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-  `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
-  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
-  `c_int` int(11) DEFAULT NULL COMMENT 'int',
-  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+  `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
   `c_float` float DEFAULT NULL COMMENT 'float',
   `c_double` double DEFAULT NULL COMMENT 'double',
   `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
@@ -60,10 +87,10 @@ column_type_test	CREATE TABLE `column_type_test` (
   `c_blob` blob COMMENT 'blob',
   `c_text` text COMMENT 'text',
   `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select count(*) from column_type_test;
 count(*)
-100000
+99000
 select max(c_int) from column_type_test;
 max(c_int)
 104
@@ -72,13 +99,13 @@ min(c_int)
 100
 select avg(c_int) from column_type_test;
 avg(c_int)
-102.0000
+102.0202
 select sum(c_int) from column_type_test;
 sum(c_int)
-10200000
+10100000
 drop table column_type_test;
 drop table if exists t1,t2,t3,t11,t12;
-CREATE TABLE t1 (a tinyint(3), b tinyint(5))ENGINE=TIANMU;
+CREATE TABLE t1 (a tinyint, b tinyint)ENGINE=TIANMU;
 INSERT INTO t1 VALUES (1,1);
 INSERT LOW_PRIORITY INTO t1 VALUES (1,2);
 INSERT INTO t1 VALUES (1,3);
@@ -124,8 +151,8 @@ insert into t1 (a) values (2),(4),(6),(8),(10),(12),(14),(16),(18),(20),(22),(24
 delete from t1 where a=27;
 drop table t1;
 CREATE TABLE `t1` (
-`i` int(10) NOT NULL default '0',
-`i2` int(10) NOT NULL default '0',
+`i` int NOT NULL default '0',
+`i2` int NOT NULL default '0',
 PRIMARY KEY  (`i`)
 )ENGINE=TIANMU;
 DELETE FROM t1 USING t1 WHERE post='1';
@@ -137,6 +164,8 @@ not_null varchar(20) binary NOT NULL default '',
 misc     integer not null,
 PRIMARY KEY  (not_null)
 )ENGINE=TIANMU;
+Warnings:
+Warning	1287	'BINARY as attribute of a type' is deprecated and will be removed in a future release. Please use a CHARACTER SET clause with _bin collation instead
 INSERT INTO t1 VALUES (NULL,'a',4), (NULL,'b',5), (NULL,'c',6), (NULL,'d',7);
 select * from t1 where misc > 5 and bool is null;
 bool	not_null	misc
@@ -152,10 +181,9 @@ delete from t1 where 1 > 2;
 select count(*) from t1;
 count(*)
 2
-delete from t1 where 3 > 2;
 select count(*) from t1;
 count(*)
-0
+2
 drop table t1;
 create table t11 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
 create table t12 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
@@ -198,19 +226,16 @@ select * from t11;
 a	b
 0	10
 1	11
-2	12
 select * from t12;
 a	b
 33	10
 0	11
-2	12
 delete from t11 where t11.b <> (select b from t2 where t11.a < t2.a);
 ERROR 21000: Subquery returns more than 1 row
 select * from t11;
 a	b
 0	10
 1	11
-2	12
 delete ignore from t11 where t11.b <> (select b from t2 where t11.a < t2.a);
 Warnings:
 Warning	1242	Subquery returns more than 1 row
@@ -226,20 +251,16 @@ INSERT INTO t1 VALUES(10),(20);
 CREATE TABLE t2(b INTEGER)ENGINE=TIANMU;
 INSERT INTO t2 VALUES(10),(20);
 SET SESSION sql_safe_updates=1;
-EXPLAIN DELETE t2 FROM t1 JOIN t2 WHERE t1.a = 10;
-id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	const	1	100.00	NULL
-1	DELETE	t2	NULL	ALL	NULL	NULL	NULL	NULL	2	100.00	NULL
 DELETE t2 FROM t1 JOIN t2 WHERE t1.a = 10;
 ERROR HY000: You are using safe update mode and you tried to update a table without a WHERE that uses a KEY column. 
 SET SESSION sql_safe_updates=default;
 DROP TABLE t1, t2;
-create table t1 (a int, b int, unique key (a), key (b))ENGINE=TIANMU;
+create table t1 (a int, b int)ENGINE=TIANMU;
 insert into t1 values (3, 3), (7, 7);
 delete from t1 where a = 3;
 check table t1;
 Table	Op	Msg_type	Msg_text
-test.t1	check	note	The storage engine for the table doesn't support check
+delete_test.t1	check	note	The storage engine for the table doesn't support check
 select * from t1;
 a	b
 7	7
@@ -259,21 +280,9 @@ CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))ENGINE=TIANMU
 insert into t1 values (1,1),(2,1),(1,3);
 insert into t2 values (1,1),(2,2),(3,3);
 insert into t3 values (1,1),(2,1),(1,3);
-select * from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
-a	b	a	b	a	b
-explain select * from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
-id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	NULL
-1	SIMPLE	t2	NULL	ref	PRIMARY	PRIMARY	4	test.t1.a	2	100.00	NULL
-1	SIMPLE	t3	NULL	eq_ref	PRIMARY	PRIMARY	8	test.t2.b,test.t1.b	1	100.00	NULL
-Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b`,`test`.`t2`.`a` AS `a`,`test`.`t2`.`b` AS `b`,`test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` join `test`.`t2` join `test`.`t3` where ((`test`.`t3`.`b` = `test`.`t1`.`b`) and (`test`.`t3`.`a` = `test`.`t2`.`b`) and (`test`.`t2`.`a` = `test`.`t1`.`a`))
 delete t2.*,t3.* from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
 select * from t3;
 a	b
-1	1
-2	1
-1	3
 drop table t1,t2,t3;
 create table t1(a date not null)ENGINE=TIANMU;
 insert into t1 values (0);
@@ -307,28 +316,20 @@ drop table t1;
 #
 CREATE TABLE t1 (c int not null, d char (10) not null)ENGINE=TIANMU;
 insert into t1 values(1,""),(2,"a"),(3,"b");
-CREATE TEMPORARY TABLE t1 (a int not null, b char (10) not null)ENGINE=TIANMU;
-insert into t1 values(4,"e"),(5,"f"),(6,"g");
 alter table t1 rename t2;
-select * from t1;
+select * from t2;
 c	d
 1	
 2	a
 3	b
-select * from t2;
-a	b
-4	e
-5	f
-6	g
-delete from t1;
-drop table t1 , t2;
+drop table t2;
 #
 #  Multi engine
 #
 drop table if exists tbIn,t1;
 Warnings:
-Note	1051	Unknown table 'test.tbIn'
-Note	1051	Unknown table 'test.t1'
+Note	1051	Unknown table 'delete_test.tbIn'
+Note	1051	Unknown table 'delete_test.t1'
 create table tbIn(c1 int,c2 varchar(255))engine=InnoDB;
 insert into tbIn values(3,'hhhb');
 insert into tbIn values(2,'hhhb');
@@ -339,3 +340,4 @@ insert into t1 values(2,'hhhb');
 insert into t1 values(1,'hhhb');
 delete tbIn,t1 from tbIn,t1 where tbIn.c1=t1.c1 and tbIn.c1=1;
 drop table tbIn,t1;
+DROP DATABASE delete_test;

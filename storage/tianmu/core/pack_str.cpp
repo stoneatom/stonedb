@@ -229,6 +229,26 @@ void PackStr::UpdateValue(size_t locationInPack, const Value &v) {
   dpn_->maxlen = CalculateMaxLen();
 }
 
+void PackStr::DeleteByRow(size_t locationInPack) {
+  if (IsDeleted(locationInPack))
+    return;
+
+  TransformIntoArray();
+  dpn_->synced = false;
+
+  if (!IsNull(locationInPack)) {
+    data_.sum_len -= GetValueBinary(locationInPack).size();
+    // note that we do not reclaim any space. The buffers will
+    // will be compacted when saving to disk
+    SetPtrSize(locationInPack, nullptr, 0);
+    SetNull(locationInPack);
+    dpn_->numOfNulls++;
+  }
+  SetDeleted(locationInPack);
+  dpn_->numOfDeleted++;
+  dpn_->maxlen = CalculateMaxLen();
+}
+
 void PackStr::LoadValues(const loader::ValueCache *vc) {
   dpn_->synced = false;
   auto sz = vc->SumarizedSize();
@@ -289,32 +309,24 @@ int PackStr::GetCompressBufferSize(size_t size) {
 
 std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
   uint comp_null_buf_size = 0;
-
-  mm::MMGuard<char> comp_null_buf;
+  mm::MMGuard<uchar> comp_null_buf;
+  // 1. compress nulls bitmap
   if (dpn_->numOfNulls > 0) {
-    comp_null_buf_size = ((dpn_->numOfRecords + 7) / 8);
-    comp_null_buf = mm::MMGuard<char>((char *)alloc((comp_null_buf_size + 2), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
-
-    uint cnbl = comp_null_buf_size + 1;
-    comp_null_buf[cnbl] = 0xBA;  // just checking - buffer overrun
-
-    compress::BitstreamCompressor bsc;
-    CprsErr res = bsc.Compress(comp_null_buf.get(), comp_null_buf_size, (char *)nulls_ptr_.get(), dpn_->numOfRecords,
-                               dpn_->numOfNulls);
-    if (comp_null_buf[cnbl] != char(0xBA)) {
-      TIANMU_ERROR("buffer overrun by BitstreamCompressor!");
-    }
-    if (res == CprsErr::CPRS_SUCCESS)
+    if (CompressedBitMap(comp_null_buf, comp_null_buf_size, nulls_ptr_, dpn_->numOfNulls)) {
       SetModeNullsCompressed();
-    else if (res == CprsErr::CPRS_ERR_BUF) {
-      comp_null_buf = mm::MMGuard<char>((char *)nulls_ptr_.get(), *this, false);
-      comp_null_buf_size = ((dpn_->numOfRecords + 7) / 8);
-      ResetModeNullsCompressed();
     } else {
-      throw common::InternalException("Compression of nulls failed for column " +
-                                      std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
-                                      std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " +
-                                      std::to_string(static_cast<int>(res)) + ").");
+      ResetModeNullsCompressed();
+    }
+  }
+
+  uint comp_delete_buf_size = 0;
+  mm::MMGuard<uchar> comp_delete_buf;
+  // 2. compress deletes bitmap
+  if (dpn_->numOfDeleted > 0) {
+    if (CompressedBitMap(comp_delete_buf, comp_delete_buf_size, deletes_ptr_, dpn_->numOfDeleted)) {
+      SetModeDeletesCompressed();
+    } else {
+      ResetModeDeletesCompressed();
     }
   }
 
@@ -397,7 +409,10 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     dlen = 0;
   }
 
-  size_t comp_buf_size = (comp_null_buf_size > 0 ? 2 + comp_null_buf_size : 0) + comp_len_buf_size + 4 + 4 + dlen;
+  size_t comp_buf_size = comp_null_buf_size > 0 ? 2 + comp_null_buf_size : 0;
+  comp_buf_size += comp_delete_buf_size > 0 ? 2 + comp_delete_buf_size : 0;
+  comp_buf_size += comp_len_buf_size + 4 + 4 + dlen;
+
   UniquePtr compressed_buf = alloc_ptr(comp_buf_size, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   uchar *p = reinterpret_cast<uchar *>(compressed_buf.get());
 
@@ -406,6 +421,13 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     p += 2;
     std::memcpy(p, comp_null_buf.get(), comp_null_buf_size);
     p += comp_null_buf_size;
+  }
+
+  if (dpn_->numOfDeleted > 0) {
+    *((ushort *)p) = (ushort)comp_delete_buf_size;
+    p += 2;
+    std::memcpy(p, comp_delete_buf.get(), comp_delete_buf_size);
+    p += comp_delete_buf_size;
   }
 
   if (comp_len_buf_size)
@@ -479,7 +501,7 @@ void PackStr::Save() {
                  pc_table(GetCoordinate().co.pack), pc_column(GetCoordinate().co.pack), pc_dp(GetCoordinate().co.pack),
                  data_.sum_len);
       SetModeNoCompression();
-      dpn_->dataLength = bitmapSize_ + data_.sum_len + (data_.len_mode * (1 << col_share_->pss));
+      dpn_->dataLength = bitmapSize_ * 2 + data_.sum_len + (data_.len_mode * (1 << col_share_->pss));
     } else if (col_share_->ColType().GetFmt() == common::PackFmt::TRIE) {
       CompressTrie();
     } else {
@@ -489,7 +511,7 @@ void PackStr::Save() {
     }
   } else {
     SetModeNoCompression();
-    dpn_->dataLength = bitmapSize_ + data_.sum_len + (data_.len_mode * (1 << col_share_->pss));
+    dpn_->dataLength = bitmapSize_ * 2 + data_.sum_len + (data_.len_mode * (1 << col_share_->pss));
   }
   col_share_->alloc_seg(dpn_);
   system::TianmuFile f;
@@ -512,6 +534,7 @@ void PackStr::Save() {
 
 void PackStr::SaveUncompressed(system::Stream *f) {
   f->WriteExact(nulls_ptr_.get(), bitmapSize_);
+  f->WriteExact(deletes_ptr_.get(), bitmapSize_);
   f->WriteExact(data_.lens, (data_.len_mode * (1 << col_share_->pss)));
   if (data_.v.empty())
     return;
@@ -550,6 +573,7 @@ void PackStr::LoadCompressed(system::Stream *f) {
   char (*FREE_PLACE)(reinterpret_cast<char *>(-1));
 
   uint null_buf_size = 0;
+  // 1. calculate nulls
   if (dpn_->numOfNulls > 0) {
     null_buf_size = (*(ushort *)cur_buf);
     if (!IsModeNullsCompressed())  // flat null encoding
@@ -566,15 +590,35 @@ void PackStr::LoadCompressed(system::Stream *f) {
       }
     }
     cur_buf += (null_buf_size + 2);
+  }
 
-    for (uint i = 0; i < dpn_->numOfRecords; i++) {
-      if (IsNull(i))
-        tmp_index[i] = nullptr;
-      else
-        tmp_index[i] = FREE_PLACE;  // special value: an object awaiting decoding
+  if (dpn_->numOfDeleted > 0) {
+    uint delete_buf_size = 0;
+    delete_buf_size = (*(ushort *)cur_buf);
+    if (delete_buf_size > bitmapSize_)
+      throw common::DatabaseException("Unexpected bytes found in data pack.");
+    if (!IsModeDeletesCompressed())  // no deletes compression
+      std::memcpy(deletes_ptr_.get(), (char *)cur_buf + 2, delete_buf_size);
+    else {
+      compress::BitstreamCompressor bsc;
+      CprsErr res = bsc.Decompress((char *)deletes_ptr_.get(), delete_buf_size, (char *)cur_buf + 2, dpn_->numOfRecords,
+                                   dpn_->numOfDeleted);
+      if (res != CprsErr::CPRS_SUCCESS) {
+        throw common::DatabaseException("Decompression of deletes failed for column " +
+                                        std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
+                                        std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " +
+                                        std::to_string(static_cast<int>(res)) + ").");
+      }
     }
-  } else
-    for (uint i = 0; i < dpn_->numOfRecords; i++) tmp_index[i] = FREE_PLACE;
+    cur_buf += delete_buf_size + 2;
+  }
+
+  for (uint i = 0; i < dpn_->numOfRecords; i++) {
+    if (IsNull(i))
+      tmp_index[i] = nullptr;
+    else
+      tmp_index[i] = FREE_PLACE;  // special value: an object awaiting decoding
+  }
 
   auto comp_len_buf_size = *(uint32_t *)cur_buf;
   auto maxv = *(uint32_t *)(cur_buf + 4);
@@ -695,7 +739,8 @@ types::BString PackStr::GetValueBinary(int locationInPack) const {
 void PackStr::LoadUncompressed(system::Stream *f) {
   auto sz = dpn_->dataLength;
   f->ReadExact(nulls_ptr_.get(), bitmapSize_);
-  sz -= bitmapSize_;
+  f->ReadExact(deletes_ptr_.get(), bitmapSize_);
+  sz -= bitmapSize_ * 2;
   f->ReadExact(data_.lens, (data_.len_mode * (1 << col_share_->pss)));
   sz -= (data_.len_mode * (1 << col_share_->pss));
 
