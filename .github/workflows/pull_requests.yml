@@ -119,9 +119,7 @@ jobs:
           -DDOWNLOAD_BOOST=0 \
           -DWITH_BOOST=/usr/local/stonedb-boost/ \
           -DDOWNLOAD_ROCKSDB=0 \
-          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
-          -DDOWNLOAD_ROCKSDB=0 \
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb -DENABLE_GCOV=1 && make -j`nproc` && make -j`nproc` install
 
       - name: mtr test

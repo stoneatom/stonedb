@@ -53,9 +53,7 @@ jobs:
           -DDOWNLOAD_BOOST=0 \
           -DWITH_BOOST=/usr/local/stonedb-boost/ \
           -DDOWNLOAD_ROCKSDB=0 \
-          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
-          -DDOWNLOAD_ROCKSDB=0 \
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j`nproc` && make -j`nproc` install
 
           tar -zcPvf ../pkg_outdir/stonedb57_nightly-`date +%y%m%d%H%M`.tar.gz /stonedb57/
