@@ -22,6 +22,7 @@
 
 #include "common/assert.h"
 #include "common/common_definitions.h"
+#include "common/defs.h"
 #include "common/mysql_gate.h"
 #include "data/dpn.h"
 #include "util/fs.h"
@@ -30,6 +31,16 @@
 namespace Tianmu {
 namespace core {
 class TableShare;
+/*
+   Number of DPN to reach the max row limiration.
+   It is calcualted by (max number of row limiration) / (max number of row per pack )
+*/
+constexpr size_t MAX_DPN_NUMS_EACH_COLUMN =
+    1 << (common::MAX_ROW_NUM_SHIFT - common::MAX_PSS);  // max 128K packs per each column
+/*
+   The size of the file where the DPN metadata resides, in bytes
+*/
+constexpr size_t COL_DN_FILE_SIZE = MAX_DPN_NUMS_EACH_COLUMN * sizeof(core::DPN);
 
 struct COL_META {
   uint32_t magic;
@@ -77,11 +88,11 @@ class ColumnShare final {
   }
 
   DPN *get_dpn_ptr(common::PACK_INDEX i) {
-    ASSERT(i < common::COL_DN_FILE_SIZE / sizeof(DPN), "bad dpn index: " + std::to_string(i));
+    ASSERT(i < COL_DN_FILE_SIZE / sizeof(DPN), "bad dpn index: " + std::to_string(i));
     return &start[i];
   }
   const DPN *get_dpn_ptr(common::PACK_INDEX i) const {
-    ASSERT(i < common::COL_DN_FILE_SIZE / sizeof(DPN), "bad dpn index: " + std::to_string(i));
+    ASSERT(i < COL_DN_FILE_SIZE / sizeof(DPN), "bad dpn index: " + std::to_string(i));
     return &start[i];
   }
 
