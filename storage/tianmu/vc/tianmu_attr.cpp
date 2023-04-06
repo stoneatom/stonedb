@@ -151,7 +151,7 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
     }
     fdn.WriteExact(&dpn, sizeof(dpn));
     fdn.Flush();
-    fs::resize_file(dir / common::COL_DN_FILE, common::COL_DN_FILE_SIZE);
+    fs::resize_file(dir / common::COL_DN_FILE, core::COL_DN_FILE_SIZE);
   }
 
   // create filter directories
