@@ -1,0 +1,2 @@
+"765893","37","27","44221","2021-06-28 02:01:16","计算售罄率出错：ORA-04036: PGA memory used by the instance exceeds PGA_AGGREGATE_LIMITORA-06512: at """BOSNDS3.O2O_STORESALERATE_SET""", line 49
+","893","893","2021-06-28 02:01:10","2021-06-28 02:01:10","Y"

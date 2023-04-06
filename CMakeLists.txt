@@ -835,11 +835,17 @@ IF (UNIX)
                   OUTPUT_VARIABLE ER_BUILD_TIME)
  string(STRIP "${ER_BUILD_TIME}" ER_BUILD_TIME)
 
+ EXECUTE_PROCESS(COMMAND bash "-c" "git describe --tags `git rev-list --tags --max-count=1` |head -n 1 |awk -F'-' '{print $2}'"
+                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  OUTPUT_VARIABLE ER_TAG_NAME)
+ string(STRIP "${ER_TAG_NAME}" ER_TAG_NAME)
+
  SET(STONEDB_REPO_ADDR "${ER_REPO_NAME}:${ER_BRANCH_NAME}")
  SET(STONEDB_BRANCH_NAME "${ER_BRANCH_NAME}")
  SET(STONEDB_COMMIT_ID "${ER_COMMIT_ID}")
  SET(STONEDB_COMMIT_TIME "${ER_COMMIT_TIME}")
  SET(STONEDB_BUILD_TIME "Date: ${ER_BUILD_TIME}")
+ SET(STONEDB_TAG_NAME "${ER_TAG_NAME}")
 ENDIF()
 
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/my_config.h)

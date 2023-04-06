@@ -1,0 +1,60 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test alter bit
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS alter_bit_test;
+--enable_warnings
+CREATE DATABASE alter_bit_test;
+USE alter_bit_test;
+
+CREATE TABLE t1 (a BIT(63));
+INSERT INTO t1 VALUES (b'111111111111111');
+INSERT INTO t1 VALUES (b'1111111111111111111111111');
+INSERT INTO t1 VALUES (b'111111111111111111111111111111111111111111111111111111111111111');
+INSERT INTO t1 VALUES (b'11111111111111111111111111111111111111111111111111111111111111');
+
+SELECT HEX(a) FROM t1 WHERE a = b'111111111111111';
+SELECT HEX(a) FROM t1 WHERE a = b'1111111111111111111111111';
+#bug1176 SELECT HEX(a) FROM t1 WHERE a = b'111111111111111111111111111111111111111111111111111111111111111';
+SELECT HEX(a) FROM t1 WHERE a = b'11111111111111111111111111111111111111111111111111111111111111';
+drop table t1;
+
+create table t2(a bit(2), b bit(2));
+insert into t2 (a) values (0x01), (0x03), (0x02);
+alter table t2 add column c bit(4);
+alter table t2 modify c int(11);
+select a+0,b+0 from t2;
+update t2 set b= a-1;
+select a+0, b+0 from t2;
+delete from t2;
+drop table t2;
+
+CREATE TABLE st(b int);
+INSERT INTO st VALUES (12);
+INSERT INTO st SELECT b>>1 FROM st;
+INSERT INTO st SELECT b>>2 FROM st;
+INSERT INTO st SELECT b>>4 FROM st;
+INSERT INTO st SELECT b>>8 FROM st;
+select hex(b) from st;
+
+CREATE TABLE st1(b BIT(16));
+INSERT INTO st1 VALUES (B'1101100000000000');
+INSERT INTO st1 SELECT b>>1 FROM st1;
+select hex(b) from st1;
+
+drop table st1;
+CREATE TABLE t1 (a BIT(63));
+INSERT INTO t1 VALUES (b'111111111111111');
+create table st1 as select * from t1;
+select hex(a) from st1;
+
+CREATE TABLE t2 (b BIT(16));
+INSERT INTO t2 VALUES (B'1101100000000000');
+create table st2 as select * from t2;
+select b+0 from st2;
+
+# clean 
+drop database alter_bit_test;

@@ -2,6 +2,32 @@
 
 set -e
 
+# Specify the required version numbers
+required_gcc_version='9.3.0'
+required_make_version='3.8.2'
+required_cmake_version='3.7.2'
+
+# Check GCC version
+gcc_version=$(gcc -v 2>&1 > /dev/null | grep 'gcc version' | awk '{print $3}')
+if [ $required_gcc_version != $(printf "$required_gcc_version\n$gcc_version\n" | sort -V | head -1) ]; then
+  echo "Error: the GCC version num is less than the version 9.3.0"
+  exit 1
+fi
+
+# Check make version
+make_version=$(make --version | grep 'GNU Make' | awk '{print $3}')
+if [ $required_make_version != $(printf "$required_make_version\n$make_version\n" | sort -V| head -1) ]; then
+  echo "Error: the make version num is less than the version 3.8.2 or 3.82"
+  exit 1
+fi
+
+# Check cmake version
+cmake_version=$(cmake --version | grep 'cmake version' | awk '{print $3}')
+if [ $required_cmake_version != $(printf "$required_cmake_version\n$cmake_version\n" | sort -V| head -1) ]; then
+  echo "Error: the cmake version num is less than the version 3.7.2"
+  exit 1
+fi
+
 # step 1. create dir: build
 if [ ! -d ../build ]
 then
@@ -60,4 +86,4 @@ cmake ../../ \
 # step 5. make & make install
 make VERBOSE=1 -j`nproc`                                             2>&1 | tee -a ${build_log}
 make install                                                         2>&1 | tee -a ${build_log}
-echo "current dir is `pwd`"                                                              2>&1 | tee -a ${build_log}
+echo "current dir is `pwd`"                                          2>&1 | tee -a ${build_log}

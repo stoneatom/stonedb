@@ -1,7 +1,8 @@
 DROP DATABASE IF EXISTS issue1065_test;
 CREATE DATABASE issue1065_test;
 USE issue1065_test;
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
+set tianmu_no_key_error=OFF;
 drop table if exists t_test;
 CREATE TABLE t_test(
 id INT NOT NULL AUTO_INCREMENT,
@@ -38,7 +39,8 @@ insert INTO t_test(first_name,last_name,sex,score,copy_id) VALUES (firstname,las
 END WHILE;
 END //
 drop  PROCEDURE add_user;
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set tianmu_mandatory=ON;
+set tianmu_no_key_error=ON;
 create PROCEDURE add_user(in num INT)
 BEGIN
 DECLARE rowid INT DEFAULT 0;
@@ -65,7 +67,8 @@ insert INTO t_test(first_name,last_name,sex,score,copy_id) VALUES (firstname,las
 END WHILE;
 END //
 drop  PROCEDURE add_user;
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
+set tianmu_no_key_error=OFF;
 create PROCEDURE add_user(in num INT)
 BEGIN
 DECLARE rowid INT DEFAULT 0;
@@ -102,7 +105,8 @@ score INT NOT NULL,
 copy_id INT NOT NULL,
 PRIMARY KEY (`id`)
 ) engine=innodb;
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set tianmu_mandatory=ON;
+set tianmu_no_key_error=ON;
 create PROCEDURE add_user(in num INT)
 BEGIN
 DECLARE rowid INT DEFAULT 0;
@@ -129,7 +133,8 @@ insert INTO t_test(first_name,last_name,sex,score,copy_id) VALUES (firstname,las
 END WHILE;
 END //
 drop  PROCEDURE add_user;
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
+set tianmu_no_key_error=OFF;
 create PROCEDURE add_user(in num INT)
 BEGIN
 DECLARE rowid INT DEFAULT 0;

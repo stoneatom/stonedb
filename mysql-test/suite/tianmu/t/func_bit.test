@@ -1,0 +1,109 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test func bit
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS func_bit;
+--enable_warnings
+CREATE DATABASE func_bit;
+USE func_bit;
+
+# DECIMAL(17,0) input
+
+CREATE TABLE t1 (a DECIMAL(17,0) NOT NULL);
+INSERT INTO t1 VALUES (999999999999999);
+INSERT INTO t1 VALUES (28446744073709);
+INSERT INTO t1 VALUES (-284467440737);
+INSERT INTO t1 VALUES (-99999999999999);
+--disable_warnings
+SELECT a, a & a, a | a, a^0, a<<2, a<<0, a>>1, bit_count(a) FROM t1;
+--enable_warnings
+DROP TABLE t1;
+
+# DECIMAL(10,1) input
+
+CREATE TABLE t1 (a DECIMAL(10,1) NOT NULL);
+INSERT INTO t1 VALUES (999999999.9);
+INSERT INTO t1 VALUES (3.5);
+INSERT INTO t1 VALUES (3.4);
+INSERT INTO t1 VALUES (2.9);
+INSERT INTO t1 VALUES (-2.9);
+INSERT INTO t1 VALUES (-3.4);
+INSERT INTO t1 VALUES (-3.5);
+INSERT INTO t1 VALUES (-999999999.9);
+--disable_warnings
+SELECT a, a & a, a | a, a^0, a<<2, a>>2, bit_count(a) FROM t1;
+--enable_warnings
+DROP TABLE t1;
+
+# DECIMAL(10,0) input
+
+CREATE TABLE t1 (a DECIMAL(10,0) NOT NULL);
+INSERT INTO t1 VALUES (9999999999);
+INSERT INTO t1 VALUES (3);
+INSERT INTO t1 VALUES (-3);
+INSERT INTO t1 VALUES (-9999999999);
+--disable_warnings
+SELECT a, a & a, a | a, a^0, a<<2, a<<0, a>>1, bit_count(a) FROM t1;
+--enable_warnings
+DROP TABLE t1;
+
+# VARCHAR input
+
+CREATE TABLE t1 (a VARCHAR(30) NOT NULL);
+INSERT INTO t1 VALUES ('2.9');
+INSERT INTO t1 VALUES ('18446744073709551610');
+#bug1173 SELECT a, a & a, a | a, a^0, a<<1, a<<0, a>>1, bit_count(a) FROM t1;
+DROP TABLE t1;
+
+# Double input
+
+CREATE TABLE t1 (a DOUBLE NOT NULL);
+INSERT INTO t1 VALUES (2.9);
+INSERT INTO t1 VALUES (10e30);
+--disable_warnings
+SELECT a, a & a, a | a, a^0, a<<2, a<<0, a>>1, bit_count(a) FROM t1;
+--enable_warnings
+DROP TABLE t1;
+
+# Time input
+
+CREATE TABLE t1 (a TIME(1) NOT NULL);
+INSERT INTO t1 VALUES ('00:00:02.9');
+INSERT INTO t1 VALUES ('800:00:02.9');
+INSERT INTO t1 VALUES ('800:00:02');
+INSERT INTO t1 VALUES ('-800:00:02.9');
+#bug1173 SELECT a, a & a, a | a, a^0, a<<1, a<<0, a>>1, bit_count(a) FROM t1;
+DROP TABLE t1;
+
+# Datetime input
+
+CREATE TABLE t1 (a DATETIME(1) NOT NULL);
+INSERT INTO t1 VALUES ('2001-01-01 00:00:02.9');
+INSERT INTO t1 VALUES ('2001-01-01 23:59:59.9');
+INSERT INTO t1 VALUES ('9999-12-31 23:59:59.9');
+#select * from t1;
+#bug1173 SELECT a, a & a, a | a, a^0, a<<1, a<<0, a>>1, bit_count(a) FROM t1;
+DROP TABLE t1;
+
+
+# Bit shift for more than 63 bits
+
+CREATE TABLE t1 (a INT NOT NULL);
+INSERT INTO t1 VALUES (63),(64),(65);
+SELECT a, 1<<a,1>>a FROM t1;
+DROP TABLE t1;
+
+# set when using BIT OR and BIT AND functions in WHERE
+
+CREATE TABLE t1 (a DECIMAL(18,2));
+INSERT INTO t1 VALUES (3.4);
+SELECT a, a|4, a&4 FROM t1;
+SELECT * FROM t1 WHERE (a|4) <> a;
+SELECT * FROM t1 WHERE (a&4) <> a;
+DROP TABLE t1;
+
+# Clean up
+DROP DATABASE func_bit;

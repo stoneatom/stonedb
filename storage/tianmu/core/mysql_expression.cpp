@@ -388,8 +388,8 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
   // calculate result type
   //  type = DataType();
   switch (mysql_type) {
-    case INT_RESULT:
-      type = DataType(common::ColumnType::BIGINT);
+    case INT_RESULT:  // prec = 0, scale = 0
+      type = DataType(common::ColumnType::BIGINT, 0, 0, DTCollation(), item->unsigned_flag);
       break;
     case REAL_RESULT:
       type = DataType(common::ColumnType::FLOAT);
@@ -505,8 +505,6 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
       my_decimal2decimal(retdec, &dec);
     int64_t v;
     int err;
-    // err = my_decimal_shift((uint)-1, &dec, item->decimals <= 18 ?
-    // item->decimals : 18);
     if (dec_scale == -1)
       err = my_decimal_shift((uint)-1, &dec, item->decimals <= 18 ? item->decimals : 18);
     else
@@ -581,8 +579,11 @@ bool operator==(Item const &, Item const &);
 
 namespace {
 bool generic_item_same(Item const &left, Item const &right) {
-  return ((&left == &right) ||
-          ((left.type() == right.type()) && (left.result_type() == right.result_type()) &&
+  if (&left == &right) {
+    return true;
+  }
+
+  return (((left.type() == right.type()) && (left.result_type() == right.result_type()) &&
            (left.cast_to_int_type() == right.cast_to_int_type()) &&
            (left.string_field_type() == right.string_field_type()) && (left.field_type() == right.field_type()) &&
            (left.const_during_execution() == right.const_during_execution()) && (left == right)));
@@ -603,8 +604,8 @@ bool operator==(Item const &left, Item const &right) {
       } break;
       case (Item::COND_ITEM):
       case (Item::FUNC_ITEM): {
-        Item_func const *l = static_cast<Item_func const *>(&left);
-        Item_func const *r = static_cast<Item_func const *>(&right);
+        Item_func const *l = down_cast<Item_func const *>(&left);
+        Item_func const *r = down_cast<Item_func const *>(&right);
         same = !std::strcmp(l->func_name(), r->func_name());
         same = same && (l->arg_count == r->arg_count);
         same = same && l->functype() == r->functype();
@@ -613,8 +614,8 @@ bool operator==(Item const &left, Item const &right) {
         same = same && l->item_name.eq_safe(r->item_name);
         if (l->functype() == Item_func::GUSERVAR_FUNC) {
           if (same) {
-            Item_func_get_user_var const *ll = static_cast<Item_func_get_user_var const *>(&left);
-            Item_func_get_user_var const *rr = static_cast<Item_func_get_user_var const *>(&right);
+            Item_func_get_user_var const *ll = down_cast<Item_func_get_user_var const *>(&left);
+            Item_func_get_user_var const *rr = down_cast<Item_func_get_user_var const *>(&right);
             same = !std::strcmp(ll->name.ptr(), rr->name.ptr());
           }
         } else {
@@ -630,13 +631,13 @@ bool operator==(Item const &left, Item const &right) {
           same = same && ((l->int_type == r->int_type) && (l->date_sub_interval == r->date_sub_interval));
 
           if (l->functype() == Item_func::IN_FUNC) {
-            const Item_func_in *l = static_cast<const Item_func_in *>(&left);
-            const Item_func_in *r = static_cast<const Item_func_in *>(&right);
+            const Item_func_in *l = down_cast<const Item_func_in *>(&left);
+            const Item_func_in *r = down_cast<const Item_func_in *>(&right);
             same = same && l->negated == r->negated;
           }
           if (same && (l->functype() == Item_func::COND_AND_FUNC || l->functype() == Item_func::COND_OR_FUNC)) {
-            Item_cond *l = const_cast<Item_cond *>(static_cast<Item_cond const *>(&left));
-            Item_cond *r = const_cast<Item_cond *>(static_cast<Item_cond const *>(&right));
+            Item_cond *l = const_cast<Item_cond *>(down_cast<Item_cond const *>(&left));
+            Item_cond *r = const_cast<Item_cond *>(down_cast<Item_cond const *>(&right));
             List_iterator<Item> li(*l->argument_list());
             List_iterator<Item> ri(*r->argument_list());
             Item *il, *ir;
@@ -651,13 +652,13 @@ bool operator==(Item const &left, Item const &right) {
         }
       } break;
       case static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM): {
-        Item_tianmufield const *l = static_cast<Item_tianmufield const *>(&left);
-        Item_tianmufield const *r = static_cast<Item_tianmufield const *>(&right);
+        Item_tianmufield const *l = down_cast<Item_tianmufield const *>(&left);
+        Item_tianmufield const *r = down_cast<Item_tianmufield const *>(&right);
         same = (*l == *r);
       } break;
       case (Item::REF_ITEM): {
-        Item_ref const *l = static_cast<Item_ref const *>(&left);
-        Item_ref const *r = static_cast<Item_ref const *>(&right);
+        Item_ref const *l = down_cast<Item_ref const *>(&left);
+        Item_ref const *r = down_cast<Item_ref const *>(&right);
         same = (!(l->ref || r->ref)) ||
                (l->ref && r->ref &&
                 ((!(*(l->ref) || *(r->ref))) || (*(l->ref) && *(r->ref) && (*(*(l->ref)) == *(*(r->ref))))));
@@ -667,6 +668,7 @@ bool operator==(Item const &left, Item const &right) {
       case (Item::DECIMAL_ITEM):
       case (Item::REAL_ITEM):
       case (Item::VARBIN_ITEM):
+      case (Item::CACHE_ITEM):
       case (Item::INT_ITEM): {
         same = left.eq(&right, true);
       } break;

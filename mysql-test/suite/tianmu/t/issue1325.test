@@ -1,0 +1,113 @@
+--source include/have_tianmu.inc
+--source include/have_binlog_format_row.inc
+
+--disable_warnings
+-- source include/master-slave.inc
+DROP DATABASE IF EXISTS issue1325_test;
+--enable_warnings
+
+--source include/sync_slave_sql_with_master.inc
+
+connection master;
+--echo # on master:
+
+CREATE DATABASE issue1325_test;
+
+USE issue1325_test;
+
+--echo #
+--echo # Secondary INDEX
+--echo # 
+
+connection master;
+--echo # on master:
+
+create table ttt(id int primary key,name varchar(10),key idx_name(name))engine=innodb;
+drop table ttt;
+create table ttt(id int primary key,name varchar(10))engine=innodb;
+create index idx_name on ttt(name);
+alter table ttt rename index idx_name to new_idx_name;
+drop index new_idx_name on ttt;
+show create table ttt;
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+USE issue1325_test;
+show create table ttt;
+
+--echo #
+--echo # UNIQUE INDEX
+--echo #
+connection master;
+--echo # on master:
+
+create table xxx(id int,name varchar(10),unique key idx_id(id))engine=innodb;
+drop table xxx;
+create table xxx(id int,name varchar(10))engine=innodb;
+create unique index idx_id on xxx(id);
+alter table xxx rename index idx_id to new_idx_id;
+drop index new_idx_id on xxx;
+show create table xxx;
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show create table xxx;
+
+--echo #
+--echo # Full-text index
+--echo #
+connection master;
+--echo # on master:
+drop table ttt;
+create table ttt(id int primary key,name text,fulltext key idx_name(name))engine=innodb;
+drop table ttt;
+create table ttt(id int primary key,name text)engine=innodb;
+create fulltext index idx_name on ttt(name);
+alter table ttt rename index idx_name to new_idx_name;
+show create table ttt;
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show create table ttt;
+
+
+--echo #
+--echo # foreign key
+--echo #
+connection master;
+--echo # on master:
+CREATE TABLE student
+(id int (11) primary key,
+ name char(10),
+ sex char(100),
+ age int(11)
+)engine=innodb;
+
+create table student_score
+(id int primary key,
+ class varchar(10),
+ score char(100),
+ student_id int,
+ address text,
+ unique key idx_uk(class),
+ key idx_score(score),
+ fulltext key idx_address(address),
+ constraint s_id foreign key (student_id) references student(id)
+)engine=innodb;
+
+drop index idx_uk on student_score;
+drop index idx_score on student_score;
+alter table student_score rename index idx_address to new_idx_address;
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+show tables;
+
+show create table student_score;
+
+connection master;
+--echo # on master:
+DROP DATABASE issue1325_test;
+
+--source include/sync_slave_sql_with_master.inc
+--echo # on slave:
+stop slave;

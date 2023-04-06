@@ -41,6 +41,11 @@ Pack::Pack(DPN *dpn, PackCoordinate pc, ColumnShare *col_share) : col_share_(col
   m_coord.co.pack = pc;
 }
 
+// Number of bits in bytes
+const uint kBitsInBytes = 8;
+// Fill in values to prevent boundary errors
+const uint kPadding = kBitsInBytes - 1;
+
 Pack::Pack(const Pack &ap, const PackCoordinate &pc)
     : mm::TraceableObject(ap), col_share_(ap.col_share_), dpn_(ap.dpn_) {
   m_coord.ID = COORD_TYPE::PACK;
@@ -79,13 +84,8 @@ bool Pack::ShouldNotCompress() const {
 
 bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
                             uint32_t &dpn_num1) {
-  // Number of bits in bytes
-  int bitsInBytes = 8;
-  // Fill in values to prevent boundary errors
-  int padding = bitsInBytes - 1;
   // Because the maximum size of dpn_->numofrecords is 65536, the buffer used by bitmaps is also limited
-  comp_buf_size = ((dpn_->numOfRecords + padding) / bitsInBytes);
-
+  comp_buf_size = ((dpn_->numOfRecords + kPadding) / kBitsInBytes);
   comp_buf = mm::MMGuard<uchar>(
       static_cast<uchar *>(alloc((comp_buf_size + sizeof(ushort)) * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY)),
       *this);
@@ -98,11 +98,16 @@ bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, s
     TIANMU_LOG(LogCtl_Level::ERROR, "buffer overrun by BitstreamCompressor (N f).");
     ASSERT(0, "ERROR: buffer overrun by BitstreamCompressor (N f).");
   }
+  return CheckCompressRes(comp_buf, comp_buf_size, ptr_buf, res);
+}
+
+bool Pack::CheckCompressRes(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
+                            CprsErr res) {
   if (res == CprsErr::CPRS_SUCCESS)
     return true;
   else if (res == CprsErr::CPRS_ERR_BUF) {
     comp_buf = mm::MMGuard<uchar>(reinterpret_cast<uchar *>(ptr_buf.get()), *this, false);
-    comp_buf_size = ((dpn_->numOfRecords + padding) / bitsInBytes);
+    comp_buf_size = ((dpn_->numOfRecords + kPadding) / kBitsInBytes);
     return false;
   } else {
     throw common::DatabaseException("Compression of nulls or deletes failed for column " +

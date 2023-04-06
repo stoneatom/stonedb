@@ -1,0 +1,18 @@
+DROP DATABASE IF EXISTS issue1510_test;
+CREATE DATABASE issue1510_test;
+USE issue1510_test;
+create table ttt(id int primary key,name varchar(10));
+begin;
+insert into ttt values(1,'AAA');
+commit;
+select * from ttt;
+id	name
+1	AAA
+drop table ttt;
+create table ttt(id int primary key,name varchar(10));
+insert into ttt values(1,'AAA');
+select * from ttt;
+id	name
+1	AAA
+drop table ttt;
+DROP DATABASE issue1510_test;

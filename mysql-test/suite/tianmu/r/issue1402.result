@@ -1,0 +1,53 @@
+DROP DATABASE IF EXISTS issue1402_test;
+CREATE DATABASE issue1402_test;
+USE issue1402_test;
+CREATE TABLE t1 (id INT, d DECIMAL(10,4)) ENGINE=tianmu;
+INSERT INTO t1 VALUES (1, 1.2345), (2, 2.3456), (3, 3.4567);
+SELECT COUNT(*), SUM(d), AVG(d), MIN(d), MAX(d) FROM t1;
+COUNT(*)	SUM(d)	AVG(d)	MIN(d)	MAX(d)
+3	7.0368	2.34560000	1.2345	3.4567
+SELECT id, SUM(d) FROM t1 GROUP BY id;
+id	SUM(d)
+1	1.2345
+2	2.3456
+3	3.4567
+SELECT * FROM t1 ORDER BY d DESC;
+id	d
+3	3.4567
+2	2.3456
+1	1.2345
+SELECT * FROM t1 WHERE d > (SELECT AVG(d) FROM t1);
+id	d
+3	3.4567
+SELECT id, SUM(d) FROM t1 WHERE d > (SELECT AVG(d) FROM t1) GROUP BY id;
+id	SUM(d)
+3	3.4567
+SELECT * FROM t1 WHERE d > (SELECT AVG(d) FROM t1) ORDER BY d DESC;
+id	d
+3	3.4567
+SELECT id, SUM(d) FROM t1 WHERE d > (SELECT AVG(d) FROM t1) GROUP BY id ORDER BY SUM(d) DESC;
+id	SUM(d)
+3	3.4567
+SELECT t1.id, t1.d, t2.d FROM t1 JOIN (SELECT id, d FROM t1 WHERE d > 2) t2 ON t1.id = t2.id;
+id	d	d
+2	2.3456	2.3456
+3	3.4567	3.4567
+SELECT t1.id, SUM(t1.d), SUM(t2.d) FROM t1 JOIN (SELECT id, d FROM t1 WHERE d > 2) t2 ON t1.id = t2.id GROUP BY t1.id;
+id	SUM(t1.d)	SUM(t2.d)
+2	2.3456	2.3456
+3	3.4567	3.4567
+SELECT t1.id, SUM(t1.d), SUM(t2.d) FROM t1 JOIN (SELECT id, d FROM t1 WHERE d > 2) t2 ON t1.id = t2.id GROUP BY t1.id ORDER BY SUM(t1.d) DESC;
+id	SUM(t1.d)	SUM(t2.d)
+3	3.4567	3.4567
+2	2.3456	2.3456
+SELECT t1.id, SUM(t1.d), SUM(t2.d) FROM t1 JOIN (SELECT id, d FROM t1 WHERE d > 2) t2 ON t1.id = t2.id GROUP BY t1.id ORDER BY SUM(t1.d) DESC LIMIT 1;
+id	SUM(t1.d)	SUM(t2.d)
+3	3.4567	3.4567
+SELECT t1.id, SUM(t1.d), SUM(t2.d) FROM t1 JOIN (SELECT id, d FROM t1 WHERE d > 2) t2 ON t1.id = t2.id GROUP BY t1.id ORDER BY SUM(t1.d) DESC LIMIT 1 OFFSET 1;
+id	SUM(t1.d)	SUM(t2.d)
+2	2.3456	2.3456
+SELECT t1.id, SUM(t1.d), SUM(t2.d) FROM t1 JOIN (SELECT id, d FROM t1 WHERE d > 2) t2 ON t1.id = t2.id GROUP BY t1.id HAVING SUM(t1.d) > 3 ORDER BY SUM(t1.d) DESC LIMIT 1 OFFSET 1;
+id	SUM(t1.d)	SUM(t2.d)
+SELECT t1.id, SUM(t1.d), SUM(t2.d) FROM t1 JOIN (SELECT id, d FROM t1 WHERE d > 2) t2 ON t1.id = t2.id WHERE t1.id > 1 GROUP BY t1.id HAVING SUM(t1.d) > 3 ORDER BY SUM(t1.d) DESC LIMIT 1 OFFSET 1;
+id	SUM(t1.d)	SUM(t2.d)
+drop database issue1402_test;

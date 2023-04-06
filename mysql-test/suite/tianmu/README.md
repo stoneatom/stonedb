@@ -1,6 +1,6 @@
 Stonedb prepares the rules to be followed by MTR
 
-# Writing Test Cases  
+# Writing Test Cases
 - <font color=blue>Test Case Coding Guidelines  </font>
 
 ## <font color=blue>Test Case Coding Guidelines  </font>
@@ -32,6 +32,6 @@ The sample is as follows：
 ```
 
 # Run Test Cases  
-1. Setting Running Parameters：mysql-test/include/default_mysqld.cnf
+1. Setting Running Parameters: mysql-test/include/default_mysqld.cnf
 - default-storage-engine=tianmu
 - tianmu_insert_delayed=0

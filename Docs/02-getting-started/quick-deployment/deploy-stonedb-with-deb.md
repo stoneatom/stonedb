@@ -2,26 +2,27 @@
 id: deploy-stonedb-with-deb
 sidebar_position: 3.14
 ---
-# **Use a DEB Package to Deploy StoneDB on Ubuntu 20**
+# Use a DEB Package to Deploy StoneDB on Ubuntu 20
 
 ## Step 1. Install StoneDB
 1. Download the StoneDB software package. 
 ```sql
-wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7_v1.0.3.ubuntu.amd64.deb
 ```
 
-2. Map dependent libraries.
+2. Use the DPKG command to install the DEB package.
 ```sql
-source /opt/stonedb57/install/bin/sourceenv
-```
-
-3. Use the DPKG command to install the DEB package.
-```sql
-dpkg -i stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+dpkg -i stonedb-ce-5.7_v1.0.3.ubuntu.amd64.deb
 ```
 :::info
 If this step fails,  run `ldd /opt/stonedb57/install/bin/mysqld | grep 'not found'` to check whether any dependent libraries are missing. If yes, run `source /opt/stonedb57/install/bin/sourceenv` and then retry this step.
 :::
+
+3. Map dependent libraries.
+```sql
+source /opt/stonedb57/install/bin/sourceenv
+```
+
 
 4. Initialize the database.
 ```sql

@@ -1,0 +1,54 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS drop_index_test;
+--enable_warnings
+
+CREATE DATABASE drop_index_test;
+
+USE drop_index_test;
+
+CREATE TABLE t1 (
+  id int(11) DEFAULT NULL,
+  name varchar(10) DEFAULT NULL,
+  UNIQUE KEY idx_id (id)
+  ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE t2 (
+  `id` int(11) NOT NULL,
+  `name` text,
+  PRIMARY KEY (`id`),
+  FULLTEXT KEY `idx_name` (`name`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `t3` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(10) NOT NULL,
+  `last_name` text NOT NULL,
+  `sex` varchar(5) NOT NULL,
+  `score` int(11) NOT NULL,
+  `copy_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_uk` (`copy_id`),
+  KEY `idx_firstname` (`first_name`),
+  FULLTEXT KEY `idx_lastname` (`last_name`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+
+set session tianmu_no_key_error=OFF;
+
+--error ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX 
+drop index idx_id on t1;
+
+--error ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX 
+drop index idx_name on t2;
+
+--error ER_TIANMU_NOT_SUPPORTED_SECONDARY_INDEX
+drop index idx_firstname on t3;
+
+--error ER_TIANMU_NOT_SUPPORTED_FULLTEXT_INDEX 
+drop index idx_lastname on t3;
+
+--error ER_TIANMU_NOT_SUPPORTED_UNIQUE_INDEX 
+drop index idx_uk on t3;
+
+DROP DATABASE drop_index_test;

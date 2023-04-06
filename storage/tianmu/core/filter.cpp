@@ -16,6 +16,7 @@
 */
 
 #include "filter.h"
+
 #include "common/assert.h"
 #include "core/tools.h"
 

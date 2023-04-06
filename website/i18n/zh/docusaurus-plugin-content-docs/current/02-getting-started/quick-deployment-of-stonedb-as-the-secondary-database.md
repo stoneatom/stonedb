@@ -6,7 +6,7 @@ sidebar_position: 3.5
 # 快速部署 StoneDB 为从库
 
 ## 前提条件
-- 当前环境中存在两台服务器，且两台服务器上分别安装了 MySQL 和 StoneDB。关于如何安装 StoneDB，请参考[快速部署 StoneDB-5.7](https://stonedb.io/zh/docs/getting-started/quick-deployment/quick-deployment-57/)。
+- 当前环境中存在两台服务器，且两台服务器上分别安装了 MySQL 和 StoneDB。关于如何安装 StoneDB，请参考[快速部署 StoneDB-5.7](https://stonedb.io/docs/quick-deployment)。
 - StoneDB 和 MySQL 之间的网络已联通。
 - StoneDB 的备份目录磁盘空间充足。
 - StoneDB 和 MySQL 均能正常启动。
@@ -23,12 +23,12 @@ sidebar_position: 3.5
 1. 下载 Shell 脚本。您可以通过以下两种方式进行下载：
    - GitHub 下载
 ```sql
-wget https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/shell.for.deploy.stonedb.as.replic.tar.gz
+wget https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/shell.for.deploy.stonedb.as.replic.tar.gz
 ```
 
    - Gitee 下载
 ```sql
-wget  https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.2-GA/shell.for.deploy.stonedb.as.replic.tar.gz
+wget  https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.3-GA/shell.for.deploy.stonedb.as.replic.tar.gz
 ```
 ## 解压 Shell 脚本安装包。
 ```sql

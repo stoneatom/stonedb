@@ -19,20 +19,20 @@
 </div> 
 
 - [What is StoneDB](#what-is-stonedb)
-- [Contribution](#contribution)
 - [Getting Started](#getting-started)
   - [Supported Platform](#supported-platform)
+  - [Build StoneDB from Source Code in a Docker Container](#build-stonedb-from-source-code-in-a-docker-container)
   - [Build StoneDB from the Source Code](#build-stonedb-from-the-source-code)
     - [On Ubuntu 20.04](#on-ubuntu-2004)
     - [On CentOS 7.X](#on-centos-7x)
     - [On RedHat 7.X](#on-redhat-7x)
-  - [Build StoneDB from Source Code in a Docker Container](#build-stonedb-from-source-code-in-a-docker-container)
   - [Configure StoneDB](#configure-stonedb)
   - [Initialize the Database](#initialize-the-database)
   - [Start the Database Instance](#start-the-database-instance)
   - [Create a StoneDB Table](#create-a-stonedb-table)
   - [Switch from MySQL to StoneDB in Production](#switch-from-mysql-to-stonedb-in-production)
 - [Documentation](#documentation)
+- [Contribution](#contribution)
 - [Discussion](#discussion)
 - [Join StoneDB Wechat Group](#join-stonedb-wechat-group)
 - [Code of Conduct](#code-of-conduct)
@@ -54,10 +54,6 @@ StoneDB is a MySQL-compatible high-performance hybrid transaction/analytical pro
 
 
 For more information about StoneDB, see [stonedb.io](https://stonedb.io/).
-
-# Contribution
-
-StoneDB welcomes all kinds of contributions, such as contributing code to the code base, sharing your experience on how to use StoneDB, and providing insights in the community on the Forums, or contributing to projects that make StoneDB a better project. For more specifics, see the [contributing guide](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CONTRIBUTING.md) for more specifics.
 
 # Getting Started
 
@@ -83,6 +79,12 @@ The following packages we verify our builds with:
 - RocksDB 6.12.6
 - Boost 1.66
 
+## Build StoneDB from Source Code in a Docker Container
+
+For more information, see [Compile StoneDB in a Docker Container](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-docker).
+
+Of course, you can also quickly install and deploy StoneDB directly from [Dockershub](https://hub.docker.com/r/stoneatom/stonedb) in just two minutes. See our [documentation](https://stonedb.io/docs/getting-started/quick-deploy-in-docker) for details.
+
 ## Build StoneDB from the Source Code
 
 ### On Ubuntu 20.04
@@ -95,9 +97,6 @@ For more information, see [Compile StoneDB on CentOS 7.x](https://stonedb.io/doc
 
 ### On RedHat 7.X
 For more information, see [Compile StoneDB on RedHat 7.x](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57/).
-## Build StoneDB from Source Code in a Docker Container
-
-For more information, see [Compile StoneDB in a Docker Container](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-docker).
 
 ## Configure StoneDB
 After StoneDB is installed, you need to configure at least the following parameters in the **my.cnf** file:
@@ -173,6 +172,10 @@ Online migration tools to move data between storage engines are not currently de
 # Documentation
 
 Documentation can be found online at [https://stonedb.io](https://stonedb.io/docs/about-stonedb/intro). The documentation provides you with StoneDB basics, extensive examples of using StoneDB, as well as other information that you may need during your usage of StoneDB.
+
+# Contribution
+
+StoneDB welcomes all kinds of contributions, such as contributing code to the code base, sharing your experience on how to use StoneDB, and providing insights in the community on the Forums, or contributing to projects that make StoneDB a better project. For more specifics, see the [contributing guide](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CONTRIBUTING.md) for more specifics.
 
 # Discussion
 

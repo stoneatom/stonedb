@@ -55,7 +55,7 @@ log-bin=YOUR_ABS_PATH/data/binlog
 expire_logs_days=1
 #log_bin_compress=1
 #log_bin_compress_min_len=256
-binlog_format=statement
+binlog_format=row
 binlog_cache_size = 524288
 
 wait_timeout=3600
@@ -153,6 +153,35 @@ binlog-direct-non-transactional-updates
 
 default-storage-engine=tianmu
 #use_stat_tables=preferably
+
+# insert delay
+tianmu_insert_delayed=1
+
+# log level
+# DISABLED = 0, FATAL = 1, ERROR = 2, WARN = 3
+# INFO = 4, DEBUG = 5, TRACE = 6
+tianmu_global_debug_level=4
+
+# The parallelism degree of multithreaded aggregation
+# the number of threads executing group by multithreaded aggregation
+tianmu_groupby_parallel_degree=4
+
+# Threshold for the minimum number of rows
+# that can start executing a multithreaded group by thread, minimum is 655360
+tianmu_groupby_parallel_rows_minimum=655360
+
+# order by parallel switch
+tianmu_orderby_speedup=1
+
+# DIR
+tianmu_hugefiledir='/tmp'
+
+# MB, If the value is set to 0, the system does not use it
+tianmu_hugefilesize=30720
+
+# minimum available memory of the system, MB
+# If the remaining memory is smaller than this value, huge memory is used
+tianmu_os_least_mem=512
 
 # here, at the end of [mysqld] group mtr will automatically disable
 # all optional plugins.

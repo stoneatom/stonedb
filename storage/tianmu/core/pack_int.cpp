@@ -363,6 +363,7 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
       // for fixed number, it is sufficient to simply zero the data_
       std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
       dpn_->numOfNulls--;
+      SetVal64(locationInPack, l - dpn_->min_i);
     } else {
       ASSERT(data_.ptr_ != nullptr);
       dpn_->numOfNulls--;
@@ -385,7 +386,7 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
         dpn_->max_i = l;
         new_vt = GetValueSize(dpn_->max_i - dpn_->min_i);
       }
-      if (new_vt > data_.value_type_) {
+      if (new_vt != data_.value_type_ || delta != 0) {
         auto tmp = alloc(new_vt * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
         xf[{data_.value_type_, new_vt}](data_.ptr_, data_.ptr_int8_ + (data_.value_type_ * dpn_->numOfRecords), tmp,
                                         delta);
@@ -438,7 +439,7 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
 
     // update non-null to another nonull
     auto newv = v.GetInt();
-    ASSERT(oldv != newv);
+    //    ASSERT(oldv != newv);
 
     newmin = std::min(newmin, newv);
     newmax = std::max(newmax, newv);
@@ -478,13 +479,21 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
   dpn_->synced = false;
 
   for (size_t i = 0; i < vc->NumOfValues(); i++) {
-    if (!vc->IsNull(i)) {
+    if (vc->NotNull(i)) {
       AppendValue(*reinterpret_cast<uint64_t *>(const_cast<char *>(vc->GetDataBytesPointer(i))));
     } else {
       if (nv.has_value())
         AppendValue(nv->i);
       else
         AppendNull();
+      if (vc->IsDelete(i)) {
+        if (!IsNull(dpn_->numOfRecords - 1)) {
+          SetNull(dpn_->numOfRecords - 1);
+          dpn_->numOfNulls++;
+        }
+        SetDeleted(dpn_->numOfRecords - 1);
+        dpn_->numOfDeleted++;
+      }
     }
   }
   // sum has already been updated outside
@@ -559,6 +568,14 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
         AppendValue(nv->i - new_min);
       else
         AppendNull();
+      if (vc->IsDelete(i)) {
+        if (!IsNull(dpn_->numOfRecords - 1)) {
+          SetNull(dpn_->numOfRecords - 1);
+          dpn_->numOfNulls++;
+        }
+        SetDeleted(dpn_->numOfRecords - 1);
+        dpn_->numOfDeleted++;
+      }
     }
   }
   // sum has already been updated outside

@@ -19,6 +19,7 @@
 
 #include "common/common_definitions.h"
 #include "index/kv_store.h"
+#include "kv_transaction.h"
 
 namespace Tianmu {
 namespace index {
@@ -66,6 +67,11 @@ rocksdb::Status KVTransaction::PutData(rocksdb::ColumnFamilyHandle *column_famil
   return data_batch_->Put(column_family, key, value);
 }
 
+rocksdb::Status KVTransaction::MergeData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
+                                         const rocksdb::Slice &value) {
+  return data_batch_->Merge(column_family, key, value);
+}
+
 rocksdb::Status KVTransaction::SingleDeleteData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key) {
   // notice: if a key is overwritten (by calling Put() multiple times), then the
   // result of calling SingleDelete() on this key is undefined, delete is better
@@ -93,15 +99,16 @@ bool KVTransaction::Commit() {
   bool res = true;
   // firstly, release the snapshot.
   Releasesnapshot();
+  rocksdb::WriteOptions write_opts;
   // if we have data to commit, then do writing index data ops by KVWriteBatch.
   auto index_write_batch = index_batch_->GetWriteBatch();
   if (index_write_batch && index_write_batch->Count() > 0 &&
-      !ha_kvstore_->KVWriteBatch(write_opts_, index_write_batch)) {
+      !ha_kvstore_->KVWriteBatch(write_opts, index_write_batch)) {
     // write failed.
     res = false;
   }
   // write the data.
-  if (res && data_batch_->Count() > 0 && !ha_kvstore_->KVWriteBatch(write_opts_, data_batch_.get())) {
+  if (res && data_batch_->Count() > 0 && !ha_kvstore_->KVWriteBatch(write_opts, data_batch_.get())) {
     // write failed.
     res = false;
   }
@@ -118,5 +125,12 @@ void KVTransaction::Rollback() {
   data_batch_->Clear();
 }
 
+void KVTransaction::ResetWriteBatch() {
+  index_batch_ = nullptr;
+  data_batch_ = nullptr;
+
+  index_batch_ = std::make_unique<rocksdb::WriteBatchWithIndex>(rocksdb::BytewiseComparator(), 0, true);
+  data_batch_ = std::make_unique<rocksdb::WriteBatch>();
+}
 }  // namespace index
 }  // namespace Tianmu

@@ -32,7 +32,7 @@ namespace Tianmu {
 namespace core {
 
 int optimize_select(THD *thd, ulong select_options, Query_result *result, SELECT_LEX *select_lex,
-                    int &optimize_after_tianmu, int &free_join);
+                    int &is_optimize_after_tianmu, int &tianmu_free_join);
 
 class KillTimer {
  public:
@@ -78,12 +78,12 @@ QueryRouteTo::kToMySQL is returned and MySQL engine continues query
 execution.
 */
 QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                                  int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+                                  int &is_optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
   KillTimer timer(thd, tianmu_sysvar_max_execution_time);
 
   int in_case_of_failure_can_go_to_mysql;
 
-  optimize_after_tianmu = FALSE;
+  is_optimize_after_tianmu = FALSE;
   tianmu_free_join = 0;
 
   SELECT_LEX_UNIT *unit = nullptr;
@@ -122,7 +122,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
     // optimizing and executing derived tables is passed over, then optimization
     // of derived tables must go here.
     res = FALSE;
-    int free_join = FALSE;
+    int tianmu_free_join = FALSE;
     lex->thd->derived_tables_processing = TRUE;
     for (SELECT_LEX *sl = lex->all_selects_list; sl; sl = sl->next_select_in_list())        // for all selects
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)  // for all tables
@@ -151,12 +151,12 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
             int optimize_derived_after_tianmu = FALSE;
             res = optimize_select(
                 thd, ulong(first_select->active_options() | thd->variables.option_bits | SELECT_NO_UNLOCK),
-                (Query_result *)cursor->derived_result, first_select, optimize_derived_after_tianmu, free_join);
+                (Query_result *)cursor->derived_result, first_select, optimize_derived_after_tianmu, tianmu_free_join);
             if (optimize_derived_after_tianmu)
               derived_optimized.push_back(cursor->derived_unit());
           }
           lex->set_current_select(save_current_select);
-          if (!res && free_join)  // no error &
+          if (!res && tianmu_free_join)  // no error &
             route = QueryRouteTo::kToMySQL;
           if (res || route == QueryRouteTo::kToMySQL)
             goto ret_derived;
@@ -185,7 +185,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
       else {
         int old_executed = unit->is_executed();
         res = unit->optimize_for_tianmu();  //====exec()
-        optimize_after_tianmu = TRUE;
+        is_optimize_after_tianmu = TRUE;
         if (!res) {
           try {
             route = ha_tianmu_engine_->Execute(unit->thd, unit->thd->lex, result, unit);
@@ -215,7 +215,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
     }
     if (res || route == QueryRouteTo::kToTianmu) {
       res |= (int)unit->cleanup(0);
-      optimize_after_tianmu = FALSE;
+      is_optimize_after_tianmu = FALSE;
     }
   } else {
     unit->set_limit(unit->global_parameters());  // the fragment of original
@@ -230,7 +230,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
     int err;
     err = optimize_select(thd,
                           ulong(select_lex->active_options() | thd->variables.option_bits | setup_tables_done_option),
-                          result, select_lex, optimize_after_tianmu, tianmu_free_join);
+                          result, select_lex, is_optimize_after_tianmu, tianmu_free_join);
 
     // RCBase query engine entry point
     if (!err) {
@@ -257,7 +257,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
       if (err || route == QueryRouteTo::kToTianmu) {
         thd->proc_info = "end";
         err |= (int)select_lex->cleanup(0);
-        optimize_after_tianmu = FALSE;
+        is_optimize_after_tianmu = FALSE;
         tianmu_free_join = 0;
       }
       res = (err || thd->is_error());
@@ -265,9 +265,9 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
       res = select_lex->join->error;
   }
   if (select_lex->join && Query::IsLOJ(select_lex->join_list))
-    optimize_after_tianmu = 2;  // optimize partially (part=4), since part of LOJ
-                                // optimization was already done
-  res |= (int)thd->is_error();  // the ending of original handle_select(...) */
+    is_optimize_after_tianmu = TRUE;  // optimize partially (phase=Doneoptimization), since part of LOJ
+                                      // optimization was already done
+  res |= (int)thd->is_error();        // the ending of original handle_select(...) */
   if (unlikely(res)) {
     // If we had a another error reported earlier then this will be ignored //
     result->send_error(ER_UNKNOWN_ERROR, ER(ER_UNKNOWN_ERROR));
@@ -308,10 +308,10 @@ ret_derived:
 Prepares and optimizes a single select for Tianmu engine
 */
 int optimize_select(THD *thd, ulong select_options, Query_result *result, SELECT_LEX *select_lex,
-                    int &optimize_after_tianmu, int &free_join) {
+                    int &is_optimize_after_tianmu, int &tianmu_free_join) {
   // copied from sql_select.cpp from the beginning of mysql_select(...)
   int err = 0;
-  free_join = 1;
+  tianmu_free_join = 1;
   select_lex->context.resolve_in_select_list = TRUE;
   JOIN *join;
   if (select_lex->join != 0) {
@@ -328,7 +328,7 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, SELECT
         }
       }
     }
-    free_join = 0;
+    tianmu_free_join = 0;
     join->select_options = select_options;
   } else {
     thd_proc_info(thd, "init");
@@ -344,8 +344,8 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, SELECT
     select_lex->set_join(join);
   }
   join->best_rowcount = 2;
-  optimize_after_tianmu = TRUE;
-  if ((err = join->optimize(1)))
+  is_optimize_after_tianmu = TRUE;
+  if ((err = join->optimize(OptimizePhase::Before_LOJ_Transform)))
     return err;
   return FALSE;
 }
@@ -419,6 +419,13 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
       if (!exec_direct) {
         break;
       }
+    }
+  }
+
+  for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
+    if (sl->join->m_select_limit == 0) {
+      exec_direct = true;
+      break;
     }
   }
 
@@ -572,7 +579,8 @@ int st_select_lex_unit::optimize_for_tianmu() {
 
   if (is_executed() && !uncacheable && !thd->lex->is_explain())
     return FALSE;
-  executed = 1;
+
+  set_executed();
 
   if (uncacheable || !item || !item->assigned() || thd->lex->is_explain()) {
     if (item)
@@ -623,7 +631,7 @@ int st_select_lex_unit::optimize_for_tianmu() {
         sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || sl->braces)
                                        ? sl->active_options() & ~OPTION_FOUND_ROWS
                                        : sl->active_options() | found_rows_for_union;
-        saved_error = sl->join->optimize(1);
+        saved_error = sl->join->optimize(OptimizePhase::Before_LOJ_Transform);
       }
 
       // HERE ends the code from bool st_select_lex_unit::exec()
@@ -671,7 +679,7 @@ int st_select_lex_unit::optimize_for_tianmu() {
     }
   }
 
-  optimized = 1;
+  set_optimized();
   thd->lex->set_current_select(lex_select_save);
   return FALSE;
 }
@@ -689,7 +697,7 @@ int st_select_lex_unit::optimize_after_tianmu() {
       }
       sl->set_join(join);
     }
-    int res = sl->join->optimize(2);
+    int res = sl->join->optimize(OptimizePhase::After_LOJ_Transform);
     if (res) {
       thd->lex->set_current_select(lex_select_save);
       return res;
@@ -704,4 +712,117 @@ int st_select_lex_unit::optimize_after_tianmu() {
   executed = 0;
   thd->lex->set_current_select(lex_select_save);
   return FALSE;
+}
+
+/**
+  Optimize a query block and all inner query expressions for tianmu
+
+  @param thd    thread handler
+  @returns false if success, true if error
+*/
+
+bool SELECT_LEX::optimize_select_for_tianmu(THD *thd) {
+  DBUG_ENTER("SELECT_LEX::optimize_select_for_tianmu");
+
+  JOIN *const join = new JOIN(thd, this);
+  if (!join)
+    DBUG_RETURN(true);
+
+  set_join(join);
+
+  if (join->optimize(OptimizePhase::Before_LOJ_Transform))
+    DBUG_RETURN(true);
+
+  for (SELECT_LEX_UNIT *unit = first_inner_unit(); unit; unit = unit->next_unit()) {
+    if (!unit->is_optimized())
+      DBUG_RETURN(true);
+
+    SELECT_LEX *save_select = thd->lex->current_select();
+
+    for (SELECT_LEX *sl = unit->first_select(); sl; sl = sl->next_select()) {
+      thd->lex->set_current_select(sl);
+      unit->set_limit(sl);
+
+      if (sl->optimize_select_for_tianmu(thd))
+        DBUG_RETURN(true);
+
+      if (unit->query_result())
+        unit->query_result()->estimated_rowcount +=
+            sl->is_implicitly_grouped() || sl->join->group_optimized_away ? 2 : sl->join->best_rowcount;
+    }
+    SELECT_LEX *unit_fake_select_lex = unit->fake_select_lex;
+
+    if (unit_fake_select_lex) {
+      thd->lex->set_current_select(unit_fake_select_lex);
+      unit->set_limit(unit_fake_select_lex);
+
+      if (unit_fake_select_lex->optimize_select_for_tianmu(thd))
+        DBUG_RETURN(true);
+    }
+
+    unit->set_optimized();
+
+    thd->lex->set_current_select(save_select);
+  }
+
+  DBUG_RETURN(false);
+}
+
+/**
+  Optimize the query expression representing a derived table/view for tianmu table.
+
+  @note
+  If optimizer finds out that the derived table/view is of the type
+  "SELECT a_constant" this functions also materializes it.
+
+  @param thd thread handle
+
+  @returns false if success, true if error.
+*/
+
+bool TABLE_LIST::optimize_derived_for_tianmu(THD *thd) {
+  DBUG_ENTER("TABLE_LIST::optimize_derived_for_tianmu");
+
+  SELECT_LEX_UNIT *const unit = derived_unit();
+
+  assert(unit && unit->is_prepared() && !unit->is_optimized());
+
+  if (unit && unit->is_prepared() && !unit->is_optimized()) {
+    SELECT_LEX *save_select = thd->lex->current_select();
+
+    for (SELECT_LEX *sl = unit->first_select(); sl; sl = sl->next_select()) {
+      thd->lex->set_current_select(sl);
+
+      // LIMIT is required for optimization
+      unit->set_limit(sl);
+
+      if (sl->optimize_select_for_tianmu(thd))
+        DBUG_RETURN(true);
+
+      if (unit->query_result())
+        unit->query_result()->estimated_rowcount +=
+            sl->is_implicitly_grouped() || sl->join->group_optimized_away ? 2 : sl->join->best_rowcount;
+    }
+    st_select_lex *unit_fake_select_lex = unit->fake_select_lex;
+    if (unit_fake_select_lex) {
+      thd->lex->set_current_select(unit_fake_select_lex);
+
+      unit->set_limit(unit_fake_select_lex);
+
+      if (unit_fake_select_lex->optimize_select_for_tianmu(thd))
+        DBUG_RETURN(true);
+    }
+
+    unit->set_optimized();
+
+    thd->lex->set_current_select(save_select);
+  }
+
+  if (thd->is_error())
+    DBUG_RETURN(true);
+
+  if (materializable_is_const() && (create_derived(thd) || materialize_derived(thd)))
+    DBUG_RETURN(true);
+
+  DBUG_RETURN(false);
 }

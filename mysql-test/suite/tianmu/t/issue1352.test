@@ -1,0 +1,36 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+
+DROP DATABASE IF EXISTS issue1352_test;
+CREATE DATABASE issue1352_test;
+
+USE issue1352_test;
+
+## DDL
+
+CREATE TABLE test (dt TIMESTAMP) engine=tianmu;
+
+### insert data
+
+insert test values(now());
+
+## explain
+
+EXPLAIN SELECT dt FROM test WHERE dt >= date_sub(now(), INTERVAL 30 DAY) AND dt < now();
+
+EXPLAIN SELECT dt FROM test WHERE dt < date_sub(now(), INTERVAL 30 DAY) AND dt < now();
+
+EXPLAIN SELECT dt FROM test WHERE dt >= date_sub(now(), INTERVAL 30 DAY) AND dt >= now();
+
+EXPLAIN SELECT count(dt) FROM test WHERE dt >= date_sub(now(), INTERVAL 30 DAY) AND dt >= now() group by dt;
+
+EXPLAIN SELECT count(dt) FROM test WHERE dt >= date_sub(now(), INTERVAL 30 DAY) AND dt >= now() group by dt;
+
+EXPLAIN SELECT dt FROM test WHERE dt >= date_add(now(), INTERVAL 30 DAY) AND dt < now();
+
+## clean test table
+
+DROP TABLE test;
+
+DROP DATABASE issue1352_test;

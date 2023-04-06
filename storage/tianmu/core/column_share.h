@@ -48,7 +48,7 @@ struct alignas(128) COL_VER_HDR_V3 {
   uint64_t numOfPacks;    // number of packs
   uint64_t numOfDeleted;  // number of deleted
 
-  uint64_t auto_inc_next;
+  uint64_t auto_inc;  // only use in commit write
   int64_t min;
   int64_t max;
   uint32_t dict_ver;  // dict file version name. 0 means n/a
@@ -100,6 +100,8 @@ class ColumnShare final {
   }
   std::string GetFieldName() const { return field_name_; }
 
+  void Truncate() { auto_inc_.store(0); }
+
  private:
   void Init(common::TX_ID xid);
   void map_dpn();
@@ -115,6 +117,7 @@ class ColumnShare final {
   common::PackType pt;
   uint32_t col_id;
   std::string field_name_;
+  std::atomic<uint64_t> auto_inc_{0};
   struct seg {
     uint64_t offset;
     uint64_t len;

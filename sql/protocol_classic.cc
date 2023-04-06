@@ -1437,6 +1437,7 @@ bool Protocol_text::store(MYSQL_TIME *tm, uint decimals)
 #ifndef NDEBUG
   // field_types check is needed because of the embedded protocol
   assert(send_metadata || field_types == 0 ||
+         field_types[field_pos] == MYSQL_TYPE_VAR_STRING ||
          is_temporal_type_with_date_and_time(field_types[field_pos]));
   field_pos++;
 #endif

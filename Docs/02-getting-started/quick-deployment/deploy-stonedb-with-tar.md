@@ -3,17 +3,17 @@ id: deploy-stonedb-with-tar
 sidebar_position: 3.13
 ---
 
-# **Use a TAR Package to Deploy StoneDB**
+# Use a TAR Package to Deploy StoneDB
 
 ## Step 1. Install StoneDB
 1. Download the StoneDB software package. 
 ```sql
-wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/stonedb-ce-5.7-v1.0.2.el7.x86_64.tar.gz
+wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz
 ```
 
 2. Decompress the TAR package and install the software.
 ```sql
-tar -vxf stonedb-ce-5.7-v1.0.2.el7.x86_64.tar.gz -C /opt/
+tar -vxf stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz -C /opt/
 ```
 
 3. Map dependent libraries.

@@ -6,7 +6,7 @@ sidebar_position: 3.5
 # Quick Deployment of StoneDB as the Secondary Database
 
 ## Prerequisites
-- Two servers are deployed in your environment. MySQL and StoneDB are respectively installed on each server. For details about how to install StoneDB, see [Quick Deployment of StoneDB-5.7](https://stonedb.io/docs/getting-started/quick-deployment/quick-deployment-57).
+- Two servers are deployed in your environment. MySQL and StoneDB are respectively installed on each server. For details about how to install StoneDB, see [Quick Deployment of StoneDB-5.7](https://stonedb.io/docs/quick-deployment).
 - StoneDB can communicate with MySQL.
 - The disk space for the backup directory of StoneDB is sufficient.
 - StoneDB and MySQL can properly run.
@@ -19,7 +19,7 @@ Currently, this shell script applies only to StoneDB-5.7.
 
 1. Download the shell script.
 ```sql
-wget https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/shell.for.deploy.stonedb.as.replic.tar.gz
+wget https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/shell.for.deploy.stonedb.as.replic.tar.gz
 ```
 
 2. Download the package of the shell script.

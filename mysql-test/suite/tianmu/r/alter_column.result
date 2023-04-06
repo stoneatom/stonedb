@@ -70,7 +70,7 @@ description VARCHAR(200) NULL,
 PRIMARY KEY (task_id)
 );
 ALTER TABLE st2 ADD COLUMN col_name3 int auto_increment;
-ERROR HY000: AUTO_INCREMENT can be only declared on primary key column!
+ERROR 42000: AUTO_INCREMENT can be only declared on primary key column!
 SHOW CREATE TABLE st2;
 Table	Create Table
 st2	CREATE TABLE `st2` (
@@ -81,4 +81,37 @@ st2	CREATE TABLE `st2` (
   `description` varchar(200) DEFAULT NULL,
   PRIMARY KEY (`task_id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
+CREATE TABLE ttb1(
+id int,
+name varchar(5)
+) ENGINE=TIANMU;
+INSERT INTO ttb1 VALUES(1,'AAA'),(2,'BBB');
+ALTER TABLE ttb1 ADD COLUMN age VARCHAR(5) NOT NULL;
+SHOW CREATE TABLE ttb1;
+Table	Create Table
+ttb1	CREATE TABLE `ttb1` (
+  `id` int(11) DEFAULT NULL,
+  `name` varchar(5) DEFAULT NULL,
+  `age` varchar(5) NOT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+SELECT * FROM ttb1;
+id	name	age
+1	AAA	
+2	BBB	
+create table stu(id int primary key, name char(20))engine=tianmu;
+insert into stu(id, name) values(1, 'zhang fei');
+insert into stu(id, name) values(2, 'zhao yun');
+insert into stu(id, name) values(3, 'zhen ji');
+insert into stu(id, name) values(4, 'zhou yu');
+insert into stu(id, name) values(5, 'zhu ge liang');
+insert into stu(id, name) values(6, 'ma chao');
+alter table stu add column ctm2 timestamp default current_timestamp();
+select id,name,length(ctm2) from stu;
+id	name	length(ctm2)
+1	zhang fei	19
+2	zhao yun	19
+3	zhen ji	19
+4	zhou yu	19
+5	zhu ge liang	19
+6	ma chao	19
 DROP DATABASE alter_colunm;

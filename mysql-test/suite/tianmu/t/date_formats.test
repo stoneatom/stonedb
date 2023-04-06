@@ -1,0 +1,172 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test of date format functions
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS date_formats_test;
+--enable_warnings
+
+CREATE DATABASE date_formats_test;
+USE date_formats_test;
+
+# Test of str_to_date
+
+# PS doesnot support fractions of a second
+select str_to_date(concat('15-01-2001',' 2:59:58.999'),
+	           concat('%d-%m-%Y',' ','%H:%i:%s.%f'));
+select STR_TO_DATE('2004.12.12 22.30.61','%Y.%m.%d %T');
+
+SET sql_mode = 'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+create table t1 (date char(30), format char(30) not null);
+insert into t1 values
+('2003-01-02 10:11:12', '%Y-%m-%d %H:%i:%S'),
+('03-01-02 8:11:2.123456', '%y-%m-%d %H:%i:%S.%#'),
+#bug1495('0003-01-02 8:11:2.123456', '%Y-%m-%d %H:%i:%S.%#'),
+('03-01-02 8:11:2.123456',   '%Y-%m-%d %H:%i:%S.%#'),
+('2003-01-02 10:11:12 PM', '%Y-%m-%d %h:%i:%S %p'),
+#bug1495('2003-01-02 01:11:12.12345AM', '%Y-%m-%d %h:%i:%S.%f%p'),
+#bug1495('2003-01-02 02:11:12.12345AM', '%Y-%m-%d %h:%i:%S.%f %p'),
+#bug1495('2003-01-02 12:11:12.12345 am', '%Y-%m-%d %h:%i:%S.%f%p'),
+('2003-01-02 11:11:12Pm', '%Y-%m-%d %h:%i:%S%p'),
+('10:20:10', '%H:%i:%s'),
+('10:20:10', '%h:%i:%s.%f'),
+('10:20:10', '%T'),
+('10:20:10AM', '%h:%i:%s%p'),
+('10:20:10AM', '%r'),
+#bug1495('10:20:10.44AM', '%h:%i:%s.%f%p'),
+('15-01-2001 12:59:58', '%d-%m-%Y %H:%i:%S'),
+('15 September 2001', '%d %M %Y'),
+('15 SEPTEMB 2001', '%d %M %Y'),
+('15 MAY 2001', '%d %b %Y'),
+('15th May 2001', '%D %b %Y'),
+('Sunday 15 MAY 2001', '%W %d %b %Y'),
+('Sund 15 MAY 2001', '%W %d %b %Y'),
+('Tuesday 00 2002', '%W %U %Y'),
+('Thursday 53 1998', '%W %u %Y'),
+('Sunday 01 2001', '%W %v %x'),
+('Tuesday 52 2001', '%W %V %X'),
+('060 2004', '%j %Y'),
+('4 53 1998', '%w %u %Y'),
+('15-01-2001', '%d-%m-%Y %H:%i:%S'),
+('15-01-20', '%d-%m-%y'),
+('15-2001-1', '%d-%Y-%c');
+
+select date,format,str_to_date(date, format) as str_to_date from t1;
+# Use as a string
+select date,format,concat('',str_to_date(date, format)) as con from t1;
+# Use as datetime
+select date,format,cast(str_to_date(date, format) as datetime) as datetime from t1;
+select date,format,DATE(str_to_date(date, format)) as date2 from t1;
+select date,format,TIME(str_to_date(date, format)) as time from t1;
+select date,format,concat(TIME(str_to_date(date, format))) as time2 from t1;
+# Test small bug in %f handling
+select concat('',str_to_date('8:11:2.123456 03-01-02','%H:%i:%S.%f %y-%m-%d'));
+
+# Test wrong dates or converion specifiers
+
+truncate table t1;
+insert into t1 values
+('2003-01-02 10:11:12 PM', '%Y-%m-%d %H:%i:%S %p'),
+('2003-01-02 10:11:12.123456', '%Y-%m-%d %h:%i:%S %p'),
+('2003-01-02 10:11:12AM', '%Y-%m-%d %h:%i:%S.%f %p'),
+('2003-01-02 10:11:12AN', '%Y-%m-%d %h:%i:%S%p'),
+('2003-01-02 10:11:12 PM', '%y-%m-%d %H:%i:%S %p'),
+('10:20:10AM', '%H:%i:%s%p'),
+('15 Septembei 2001', '%d %M %Y'),
+('15 Ju 2001', '%d %M %Y'),
+('Sund 15 MA', '%W %d %b %Y'),
+('Thursdai 12 1998', '%W %u %Y'),
+('Sunday 01 2001', '%W %v %X'),
+('Tuesday 52 2001', '%W %V %x'),
+('Tuesday 52 2001', '%W %V %Y'),
+('Tuesday 52 2001', '%W %u %x'),
+('7 53 1998', '%w %u %Y'),
+(NULL, get_format(DATE,'USA'));
+select date,format,str_to_date(date, format) as str_to_date from t1;
+select date,format,concat(str_to_date(date, format),'') as con from t1;
+
+# Test 'maybe' date formats and 'strange but correct' results
+
+truncate table t1;
+insert into t1 values
+('10:20:10AM', '%h:%i:%s'),
+('2003-01-02 10:11:12', '%Y-%m-%d %h:%i:%S'),
+('03-01-02 10:11:12 PM', '%Y-%m-%d %h:%i:%S %p');
+
+select date,format,str_to_date(date, format) as str_to_date from t1;
+select date,format,concat(str_to_date(date, format),'') as con from t1;
+drop table t1;
+
+# Test of date_format()
+create table t1 (d date);
+insert into t1 values ('2004-07-14'),('2005-07-14');
+select date_format(d,"%d") from t1 order by 1;
+drop table t1;
+
+# PS doesnot support fractional seconds
+select str_to_date("2003-....01ABCD-02 10:11:12.0012", "%Y-%.%m%@-%d %H:%i:%S.%f") as a;
+
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+#bug1495create table t1 select str_to_date("2003-01-02 10:11:12.0012", "%Y-%m-%d %H:%i:%S.%f") as f1,
+#bug1495			str_to_date("10:11:12.0012", "%H:%i:%S.%f") as f2,
+#bug1495			str_to_date("2003-01-02", "%Y-%m-%d") as f3,
+#bug1495			str_to_date("02", "%d") as f4, str_to_date("02 10", "%d %H") as f5;
+#bug1495describe t1;
+#bug1495select * from t1;
+
+#bug1495create table t1 select "02 10" as a, "%d %H" as b;
+#bug1495select str_to_date(a,b) from t1;
+#bug1495create table t2 select str_to_date(a,b) from t1;
+#bug1495describe t2;
+select str_to_date("2003-01-02 10:11:12.0012", "%Y-%m-%d %H:%i:%S.%f") as f1,
+       str_to_date("2003-01-02 10:11:12.0012", "%Y-%m-%d %H:%i:%S") as f2,
+       str_to_date("2003-01-02", "%Y-%m-%d") as f3,
+       str_to_date("02 10:11:12", "%d %H:%i:%S.%f") as f4,
+       str_to_date("02 10:11:12", "%d %H:%i:%S") as f5,
+       str_to_date("02 10", "%d %f") as f6;
+select str_to_date("2003-01-02 10:11:12.0012ABCD", "%Y-%m-%d %H:%i:%S.%f") as f1,
+       addtime("-01:01:01.01 GGG", "-23:59:59.1") as f2,
+       microsecond("1997-12-31 23:59:59.01XXXX") as f3;
+
+select str_to_date("2003-04-05  g", "%Y-%m-%d") as f1,
+       str_to_date("2003-04-05 10:11:12.101010234567", "%Y-%m-%d %H:%i:%S.%f") as f2;
+
+create table t1 (f1 datetime);
+insert into t1 (f1) values ("2005-01-01");
+insert into t1 (f1) values ("2005-02-01");
+select date_format(f1, "%m") as d1, date_format(f1, "%M") as d2 from t1 order by date_format(f1, "%M");
+drop table t1;
+
+CREATE TABLE t1 (a varchar(10), PRIMARY KEY (a));
+CREATE TABLE t2 (a varchar(10), b date, PRIMARY KEY(a,b));
+CREATE TABLE t3 (a varchar(10), b TIME, PRIMARY KEY(a,b));
+INSERT INTO t1 VALUES ('test1');
+INSERT INTO t2 VALUES
+('test1','2016-12-13'),('test1','2016-12-14'),('test1','2016-12-15');
+INSERT INTO t3 VALUES
+('test1','11:13:14'), ('test1','12:13:14'), ('test1','10:13:14');
+
+SELECT *
+FROM t1 LEFT JOIN t2
+  ON t2.a = 'test1' AND t2.b = '20161213'
+WHERE t1.a = 'test1';
+
+SELECT *
+FROM t1 LEFT JOIN t2 IGNORE INDEX(PRIMARY)
+  ON t2.a = 'test1' AND t2.b = '20161213'
+WHERE t1.a = 'test1';
+
+SELECT b, b = '20161213',
+       CASE b WHEN '20161213' then 'found' ELSE 'not found' END FROM t2;
+SELECT b, b IN ('20161213'), b in ('20161213', 0) FROM t2;
+
+#Uses datatype TIME
+SELECT b, b = '121314',
+       CASE b WHEN '121314' then 'found' ELSE 'not found' END FROM t3 order by 1;
+SELECT b, b in ('121314'), b in ('121314', 0) FROM t3 order by 1;
+
+#clean UP
+drop database date_formats_test;
+

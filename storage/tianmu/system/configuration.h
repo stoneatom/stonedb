@@ -38,6 +38,8 @@ extern char *tianmu_sysvar_cachefolder;
 extern char *tianmu_sysvar_hugefiledir;
 extern char *tianmu_sysvar_mm_policy;
 extern char *tianmu_sysvar_mm_releasepolicy;
+extern unsigned int tianmu_os_least_mem;
+extern unsigned int tianmu_sysvar_hugefilesize;
 extern unsigned int tianmu_sysvar_allowmysqlquerypath;
 extern unsigned int tianmu_sysvar_bg_load_threads;
 extern unsigned int tianmu_sysvar_cachereleasethreshold;
@@ -88,6 +90,21 @@ extern char tianmu_sysvar_enable_histogram_cmap_bloom;
 extern unsigned int tianmu_sysvar_result_sender_rows;
 // Number of threads executing (delete_row) and (update_row) in parallel
 extern unsigned int tianmu_sysvar_delete_or_update_threads;
+
+extern unsigned int tianmu_sysvar_merge_rocks_expected_count;
+// Threshold to submit in insert request
+extern unsigned int tianmu_sysvar_insert_write_batch_size;
+
+extern unsigned int tianmu_sysvar_log_loop_interval;
+
+// The parallelism degree of multithreaded aggregation
+// the number of threads executing group by multithreaded aggregation
+extern unsigned int tianmu_sysvar_groupby_parallel_degree;
+// Threshold for the minimum number of rows
+// that can start executing a multithreaded group by thread
+extern unsigned long long tianmu_sysvar_groupby_parallel_rows_minimum;
+// Slow Query Threshold of recording tianmu logs, in seconds
+extern unsigned int tianmu_sysvar_slow_query_record_interval;
 
 void ConfigureRCControl();
 

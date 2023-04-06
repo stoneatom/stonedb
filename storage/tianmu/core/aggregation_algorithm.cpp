@@ -27,6 +27,7 @@ low-level mechanisms
 #include "core/mi_iterator.h"
 #include "core/pack_guardian.h"
 #include "core/transaction.h"
+#include "mm/memory_statistics.h"
 #include "system/fet.h"
 #include "system/tianmu_system.h"
 
@@ -47,9 +48,11 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
 
   for (uint i = 0; i < t->NumOfAttrs(); i++) {  // first pass: find all grouping attributes
     TempTable::Attr &cur_a = *(t->GetAttrP(i));
-    if (cur_a.mode == common::ColOperation::DELAYED)  // delayed column (e.g. complex exp. on
-                                                      // aggregations)
+
+    // delayed column (e.g. complex exp. on aggregations)
+    if (cur_a.mode == common::ColOperation::DELAYED)
       continue;
+
     if ((just_distinct && cur_a.alias) || cur_a.mode == common::ColOperation::GROUP_BY) {
       if (cur_a.mode == common::ColOperation::GROUP_BY)
         group_by_found = true;
@@ -61,10 +64,9 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
           break;
         }
       }
-      if (already_added == false) {
+      if (!already_added) {
         int new_attr_number = gbw.NumOfGroupingAttrs();
-        gbw.AddGroupingColumn(new_attr_number, i,
-                              *(t->GetAttrP(i)));  // GetAttrP(i) is needed
+        gbw.AddGroupingColumn(new_attr_number, i, *(t->GetAttrP(i)));  // GetAttrP(i) is needed
 
         // approximate a number of groups
         if (upper_approx_of_groups < mind->NumOfTuples()) {
@@ -79,8 +81,9 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
 
   for (uint i = 0; i < t->NumOfAttrs(); i++) {  // second pass: find all aggregated attributes
     TempTable::Attr &cur_a = *(t->GetAttrP(i));
-    if (cur_a.mode == common::ColOperation::DELAYED) {  // delayed column (e.g. complex exp.
-                                                        // on aggregations)
+
+    // delayed column (e.g. complex exp.on aggregations)
+    if (cur_a.mode == common::ColOperation::DELAYED) {
       MIDummyIterator m(1);
       cur_a.term.vc->LockSourcePacks(m);
       continue;
@@ -108,9 +111,9 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
         max_size = cur_a.term.vc->MaxStringSize();
         min_v = cur_a.term.vc->RoughMin();
         max_v = cur_a.term.vc->RoughMax();
-        if (cur_a.distinct && cur_a.term.vc->IsDistinct() && cur_a.mode != common::ColOperation::LISTING)
+        if (cur_a.distinct && cur_a.term.vc->IsDistinct() && cur_a.mode != common::ColOperation::LISTING) {
           cur_a.distinct = false;  // "distinct" not needed, as values are distinct anyway
-        else if (cur_a.distinct) {
+        } else if (cur_a.distinct) {
           max_no_of_distinct = cur_a.term.vc->GetApproxDistVals(false);  // no nulls included
           if (tianmu_control_.isOn())
             tianmu_control_.lock(m_conn->GetThreadID())
@@ -118,9 +121,12 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
                 << system::unlock;
         }
       }
+
+      // special case: aggregations on empty result (should not
+      // be 0, because it triggers max. buffer settings)
       if (max_no_of_distinct == 0)
-        max_no_of_distinct = 1;  // special case: aggregations on empty result (should not
-                                 // be 0, because it triggers max. buffer settings)
+        max_no_of_distinct = 1;
+
       gbw.AddAggregatedColumn(i, cur_a, max_no_of_distinct, min_v, max_v, max_size);
     }
   }
@@ -168,8 +174,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
       gbw.PutAggregatedValueForCount(0, row, count_distinct);
       all_done_in_one_row = true;
     }
-  }  // Special case 3: SELECT MIN(col) FROM ..... or SELECT MAX(col) FROM
-     // .....;
+  }  // Special case 3: SELECT MIN(col) FROM ..... or SELECT MAX(col) FROM ...;
   else if (t->GetWhereConds().Size() == 0 &&
            ((gbw.IsMinOnly() && t->NumOfAttrs() == 1 && min_v != common::MINUS_INF_64) ||
             (gbw.IsMaxOnly() && t->NumOfAttrs() == 1 && max_v != common::PLUS_INF_64))) {
@@ -188,9 +193,9 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
       t->GetAttrP(i)->page_size = 1;
       t->GetAttrP(i)->CreateBuffer(1);
     }
-    if (limit == -1 || (offset == 0 && limit >= 1)) {  // limit is -1 (off), or a positive
-                                                       // number, 0 means nothing should be
-                                                       // displayed.
+
+    // limit is -1 (off), or a positive number, 0 means nothing should be displayed.
+    if (limit == -1 || (offset == 0 && limit >= 1)) {
       --limit;
       AggregateFillOutput(gbw, row, offset);
       if (sender) {
@@ -201,20 +206,22 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     }
   } else {
     int64_t local_limit = limit == -1 ? upper_approx_of_groups : limit;
-    MultiDimensionalGroupByScan(gbw, local_limit, offset, sender, limit_less_than_no_groups, false);
+    MultiDimensionalGroupByScan(gbw, local_limit, offset, sender, limit_less_than_no_groups);
     if (limit != -1)
       limit = local_limit;
   }
-  t->ClearMultiIndexP();  // cleanup (i.e. regarded as materialized,
-                          // one-dimensional)
+
+  // cleanup (i.e. regarded as materialized, one-dimensional)
+  t->ClearMultiIndexP();
+
+  // to prevent another execution of HAVING on DISTINCT+GROUP BY
   if (t->HasHavingConditions())
-    t->ClearHavingConditions();  // to prevent another execution of HAVING on
-                                 // DISTINCT+GROUP BY
+    t->ClearHavingConditions();
 }
 
 void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int64_t &limit, int64_t &offset,
-                                                       ResultSender *sender, bool limit_less_than_no_groups,
-                                                       bool force_parall) {
+                                                       ResultSender *sender,
+                                                       [[maybe_unused]] bool limit_less_than_no_groups) {
   MEASURE_FET("TempTable::MultiDimensionalGroupByScan(...)");
   bool first_pass = true;
   // tuples are numbered according to tuple_left filter (not used, if tuple_left
@@ -244,18 +251,17 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
   }
   gbw.SetDistinctTuples(mit.NumOfTuples());
 
-  auto get_thd_cnt = []() {
-    int hardware_concurrency = std::thread::hardware_concurrency();
-    // TODO: The original code was the number of CPU cores divided by 4, and the reason for that is to be traced further
-    return hardware_concurrency > 4 ? (hardware_concurrency / 4) : 1;
-  };
-
-  int thd_cnt = 1;
-  if (force_parall) {
-    thd_cnt = get_thd_cnt();
-  } else {
-    if (ParallelAllowed(gbw) && !limit_less_than_no_groups) {
-      thd_cnt = get_thd_cnt();  // For concurrence reason, don't swallow all cores once.
+  unsigned int thd_cnt = 1;
+  if (tianmu_sysvar_groupby_parallel_degree > 1) {
+    if (static_cast<uint64_t>(mit.NumOfTuples()) > tianmu_sysvar_groupby_parallel_rows_minimum) {
+      unsigned int thd_limit = std::thread::hardware_concurrency();
+      thd_limit = thd_limit > 8 ? 8 : thd_limit;  // limit no more 8
+      thd_cnt = tianmu_sysvar_groupby_parallel_degree > thd_limit ? thd_limit : tianmu_sysvar_groupby_parallel_degree;
+      TIANMU_LOG(LogCtl_Level::DEBUG,
+                 "MultiDimensionalGroupByScan multi threads thd_cnt: %d thd_limit: %d NumOfTuples: %d "
+                 "groupby_parallel_degree: %d groupby_parallel_rows_minimum: %lld",
+                 thd_cnt, thd_limit, mit.NumOfTuples(), tianmu_sysvar_groupby_parallel_degree,
+                 tianmu_sysvar_groupby_parallel_rows_minimum);
     }
   }
 
@@ -289,9 +295,20 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
           t->GetAttrP(i)->term.vc->LockSourcePacks(m);
         }
       }
+
+      [[maybe_unused]] const char *thread_type = "multi";
+      [[maybe_unused]] uint64_t mem_used = 0;
+#ifdef DEBUG_AGGREGA_COST
+      std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+      uint64_t mem_available = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available;
+      uint64_t swap_used = MemoryStatisticsOS::Instance()->GetMemInfo().swap_used;
+      memory_statistics_record("AGGREGA", "START");
+#endif
+
       if (ag_worker.ThreadsUsed() > 1) {
-        ag_worker.DistributeAggreTaskAverage(mit);
+        ag_worker.DistributeAggreTaskAverage(mit, &mem_used);
       } else {
+        thread_type = "sin";
         while (mit.IsValid()) {  // need muti thread
                                  // First stage -
                                  //  some distincts may be delayed
@@ -300,7 +317,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
 
           // Grouping on a packrow
           int64_t packrow_length = mit.GetPackSizeLeft();
-          AggregaGroupingResult grouping_result = AggregatePackrow(gbw, &mit, cur_tuple);
+          AggregaGroupingResult grouping_result = AggregatePackrow(gbw, &mit, cur_tuple, &mem_used);
           if (sender) {
             sender->SetAffectRows(gbw.NumOfGroups());
           }
@@ -316,6 +333,21 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
           cur_tuple += packrow_length;
         }
       }
+
+#ifdef DEBUG_AGGREGA_COST
+      int64_t mem_available_chg = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available - mem_available;
+      int64_t swap_used_chg = MemoryStatisticsOS::Instance()->GetMemInfo().swap_used - swap_used;
+      auto diff =
+          std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+      if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+        TIANMU_LOG(LogCtl_Level::INFO,
+                   "AggregatePackrow thread_type: %s spend: %f NumOfTuples: %d mem_available_chg: %ld swap_used_chg: "
+                   "%ld collec_mem_used: %lu",
+                   thread_type, diff.count(), mit.NumOfTuples(), mem_available_chg, swap_used_chg, mem_used);
+      }
+      memory_statistics_record("AGGREGA", "END");
+#endif
+
       gbw.ClearDistinctBuffers();              // reset buffers for a new contents
       MultiDimensionalDistinctScan(gbw, mit);  // if not needed, no effect
       ag_worker.Commit();
@@ -501,13 +533,20 @@ void AggregationAlgorithm::MultiDimensionalDistinctScan(GroupByWrapper &gbw, MII
   }
 }
 
-AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple) {
-  std::scoped_lock guard(mtx);
+AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple,
+                                                             uint64_t *mem_used) {
   int64_t packrow_length = mit->GetPackSizeLeft();
   if (!gbw.AnyTuplesLeft(cur_tuple, cur_tuple + packrow_length - 1)) {
     mit->NextPackrow();
     return AggregaGroupingResult::AGR_NO_LEFT;
   }
+
+#ifdef DEBUG_AGGREGA_COST
+  const auto &mem_info = MemoryStatisticsOS::Instance()->GetMemInfo();
+  uint64_t mem_available = mem_info.mem_available;
+  uint64_t swap_used = mem_info.swap_used;
+#endif
+
   int64_t uniform_pos = common::NULL_VALUE_64;
   bool skip_packrow = false;
   bool packrow_done = false;
@@ -520,8 +559,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
 
   if (require_locking_gr) {
     for (int gr_a = 0; gr_a < gbw.NumOfGroupingAttrs(); gr_a++)
-      gbw.LockPackAlways(gr_a, *mit);  // note: ColumnNotOmitted checked
-                                       // inside//»á¼ÓÔØ½âÑ¹group byÁÐÊý¾Ý°ü
+      gbw.LockPackAlways(gr_a, *mit);  // note: ColumnNotOmitted checked inside
     require_locking_gr = false;
   }
   if (require_locking_ag) {
@@ -546,11 +584,14 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
       return AggregaGroupingResult::AGR_FINISH;       // aggregation finished
     }
   }
+
   if (skip_packrow)
     gbw.packrows_omitted++;
   else if (part_omitted)
     gbw.packrows_part_omitted++;
-  if (packrow_done) {  // This packrow will not be needed any more
+
+  // This packrow will not be needed any more
+  if (packrow_done) {
     gbw.TuplesResetBetween(cur_tuple, cur_tuple + packrow_length - 1);
   }
 
@@ -558,10 +599,6 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
     mit->NextPackrow();
     return AggregaGroupingResult::AGR_OK;  // success - roughly omitted
   }
-
-  // bool require_locking_ag  = true;					// a new packrow,
-  // so locking will be needed bool require_locking_gr	= (uniform_pos ==
-  // common::NULL_VALUE_64);	// do not lock if the grouping row is uniform
 
   while (mit->IsValid()) {  // becomes invalid on pack end
     if (m_conn->Killed())
@@ -575,9 +612,11 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
 
       int64_t pos = 0;
       bool existed = true;
-      if (uniform_pos != common::NULL_VALUE_64)  // either uniform because of KNs, or = 0,
-                                                 // because there is no grouping columns
-        pos = uniform_pos;                       // existed == true, as above
+
+      // either uniform because of KNs, or = 0, because there is no grouping columns
+      // existed == true, as above
+      if (uniform_pos != common::NULL_VALUE_64)
+        pos = uniform_pos;
       else {
         for (int gr_a = 0; gr_a < gbw.NumOfGroupingAttrs(); gr_a++)
           if (gbw.ColumnNotOmitted(gr_a))
@@ -585,10 +624,12 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
         existed = gbw.FindCurrentRow(pos);
       }
 
-      if (pos != common::NULL_VALUE_64) {  // Any place left? If not, just omit
-                                           // the tuple.
-        gbw.TuplesReset(cur_tuple);        // internally delayed for optimization
-                                           // purposes - must be committed at the end
+      // Any place left? If not, just omit the tuple.
+      // internally delayed for optimization
+      // purposes - must be committed at the end
+      if (pos != common::NULL_VALUE_64) {
+        gbw.TuplesReset(cur_tuple);
+
         if (!existed) {
           aggregations_not_changeable = false;
           gbw.AddGroup();                                                        // successfully added
@@ -603,20 +644,21 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
         if (!aggregations_not_changeable) {
           // Lock packs if needed
           if (require_locking_ag) {
-            for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++)
-              gbw.LockPack(gr_a,
-                           *mit);  // note: ColumnNotOmitted checked inside
+            for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++) {
+              gbw.LockPack(gr_a, *mit);  // note: ColumnNotOmitted checked inside
+            }
             require_locking_ag = false;
           }
 
           // Prepare packs for aggregated columns
-          for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++)
+          for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++) {
             if (gbw.ColumnNotOmitted(gr_a)) {
               bool value_successfully_aggregated = gbw.PutAggregatedValue(gr_a, pos, *mit, factor);
               if (!value_successfully_aggregated) {
                 gbw.DistinctlyOmitted(gr_a, cur_tuple);
               }
             }
+          }
         }
       }
     }
@@ -626,6 +668,21 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
       break;
   }
   gbw.CommitResets();
+
+#ifdef DEBUG_AGGREGA_COST
+  {
+    if (mem_available) {
+      const auto mem_info = MemoryStatisticsOS::Instance()->GetMemInfo();
+      int64_t mem_available_chg = mem_info.mem_available - mem_available;
+      int64_t swap_used_chg = mem_info.swap_used - swap_used;
+
+      if (mem_used && (mem_available_chg < 0)) {
+        (*mem_used) -= mem_available_chg;
+      }
+    }
+  }
+#endif
+
   return AggregaGroupingResult::AGR_OK;  // success
 }
 
@@ -858,14 +915,21 @@ void AggregationAlgorithm::TaskFillOutput(GroupByWrapper *gbw, Transaction *ci, 
 
 void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVector *dims [[maybe_unused]],
                                           MIIterator *mit [[maybe_unused]], CTask *task [[maybe_unused]],
-                                          GroupByWrapper *gbw, Transaction *ci [[maybe_unused]]) {
+                                          GroupByWrapper *gbw, Transaction *ci [[maybe_unused]], uint64_t *mem_used) {
+  TIANMU_LOG(LogCtl_Level::DEBUG, "TaskAggrePacks task_id: %d start pack_start: %d pack_end: %d", task->dwTaskId,
+             task->dwStartPackno, task->dwEndPackno);
+#ifdef DEBUG_AGGREGA_COST
+  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+  uint64_t mem_available = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available;
+#endif
+
   taskIterator->Rewind();
   int task_pack_num = 0;
   while (taskIterator->IsValid()) {
     if ((task_pack_num >= task->dwStartPackno) && (task_pack_num <= task->dwEndPackno)) {
       int cur_tuple = (*task->dwPack2cur)[task_pack_num];
       MIInpackIterator mii(*taskIterator);
-      AggregaGroupingResult grouping_result = aa->AggregatePackrow(*gbw, &mii, cur_tuple);
+      AggregaGroupingResult grouping_result = aa->AggregatePackrow(*gbw, &mii, cur_tuple, mem_used);
       if (grouping_result == AggregaGroupingResult::AGR_FINISH)
         break;
       if (grouping_result == AggregaGroupingResult::AGR_KILLED)
@@ -878,6 +942,17 @@ void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVec
     taskIterator->NextPackrow();
     ++task_pack_num;
   }
+
+#ifdef DEBUG_AGGREGA_COST
+  int64_t mem_available_chg = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available - mem_available;
+  auto diff =
+      std::chrono::duration_cast<std::chrono::duration<float>>(std::chrono::high_resolution_clock::now() - start);
+  if (diff.count() > tianmu_sysvar_slow_query_record_interval) {
+    TIANMU_LOG(LogCtl_Level::INFO,
+               "TaskAggrePacks task_id: %d spend: %f pack_start: %d pack_end: %d mem_available_chg: %ld",
+               task->dwTaskId, diff.count(), task->dwStartPackno, task->dwEndPackno, mem_available_chg);
+  }
+#endif
 }
 
 void AggregationWorkerEnt::PrepShardingCopy(MIIterator *mit, GroupByWrapper *gb_sharding,
@@ -894,7 +969,13 @@ void AggregationWorkerEnt::PrepShardingCopy(MIIterator *mit, GroupByWrapper *gb_
 }
 
 /*Average allocation task*/
-void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
+void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit, uint64_t *mem_used) {
+#ifdef DEBUG_AGGREGA_COST
+  const auto mem_info = MemoryStatisticsOS::Instance()->GetMemInfo();
+  uint64_t mem_available = mem_info.mem_available;
+  uint64_t swap_used = mem_info.swap_used;
+#endif
+
   Transaction *conn = current_txn_;
   DimensionVector dims(mind->NumOfDimensions());
   std::vector<CTask> vTask;
@@ -918,8 +999,23 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
 
   pack2cur.emplace(std::pair<int, int>(packnum, curtuple_index));
 
-  int loopcnt = (packnum < m_threads) ? packnum : m_threads;
-  int num = packnum / loopcnt;
+  int loopcnt = 0;
+  int mod = 0;
+  int num = 0;
+
+  int threads_num = m_threads + 1;
+
+  do {
+    loopcnt = (packnum < threads_num) ? packnum : threads_num;
+    mod = packnum % loopcnt;
+    num = packnum / loopcnt;
+
+    --threads_num;
+  } while ((num <= 1) && (threads_num >= 1));
+
+  TIANMU_LOG(LogCtl_Level::DEBUG,
+             "DistributeAggreTaskAverage packnum: %d threads_num: %d loopcnt: %d num: %d mod: %d NumOfTuples: %d",
+             packnum, threads_num, loopcnt, num, mod, mit.NumOfTuples());
 
   utils::result_set<void> res;
   for (int i = 0; i < loopcnt; ++i) {
@@ -970,10 +1066,20 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
 
   for (size_t i = 0; i < vTask.size(); ++i) {
     GroupByWrapper *gbw = i == 0 ? gb_main : vGBW[i].get();
-    res1.insert(ha_tianmu_engine_->query_thread_pool.add_task(&AggregationWorkerEnt::TaskAggrePacks, this,
-                                                              &taskIterator[i], &dims, &mit, &vTask[i], gbw, conn));
+    res1.insert(ha_tianmu_engine_->query_thread_pool.add_task(
+        &AggregationWorkerEnt::TaskAggrePacks, this, &taskIterator[i], &dims, &mit, &vTask[i], gbw, conn, mem_used));
   }
   res1.get_all_with_except();
+
+#ifdef DEBUG_AGGREGA_COST
+  {
+    int64_t mem_available_chg = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available - mem_available;
+    int64_t swap_used_chg = MemoryStatisticsOS::Instance()->GetMemInfo().swap_used - swap_used;
+    TIANMU_LOG(LogCtl_Level::INFO, "DistributeAggreTaskAverage TASK mem_available_chg: %ld swap_used_chg: %ld",
+               mem_available_chg, swap_used_chg);
+  }
+  memory_statistics_record("AGGREGA", "TASK");
+#endif
 
   for (size_t i = 0; i < vTask.size(); ++i) {
     // Merge aggreation data together
@@ -982,6 +1088,16 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
       gb_main->Merge(*(vGBW[i]));
     }
   }
+
+#ifdef DEBUG_AGGREGA_COST
+  {
+    int64_t mem_available_chg = MemoryStatisticsOS::Instance()->GetMemInfo().mem_available - mem_available;
+    int64_t swap_used_chg = MemoryStatisticsOS::Instance()->GetMemInfo().swap_used - swap_used;
+    TIANMU_LOG(LogCtl_Level::INFO, "DistributeAggreTaskAverage MERGE mem_available_chg: %ld swap_used_chg: %ld",
+               mem_available_chg, swap_used_chg);
+  }
+  memory_statistics_record("AGGREGA", "MERGE");
+#endif
 }
 }  // namespace core
 }  // namespace Tianmu

@@ -1,0 +1,29 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS alter_delete;
+--enable_warnings
+
+CREATE DATABASE alter_delete;
+
+USE alter_delete;
+
+CREATE TABLE ttt1(id INT,name VARCHAR(5));
+
+INSERT INTO ttt1 VALUES(0,"XXX"),(1,'AAA'),(2,'BBB');
+
+SELECT * FROM ttt1;
+
+DELETE FROM ttt1 WHERE id=1;
+
+SELECT * FROM ttt1;
+
+ALTER TABLE ttt1 CONVERT TO CHARACTER SET utf8;
+
+SELECT * FROM ttt1;
+
+SHOW CREATE TABLE ttt1;
+
+DROP TABLE ttt1;
+
+DROP DATABASE alter_delete;

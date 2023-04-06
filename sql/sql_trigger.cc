@@ -226,6 +226,14 @@ bool mysql_create_or_drop_trigger(THD *thd, TABLE_LIST *tables, bool create)
   }
   table= tables->table;
   table->pos_in_table_list= tables;
+  if ((table->file && table->file->ht == tianmu_hton)){
+    my_bool tianmu_no_key_error = thd->slave_thread ? global_system_variables.tianmu_no_key_error : 
+                                                                thd->variables.tianmu_no_key_error;
+    if(!tianmu_no_key_error) {
+      my_error(ER_TIANMU_NOT_SUPPORTED_TRIGGER, MYF(0));
+      goto end;
+    }
+  }
 
   /* Later on we will need it to downgrade the lock */
   mdl_ticket= table->mdl_ticket;

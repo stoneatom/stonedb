@@ -1,0 +1,20 @@
+DROP DATABASE IF EXISTS alter_update;
+CREATE DATABASE alter_update;
+USE alter_update;
+CREATE TABLE test (a INT,b INT);
+INSERT INTO test(a,b) VALUES (1,37),(64,34),(65,17);
+ALTER TABLE test ADD COLUMN c INT;
+UPDATE test SET c=b;
+SELECT * FROM test;
+a	b	c
+1	37	37
+64	34	34
+65	17	17
+UPDATE test SET c=a;
+SELECT * FROM test;
+a	b	c
+1	37	1
+64	34	64
+65	17	65
+DROP TABLE test;
+DROP DATABASE alter_update;

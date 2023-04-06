@@ -5,15 +5,14 @@ use test;
 drop table IF EXISTS tmp_table;
 --enable_warnings
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # tianmu_mandatory=OFF
 --echo # 
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
 --enable_warnings
 
 create table t_issue1131(c1 int,c2 varchar(255))engine=innodb;
 show create table t_issue1131;
-show variables like 'sql_mode';
 show variables like '%_engine';
 alter table t_issue1131 add c3 int;
 show create table t_issue1131;
@@ -29,15 +28,14 @@ drop table tmp_table;
 
 
 --echo # 
---echo # sql_mode='MANDATORY_TIANMU'
+--echo # tianmu_mandatory=ON
 --echo # 
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set tianmu_mandatory=ON;
 --enable_warnings
 
 create table t_issue1131(c1 int,c2 varchar(255))engine=innodb;
 show create table t_issue1131;
-show variables like 'sql_mode';
 show variables like '%_engine';
 alter table t_issue1131 add c3 int;
 show create table t_issue1131;
@@ -52,16 +50,15 @@ show create table tmp_table;
 drop table tmp_table;
 
 --echo # 
---echo # sql_mode='MANDATORY_TIANMU'
+--echo # tianmu_mandatory=ON
 --echo # set default_storage_engine=innodb;
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set tianmu_mandatory=ON;
 --enable_warnings
 set default_storage_engine=innodb;
 
 create table t_issue1131(c1 int,c2 varchar(255));
 show create table t_issue1131;
-show variables like 'sql_mode';
 show variables like '%_engine';
 alter table t_issue1131 add c3 int;
 show create table t_issue1131;
@@ -76,16 +73,15 @@ show create table tmp_table;
 drop table tmp_table;
 
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # tianmu_mandatory=OFF
 --echo # 
 --echo [on slave]
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
 --enable_warnings
 
 create table t_issue1131(c1 int,c2 varchar(255));
 show create table t_issue1131;
-show variables like 'sql_mode';
 show variables like '%_engine';
 alter table t_issue1131 add c3 int;
 show create table t_issue1131;

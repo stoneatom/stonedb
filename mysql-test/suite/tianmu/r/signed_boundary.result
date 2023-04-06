@@ -1,0 +1,64 @@
+#
+# Test signed boundary
+#
+DROP DATABASE IF EXISTS signed_boundary;
+CREATE DATABASE signed_boundary;
+USE signed_boundary;
+CREATE TABLE int32_(c_max int, c_min int) engine = tianmu;
+INSERT INTO int32_ values(-2147483647, 2147483647);
+INSERT INTO int32_ values(-2147483648, 2147483647);
+ERROR 22003: Out of range[-2147483647, 2147483647] for column 'c_max' value: -2147483648
+INSERT INTO int32_ values(-2147483647, 2147483648);
+ERROR 22003: Out of range value for column 'c_min' at row 1
+DROP TABLE int32_;
+CREATE TABLE int64_(c_max bigint, c_min bigint) engine = tianmu;
+INSERT INTO int64_ values(-9223372036854775806, 9223372036854775807);
+INSERT INTO int64_ values(-9223372036854775807, 9223372036854775807);
+ERROR 22003: Out of range[-9223372036854775806, 9223372036854775807] for column 'c_max' value: -9223372036854775807
+INSERT INTO int64_ values(-9223372036854775806, 9223372036854775808);
+ERROR 22003: Out of range value for column 'c_min' at row 1
+DROP TABLE int64_;
+create table t1 (
+value64  bigint  not null,
+value32  integer          not null
+);
+insert into t1 values(9223372036854775806, 1);
+insert into t1 values(9223372036854775807, 2);
+insert into t1 values(-9223372036854775806, 2);
+select * from t1;
+value64	value32
+9223372036854775806	1
+9223372036854775807	2
+-9223372036854775806	2
+select * from t1 where value64= 9223372036854775807;
+value64	value32
+9223372036854775807	2
+select * from t1 where value64= -9223372036854775806;
+value64	value32
+-9223372036854775806	2
+select * from t1 where value64 between 9223372036854775806 and 9223372036854775807;
+value64	value32
+9223372036854775806	1
+9223372036854775807	2
+drop table t1;
+create table txxx(a double);
+insert into txxx values(1.79769313486231570814527423731704357e+308);
+insert into txxx values(-1.79769313486231570814527423731704357e+308);
+select * from txxx;
+a
+1.7976931348623157e308
+-1.7976931348623157e308
+select * from txxx where a = -1.7976931348623157e308;
+a
+-1.7976931348623157e308
+select * from txxx where a = 1.7976931348623157e308;
+a
+1.7976931348623157e308
+select * from txxx where a between 1.7976931348623157e308 and 1.7976931348623157e308;
+a
+1.7976931348623157e308
+select * from txxx where a between -1.7976931348623157e308 and -1.7976931348623157e308;
+a
+-1.7976931348623157e308
+drop table txxx;
+DROP DATABASE signed_boundary;

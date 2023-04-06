@@ -1,0 +1,83 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1394_test;
+--enable_warnings
+
+CREATE DATABASE issue1394_test;
+
+USE issue1394_test;
+
+--disable_warnings
+
+## DDL
+ 
+create table c(c1 int, c2 varchar(2)) engine=TIANMU;
+ 
+create table d(d1 int, d2 varchar(2)) engine=TIANMU;
+
+## insert data
+
+insert into c values(1, 'c1');
+ 
+insert into c values(2, 'c2');
+ 
+insert into c values(null, 'c3');
+ 
+insert into d values(1, 'd1');
+ 
+insert into d values(2, 'd2');
+ 
+insert into d values(null, 'd3');
+
+## query
+
+select * from d;
+
+select * from d limit 0;
+
+select * from d limit 1;
+
+select * from d where d1=1 limit 0;
+
+select * from d where d1=1 limit 1;
+
+select * from c where  exists ( select * from d where d1=1  limit 0);
+
+select * from c where  exists ( select * from d where d1=1  limit 1);
+
+select * from c where  exists ( select * from d where d1=1  limit 0,1) limit 0;
+
+select * from c where  exists ( select * from d where d1=1  limit 0,1) limit 1;
+
+select * from c where  exists ( select * from d where d1=1  limit 0) limit 0;
+
+select * from c where  exists ( select * from d where d1=1  limit 1) limit 1;
+
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL;
+
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL limit 1;
+
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL limit 0;
+
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL;
+
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL limit 1;
+
+SELECT * FROM c RIGHT OUTER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL limit 0;
+
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL;
+
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL limit 1;
+
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NULL limit 0;
+
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL;
+
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL limit 1;
+
+SELECT * FROM c INNER JOIN d ON c.c1 = d.d1 WHERE d.d1 IS NOT NULL limit 0;
+
+## clean test table
+
+DROP DATABASE issue1394_test;

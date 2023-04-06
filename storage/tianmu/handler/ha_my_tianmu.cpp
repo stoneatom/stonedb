@@ -23,7 +23,7 @@
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 
 enum class TianmuEngineReturnValues {
   kLoadSuccessed = 0,
@@ -80,13 +80,14 @@ bool ha_my_tianmu_set_statement_allowed(THD *thd, LEX *lex) {
 }
 
 QueryRouteTo ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option,
-                                int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+                                int &res, int &is_optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
   QueryRouteTo ret = QueryRouteTo::kToTianmu;
   try {
     // handle_select_ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
-    QueryRouteTo handle_select_ret = ha_tianmu_engine_->HandleSelect(
-        thd, lex, result_output, setup_tables_done_option, res, optimize_after_tianmu, tianmu_free_join, with_insert);
+    QueryRouteTo handle_select_ret =
+        ha_tianmu_engine_->HandleSelect(thd, lex, result_output, setup_tables_done_option, res,
+                                        is_optimize_after_tianmu, tianmu_free_join, with_insert);
     if (handle_select_ret == QueryRouteTo::kToMySQL && AtLeastOneTianmuTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
@@ -155,5 +156,5 @@ bool ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void 
   return false;
 }
 
-}  // namespace handler
+}  // namespace DBHandler
 }  // namespace Tianmu

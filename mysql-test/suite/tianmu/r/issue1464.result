@@ -1,0 +1,51 @@
+include/master-slave.inc
+[connection master]
+# on master:
+DROP DATABASE IF EXISTS issue1464_test;
+CREATE DATABASE issue1464_test;
+USE issue1464_test;
+include/sync_slave_sql_with_master.inc
+# on slave:
+USE issue1464_test;
+# on master:
+create table ttt(id varchar(64) primary key,name varchar(10))engine=innodb;
+insert into ttt values('0000352b6b4f4011bd18da7176e22c03','AAA');
+insert into ttt values('000246c51ca745f893a705f1699e9b2a','BBB');
+insert into ttt values('00049c87d9c64c498e004f6b08f1dd38','CCC');
+delete from ttt where id='0000352b6b4f4011bd18da7176e22c03';
+select * from ttt order by id;
+id	name
+000246c51ca745f893a705f1699e9b2a	BBB
+00049c87d9c64c498e004f6b08f1dd38	CCC
+include/sync_slave_sql_with_master.inc
+# on slave:
+show create table ttt;
+Table	Create Table
+ttt	CREATE TABLE `ttt` (
+  `id` varchar(64) NOT NULL,
+  `name` varchar(10) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+select * from ttt order by id;
+id	name
+000246c51ca745f893a705f1699e9b2a	BBB
+00049c87d9c64c498e004f6b08f1dd38	CCC
+# on master:
+insert into ttt values('0000352b6b4f4011bd18da7176e22c03','AAA');
+update ttt set name='name_' where id='000246c51ca745f893a705f1699e9b2a';
+select * from ttt order by id;
+id	name
+0000352b6b4f4011bd18da7176e22c03	AAA
+000246c51ca745f893a705f1699e9b2a	name_
+00049c87d9c64c498e004f6b08f1dd38	CCC
+include/sync_slave_sql_with_master.inc
+# on slave:
+select * from ttt order by id;
+id	name
+0000352b6b4f4011bd18da7176e22c03	AAA
+000246c51ca745f893a705f1699e9b2a	name_
+00049c87d9c64c498e004f6b08f1dd38	CCC
+# on master:
+DROP DATABASE issue1464_test;
+include/sync_slave_sql_with_master.inc
+stop slave;

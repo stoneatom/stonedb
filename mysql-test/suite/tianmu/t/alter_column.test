@@ -89,10 +89,43 @@ CREATE TABLE st2 (
     PRIMARY KEY (task_id)
 ); 
 
---error 6
+--error 1075
 ALTER TABLE st2 ADD COLUMN col_name3 int auto_increment;
 
 SHOW CREATE TABLE st2;
+
+#################
+# ADD  COLUMN  NOT NULL
+#################
+
+CREATE TABLE ttb1(
+        id int,
+        name varchar(5)
+) ENGINE=TIANMU;
+
+INSERT INTO ttb1 VALUES(1,'AAA'),(2,'BBB');
+
+ALTER TABLE ttb1 ADD COLUMN age VARCHAR(5) NOT NULL;
+
+SHOW CREATE TABLE ttb1;
+
+SELECT * FROM ttb1;
+
+#################
+# ADD timestamp COLUMN with default current_timestam
+#################
+create table stu(id int primary key, name char(20))engine=tianmu;
+
+insert into stu(id, name) values(1, 'zhang fei');
+insert into stu(id, name) values(2, 'zhao yun');
+insert into stu(id, name) values(3, 'zhen ji');
+insert into stu(id, name) values(4, 'zhou yu');
+insert into stu(id, name) values(5, 'zhu ge liang');
+insert into stu(id, name) values(6, 'ma chao');
+
+alter table stu add column ctm2 timestamp default current_timestamp();
+select id,name,length(ctm2) from stu;
+
 
 #################
 # CLEAR UP

@@ -1,0 +1,57 @@
+DROP DATABASE IF EXISTS issue1079_test;
+CREATE DATABASE issue1079_test;
+USE issue1079_test;
+create table t(fi int, fv varchar(30), fdt datetime)engine=tianmu;
+insert into t values(1,'VAR-1',current_timestamp);
+insert into t values(2,'VAR-2',current_timestamp);
+insert into t values(3,'VAR-3',current_timestamp);
+insert into t values(4,'VAR-4',current_timestamp);
+insert into t values(5,'VAR-5',current_timestamp);
+insert into t values(6,'VAR-6',current_timestamp);
+insert into t values(7,'VAR-7',current_timestamp);
+insert into t values(8,'VAR-8',current_timestamp);
+insert into t values(9,'VAR-9',current_timestamp);
+insert into t values(10,'VAR-10',current_timestamp);
+select count(*) c from t;
+c
+10
+insert into t select fi+10,concat('VAR-',fi+10),current_timestamp from t;
+insert into t select fi+20,concat('VAR-',fi+20),current_timestamp from t;
+insert into t select fi+40,concat('VAR-',fi+40),current_timestamp from t;
+insert into t select fi+80,concat('VAR-',fi+80),current_timestamp from t;
+select count(*) c from t;
+c
+160
+insert into t select fi+160,concat('VAR-',fi+160),current_timestamp from t;
+insert into t select fi+320,concat('VAR-',fi+320),current_timestamp from t;
+insert into t select fi+640,concat('VAR-',fi+640),current_timestamp from t;
+select count(*) c from t;
+c
+1280
+insert into t select fi+1280,concat('VAR-',fi+1280),current_timestamp from t;
+insert into t select fi+2560,concat('VAR-',fi+2560),current_timestamp from t;
+insert into t select fi+5120,concat('VAR-',fi+5120),current_timestamp from t;
+select count(*) c from t;
+c
+10240
+insert into t select fi+10240,concat('VAR-',fi+10240),current_timestamp from t;
+insert into t select fi+20480,concat('VAR-',fi+20480),current_timestamp from t;
+select count(*) c from t;
+c
+40960
+show create table t;
+Table	Create Table
+t	CREATE TABLE `t` (
+  `fi` int(11) DEFAULT NULL,
+  `fv` varchar(30) DEFAULT NULL,
+  `fdt` datetime DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+alter table t modify column fv varchar(60);
+show create table t;
+Table	Create Table
+t	CREATE TABLE `t` (
+  `fi` int(11) DEFAULT NULL,
+  `fv` varchar(60) DEFAULT NULL,
+  `fdt` datetime DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+DROP DATABASE issue1079_test;

@@ -222,7 +222,6 @@ bool TABLE_LIST::optimize_derived(THD *thd)
   DBUG_RETURN(false);
 }
 
-
 /**
   Create result table for a materialized derived table/view.
 

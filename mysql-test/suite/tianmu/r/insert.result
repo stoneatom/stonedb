@@ -65,8 +65,7 @@ drop table t1;
 #
 # Test of duplicate key values with packed keys
 #
-create table t1 (id int not null auto_increment primary key, username varchar(32) not null,
-unique (username));
+create table t1 (id int not null auto_increment primary key, username varchar(32) not null);
 insert into t1 values (0,"mysql");
 insert into t1 values (0,"mysql ab");
 insert into t1 values (0,"mysql a");
@@ -248,7 +247,7 @@ drop table t1;
 #
 create table t1(id1 int not null auto_increment primary key, t char(12));
 create table t2(id2 int not null, t char(12));
-create table t3(id3 int not null, t char(12), index(id3));
+create table t3(id3 int not null, t char(12));
 select count(*) from t2;
 count(*)
 500
@@ -308,7 +307,7 @@ drop table t1;
 #
 # ON DUPLICATE KEY clause allows fields not from the insert table
 #
-create table t1 (f1 int unique, f2 int);
+create table t1 (f1 int primary key, f2 int);
 create table t2 (f3 int, f4 int);
 create view v1 as select * from t1, t2 where f1= f3;
 insert into t1 values (1,11), (2,22);

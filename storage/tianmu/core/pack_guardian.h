@@ -19,6 +19,7 @@
 #pragma once
 
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 namespace Tianmu {
@@ -30,11 +31,18 @@ class MIIterator;
 
 class VCPackGuardian final {
  public:
+  enum class GUARDIAN_LOCK_STRATEGY { LOCK_ONE, LOCK_ONE_THREAD };
+
+ public:
   VCPackGuardian(vcolumn::VirtualColumn *vc) : my_vc_(*vc) {}
   ~VCPackGuardian() = default;
 
   void LockPackrow(const MIIterator &mit);
+  void LockPackrowOnLockOne(const MIIterator &mit);
+  void LockPackrowOnLockOneByThread(const MIIterator &mit);
   void UnlockAll();
+  void UnlockAllOnLockOne();
+  void UnlockAllOnLockOneByThread();
 
  private:
   void Initialize(int no_th);
@@ -48,8 +56,18 @@ class VCPackGuardian final {
   // Structures used for LOCK_ONE
   std::vector<std::vector<int>> last_pack_;
 
+  // 1. Use the pthread thread identifier of glibc as a thread unique identifier.
+  //    Internal encapsulation is no longer used
+  // 2. A single worker thread holds only one pack of vc of a particular dim
+  // 3. During each LockPackrow, hold packs are identified by the pthread ID.
+  //    If the read pack is different from the held pack, the corresponding pack is released
+  using TypeLockOne = std::unordered_map<uint64_t, std::unordered_map<int, std::unordered_map<int, int>>>;
+  TypeLockOne last_pack_thread_;
+
   int guardian_threads_{1};  // number of parallel threads using the guardian
   std::mutex mx_thread_;
+
+  GUARDIAN_LOCK_STRATEGY current_strategy_ = GUARDIAN_LOCK_STRATEGY::LOCK_ONE_THREAD;
 };
 }  // namespace core
 }  // namespace Tianmu

@@ -15,11 +15,12 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
+#include <pthread.h>
+
 #include "pack_guardian.h"
 
 #include "core/just_a_table.h"
 #include "core/mi_iterator.h"
-#include "core/tianmu_attr.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -55,6 +56,142 @@ void VCPackGuardian::ResizeLastPack(int taskNum) {
 }
 
 void VCPackGuardian::LockPackrow(const MIIterator &mit) {
+  switch (current_strategy_) {
+    case GUARDIAN_LOCK_STRATEGY::LOCK_ONE:
+      return LockPackrowOnLockOne(mit);
+    case GUARDIAN_LOCK_STRATEGY::LOCK_ONE_THREAD:
+      return LockPackrowOnLockOneByThread(mit);
+    default:
+      TIANMU_LOG(LogCtl_Level::ERROR, "LockPackrow fail, unkown current_strategy_: %d",
+                 static_cast<int>(current_strategy_));
+      ASSERT(0, "VCPackGuardian::LockPackrow fail, unkown current_strategy_: " + static_cast<int>(current_strategy_));
+  }
+}
+
+// 1. Use the pthread thread identifier of glibc as a thread unique identifier.
+//    Internal encapsulation is no longer used
+// 2. A single worker thread holds only one pack of vc of a particular dim
+// 3. During each LockPackrow, hold packs are identified by the pthread ID.
+//    If the read pack is different from the held pack, the corresponding pack is released
+void VCPackGuardian::LockPackrowOnLockOneByThread(const MIIterator &mit) {
+  const auto &var_map = my_vc_.GetVarMap();
+  if (var_map.empty()) {
+    return;
+  }
+
+  uint64_t thread_id = pthread_self();
+
+  TypeLockOne::iterator iter_thread;
+
+  {
+    std::scoped_lock lock(mx_thread_);
+    iter_thread = last_pack_thread_.find(thread_id);
+  }
+
+  bool has_myself_thread = last_pack_thread_.end() != iter_thread;
+
+  for (auto iter = var_map.cbegin(); iter != var_map.cend(); iter++) {
+    int cur_dim = iter->dim;
+    int col_index = iter->col_ndx;
+    int cur_pack = mit.GetCurPackrow(cur_dim);
+
+    if (!iter->GetTabPtr()) {
+      continue;
+    }
+
+    JustATable *tab = iter->GetTabPtr().get();
+
+    if (has_myself_thread) {
+      auto iter_dim = iter_thread->second.find(cur_dim);
+      if (iter_thread->second.end() != iter_dim) {
+        auto iter_index = iter_dim->second.find(col_index);
+        if (iter_dim->second.end() != iter_index) {
+          int last_pack = iter_index->second;
+          if (last_pack == cur_pack) {
+            continue;
+          }
+
+          iter_dim->second.erase(col_index);
+          tab->UnlockPackFromUse(col_index, last_pack);
+        }
+      }
+    }
+
+    try {
+      tab->LockPackForUse(col_index, cur_pack);
+    } catch (...) {
+      TIANMU_LOG(LogCtl_Level::ERROR,
+                 "LockPackrowOnLockOneByThread LockPackForUse fail, cur_dim: %d col_index: %d cur_pack: %d", cur_dim,
+                 col_index, cur_pack);
+
+      if (has_myself_thread) {
+        auto it = var_map.begin();
+        for (; it != iter; ++it) {
+          int cur_dim = iter->dim;
+          int col_index = iter->col_ndx;
+          auto iter_dim = iter_thread->second.find(cur_dim);
+          if (iter_thread->second.end() == iter_dim) {
+            continue;
+          }
+
+          int it_cur_pack = mit.GetCurPackrow(it->dim);
+          auto it_iter_pack = iter_dim->second.find(col_index);
+          if (iter_dim->second.end() == it_iter_pack) {
+            continue;
+          }
+
+          tab->UnlockPackFromUse(it->col_ndx, it_cur_pack);
+        }
+      }
+
+      UnlockAll();
+      throw;
+    }
+  }
+
+  for (auto iter = var_map.cbegin(); iter != var_map.cend(); iter++) {
+    if (!iter->GetTabPtr()) {
+      continue;
+    }
+
+    int cur_dim = iter->dim;
+    int col_index = iter->col_ndx;
+    int cur_pack = mit.GetCurPackrow(cur_dim);
+
+    {
+      if (has_myself_thread) {
+        auto iter_dim = iter_thread->second.find(cur_dim);
+        if (iter_thread->second.end() != iter_dim) {
+          auto iter_index = iter_dim->second.find(col_index);
+          if (iter_dim->second.end() != iter_index) {
+            int last_pack = iter_index->second;
+            if (last_pack == cur_pack) {
+              continue;
+            }
+          }
+        }
+      }
+    }
+
+    if (!has_myself_thread) {
+      std::unordered_map<int, std::unordered_map<int, int>> pack_value;
+      auto &lock_dim = pack_value[cur_dim];
+      lock_dim[col_index] = cur_pack;
+
+      {
+        std::scoped_lock lock(mx_thread_);
+        last_pack_thread_[thread_id] = std::move(pack_value);
+      }
+    } else {
+      std::scoped_lock lock(mx_thread_);
+      auto &lock_thread = last_pack_thread_[thread_id];
+      auto &lock_dim = lock_thread[cur_dim];
+      lock_dim[col_index] = cur_pack;
+    }
+  }
+}
+
+void VCPackGuardian::LockPackrowOnLockOne(const MIIterator &mit) {
   int threadId = mit.GetTaskId();
   int taskNum = mit.GetTaskNum();
   {
@@ -76,6 +213,9 @@ void VCPackGuardian::LockPackrow(const MIIterator &mit) {
       try {
         tab->LockPackForUse(iter->col_ndx, mit.GetCurPackrow(cur_dim));
       } catch (...) {
+        TIANMU_LOG(LogCtl_Level::ERROR,
+                   "LockPackrowOnLockOne LockPackForUse fail, cur_dim: %d threadId: %d cur_pack: %d", cur_dim, threadId,
+                   mit.GetCurPackrow(cur_dim));
         // unlock packs which are partially locked for this packrow
         auto it = my_vc_.GetVarMap().begin();
         for (; it != iter; ++it) {
@@ -103,6 +243,19 @@ void VCPackGuardian::LockPackrow(const MIIterator &mit) {
 }
 
 void VCPackGuardian::UnlockAll() {
+  switch (current_strategy_) {
+    case GUARDIAN_LOCK_STRATEGY::LOCK_ONE:
+      return UnlockAllOnLockOne();
+    case GUARDIAN_LOCK_STRATEGY::LOCK_ONE_THREAD:
+      return UnlockAllOnLockOneByThread();
+    default:
+      TIANMU_LOG(LogCtl_Level::ERROR, "UnlockAll fail, unkown current_strategy_: %d",
+                 static_cast<int>(current_strategy_));
+      ASSERT(0, "VCPackGuardian::UnlockAll fail, unkown current_strategy_: " + static_cast<int>(current_strategy_));
+  }
+}
+
+void VCPackGuardian::UnlockAllOnLockOne() {
   if (!initialized_)
     return;
   for (auto const &iter : my_vc_.GetVarMap()) {
@@ -116,5 +269,51 @@ void VCPackGuardian::UnlockAll() {
                                                         // for "a + b" will not unlock b
   }
 }
+
+void VCPackGuardian::UnlockAllOnLockOneByThread() {
+  if (last_pack_thread_.empty()) {
+    return;
+  }
+
+  const auto &var_map = my_vc_.GetVarMap();
+  if (var_map.empty()) {
+    return;
+  }
+
+  uint64_t thread_id = pthread_self();
+  auto iter_thread = last_pack_thread_.find(thread_id);
+  if (last_pack_thread_.end() == iter_thread) {
+    return;
+  }
+
+  for (auto const &iter : var_map) {
+    if (!iter.GetTabPtr()) {
+      continue;
+    }
+
+    int cur_dim = iter.dim;
+    int col_index = iter.col_ndx;
+
+    auto iter_pack = iter_thread->second.find(cur_dim);
+    if (iter_pack == iter_thread->second.end()) {
+      continue;
+    }
+
+    auto iter_val = iter_pack->second.find(col_index);
+    if (iter_val == iter_pack->second.end()) {
+      continue;
+    }
+
+    int cur_pack = iter_val->second;
+    iter_pack->second.erase(col_index);
+    iter.GetTabPtr()->UnlockPackFromUse(col_index, cur_pack);
+  }
+
+  {
+    std::scoped_lock lock(mx_thread_);
+    last_pack_thread_.erase(thread_id);
+  }
+}
+
 }  // namespace core
 }  // namespace Tianmu

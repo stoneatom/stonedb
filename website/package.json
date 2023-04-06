@@ -55,7 +55,7 @@
     "remark-math": "^3.0.1",
     "remark-rehype": "^10.1.0",
     "styled-components": "^5.3.5",
-    "unist-util-select": "^2.0.2",
+    "unist-util-select": "^4.0.3",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

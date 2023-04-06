@@ -80,10 +80,10 @@ class KVStore final {
 
   // kv memory table meta operation
   // as KVWriteTableMeta does, but not to on-disk but in-mem
-  std::shared_ptr<core::TianmuMemTable> FindMemTable(std::string &name) { return ddl_manager_.find_mem(name); }
-  common::ErrorCode KVWriteMemTableMeta(std::shared_ptr<core::TianmuMemTable> tb_mem);
-  common::ErrorCode KVDelMemTableMeta(std::string table_name);
-  common::ErrorCode KVRenameMemTableMeta(std::string s_name, std::string d_name);
+  std::shared_ptr<core::DeltaTable> FindDeltaTable(std::string &name) { return ddl_manager_.find_delta(name); }
+  common::ErrorCode KVWriteDeltaMeta(std::shared_ptr<core::DeltaTable> delta);
+  common::ErrorCode KVDelDeltaMeta(std::string table_name);
+  common::ErrorCode KVRenameDeltaMeta(std::string s_name, std::string d_name);
 
   // kv data operation
   bool KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHandle *cf, rocksdb::Slice &key);

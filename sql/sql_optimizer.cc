@@ -137,7 +137,7 @@ static uint32 get_key_length_tmp_table(Item *item);
   @retval 1 Error, error code saved in member JOIN::error.
 */
 int
-JOIN::optimize(unsigned char part) //TIANMU UPGRADE
+JOIN::optimize(OptimizePhase phase)
 {
   uint no_jbuf_after= UINT_MAX;
 
@@ -145,363 +145,363 @@ JOIN::optimize(unsigned char part) //TIANMU UPGRADE
   assert(select_lex->leaf_table_count == 0 ||
          thd->lex->is_query_tables_locked() ||
          select_lex == unit->fake_select_lex);
-  //assert(tables == 0 &&
-  //       primary_tables == 0 &&
-  //       tables_list == (TABLE_LIST*)1);
-  //TIANMU UPGRADE BEGIN
+
   /*
-  Two more values of part were introduced part=3 and part=4. The main reason is to break optimization in sense of part=2 in point
-  where all transformations of LOJ conditions are finished. The optimization is continued in case we switch to MySQL.
-  The case was wrong result in "select * from t1 left join t2 on a1=b1 and b1=3 where a1=1;". That was due to optimization
-  of ON condition "a1=b1 and b1=3" into "a1=b1 and b1=1" which after part=2 would be transformed to FALSE. Part=3 does this transformation.
-  However, it has to be stopped at some point (compared to part=2) to avoid rest of optimizations, e.g., creation of temporary tables. (P.S.)
+  Two more values of part were introduced phase=Finish_LOJ_Transform and part=Done_Optimization. The main reason is to 
+  break optimization in sense of part=After_LOJ_Transform in point where all transformations of LOJ conditions are finished. 
+  The optimization is continued in case we switch to MySQL.The case was wrong result in "select * from t1 left join t2 on 
+  a1=b1 and b1=3 where a1=1;". That was due to optimization of ON condition "a1=b1 and b1=3" into "a1=b1 and b1=1" which 
+  after part=After_LOJ_Transform would be transformed to FALSE. Part=Finish_LOJ_Transform does this transformation. 
+  However, it has to be stopped at some point (compared to part=After_LOJ_Transform) to avoid rest of optimizations, 
+  e.g., creation of temporary tables. (P.S.)
   */
-  //const bool first_optimization= select_lex->first_cond_optimization;
+
   Opt_trace_context * const trace= &thd->opt_trace;
   Opt_trace_object trace_wrapper(trace);
   Opt_trace_object trace_optimize(trace, "join_optimization");
   trace_optimize.add_select_number(select_lex->select_number);
   Opt_trace_array trace_steps(trace, "steps");
-  if(part != 4) {
-    if (part==0 || part==1)
-    {
-  //END
-  // to prevent double initialization on EXPLAIN
-  if (optimized)
-    DBUG_RETURN(0);
-
-  Prepare_error_tracker tracker(thd);
-
-  DEBUG_SYNC(thd, "before_join_optimize");
-
-  THD_STAGE_INFO(thd, stage_optimizing);
-
-  if (select_lex->first_execution)
+  if(phase != OptimizePhase::Done_Optimization)
   {
-    /**
-      @todo
-      This query block didn't transform itself in SELECT_LEX::prepare(), so
-      belongs to a parent query block. That parent, or its parents, had to
-      transform us - it has not; maybe it is itself in prepare() and
-      evaluating the present query block as an Item_subselect. Such evaluation
-      in prepare() is expected to be a rare case to be eliminated in the
-      future ("SET x=(subq)" is one such case; because it locks tables before
-      prepare()).
-    */
-    if (select_lex->apply_local_transforms(thd, false))
-      DBUG_RETURN(error= 1);
-  }
-  //TIANMU UPGRADE
-  /*
-  Opt_trace_context * const trace= &thd->opt_trace;
-  Opt_trace_object trace_wrapper(trace);
-  Opt_trace_object trace_optimize(trace, "join_optimization");
-  trace_optimize.add_select_number(select_lex->select_number);
-  Opt_trace_array trace_steps(trace, "steps");
-  */
-  //END
-  count_field_types(select_lex, &tmp_table_param, all_fields, false, false);
-
-  assert(tmp_table_param.sum_func_count == 0 ||
-         group_list || implicit_grouping);
-
-  if (select_lex->olap == ROLLUP_TYPE && optimize_rollup())
-    DBUG_RETURN(true); /* purecov: inspected */
-
-  if (alloc_func_list())
-    DBUG_RETURN(1);    /* purecov: inspected */
-
-  if (select_lex->get_optimizable_conditions(thd, &where_cond, &having_cond))
-    DBUG_RETURN(1);
-
-  set_optimized();
-
-  tables_list= select_lex->get_table_list();
-
-  /* dump_TABLE_LIST_graph(select_lex, select_lex->leaf_tables); */
-  /*
-    Run optimize phase for all derived tables/views used in this SELECT,
-    including those in semi-joins.
-  */
-  if (select_lex->materialized_derived_table_count)
-  {
-    for (TABLE_LIST *tl= select_lex->leaf_tables; tl; tl= tl->next_leaf)
+    if (phase == OptimizePhase::Beginning || phase == OptimizePhase::Before_LOJ_Transform)
     {
-      if (tl->is_view_or_derived() && tl->optimize_derived(thd))
+      assert(tables == 0 && primary_tables == 0 && tables_list == (TABLE_LIST*)1);
+      
+      // to prevent double initialization on EXPLAIN
+      if (optimized)
+        DBUG_RETURN(0);
+
+      Prepare_error_tracker tracker(thd);
+
+      DEBUG_SYNC(thd, "before_join_optimize");
+
+      THD_STAGE_INFO(thd, stage_optimizing);
+
+      if (select_lex->first_execution)
+      {
+        /**
+          @todo
+          This query block didn't transform itself in SELECT_LEX::prepare(), so
+          belongs to a parent query block. That parent, or its parents, had to
+          transform us - it has not; maybe it is itself in prepare() and
+          evaluating the present query block as an Item_subselect. Such evaluation
+          in prepare() is expected to be a rare case to be eliminated in the
+          future ("SET x=(subq)" is one such case; because it locks tables before
+          prepare()).
+        */
+        if (select_lex->apply_local_transforms(thd, false))
+          DBUG_RETURN(error= 1);
+      }
+      
+      count_field_types(select_lex, &tmp_table_param, all_fields, false, false);
+
+      assert(tmp_table_param.sum_func_count == 0 ||
+            group_list || implicit_grouping);
+
+      if (select_lex->olap == ROLLUP_TYPE && optimize_rollup())
+        DBUG_RETURN(true); /* purecov: inspected */
+
+      if (alloc_func_list())
+        DBUG_RETURN(1);    /* purecov: inspected */
+
+      if (select_lex->get_optimizable_conditions(thd, &where_cond, &having_cond))
         DBUG_RETURN(1);
-    }
-  }
 
-  /* dump_TABLE_LIST_graph(select_lex, select_lex->leaf_tables); */
+      set_optimized();
 
-  row_limit= ((select_distinct || order || group_list) ?
-             HA_POS_ERROR : unit->select_limit_cnt);
-  // m_select_limit is used to decide if we are likely to scan the whole table.
-  m_select_limit= unit->select_limit_cnt;
-
-  if (unit->first_select()->active_options() & OPTION_FOUND_ROWS)
-  {
-    /*
-      Calculate found rows if
-      - LIMIT is set, and
-      - Query block is not equipped with "braces". In this case, each
-        query block must be calculated fully and the limit is applied on
-        the final UNION evaluation.
-    */
-    calc_found_rows= m_select_limit != HA_POS_ERROR && !select_lex->braces;
-  }
-  if (having_cond || calc_found_rows)
-    m_select_limit= HA_POS_ERROR;
-
-  if (unit->select_limit_cnt == 0 && !calc_found_rows)
-  {
-    zero_result_cause= "Zero limit";
-    best_rowcount= 0;
-    goto setup_subq_exit;
-  }
- }//TIANMU UPGRADE END part=0||part=1
-  if (where_cond || select_lex->outer_join)
-  {
-    if (optimize_cond(thd, &where_cond, &cond_equal,
-                      &select_lex->top_join_list, &select_lex->cond_value,part))//TIANMU UPGRADE
-    {
-      error= 1;
-      DBUG_PRINT("error",("Error from optimize_cond"));
-      DBUG_RETURN(1);
-    }
-    if (select_lex->cond_value == Item::COND_FALSE)
-    {
-      zero_result_cause= "Impossible WHERE";
-      best_rowcount= 0;
-      goto setup_subq_exit;
-    }
-  }
-  if (having_cond)
-  {
-    if (optimize_cond(thd, &having_cond, &cond_equal, NULL,
-                      &select_lex->having_value, part))//TIANMU UPGRADE
-    {
-      error= 1;
-      DBUG_PRINT("error",("Error from optimize_cond"));
-      DBUG_RETURN(1);
-    }
-    if (select_lex->having_value == Item::COND_FALSE)
-    {
-      zero_result_cause= "Impossible HAVING";
-      best_rowcount= 0;
-      goto setup_subq_exit;
-    }
-  }
-   //TIANMU UPGRADE 
-  if (part == 1)
-  {
-	error= 0;
-	DBUG_RETURN(0);
-  }
-   //END
-  if (select_lex->partitioned_table_count && prune_table_partitions())
-  {
-    error= 1;
-    DBUG_PRINT("error", ("Error from prune_partitions"));
-    DBUG_RETURN(1);
-  }
-
-  /* 
-     Try to optimize count(*), min() and max() to const fields if
-     there is implicit grouping (aggregate functions but no
-     group_list). In this case, the result set shall only contain one
-     row. 
-  */
-  if (tables_list && implicit_grouping)
-  {
-    int res;
-    /*
-      opt_sum_query() returns HA_ERR_KEY_NOT_FOUND if no rows match
-      the WHERE condition,
-      or 1 if all items were resolved (optimized away),
-      or 0, or an error number HA_ERR_...
-
-      If all items were resolved by opt_sum_query, there is no need to
-      open any tables.
-    */
-    if ((res= opt_sum_query(thd, select_lex->leaf_tables, all_fields,
-                            where_cond)))
-    {
-      best_rowcount= 0;
-      if (res == HA_ERR_KEY_NOT_FOUND)
-      {
-        DBUG_PRINT("info",("No matching min/max row"));
-	    zero_result_cause= "No matching min/max row";
-        goto setup_subq_exit;
-      }
-      if (res > 1)
-      {
-        error= res;
-        DBUG_PRINT("error",("Error from opt_sum_query"));
-        DBUG_RETURN(1);
-      }
-      if (res < 0)
-      {
-        DBUG_PRINT("info",("No matching min/max row"));
-        zero_result_cause= "No matching min/max row";
-        goto setup_subq_exit;
-      }
-      DBUG_PRINT("info",("Select tables optimized away"));
-      zero_result_cause= "Select tables optimized away";
-      tables_list= 0;				// All tables resolved
-      best_rowcount= 1;
-      const_tables= tables= primary_tables= select_lex->leaf_table_count;
+      tables_list= select_lex->get_table_list();
+      
+      /* dump_TABLE_LIST_graph(select_lex, select_lex->leaf_tables); */
       /*
-        Extract all table-independent conditions and replace the WHERE
-        clause with them. All other conditions were computed by opt_sum_query
-        and the MIN/MAX/COUNT function(s) have been replaced by constants,
-        so there is no need to compute the whole WHERE clause again.
-        Notice that make_cond_for_table() will always succeed to remove all
-        computed conditions, because opt_sum_query() is applicable only to
-        conjunctions.
-        Preserve conditions for EXPLAIN.
+        Run optimize phase for all derived tables/views used in this SELECT,
+        including those in semi-joins.
       */
-      if (where_cond && !thd->lex->describe)
+      if (select_lex->materialized_derived_table_count)
+        {
+          for (TABLE_LIST *tl= select_lex->leaf_tables; tl; tl= tl->next_leaf)
+          {
+            if (phase == OptimizePhase::Beginning)
+            {
+              if (tl->is_view_or_derived() && tl->optimize_derived(thd))
+                DBUG_RETURN(1);
+            }    
+            if (phase == OptimizePhase::Before_LOJ_Transform)
+            {
+              if (tl->is_view_or_derived() && tl->optimize_derived_for_tianmu(thd))
+                DBUG_RETURN(1);
+            }          
+          }
+        }
+
+      /* dump_TABLE_LIST_graph(select_lex, select_lex->leaf_tables); */
+      row_limit= ((select_distinct || order || group_list) ?
+                HA_POS_ERROR : unit->select_limit_cnt);
+      // m_select_limit is used to decide if we are likely to scan the whole table.
+      m_select_limit= unit->select_limit_cnt;
+
+      if (unit->first_select()->active_options() & OPTION_FOUND_ROWS)
       {
-        Item *table_independent_conds=
-          make_cond_for_table(where_cond, PSEUDO_TABLE_BITS, 0, 0);
-        DBUG_EXECUTE("where",
-                     print_where(table_independent_conds,
-                                 "where after opt_sum_query()",
-                                 QT_ORDINARY););
-        where_cond= table_independent_conds;
+        /*
+          Calculate found rows if
+          - LIMIT is set, and
+          - Query block is not equipped with "braces". In this case, each
+            query block must be calculated fully and the limit is applied on
+            the final UNION evaluation.
+        */
+        calc_found_rows= m_select_limit != HA_POS_ERROR && !select_lex->braces;
       }
-      goto setup_subq_exit;
-    }
-  }
-  if (!tables_list)
-  {
-    DBUG_PRINT("info",("No tables"));
-    best_rowcount= 1;
-    error= 0;
-    if (make_tmp_tables_info())
-      DBUG_RETURN(1);
-    count_field_types(select_lex, &tmp_table_param, all_fields, false, false);
-    // Make plan visible for EXPLAIN
-    set_plan_state(NO_TABLES);
-    DBUG_RETURN(0);
-  }
-  error= -1;					// Error is sent to client
-  sort_by_table= get_sort_by_table(order, group_list, select_lex->leaf_tables);
+      if (having_cond || calc_found_rows)
+        m_select_limit= HA_POS_ERROR;
 
-  if ((where_cond || group_list || order) &&
-      substitute_gc(thd, select_lex, where_cond, group_list, order))
-  {
-    // We added hidden fields to the all_fields list, count them.
-    count_field_types(select_lex, &tmp_table_param, select_lex->all_fields,
-                      false, false);
-  }
-
-  // Set up join order and initial access paths
-  THD_STAGE_INFO(thd, stage_statistics);
-  if (make_join_plan())
-  {
-    if (thd->killed)
-      thd->send_kill_message();
-    DBUG_PRINT("error",("Error: JOIN::make_join_plan() failed"));
-    DBUG_RETURN(1);
-  }
-
-  // At this stage, join_tab==NULL, JOIN_TABs are listed in order by best_ref.
-  ASSERT_BEST_REF_IN_JOIN_ORDER(this);
-
-  if (zero_result_cause)
-    goto setup_subq_exit;
-
-  if (rollup.state != ROLLUP::STATE_NONE)
-  {
-    if (rollup_process_const_fields())
+      if (unit->select_limit_cnt == 0 && !calc_found_rows)
+      {
+        zero_result_cause= "Zero limit";
+        best_rowcount= 0;
+        goto setup_subq_exit;
+      }
+    }  // END phase=OptimizePhase::Beginning||phase=OptimizePhase::Before_LOJ_Transform
+    if (where_cond || select_lex->outer_join)
     {
-      DBUG_PRINT("error", ("Error: rollup_process_fields() failed"));
-      DBUG_RETURN(1);
+      if (optimize_cond(thd, &where_cond, &cond_equal,
+                        &select_lex->top_join_list, &select_lex->cond_value,phase))
+      {
+        error= 1;
+        DBUG_PRINT("error",("Error from optimize_cond"));
+        DBUG_RETURN(1);
+      }
+      if (select_lex->cond_value == Item::COND_FALSE)
+      {
+        zero_result_cause= "Impossible WHERE";
+        best_rowcount= 0;
+        goto setup_subq_exit;
+      }
     }
-    /*
-      Fields may have been replaced by Item_func_rollup_const, so
-      recalculate the number of fields and functions for this query block.
-    */
-
-    // JOIN::optimize_rollup() may set quick_group=0, and we must not undo that.
-    const uint save_quick_group= tmp_table_param.quick_group;
-
-    count_field_types(select_lex, &tmp_table_param, all_fields, false, false);
-    tmp_table_param.quick_group= save_quick_group;
-  }
-  else
-  {
-    /* Remove distinct if only const tables */
-    select_distinct&= !plan_is_const();
-  }
-
-  if (const_tables && !thd->locked_tables_mode &&
-      !(select_lex->active_options() & SELECT_NO_UNLOCK )&& part!=3) //TIANMU UPGRADE
-  {
-    TABLE *ct[MAX_TABLES];
-    for (uint i= 0; i < const_tables; i++)
-      ct[i]= best_ref[i]->table();
-    mysql_unlock_some_tables(thd, ct, const_tables);
-  }
-  if (!where_cond && select_lex->outer_join)
-  {
-    /* Handle the case where we have an OUTER JOIN without a WHERE */
-    where_cond=new Item_int((longlong) 1,1);	// Always true
-  }
-
-  error= 0;
-  /*
-    Among the equal fields belonging to the same multiple equality
-    choose the one that is to be retrieved first and substitute
-    all references to these in where condition for a reference for
-    the selected field.
-  */
-  if (where_cond)
-  {
-    where_cond= substitute_for_best_equal_field(where_cond, cond_equal,
-                                                map2table);
-    if (thd->is_error())
+    if (having_cond)
+    {
+      if (optimize_cond(thd, &having_cond, &cond_equal, NULL,
+                        &select_lex->having_value, phase))
+      {
+        error= 1;
+        DBUG_PRINT("error",("Error from optimize_cond"));
+        DBUG_RETURN(1);
+      }
+      if (select_lex->having_value == Item::COND_FALSE)
+      {
+        zero_result_cause= "Impossible HAVING";
+        best_rowcount= 0;
+        goto setup_subq_exit;
+      }
+    }
+    
+    if (phase == OptimizePhase::Before_LOJ_Transform)
+    {
+      error= 0;
+      DBUG_RETURN(0);
+    }
+    
+    if (select_lex->partitioned_table_count && prune_table_partitions())
     {
       error= 1;
-      DBUG_PRINT("error",("Error from substitute_for_best_equal"));
+      DBUG_PRINT("error", ("Error from prune_partitions"));
       DBUG_RETURN(1);
     }
-    where_cond->update_used_tables();
-    DBUG_EXECUTE("where",
-                 print_where(where_cond,
-                             "after substitute_best_equal",
-                             QT_ORDINARY););
-  }
 
-  /*
-    Perform the same optimization on field evaluation for all join conditions.
-  */ 
-  for (uint i= const_tables; i < tables ; ++i)
-  {
-    JOIN_TAB *const tab= best_ref[i];
-    if (tab->position() && tab->join_cond())
+    /* 
+      Try to optimize count(*), min() and max() to const fields if
+      there is implicit grouping (aggregate functions but no
+      group_list). In this case, the result set shall only contain one
+      row. 
+    */
+    if (tables_list && implicit_grouping)
     {
-      tab->set_join_cond(substitute_for_best_equal_field(tab->join_cond(),
-                                                         tab->cond_equal,
-                                                         map2table));
+      int res;
+      /*
+        opt_sum_query() returns HA_ERR_KEY_NOT_FOUND if no rows match
+        the WHERE condition,
+        or 1 if all items were resolved (optimized away),
+        or 0, or an error number HA_ERR_...
+
+        If all items were resolved by opt_sum_query, there is no need to
+        open any tables.
+      */
+      if ((res= opt_sum_query(thd, select_lex->leaf_tables, all_fields,
+                              where_cond)))
+      {
+        best_rowcount= 0;
+        if (res == HA_ERR_KEY_NOT_FOUND)
+        {
+          DBUG_PRINT("info",("No matching min/max row"));
+        zero_result_cause= "No matching min/max row";
+          goto setup_subq_exit;
+        }
+        if (res > 1)
+        {
+          error= res;
+          DBUG_PRINT("error",("Error from opt_sum_query"));
+          DBUG_RETURN(1);
+        }
+        if (res < 0)
+        {
+          DBUG_PRINT("info",("No matching min/max row"));
+          zero_result_cause= "No matching min/max row";
+          goto setup_subq_exit;
+        }
+        DBUG_PRINT("info",("Select tables optimized away"));
+        zero_result_cause= "Select tables optimized away";
+        tables_list= 0;				// All tables resolved
+        best_rowcount= 1;
+        const_tables= tables= primary_tables= select_lex->leaf_table_count;
+        /*
+          Extract all table-independent conditions and replace the WHERE
+          clause with them. All other conditions were computed by opt_sum_query
+          and the MIN/MAX/COUNT function(s) have been replaced by constants,
+          so there is no need to compute the whole WHERE clause again.
+          Notice that make_cond_for_table() will always succeed to remove all
+          computed conditions, because opt_sum_query() is applicable only to
+          conjunctions.
+          Preserve conditions for EXPLAIN.
+        */
+        if (where_cond && !thd->lex->describe)
+        {
+          Item *table_independent_conds=
+            make_cond_for_table(where_cond, PSEUDO_TABLE_BITS, 0, 0);
+          DBUG_EXECUTE("where",
+                      print_where(table_independent_conds,
+                                  "where after opt_sum_query()",
+                                  QT_ORDINARY););
+          where_cond= table_independent_conds;
+        }
+        goto setup_subq_exit;
+      }
+    }
+    if (!tables_list)
+    {
+      DBUG_PRINT("info",("No tables"));
+      best_rowcount= 1;
+      error= 0;
+      if (make_tmp_tables_info())
+        DBUG_RETURN(1);
+      count_field_types(select_lex, &tmp_table_param, all_fields, false, false);
+      // Make plan visible for EXPLAIN
+      set_plan_state(NO_TABLES);
+      DBUG_RETURN(0);
+    }
+    error= -1;					// Error is sent to client
+    sort_by_table= get_sort_by_table(order, group_list, select_lex->leaf_tables);
+
+    if ((where_cond || group_list || order) &&
+        substitute_gc(thd, select_lex, where_cond, group_list, order))
+    {
+      // We added hidden fields to the all_fields list, count them.
+      count_field_types(select_lex, &tmp_table_param, select_lex->all_fields,
+                        false, false);
+    }
+
+    // Set up join order and initial access paths
+    THD_STAGE_INFO(thd, stage_statistics);
+    if (make_join_plan())
+    {
+      if (thd->killed)
+        thd->send_kill_message();
+      DBUG_PRINT("error",("Error: JOIN::make_join_plan() failed"));
+      DBUG_RETURN(1);
+    }
+
+    // At this stage, join_tab==NULL, JOIN_TABs are listed in order by best_ref.
+    ASSERT_BEST_REF_IN_JOIN_ORDER(this);
+
+    if (zero_result_cause)
+      goto setup_subq_exit;
+
+    if (rollup.state != ROLLUP::STATE_NONE)
+    {
+      if (rollup_process_const_fields())
+      {
+        DBUG_PRINT("error", ("Error: rollup_process_fields() failed"));
+        DBUG_RETURN(1);
+      }
+      /*
+        Fields may have been replaced by Item_func_rollup_const, so
+        recalculate the number of fields and functions for this query block.
+      */
+
+      // JOIN::optimize_rollup() may set quick_group=0, and we must not undo that.
+      const uint save_quick_group= tmp_table_param.quick_group;
+
+      count_field_types(select_lex, &tmp_table_param, all_fields, false, false);
+      tmp_table_param.quick_group= save_quick_group;
+    }
+    else
+    {
+      /* Remove distinct if only const tables */
+      select_distinct&= !plan_is_const();
+    }
+
+    if (const_tables && !thd->locked_tables_mode &&
+        !(select_lex->active_options() & SELECT_NO_UNLOCK ) && phase != OptimizePhase::Finish_LOJ_Transform) 
+    {
+      TABLE *ct[MAX_TABLES];
+      for (uint i= 0; i < const_tables; i++)
+        ct[i]= best_ref[i]->table();
+      mysql_unlock_some_tables(thd, ct, const_tables);
+    }
+    if (!where_cond && select_lex->outer_join)
+    {
+      /* Handle the case where we have an OUTER JOIN without a WHERE */
+      where_cond=new Item_int((longlong) 1,1);	// Always true
+    }
+
+    error= 0;
+    /*
+      Among the equal fields belonging to the same multiple equality
+      choose the one that is to be retrieved first and substitute
+      all references to these in where condition for a reference for
+      the selected field.
+    */
+    if (where_cond)
+    {
+      where_cond= substitute_for_best_equal_field(where_cond, cond_equal,
+                                                  map2table);
       if (thd->is_error())
       {
         error= 1;
         DBUG_PRINT("error",("Error from substitute_for_best_equal"));
         DBUG_RETURN(1);
       }
-      tab->join_cond()->update_used_tables();
+      where_cond->update_used_tables();
+      DBUG_EXECUTE("where",
+                  print_where(where_cond,
+                              "after substitute_best_equal",
+                              QT_ORDINARY););
     }
-  }
-  //TIANMU UPGRADE BEGIN
-  // this is end of part=3 and beginning of part=4
-  if(part == 3) {
-     DBUG_RETURN(0);	// error == 0
-   }
-  //END
-}// end of if(part!=4)
+
+    /*
+      Perform the same optimization on field evaluation for all join conditions.
+    */ 
+    for (uint i= const_tables; i < tables ; ++i)
+    {
+      JOIN_TAB *const tab= best_ref[i];
+      if (tab->position() && tab->join_cond())
+      {
+        tab->set_join_cond(substitute_for_best_equal_field(tab->join_cond(),
+                                                          tab->cond_equal,
+                                                          map2table));
+        if (thd->is_error())
+        {
+          error= 1;
+          DBUG_PRINT("error",("Error from substitute_for_best_equal"));
+          DBUG_RETURN(1);
+        }
+        tab->join_cond()->update_used_tables();
+      }
+    }
+    
+    // this is end of phase=Finish_LOJ_Transform and beginning of phase=Done_Optimization
+    if(phase == OptimizePhase::Finish_LOJ_Transform) {
+      DBUG_RETURN(0);	// error == 0
+    }
+  
+  }// end of if(phase!=Done_Optimization)
   if (init_ref_access())
   {
     error= 1;
@@ -567,7 +567,7 @@ JOIN::optimize(unsigned char part) //TIANMU UPGRADE
   {
     having_cond->update_used_tables();
     if (remove_eq_conds(thd, having_cond, &having_cond,
-                        &select_lex->having_value, part))
+                        &select_lex->having_value, phase))
     {
       error= 1;
       DBUG_PRINT("error",("Error from remove_eq_conds"));
@@ -5284,8 +5284,6 @@ bool JOIN::init_planner_arrays()
   
 
   assert(primary_tables == 0 && tables == 0);
-
-  if (!(primary_tables == 0 && tables == 0)) return true; //tmp fix crash
 
   if (!(join_tab= alloc_jtab_array(thd, table_count)))
     return true;
@@ -10064,7 +10062,7 @@ ORDER *JOIN::remove_const(ORDER *first_order, Item *cond, bool change_list,
 bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
                    List<TABLE_LIST> *join_list,
                    Item::cond_result *cond_value, 
-                   unsigned char part)//TIANMU UPGRADE
+                   OptimizePhase phase)
 {
   Opt_trace_context * const trace= &thd->opt_trace;
   DBUG_ENTER("optimize_cond");
@@ -10092,10 +10090,10 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
     This is performed for the WHERE condition and any join conditions, but
     not for the HAVING condition.
   */
-  if (part == 0 || part == 1)
+  if (phase == OptimizePhase::Beginning || phase == OptimizePhase::Before_LOJ_Transform)
   {
-    if (join_list) 
-	{
+    if(join_list)
+    {
       Opt_trace_object step_wrapper(trace);
       step_wrapper.add_alnum("transformation", "equality_propagation");
       {
@@ -10108,32 +10106,25 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
       }
       step_wrapper.add("resulting_condition", *cond);
     }
-  
-  }
-  /* change field = field to field = const for each found field = const */
-  if (*cond)
-  {
-   //
-   if (part==0 || part==1)
-   {  
-    Opt_trace_object step_wrapper(trace);
-    step_wrapper.add_alnum("transformation", "constant_propagation");
+    /* change field = field to field = const for each found field = const */
+    if (*cond)
     {
-      Opt_trace_disable_I_S
-        disable_trace_wrapper(trace, !(*cond)->has_subquery());
-      Opt_trace_array trace_subselect(trace, "subselect_evaluation");
-      if (propagate_cond_constants(thd, NULL, *cond, *cond))
-        DBUG_RETURN(true);
+      Opt_trace_object step_wrapper(trace);
+      step_wrapper.add_alnum("transformation", "constant_propagation");
+      {
+        Opt_trace_disable_I_S
+          disable_trace_wrapper(trace, !(*cond)->has_subquery());
+        Opt_trace_array trace_subselect(trace, "subselect_evaluation");
+        if (propagate_cond_constants(thd, NULL, *cond, *cond))
+          DBUG_RETURN(true);
+      }
+      step_wrapper.add("resulting_condition", *cond);
+      /*
+        Remove all instances of item == item
+        Remove all and-levels where CONST item != CONST item
+      */
+      DBUG_EXECUTE("where",print_where(*cond,"after const change", QT_ORDINARY););
     }
-    step_wrapper.add("resulting_condition", *cond);
-  
-
-  /*
-    Remove all instances of item == item
-    Remove all and-levels where CONST item != CONST item
-  */
-  DBUG_EXECUTE("where",print_where(*cond,"after const change", QT_ORDINARY););
-   }
   }
   if (*cond)
   {
@@ -10143,7 +10134,7 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
       Opt_trace_disable_I_S
         disable_trace_wrapper(trace, !(*cond)->has_subquery());
       Opt_trace_array trace_subselect(trace, "subselect_evaluation");
-      if (remove_eq_conds(thd, *cond, cond, cond_value, part))
+      if (remove_eq_conds(thd, *cond, cond, cond_value, phase))
         DBUG_RETURN(true);
     }
     step_wrapper.add("resulting_condition", *cond);
@@ -10171,7 +10162,7 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
 static bool internal_remove_eq_conds(THD *thd, Item *cond,
                                      Item **retcond,
                                      Item::cond_result *cond_value,
-                                     unsigned char part)
+                                     OptimizePhase phase)
 {
   if (cond->type() == Item::COND_ITEM)
   {
@@ -10189,7 +10180,7 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
     {
       Item *new_item;
       Item::cond_result tmp_cond_value;
-      if (internal_remove_eq_conds(thd, item, &new_item, &tmp_cond_value, part))
+      if (internal_remove_eq_conds(thd, item, &new_item, &tmp_cond_value, phase))
         return true;
 
       if (new_item == NULL)
@@ -10308,8 +10299,11 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
 
         if (cond_replace)
         {
-          if ((or_level && cond_value_equivalent)
-            || (and_level && (!cond_value_equivalent)))
+          // bug #1383: If the SQL syntax contains 1 = 2,the StoneDB's
+          // InnoDB storage engine maybe wrong result #1383.
+          // the and_level logic is not correct, remove it for now, and
+          // will find a better solution to solve the and 1=2 condition later.
+          if (or_level && cond_value_equivalent)
           {
             *cond_value = Item::COND_OK;
             *retcond = NULL;
@@ -10444,14 +10438,14 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
     }
     if (cond->const_item())
     {
-      if (part!=1 || cond->type()!=Item::SUBSELECT_ITEM)
-      {//TIANMU UPGRADE
+      if (phase != OptimizePhase::Before_LOJ_Transform || cond->type()!=Item::SUBSELECT_ITEM)
+      {
         bool value;
         if (eval_const_cond(thd, cond, &value))
           return true;
         *cond_value= value ? Item::COND_TRUE : Item::COND_FALSE;
         *retcond= NULL;
-      }//END
+      }
       return false;
     }
   }
@@ -10507,7 +10501,7 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
 */
 
 bool remove_eq_conds(THD *thd, Item *cond, Item **retcond,
-                     Item::cond_result *cond_value, unsigned char part)//TIANMU UPGRADE
+                     Item::cond_result *cond_value, OptimizePhase phase)
 {
   if (cond->type() == Item::FUNC_ITEM &&
       down_cast<Item_func *>(cond)->functype() == Item_func::ISNULL_FUNC)
@@ -10558,7 +10552,7 @@ bool remove_eq_conds(THD *thd, Item *cond, Item **retcond,
       }
     }
   }
-  return internal_remove_eq_conds(thd, cond, retcond, cond_value, part);//TIANMU UPGRADE
+  return internal_remove_eq_conds(thd, cond, retcond, cond_value, phase);
 }
 
 

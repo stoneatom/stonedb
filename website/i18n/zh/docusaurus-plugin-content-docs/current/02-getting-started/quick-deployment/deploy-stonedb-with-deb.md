@@ -3,32 +3,33 @@ id: deploy-stonedb-with-deb
 sidebar_position: 3.14
 ---
 
-# **Ubuntu 20 下通过 DEB 包部署 StoneDB**
+# Ubuntu 20 下通过 DEB 包部署 StoneDB
 
 ## 步骤 1：安装 StoneDB
 1. 下载 StoneDB 软件包。您可以通过以下两种方式进行下载：
-   - GitHub 下载
+
+- GitHub 下载
 ```sql
-wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.2-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
 ```
 
    - Gitee 下载
 ```sql
-wget https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.2-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+wget https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
 ```
 
-2. 映射依赖包。
-```sql
-source /opt/stonedb57/install/bin/sourceenv
-```
-
-3. 使用 DPKG 命令进行安装。
+2. 使用 DPKG 命令进行安装。
 ```sql
 dpkg -i stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
 ```
 :::info
 如该步骤执行失败，请执行 `ldd /opt/stonedb57/install/bin/mysqld | grep 'not found'` 命令，检查是否缺少依赖。如是，请执行 `source /opt/stonedb57/install/bin/sourceenv` 问题后重试。
 :::
+
+3. 映射依赖包。
+```sql
+source /opt/stonedb57/install/bin/sourceenv
+```
 
 4. 初始化数据库。
 ```sql

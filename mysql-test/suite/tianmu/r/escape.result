@@ -62,6 +62,9 @@ id	name	uid
 SELECT * FROM st1 WHERE NAME LIKE "a%a" ESCAPE "a" ;
 id	name	uid
 4	%a	world
+SELECT * FROM st1 WHERE NAME LIKE "a%a_" ESCAPE "a";
+id	name	uid
+5	%_	world
 drop table st1;
 CREATE TABLE `st1` (
 `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
@@ -91,6 +94,9 @@ id	name	uid
 select * from st1 where name like 'hello12_';
 id	name	uid
 3	hello123	world
+select * from st1 where name like '/_hello' escape '/';
+id	name	uid
+4	_hello	world
 create table st2(id int ,column_2 varchar(10),column_3 varchar(10));
 insert into st2 values(1,'_a\\\\','111111');
 insert into st2 values(2,'12%','%12%');
@@ -118,4 +124,12 @@ id	column_2	column_3
 1	_a\\	111111
 3	a_a	a%
 4	_a\	_12%
+select * from st2 where column_2 like '%?_a\\%';
+id	column_2	column_3
+select * from st2 where column_2 like '%\_a\\%';
+id	column_2	column_3
+select * from st2 where column_2 like '%?_a?\%';
+id	column_2	column_3
+select * from st2 where column_2 like '%\_a\\%';
+id	column_2	column_3
 DROP DATABASE escape_test;

@@ -22,7 +22,7 @@
 #include "core/engine.h"
 
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 
 // Class definition for the storage engine
 class ha_tianmu final : public handler {
@@ -50,7 +50,7 @@ class ha_tianmu final : public handler {
   ulonglong table_flags() const override {
     return HA_NON_KEY_AUTO_INC | HA_REC_NOT_IN_SEQ | HA_PARTIAL_COLUMN_READ | HA_BINLOG_STMT_CAPABLE |
            HA_BLOCK_CONST_TABLE | HA_PRIMARY_KEY_REQUIRED_FOR_POSITION | HA_NULL_IN_KEY | HA_DUPLICATE_POS |
-           HA_PRIMARY_KEY_IN_READ_INDEX | HA_BINLOG_ROW_CAPABLE;
+           HA_PRIMARY_KEY_IN_READ_INDEX | HA_BINLOG_ROW_CAPABLE | HA_NON_SECONDARY_KEY | HA_NON_UNIQUE_KEY;
   }
   /*
    This is a bitmap of flags that says how the storage engine
@@ -164,6 +164,7 @@ class ha_tianmu final : public handler {
   int set_cond_iter();
   int fill_row(uchar *buf);
   int free_share();
+  bool check_if_notnull_of_added_column(TABLE *altered_table);
 
   std::shared_ptr<core::TableShare> share_;
 
@@ -174,9 +175,7 @@ class ha_tianmu final : public handler {
   core::JustATable *table_ptr_ = nullptr;
   std::unique_ptr<core::Filter> filter_ptr_;
   uint64_t current_position_ = 0;
-
-  core::TianmuTable::Iterator table_new_iter_;
-  core::TianmuTable::Iterator table_new_iter_end_;
+  std::unique_ptr<core::CombinedIterator> iterator_;
 
   std::unique_ptr<core::Query> query_;
   core::TabID tmp_table_;
@@ -185,7 +184,7 @@ class ha_tianmu final : public handler {
   std::vector<std::vector<uchar>> blob_buffers_;
 };
 
-}  // namespace handler
+}  // namespace DBHandler
 }  // namespace Tianmu
 
 #endif  // HA_TIANMU_H_

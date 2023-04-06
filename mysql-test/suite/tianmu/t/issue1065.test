@@ -9,7 +9,8 @@ CREATE DATABASE issue1065_test;
 USE issue1065_test;
 
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
+set tianmu_no_key_error=OFF;
 --enable_warnings
 --disable_warnings
 drop table if exists t_test; 
@@ -56,7 +57,8 @@ DELIMITER ;//
 drop  PROCEDURE add_user;
 
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set tianmu_mandatory=ON;
+set tianmu_no_key_error=ON;
 --enable_warnings
 
 DELIMITER //;
@@ -90,7 +92,8 @@ DELIMITER ;//
 drop  PROCEDURE add_user;
 
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
+set tianmu_no_key_error=OFF;
 --enable_warnings
 
 DELIMITER //;
@@ -136,7 +139,8 @@ CREATE TABLE t_test(
 ) engine=innodb;
 
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set tianmu_mandatory=ON;
+set tianmu_no_key_error=ON;
 --enable_warnings
 
 DELIMITER //;
@@ -170,7 +174,8 @@ DELIMITER ;//
 drop  PROCEDURE add_user;
 
 --disable_warnings
-set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set tianmu_mandatory=OFF;
+set tianmu_no_key_error=OFF;
 --enable_warnings
 
 DELIMITER //;

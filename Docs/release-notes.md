@@ -4,6 +4,47 @@ sidebar_position: 11.0
 ---
 
 # Release Notes
+
+## StoneDB-5.7-V1.0.3
+Release date： March 20,2023
+
+- Reconstructed the binlog mechanism to filter out DDL statements that are not supported by the Tianmu storage engine.
+- Added an argument named **NO_KEY_ERROR** for SQL mode to directly skip DDL statements that are not supported by the SQL layer, instead of reporting errors.
+
+Syntax:
+```sql
+# At global level:
+mysql>set global sql_mode='NO_KEY_ERROR';
+
+# At session level:
+mysql>set session sql_mode='NO_KEY_ERROR';
+
+# Configuration file my.cnf:
+[mysqld] 
+sql_mode =  'NO_KEY_ERROR'
+```
+### Ecosystem Adaptation
+Better adapted to the ecosystem to display the version number of StoneDB.
+### Perfomance
+ Improved the primary/secondary synchronization performance. [#1213](https://github.com/stoneatom/stonedb/issues/1213)
+### Bug Fixes
+The following bugs are fixed:
+
+- Incorrect result is returned when an `ALTER TABLE` statement is executed to add a TIMESTAMP field. [#](https://github.com/stoneatom/stonedb/issues/1327)[1327](https://github.com/stoneatom/stonedb/issues/1327)
+- Incorrect result is returned for an UPDATE operation on a table after it is modified by an `ALTER TABLE` statement. [#](https://github.com/stoneatom/stonedb/issues/1253)[1253](https://github.com/stoneatom/stonedb/issues/1253)
+- Incorrect result is returned for a query on BIGINT data that is unsigned. [#1203](https://github.com/stoneatom/stonedb/issues/1203)
+- An error is reported when a statement is executed to load data. [#](https://github.com/stoneatom/stonedb/issues/1209)[1209](https://github.com/stoneatom/stonedb/issues/1209)
+- The result returned for an AVG function call is incorrect. [#](https://github.com/stoneatom/stonedb/issues/1125)[1125](https://github.com/stoneatom/stonedb/issues/1125)
+- An error is reported when an `ALTER TABLE` statement is executed to change the data type of a field. [#](https://github.com/stoneatom/stonedb/issues/752)[752](https://github.com/stoneatom/stonedb/issues/752)
+- Other bugs. [#](https://github.com/stoneatom/stonedb/issues/103)[103](https://github.com/stoneatom/stonedb/issues/103)[#1230](https://github.com/stoneatom/stonedb/issues/1230)[#1255](https://github.com/stoneatom/stonedb/issues/1255)[#1188](https://github.com/stoneatom/stonedb/issues/1188)[#1262](https://github.com/stoneatom/stonedb/issues/1262)
+### Supported OSs
+
+- CentOS 7.6 and later
+- Ubuntu 20
+
+For more details on the update, please visit [Github](https://github.com/stoneatom/stonedb/releases) and [Gitee](https://gitee.com/StoneDB/stonedb/releases).
+
+
 ## StoneDB-5.7-V1.0.2
 Release date： January 15,2023
 ### New features

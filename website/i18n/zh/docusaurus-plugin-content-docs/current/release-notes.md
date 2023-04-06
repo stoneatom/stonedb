@@ -4,8 +4,50 @@ sidebar_position: 11.0
 ---
 
 # 发版日志
+## StoneDB-5.7-v1.0.3 的发行日志 (2023-03-20, GA)
+发布日期： 2023 年 03 月 20 日
+### 主备能力
 
-## StoneDB_5.7_v1.0.2 的发行日志 (2023-01-15, GA)
+- Binlog 改造 — 指定 DDL 过滤。
+- SQL MODE 中增加参数 NO_KEY_ERROR，SQL 层对不支持 DDL 报错忽略。
+   - 语法举例：
+```sql
+# 全局级别
+mysql>set global sql_mode='NO_KEY_ERROR';
+
+# 会话级别
+mysql>set session sql_mode='NO_KEY_ERROR';
+
+# my.cnf 配置文件
+[mysqld] 
+sql_mode='NO_KEY_ERROR'
+```
+
+### 生态适配
+
+- StoneDB 版本号展示。
+### 性能
+
+- 主从同步性能提升 [#1213](https://github.com/stoneatom/stonedb/issues/1213)。
+### 问题修复
+修复了如下 Bug：
+
+- 执行 ALTER TABLE 语句添加 TIMESTAMP 字段返回结果不正确。[#1327](https://github.com/stoneatom/stonedb/issues/1327)
+- 执行 ALTER TABLE 语句后 Update 表数据不正确。[#1253](https://github.com/stoneatom/stonedb/issues/1253) 
+- Bigint unsigned 返回结果不正确。 [#1203](https://github.com/stoneatom/stonedb/issues/1203) 
+- Load data 报错。[#1209](https://github.com/stoneatom/stonedb/issues/1209)
+- AVG 函数返回结果不正确。[#1125](https://github.com/stoneatom/stonedb/issues/1125)
+- ALTER TABLE 更改字段数据类型报错。[#752](https://github.com/stoneatom/stonedb/issues/752)
+- 其它 Bug。[#103](https://github.com/stoneatom/stonedb/issues/103) [#1230](https://github.com/stoneatom/stonedb/issues/1230) [#1255](https://github.com/stoneatom/stonedb/issues/1255)[#1188](https://github.com/stoneatom/stonedb/issues/1188) [#1262](https://github.com/stoneatom/stonedb/issues/1262)
+
+### 支持平台
+
+- CentOS 7.6 以上
+- Ubuntu 20
+
+更多该版本的详细更新记录，请访问 [Github](https://github.com/stoneatom/stonedb/releases) 和 [Gitee](https://gitee.com/StoneDB/stonedb/releases) 查看。
+
+## StoneDB-5.7-v1.0.2 的发行日志 (2023-01-15, GA)
 发布日期： 2023 年 01 月 15 日
 ### 功能开发
 
@@ -71,7 +113,7 @@ sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTI
 - 添加一些MTR测试用例。
 
 
-## StoneDB_5.7_v1.0.1 的发行日志 (2022-10-21, RC;2022-10-24,GA)
+## StoneDB-5.7-v1.0.1 的发行日志 (2022-10-21, RC;2022-10-24,GA)
 - 功能添加或改变
 - 编译相关改动
 - 文档变更
@@ -100,7 +142,7 @@ sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTI
 - 修复及完善 Tianmu 功能: 
 >修复 issue 有： [#282](https://github.com/stoneatom/stonedb/issues/282),[#274](about:blank),[#270](https://github.com/stoneatom/stonedb/issues/270),[#663](https://github.com/stoneatom/stonedb/issues/663),[#669](https://github.com/stoneatom/stonedb/issues/669),[#670](https://github.com/stoneatom/stonedb/issues/670),[#675](https://github.com/stoneatom/stonedb/issues/675),[#678](https://github.com/stoneatom/stonedb/issues/678),[#682](https://github.com/stoneatom/stonedb/issues/682),[#487](https://github.com/stoneatom/stonedb/issues/487),[#426](https://github.com/stoneatom/stonedb/issues/426),[#250](https://github.com/stoneatom/stonedb/issues/250),[#247](https://github.com/stoneatom/stonedb/issues/247),[#569](https://github.com/stoneatom/stonedb/issues/569),[#566](https://github.com/stoneatom/stonedb/issues/566),[#290](https://github.com/stoneatom/stonedb/issues/290),[#736](https://github.com/stoneatom/stonedb/issues/736),[#567](https://github.com/stoneatom/stonedb/issues/567),[#500](https://github.com/stoneatom/stonedb/issues/500),[#300](https://github.com/stoneatom/stonedb/issues/300),[#289](https://github.com/stoneatom/stonedb/issues/289),[#566](https://github.com/stoneatom/stonedb/issues/566),[#279](https://github.com/stoneatom/stonedb/issues/279),[#570](https://github.com/stoneatom/stonedb/issues/570)[,#571](https://github.com/stoneatom/stonedb/issues/571),[#580](https://github.com/stoneatom/stonedb/issues/580),[#581](https://github.com/stoneatom/stonedb/issues/581),[#586](https://github.com/stoneatom/stonedb/issues/586),[#589](https://github.com/stoneatom/stonedb/issues/589),[#674](https://github.com/stoneatom/stonedb/issues/674),[#646](https://github.com/stoneatom/stonedb/issues/646),[#280](https://github.com/stoneatom/stonedb/issues/280),[#301](https://github.com/stoneatom/stonedb/issues/301),[#733](https://github.com/stoneatom/stonedb/issues/733) 等。
 
-## StoneDB_5.7_v1.0.0的发行日志 (2022-08-31, 发行版)
+## StoneDB-5.7-v1.0.0 的发行日志 (2022-08-31, 发行版)
 - 支持MySQL 5.7
 - 功能添加或改变
 - 编译相关改动
@@ -142,7 +184,9 @@ mysql> show engines;
 - **修复 mtr 用例: **[BUG #78](https://github.com/stoneatom/stonedb/issues/78), [BUG #73](https://github.com/stoneatom/stonedb/issues/73),[ BUG #170](https://github.com/stoneatom/stonedb/issues/170), [BUG #192](https://github.com/stoneatom/stonedb/issues/192), [BUG #191](https://github.com/stoneatom/stonedb/issues/191), [BUG #227](https://github.com/stoneatom/stonedb/issues/227),  [BUG #245](https://github.com/stoneatom/stonedb/issues/245), [BUG  #263](https://github.com/stoneatom/stonedb/issues/263)
 - **修复 Tianmu 缺陷: **[BUG #338](https://github.com/stoneatom/stonedb/issues/388),[ BUG #327](https://github.com/stoneatom/stonedb/issues/327), [BUG #212](https://github.com/stoneatom/stonedb/issues/212), [BUG #142](https://github.com/stoneatom/stonedb/issues/142)
 
-## StoneDB-5.6-V1.0.0
+## StoneDB-5.6-v1.0.0
 
-发布时间: 2022 年 6 月 30 号,
+发布时间: 2022 年 6 月 30 号
+
+全面兼容 MySQL5.6 版本。
 

@@ -26,6 +26,7 @@ enum class BLOCK_TYPE : char {
   BLOCK_COMPRESSED,
   BLOCK_UNCOMPRESSED,
   BLOCK_TEMPORARY,
+  BLOCK_HUGE,
   BLOCK_FIXED  // Used in rc_realloc when pointer != nullptr
 };
 
