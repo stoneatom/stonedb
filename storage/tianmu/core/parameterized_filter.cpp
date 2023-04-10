@@ -1023,7 +1023,9 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       bool isVald = false;
       for (uint32_t i = 0; i < descriptors.Size(); i++) {
         Descriptor &desc = descriptors[i];
-        if (desc.attr.vc && desc.attr.vc->GetVarMap().size() > 1 &&
+        /*The number of values in the (var_map) corresponding to the entity column is always 1,
+        so only the first element in the (var_map) is judged here.*/
+        if (desc.attr.vc && desc.attr.vc->GetVarMap().size() >= 1 &&
             desc.attr.vc->GetVarMap()[0].just_a_table_ptr == rcTable) {
           isVald = true;
           break;
