@@ -596,7 +596,18 @@ int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
  */
 int ha_tianmu::delete_all_rows() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  DBUG_RETURN(HA_ERR_WRONG_COMMAND);
+  int ret = 0;
+  try {
+    // pass nullptr, dd::Table maybe used in the future.
+    ha_rcengine_->TruncateTable(table_name_, nullptr, ha_thd());
+  } catch (std::exception &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
+    ret = 1;
+  } catch (...) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
+    ret = 1;
+  }
+  DBUG_RETURN(ret);
 }
 
 int ha_tianmu::rename_table(const char *from, const char *to, const dd::Table *from_table_def,
@@ -1260,6 +1271,7 @@ int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CR
 }
 
 int ha_tianmu::truncate(dd::Table *table_def) {  // stonedb8 TODO
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   int ret = 0;
   try {
     ha_rcengine_->TruncateTable(table_name_, table_def, ha_thd());
@@ -1271,7 +1283,7 @@ int ha_tianmu::truncate(dd::Table *table_def) {  // stonedb8 TODO
     ret = 1;
   }
 
-  return ret;
+  DBUG_RETURN(ret);
 }
 
 int ha_tianmu::fill_row(uchar *buf) {

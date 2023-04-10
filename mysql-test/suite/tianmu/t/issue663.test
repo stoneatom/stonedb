@@ -1,0 +1,97 @@
+--source include/have_tianmu.inc
+--disable_warnings
+DROP DATABASE IF EXISTS issue663;
+--enable_warnings
+CREATE DATABASE issue663;
+
+create table t11 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
+create table t12 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
+insert into t11 values (0, 10),(1, 11),(2, 12);
+insert into t12 values (33, 10),(0, 11),(2, 12);
+
+--disable_warnings
+explain select t11.*,t12.* from t11,t12 where t11.a = t12.a;
+--enable_warnings
+select t11.*,t12.* from t11,t12 where t11.a = t12.a;
+--disable_warnings
+explain delete t11.*,t12.* from t11,t12 where t11.a = t12.a;
+--enable_warnings
+--disable_warnings
+delete t11.*,t12.* from t11,t12 where t11.a = t12.a;
+--enable_warnings
+
+select * from t11;
+select * from t12;
+
+drop table t11,t12;
+
+CREATE TABLE t1 (a int not null,b int not null)ENGINE=TIANMU;
+CREATE TABLE t2 (a int not null, b int not null, primary key (a,b))ENGINE=TIANMU;
+CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))ENGINE=TIANMU;
+insert into t1 values (1,1),(2,1),(1,3);
+insert into t2 values (1,1),(2,2),(3,3);
+insert into t3 values (1,1),(2,1),(1,3);
+delete t2.*,t3.* from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
+
+select * from t1;
+select * from t2;
+select * from t3;
+
+drop table t1,t2,t3;
+
+
+CREATE TABLE t1 (sku int PRIMARY KEY, pr int)engine=tianmu;
+CREATE TABLE t2 (sku int PRIMARY KEY, sppr int, name varchar(255))engine=tianmu;
+
+INSERT INTO t1 VALUES
+  (10, 10), (20, 10), (30, 20), (40, 30), (50, 10), (60, 10);
+
+INSERT INTO t2 VALUES 
+  (10, 10, 'aaa'), (20, 10, 'bbb'), (30, 10, 'ccc'), (40, 20, 'ddd'),
+  (50, 10, 'eee'), (60, 20, 'fff'), (70, 20, 'ggg'), (80, 30, 'hhh');
+
+SELECT t2.sku, t2.sppr, t2.name, t1.sku, t1.pr
+  FROM t2, t1 WHERE t2.sku=20 AND (t2.sku=t1.sku OR t2.sppr=t1.sku);
+
+delete t2,t1
+  FROM t2, t1 WHERE t2.sku=20 AND (t2.sku=t1.sku OR t2.sppr=t1.sku);
+
+SELECT t2.sku, t2.sppr, t2.name, t1.sku, t1.pr
+  FROM t2, t1 WHERE t2.sku=20 AND (t2.sku=t1.sku OR t2.sppr=t1.sku);
+
+drop table t1,t2;
+
+CREATE TABLE t1 (sku int PRIMARY KEY, pr int)engine=tianmu;
+CREATE TABLE t2 (sku int PRIMARY KEY, sppr int, name varchar(255))engine=tianmu;
+
+INSERT INTO t1 VALUES
+  (10, 10), (20, 10), (30, 20), (40, 30), (50, 10), (60, 10);
+
+INSERT INTO t2 VALUES 
+  (10, 10, 'aaa'), (20, 10, 'bbb'), (30, 10, 'ccc'), (40, 20, 'ddd'),
+  (50, 10, 'eee'), (60, 20, 'fff'), (70, 20, 'ggg'), (80, 30, 'hhh');
+
+SELECT t2.sku, t2.sppr, t2.name, t1.sku, t1.pr  
+  FROM t1,t2  WHERE 
+  t1.sku=10 AND 
+  (t2.sku=20 AND 
+  (t2.sku=t1.sku OR 
+  t2.sppr=t1.sku));
+
+delete t1,t2  
+  FROM t1,t2  WHERE 
+  t1.sku=10 AND 
+  (t2.sku=20 AND 
+  (t2.sku=t1.sku OR 
+  t2.sppr=t1.sku));
+
+SELECT t2.sku, t2.sppr, t2.name, t1.sku, t1.pr  
+  FROM t1,t2  WHERE 
+  t1.sku=10 AND 
+  (t2.sku=20 AND 
+  (t2.sku=t1.sku OR 
+  t2.sppr=t1.sku));
+
+drop table t1,t2;
+
+DROP DATABASE issue663;

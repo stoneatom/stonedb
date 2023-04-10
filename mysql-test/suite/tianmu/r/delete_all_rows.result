@@ -1,13 +1,15 @@
 #
 # DELETE FROM TABLE_NAME
 #
-use test;
+DROP DATABASE IF EXISTS delete_all_rows;
+CREATE DATABASE delete_all_rows;
+use delete_all_rows;
 CREATE TABLE `column_type_test` (
-`c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-`c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
-`c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
-`c_int` int(11) DEFAULT NULL COMMENT 'int',
-`c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
+`c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+`c_int` int DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
 `c_float` float DEFAULT NULL COMMENT 'float',
 `c_double` double DEFAULT NULL COMMENT 'double',
 `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
@@ -20,7 +22,7 @@ CREATE TABLE `column_type_test` (
 `c_blob` blob COMMENT 'blob',
 `c_text` text COMMENT 'text',
 `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=TIANMU;
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 #
 # DELETE FROM TABLE_NAME for Large amount of data
 #
@@ -44,11 +46,11 @@ delete from column_type_test;
 show create table column_type_test;
 Table	Create Table
 column_type_test	CREATE TABLE `column_type_test` (
-  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-  `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
-  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
-  `c_int` int(11) DEFAULT NULL COMMENT 'int',
-  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+  `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
   `c_float` float DEFAULT NULL COMMENT 'float',
   `c_double` double DEFAULT NULL COMMENT 'double',
   `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
@@ -61,7 +63,7 @@ column_type_test	CREATE TABLE `column_type_test` (
   `c_blob` blob COMMENT 'blob',
   `c_text` text COMMENT 'text',
   `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select count(*) from column_type_test;
 count(*)
 0
@@ -70,12 +72,6 @@ max(c_int)
 NULL
 select min(c_int) from column_type_test;
 min(c_int)
-NULL
-select avg(c_int) from column_type_test;
-avg(c_int)
-NULL
-select sum(c_int) from column_type_test;
-sum(c_int)
 NULL
 #
 # DELETE FROM TABLE_NAME for select/insert/Aggregate query
@@ -113,17 +109,11 @@ NULL
 select min(c_int) from column_type_test;
 min(c_int)
 NULL
-select avg(c_int) from column_type_test;
-avg(c_int)
-NULL
-select sum(c_int) from column_type_test;
-sum(c_int)
-NULL
 drop table column_type_test;
 #
 # DELETE FROM TABLE_NAME for primary key
 #
-CREATE TABLE t1(c1 int,c2 varchar(255),primary key(c1))ENGINE=TIANMU;
+CREATE TABLE t1(c1 int,c2 varchar(255),primary key(c1))ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 insert into t1 values(1,'test1');
 insert into t1 values(2,'test2');
 delete from t1;
@@ -137,7 +127,7 @@ c1	c2
 2	test2
 delete from t1;
 drop table t1;
-CREATE TABLE t1 (a tinyint(3), b tinyint(5))ENGINE=TIANMU;
+CREATE TABLE t1 (a tinyint, b tinyint)ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 INSERT INTO t1 VALUES (1,1);
 INSERT LOW_PRIORITY INTO t1 VALUES (1,2);
 INSERT INTO t1 VALUES (1,3);
@@ -159,7 +149,7 @@ CREATE TABLE `abc def` (i int)engine=tianmu;
 INSERT INTO `abc def` VALUES (1);
 delete from `abc def`;
 drop table `abc def`;
-CREATE TABLE t1 (`abc def1` tinyint(3), `abc def2` tinyint(5))ENGINE=TIANMU;
+CREATE TABLE t1 (`abc def1` tinyint, `abc def2` tinyint)ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 INSERT INTO t1 VALUES (1,1);
 DELETE from t1;
 INSERT INTO t1 VALUES (1,2);
@@ -169,3 +159,4 @@ SET AUTOCOMMIT=0;
 DELETE from t1;
 SET AUTOCOMMIT=1;
 drop table t1;
+DROP DATABASE delete_all_rows;

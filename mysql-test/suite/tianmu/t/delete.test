@@ -220,6 +220,8 @@ DROP TABLE t1;
 # Test of multi-delete where we are not scanning the first table
 #
 
+# TODO(stonedb8): not correct? see:
+# https://github.com/stoneatom/stonedb/commit/b7e1694949026216c7fa81473d50d42c1941445b#diff-fcbba0191ed883d77940306417137fa9f0a705bc02614d2288d925baab5e6fb9
 CREATE TABLE t1 (a int not null,b int not null)ENGINE=TIANMU;
 CREATE TABLE t2 (a int not null, b int not null, primary key (a,b))ENGINE=TIANMU;
 CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))ENGINE=TIANMU;
