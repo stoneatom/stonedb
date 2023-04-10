@@ -19,8 +19,8 @@
 
 #include <sys/stat.h>
 
-#include "core/tools.h"
 #include "system/fet.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 

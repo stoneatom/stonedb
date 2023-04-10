@@ -15,9 +15,9 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "core/filter.h"
 #include "core/query.h"
 #include "core/temp_table.h"
+#include "executor/filter.h"
 
 #include "vc/const_column.h"
 #include "vc/const_expr_column.h"

@@ -77,7 +77,7 @@
 #include <algorithm>
 #include <functional>
 
-#include "../storage/tianmu/handler/ha_my_tianmu.h"  // TIANMU UPGRADE
+#include "../storage/tianmu/sql/ha_my_tianmu.h"  // TIANMU UPGRADE
 using std::max;
 using std::min;
 

@@ -18,9 +18,9 @@
 #define TIANMU_CORE_VALUE_MATCHING_TABLE_H_
 #pragma once
 
-#include "core/bin_tools.h"
-#include "core/filter.h"
+#include "executor/filter.h"
 #include "mm/traceable_object.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace core {

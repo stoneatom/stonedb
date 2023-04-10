@@ -20,8 +20,8 @@
 #include <cstring>
 
 #include "common/assert.h"
-#include "core/tools.h"
 #include "tcm/span.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace mm {

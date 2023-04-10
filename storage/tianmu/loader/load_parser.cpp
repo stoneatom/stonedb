@@ -19,11 +19,11 @@
 
 #include "binlog.h"
 #include "core/engine.h"
-#include "core/tianmu_attr.h"
 #include "loader/value_cache.h"
 #include "log_event.h"
 #include "system/io_parameters.h"
 #include "util/timer.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 namespace loader {

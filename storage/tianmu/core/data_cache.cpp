@@ -17,7 +17,7 @@
 
 #include "data_cache.h"
 
-#include "core/tianmu_attr.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 namespace core {

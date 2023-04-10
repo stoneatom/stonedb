@@ -18,8 +18,8 @@
 #define TIANMU_VC_MULTI_VALUE_COLUMN_H_
 #pragma once
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "types/tianmu_num.h"
 #include "vc/virtual_column.h"
 

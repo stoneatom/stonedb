@@ -23,11 +23,10 @@
 #include "common/common_definitions.h"
 #include "common/exception.h"
 #include "core/engine.h"
-#include "core/pack_guardian.h"
 #include "core/table_share.h"
-#include "core/tianmu_attr.h"
 #include "core/tianmu_table.h"
 #include "core/transaction.h"
+#include "data/pack_guardian.h"
 #include "handler/ha_tianmu.h"
 #include "loader/load_parser.h"
 #include "log_event.h"
@@ -38,6 +37,7 @@
 #include "types/value_parser4txt.h"
 #include "util/bitset.h"
 #include "util/timer.h"
+#include "vc/tianmu_attr.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {

@@ -18,7 +18,7 @@
 #include "index/kv_store.h"
 
 #include "core/engine.h"
-#include "core/merge_operator.h"
+#include "executor/merge_operator.h"
 
 namespace Tianmu {
 namespace index {

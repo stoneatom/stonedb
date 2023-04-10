@@ -22,10 +22,10 @@
 #include "common/assert.h"
 #include "common/exception.h"
 #include "core/data_cache.h"
-#include "core/pack.h"
-#include "core/tools.h"
 #include "core/transaction.h"
+#include "data/pack.h"
 #include "mm/huge_heap_policy.h"
+#include "util/tools.h"
 
 #include "mm/mysql_heap_policy.h"
 #include "mm/numa_heap_policy.h"
