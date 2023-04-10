@@ -17,11 +17,11 @@
 
 #include "core/transaction.h"
 
-#include "core/dpn.h"
 #include "core/tianmu_table.h"
-#include "core/tools.h"
+#include "data/dpn.h"
 #include "system/file_system.h"
 #include "util/fs.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 // current transaction, thread local var.

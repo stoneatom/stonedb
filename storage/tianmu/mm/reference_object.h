@@ -19,8 +19,8 @@
 #define TIANMU_MM_REFERENCE_OBJECT_H_
 #pragma once
 
-#include "core/tools.h"
 #include "mm/traceable_object.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace mm {

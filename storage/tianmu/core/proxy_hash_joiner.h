@@ -20,7 +20,7 @@
 
 #include <memory>
 
-#include "core/joiner.h"
+#include "optimizer/joiner.h"
 
 namespace Tianmu {
 namespace core {

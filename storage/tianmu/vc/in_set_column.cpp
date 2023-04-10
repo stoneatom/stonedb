@@ -17,11 +17,11 @@
 
 #include "in_set_column.h"
 
-#include "core/compiled_query.h"
 #include "core/mysql_expression.h"
-#include "core/tianmu_attr.h"
+#include "optimizer/compile/compiled_query.h"
 #include "vc/const_column.h"
 #include "vc/expr_column.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 namespace vcolumn {

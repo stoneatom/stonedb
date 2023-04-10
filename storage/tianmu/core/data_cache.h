@@ -24,7 +24,7 @@
 #include <unordered_set>
 #include <utility>
 
-#include "core/pack.h"
+#include "data/pack.h"
 
 namespace Tianmu {
 namespace core {

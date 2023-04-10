@@ -19,8 +19,8 @@
 #pragma once
 
 #include "common/data_format.h"
-#include "core/tianmu_attr_typeinfo.h"
 #include "loader/value_cache.h"
+#include "vc/tianmu_attr_typeinfo.h"
 
 namespace Tianmu {
 namespace loader {

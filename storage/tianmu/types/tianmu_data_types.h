@@ -24,9 +24,9 @@
 #include "common/assert.h"
 #include "common/common_definitions.h"
 #include "common/exception.h"
-#include "core/bin_tools.h"
-#include "core/tianmu_attr_typeinfo.h"
 #include "system/txt_utils.h"
+#include "util/bin_tools.h"
+#include "vc/tianmu_attr_typeinfo.h"
 
 namespace Tianmu {
 namespace types {

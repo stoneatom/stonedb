@@ -17,9 +17,9 @@
 
 #include "cacheable_item.h"
 
-#include "core/tools.h"
 #include "system/fet.h"
 #include "system/tianmu_system.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace system {

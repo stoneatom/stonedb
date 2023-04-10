@@ -18,9 +18,9 @@
 #include "item_tianmu_field.h"
 
 #include "common/assert.h"
-#include "core/compilation_tools.h"
 #include "core/quick_math.h"
 #include "core/transaction.h"
+#include "optimizer/compile/compilation_tools.h"
 
 namespace Tianmu {
 namespace core {

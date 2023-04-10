@@ -19,8 +19,11 @@
 #include <sys/syscall.h>
 #include <time.h>
 
-#include "core/compilation_tools.h"
-#include "core/compiled_query.h"
+#include "optimizer/compile//compiled_query.h"
+#include "optimizer/compile/compilation_tools.h"
+#include "optimizer/compile/compiler.h"
+#include "optimizer/plan/query_plan.h"
+
 #include "core/engine.h"
 #include "core/query.h"
 #include "core/transaction.h"

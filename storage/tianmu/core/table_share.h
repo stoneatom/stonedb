@@ -20,7 +20,7 @@
 
 #include "common/common_definitions.h"
 #include "common/defs.h"
-#include "core/column_share.h"
+#include "vc/column_share.h"
 
 #include <list>
 #include <mutex>

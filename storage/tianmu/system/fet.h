@@ -20,8 +20,8 @@
 
 #include <map>
 
-#include "core/tools.h"
 #include "system/tianmu_system.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace system {

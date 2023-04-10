@@ -18,10 +18,10 @@
 #define TIANMU_CORE_DIMENSION_GROUP_H_
 #pragma once
 
-#include "core/bin_tools.h"
 #include "core/dimension_vector.h"
-#include "core/filter.h"
-#include "core/index_table.h"
+#include "executor/filter.h"
+#include "index/index_table.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace core {

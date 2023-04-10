@@ -20,10 +20,10 @@
 
 #include <list>
 
-#include "core/bin_tools.h"
 #include "core/dimension_group.h"
-#include "core/filter.h"
-#include "core/index_table.h"
+#include "executor/filter.h"
+#include "index/index_table.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace core {

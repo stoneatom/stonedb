@@ -23,7 +23,7 @@
 #include "common/assert.h"
 #include "common/exception.h"
 #include "compress/defs.h"
-#include "core/bin_tools.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace compress {

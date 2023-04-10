@@ -28,10 +28,9 @@
 #include "common/mysql_gate.h"
 #include "core/delta_table.h"
 #include "core/table_share.h"
-#include "core/task_executor.h"
 #include "core/temp_table.h"
-#include "core/tools.h"
 #include "core/transaction.h"
+#include "executor/task_executor.h"
 #include "mm/initializer.h"
 #include "mm/memory_statistics.h"
 #include "mysql/thread_pool_priv.h"
@@ -43,6 +42,7 @@
 #include "util/bitset.h"
 #include "util/fs.h"
 #include "util/thread_pool.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace DBHandler {
