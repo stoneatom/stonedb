@@ -1,0 +1,19 @@
+ ##############################################################################
+ #
+ #  List the test cases that are to be disabled temporarily.
+ #
+ #  Separate the test case name and the comment with ':'.
+ #
+ #    <testcasename> : BUG#<xxxx> <date disabled> <disabler> <comment>
+ #
+ #  Do not use any TAB characters for whitespace.
+ #
+ ##############################################################################
+  auto_increment : BUG_FOR_auto_increment 2023-4-7 ringsc
+  issue364 :  bug_for_364  2023-4-7 ringsc
+  issue433 :  bug_for_433  2023-4-7 ringsc
+  issue446 :  bug_for_446  2023-4-7 ringsc
+  issue581 :  bug_for_581  2023-4-7 ringsc
+  load : bug_for_load 2023-4-7 ringsc
+  trigger : bug_for_trigger 2023-4-7 ringsc
+  alter_table_primarykey : bug_for_alter_pk
