@@ -556,7 +556,31 @@ int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
  */
 int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  DBUG_RETURN(HA_ERR_WRONG_COMMAND);
+  int ret = HA_ERR_INTERNAL_ERROR;
+  auto org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
+
+  std::shared_ptr<void> defer(nullptr,
+                              [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
+
+  try {
+    auto tab = current_txn_->GetTableByPath(table_name_);
+
+    for (uint i = 0; i < table->s->fields; i++) {
+      tab->DeleteItem(current_position_, i);
+    }
+    DBUG_RETURN(0);
+  } catch (common::DatabaseException &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (common::FileException &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (common::Exception &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (std::exception &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (...) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
+  }
+  DBUG_RETURN(ret);
 }
 
 /*
@@ -648,7 +672,7 @@ int ha_tianmu::info(uint flag) {
         tab = current_txn_->GetTableByPath(table_name_);
       } else
         tab = ha_rcengine_->GetTableRD(table_name_);
-      stats.records = (ha_rows)tab->NumOfValues();
+      stats.records = (ha_rows)(tab->NumOfValues() - tab->NumOfDeleted());
       stats.data_file_length = 0;
       stats.mean_rec_length = 0;
       if (stats.records > 0) {

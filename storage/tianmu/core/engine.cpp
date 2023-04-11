@@ -1136,8 +1136,11 @@ static void HandleDelayedLoad(int table_id, std::vector<std::unique_ptr<char[]>>
   dbname.length = db_name.length();
   loadquery.str = const_cast<char *>(load_data_query.c_str());
   loadquery.length = load_data_query.length();
-  tabname.str = const_cast<char *>(tab_name.c_str());
-  tabname.length = tab_name.length();
+
+  // strconvert: support special characters in table name
+  char t_tbname[MAX_TABLE_NAME_LEN + 1] = {0};
+  tabname.length = filename_to_tablename(const_cast<char *>(tab_name.c_str()), t_tbname, sizeof(t_tbname));
+  tabname.str = t_tbname;
   // END
 
   // TIANMU UPGRADE

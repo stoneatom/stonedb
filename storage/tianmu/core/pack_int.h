@@ -49,6 +49,7 @@ class PackInt final : public Pack {
   void LoadDataFromFile(system::Stream *fcurfile) override;
   void Save() override;
   void UpdateValue(size_t locationInPack, const Value &v) override;
+  void DeleteByRow(size_t locationInPack) override;
 
   void LoadValues(const loader::ValueCache *vc, const std::optional<common::double_int_t> &null_value);
   int64_t GetValInt(int locationInPack) const override { return data_[locationInPack]; }
