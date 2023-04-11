@@ -1891,13 +1891,11 @@ char *strmov_str(char *dst, const char *src) {
 static int tianmu_done_func([[maybe_unused]] void *p) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
-  if (ha_tianmu_engine_) {
-    delete ha_tianmu_engine_;
+  if (tianmu_hton->data) {
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    delete eng;
+    tianmu_hton->data = nullptr;
     ha_tianmu_engine_ = nullptr;
-  }
-  if (ha_kvstore_) {
-    delete ha_kvstore_;
-    ha_kvstore_ = nullptr;
   }
 
   DBUG_RETURN(0);
@@ -1908,11 +1906,12 @@ int tianmu_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function 
     return 0;
 
   if (flag == HA_PANIC_CLOSE) {
-    delete ha_tianmu_engine_;
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    delete eng;
+    tianmu_hton->data = nullptr;
     ha_tianmu_engine_ = nullptr;
-    delete ha_kvstore_;
-    ha_kvstore_ = nullptr;
   }
+
   return 0;
 }
 
@@ -2038,6 +2037,7 @@ int tianmu_init_func(void *p) {
   tianmu_hton->commit = tianmu_commit;
   tianmu_hton->rollback = tianmu_rollback;
   tianmu_hton->show_status = tianmu_show_status;
+  tianmu_hton->data = nullptr;
 
   // When mysqld runs as bootstrap mode, we do not need to initialize
   // memmanager.
@@ -2058,10 +2058,14 @@ int tianmu_init_func(void *p) {
       strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
     my_snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
                 global_hostIP_, glob_hostname, mysqld_port);
+
     // startup tianmu engine.
     ha_tianmu_engine_ = new core::Engine();
-    ret = ha_tianmu_engine_->Init(total_ha);
-    {
+    tianmu_hton->data = reinterpret_cast<void *>(ha_tianmu_engine_);
+
+    // startup tianmu engine.
+    if (tianmu_hton->data) {
+      ret = reinterpret_cast<core::Engine *>(tianmu_hton->data)->Init(total_ha);
       TIANMU_LOG(LogCtl_Level::INFO,
                  "\n"
                  "------------------------------------------------------------"

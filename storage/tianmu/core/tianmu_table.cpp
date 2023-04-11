@@ -470,7 +470,10 @@ TianmuTable::TianmuTable(std::string const &p, TableShare *s, Transaction *tx) :
   if (!index::NormalizeName(table_name, normalized_path)) {
     throw common::Exception("Normalization wrong of table  " + share->Path());
   }
-  m_delta = ha_kvstore_->FindDeltaTable(normalized_path);
+
+  Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+  assert(eng);
+  m_delta = eng->getStore()->FindDeltaTable(normalized_path);
 }
 
 void TianmuTable::LockPackInfoForUse() {
@@ -1536,10 +1539,13 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       auto key = iter->key();
       uint64_t row_id = index::be_to_uint64(reinterpret_cast<const uchar *>(key.data()) + sizeof(uint32_t));
       auto value = iter->value();
+
       std::unique_ptr<char[]> buf(new char[value.size()]);
       std::memcpy(buf.get(), value.data(), value.size());
+
       auto type = *reinterpret_cast<RecordType *>(buf.get());
       auto load_num = *reinterpret_cast<uint32_t *>(buf.get() + sizeof(RecordType));
+
       if (type == RecordType::kInsert) {
         insert_records.emplace_back(std::move(buf));
       } else if (type == RecordType::kUpdate) {
@@ -1549,11 +1555,13 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       } else {
         TIANMU_LOG(LogCtl_Level::ERROR, "record type (%d) cannot be processed, delete this record!", type);
       }
+
       m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());  // todo(dfx): change to DeleteRange
       expected_count -= load_num;
       m_delta->merge_id.fetch_add(load_num);
       m_delta->stat.read_cnt++;
       m_delta->stat.read_bytes += value.size();
+
       if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
         insert_num += AsyncParseInsertRecords(&iop, &insert_records);
       }
@@ -1566,19 +1574,25 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       iter->Next();
     }
   }
+
   clock_gettime(CLOCK_REALTIME, &t2);
+
   if (!insert_records.empty()) {
     insert_num += AsyncParseInsertRecords(&iop, &insert_records);
   }
+
   if (!update_records.empty()) {
     update_num += AsyncParseUpdateRecords(&iop, &update_records);
   }
+
   if (!delete_records.empty()) {
     delete_num += AsyncParseDeleteRecords(delete_records);
   }
+
   if (t2.tv_sec - t1.tv_sec > 15) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_delta->GetCFHandle(), nullptr, nullptr);
+    Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+    eng->getStore()->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_delta->GetCFHandle(), nullptr, nullptr);
   }
 
   return insert_num + update_num + delete_num;
@@ -1596,21 +1610,26 @@ int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<
     to_prepare = share->PackSize() - (int)(m_attrs[0]->NumOfObj() % share->PackSize());
     std::vector<loader::ValueCache> vcs;
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
+
     size_t real_loaded_rows = vcs[0].NumOfValues();
     no_dup_rows += (no_of_rows_returned - real_loaded_rows);
+
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
         res.insert(
             ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
       }
+
       res.get_all();
       loaded_row_num += real_loaded_rows;
       if (mysql_bin_log.is_open())
         binlog_insert2load_block(vcs, real_loaded_rows, *iop);
     }
   } while (no_of_rows_returned == to_prepare);
+
   clock_gettime(CLOCK_REALTIME, &t2);
+
   if (loaded_row_num > 0 && mysql_bin_log.is_open())
     if (binlog_insert2load_log_event(*iop) != 0) {
       TIANMU_LOG(LogCtl_Level::ERROR, "Write insert to load binlog fail!");
@@ -1620,8 +1639,9 @@ int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<
   if ((t2.tv_sec - t1.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
-                                        nullptr);
+    Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+    eng->getStore()->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(),
+                                            nullptr, nullptr);
   }
   return loaded_row_num;
 }
@@ -1644,14 +1664,17 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
     }
     res.get_all_with_except();
   }
+
   clock_gettime(CLOCK_REALTIME, &t2);
 
   if ((t2.tv_sec - t1.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
-                                        nullptr);
+    Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
+    eng->getStore()->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(),
+                                            nullptr, nullptr);
   }
+
   return returned_row_num;
 }
 int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) {
@@ -1663,6 +1686,7 @@ int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) 
     }
     res.get_all_with_except();
   }
+
   return delete_records.size();
 }
 

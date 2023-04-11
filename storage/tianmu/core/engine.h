@@ -79,6 +79,8 @@ class Engine final {
   ~Engine();
 
   int Init(uint engine_slot);
+  index::KVStore *getStore() const { return store_; }
+
   void CreateTable(const std::string &table, TABLE *from, HA_CREATE_INFO *create_info);
   int DeleteTable(const char *table, THD *thd);
   void TruncateTable(const std::string &table_path, THD *thd);
@@ -282,6 +284,7 @@ class Engine final {
   std::unique_ptr<TaskExecutor> task_executor;
   uint64_t m_mem_available_ = 0;
   uint64_t m_swap_used_ = 0;
+  index::KVStore *store_;
 };
 
 class ResultSender {

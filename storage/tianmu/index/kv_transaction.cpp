@@ -18,6 +18,7 @@
 #include "index/kv_transaction.h"
 
 #include "common/common_definitions.h"
+#include "core/engine.h"
 #include "index/kv_store.h"
 #include "kv_transaction.h"
 
@@ -33,7 +34,8 @@ KVTransaction::~KVTransaction() {
 rocksdb::Status KVTransaction::Get(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                    std::string *value) {
   read_opts_.total_order_seek = false;
-  return index_batch_->GetFromBatchAndDB(ha_kvstore_->GetRdb(), read_opts_, column_family, key, value);
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  return index_batch_->GetFromBatchAndDB(store->GetRdb(), read_opts_, column_family, key, value);
 }
 
 rocksdb::Status KVTransaction::Put(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
@@ -53,13 +55,15 @@ rocksdb::Iterator *KVTransaction::GetIterator(rocksdb::ColumnFamilyHandle *const
     read_opts_.prefix_same_as_start = true;
   }
 
-  return index_batch_->NewIteratorWithBase(ha_kvstore_->GetRdb()->NewIterator(read_opts_, column_family));
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  return index_batch_->NewIteratorWithBase(store->GetRdb()->NewIterator(read_opts_, column_family));
 }
 
 rocksdb::Status KVTransaction::GetData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                        std::string *value) {
   read_opts_.total_order_seek = false;
-  return ha_kvstore_->GetRdb()->Get(read_opts_, column_family, key, value);
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  return store->GetRdb()->Get(read_opts_, column_family, key, value);
 }
 
 rocksdb::Status KVTransaction::PutData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
@@ -80,17 +84,20 @@ rocksdb::Status KVTransaction::SingleDeleteData(rocksdb::ColumnFamilyHandle *col
 
 rocksdb::Iterator *KVTransaction::GetDataIterator(rocksdb::ReadOptions &ropts,
                                                   rocksdb::ColumnFamilyHandle *const column_family) {
-  return ha_kvstore_->GetRdb()->NewIterator(ropts, column_family);
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  return store->GetRdb()->NewIterator(ropts, column_family);
 }
 
 void KVTransaction::Acquiresnapshot() {
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
   if (read_opts_.snapshot == nullptr)
-    read_opts_.snapshot = ha_kvstore_->GetRdbSnapshot();
+    read_opts_.snapshot = store->GetRdbSnapshot();
 }
 
 void KVTransaction::Releasesnapshot() {
   if (read_opts_.snapshot != nullptr) {
-    ha_kvstore_->ReleaseRdbSnapshot(read_opts_.snapshot);
+    KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+    store->ReleaseRdbSnapshot(read_opts_.snapshot);
     read_opts_.snapshot = nullptr;
   }
 }
@@ -100,15 +107,18 @@ bool KVTransaction::Commit() {
   // firstly, release the snapshot.
   Releasesnapshot();
   rocksdb::WriteOptions write_opts;
+
   // if we have data to commit, then do writing index data ops by KVWriteBatch.
   auto index_write_batch = index_batch_->GetWriteBatch();
-  if (index_write_batch && index_write_batch->Count() > 0 &&
-      !ha_kvstore_->KVWriteBatch(write_opts, index_write_batch)) {
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+
+  if (index_write_batch && index_write_batch->Count() > 0 && !store->KVWriteBatch(write_opts, index_write_batch)) {
     // write failed.
     res = false;
   }
+
   // write the data.
-  if (res && data_batch_->Count() > 0 && !ha_kvstore_->KVWriteBatch(write_opts, data_batch_.get())) {
+  if (res && data_batch_->Count() > 0 && !store->KVWriteBatch(write_opts, data_batch_.get())) {
     // write failed.
     res = false;
   }
