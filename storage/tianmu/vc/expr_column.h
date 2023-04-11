@@ -20,8 +20,8 @@
 
 #include <mutex>
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {

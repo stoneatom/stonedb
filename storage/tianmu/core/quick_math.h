@@ -22,7 +22,7 @@
 
 #include "common/assert.h"
 #include "common/common_definitions.h"
-#include "core/bin_tools.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace core {

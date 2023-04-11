@@ -22,8 +22,8 @@
 
 #include "compress/data_filt.h"
 #include "compress/dictionary.h"
-#include "core/bin_tools.h"
 #include "core/quick_math.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace compress {

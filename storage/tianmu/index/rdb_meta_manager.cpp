@@ -31,7 +31,7 @@
 
 #include "core/delta_table.h"
 #include "core/engine.h"
-#include "core/merge_operator.h"
+#include "executor/merge_operator.h"
 #include "index/kv_store.h"
 #include "index/rdb_utils.h"
 

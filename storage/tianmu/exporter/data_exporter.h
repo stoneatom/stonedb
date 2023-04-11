@@ -19,10 +19,10 @@
 #pragma once
 
 #include "common/common_definitions.h"
-#include "core/bin_tools.h"
 #include "system/channel_out.h"
 #include "system/large_buffer.h"
 #include "system/txt_utils.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace exporter {

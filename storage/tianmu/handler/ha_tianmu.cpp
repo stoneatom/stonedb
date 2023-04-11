@@ -26,18 +26,18 @@
 #include "binlog.h"
 #include "common/assert.h"
 #include "common/exception.h"
-#include "core/compilation_tools.h"
-#include "core/compiled_query.h"
 #include "core/delta_record_head.h"
 #include "core/temp_table.h"
-#include "core/tools.h"
 #include "core/transaction.h"
 #include "core/value.h"
 #include "ha_tianmu.h"
 #include "mm/initializer.h"
+#include "optimizer/compile/compilation_tools.h"
+#include "optimizer/compile/compiled_query.h"
 #include "system/configuration.h"
 #include "system/file_out.h"
 #include "util/fs.h"
+#include "util/tools.h"
 
 #define MYSQL_SERVER 1
 

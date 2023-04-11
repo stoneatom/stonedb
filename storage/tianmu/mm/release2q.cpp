@@ -19,7 +19,7 @@
 #include <algorithm>
 
 #include "core/data_cache.h"
-#include "core/pack.h"
+#include "data/pack.h"
 #include "mm/reference_object.h"
 #include "mm/release_strategy.h"
 #include "mm/release_tracker.h"

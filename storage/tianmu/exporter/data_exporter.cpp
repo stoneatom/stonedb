@@ -19,8 +19,8 @@
 
 #include "common/assert.h"
 #include "core/engine.h"
-#include "core/tianmu_attr.h"
 #include "system/large_buffer.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 namespace exporter {

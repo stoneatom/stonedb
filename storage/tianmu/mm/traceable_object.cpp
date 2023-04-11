@@ -19,9 +19,9 @@
 
 #include "common/assert.h"
 #include "core/engine.h"
-#include "core/pack.h"
-#include "core/tools.h"
+#include "data/pack.h"
 #include "mm/release_tracker.h"
+#include "util/tools.h"
 
 #include "system/fet.h"
 #include "system/res_manager.h"

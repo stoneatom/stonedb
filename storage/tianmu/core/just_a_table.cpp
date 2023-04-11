@@ -18,9 +18,9 @@
 #include "just_a_table.h"
 
 #include "common/assert.h"
-#include "core/cq_term.h"
-#include "core/filter.h"
 #include "core/temp_table.h"
+#include "executor/filter.h"
+#include "optimizer/compile/cq_term.h"
 
 namespace Tianmu {
 namespace core {

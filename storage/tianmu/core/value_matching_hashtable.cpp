@@ -17,7 +17,7 @@
 
 #include "value_matching_hashtable.h"
 
-#include "core/bin_tools.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace core {
