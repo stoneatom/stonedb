@@ -61,14 +61,15 @@ sudo apt install -y libjemalloc-dev
 sudo apt install -y libssl-dev
 sudo apt install -y pkg-config
 ```
-
-> libssl-dev may cannot install use apt, you can install it use aptitude.
-> ```bash
-> sudo apt install aptitude
-> sudo aptitude install libssl-dev
-> ...
-> # type n y y
-> ```  
+:::info
+libssl-dev may cannot install use apt, you can install it use aptitude.
+```bash
+sudo apt install aptitude
+sudo aptitude install libssl-dev
+...
+# type n y y
+```
+:::  
 
 ### Step 2. Install third-party dependencies
 
@@ -87,13 +88,15 @@ ln -s /usr/local/bin/cmake /usr/bin/
 cmake --version
 ```
 
-> If your gcc version too high, it may cause the compilation to fail. You can add #include <limits> in the beginning of cmake-3.72/Source/cmServerProtocal.cxx to solve it.
-> ```c++
-> #include <algorithm>
-> #include <string>
-> #include <vector>
-> #include <limits>
-> ```
+:::info
+If your gcc version too high, it may cause the compilation to fail. You can add `#include <limits>` in the beginning of `cmake-3.72/Source/cmServerProtocal.cxx` to solve it.
+```c++
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <limits>
+```
+:::
 
 2.If make version < 3.82, install Make
 Check your make version first.
@@ -119,7 +122,7 @@ autoreconf -i
 sudo make && make install 
 ```
 
-The installation directory of marisa in the example is /usr/local/stonedb-marisa. You can change it based on your actual conditions. In this step, the following directories and files are generated in /usr/local/stonedb-marisa/lib.
+The installation directory of marisa in the example is `/usr/local/stonedb-marisa`. You can change it based on your actual conditions. In this step, the following directories and files are generated in `/usr/local/stonedb-marisa/lib`.
 
 ```bash
 root@htap-dev-64-2:/usr/local/stonedb-marisa/lib$ ls -l
@@ -159,18 +162,20 @@ sudo make -j`nproc`
 sudo make install -j`nproc`
 ```
 
-> Your gcc version may too high, modify your CMakeLists.txt row#310-317 like this.
-> ```shell
-> if(FAIL_ON_WARNINGS)
->   if(MSVC)
->     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
->   else() # assume GCC
-> 	  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
->   endif()
-> endif()
-> ```
+:::info
+Your gcc version may too high, modify your CMakeLists.txt row#310-317 like this.
+```shell
+if(FAIL_ON_WARNINGS)
+  if(MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
+  else() # assume GCC
+	  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+  endif()
+endif()
+```
+:::
 
-The installation directory of RocksDB in the example is /usr/local/stonedb-gcc-rocksdb. You can change it based on your actual conditions. In this step, the following directories and files are generated in /usr/local/stonedb-gcc-rocksdb
+The installation directory of RocksDB in the example is `/usr/local/stonedb-gcc-rocksdb`. You can change it based on your actual conditions. In this step, the following directories and files are generated in `/usr/local/stonedb-gcc-rocksdb`
 
 ```bash
 root@htap-dev-64-2:/usr/local/stonedb-gcc-rocksdb$ ls -l
@@ -193,7 +198,7 @@ cd boost_1_77_0
 ./b2 install --with=all
 ```
 
-The installation directory of Boost in the example is /usr/local/stonedb-boost. You can change it based on your actual conditions. In this step, the following directories and files are generated in /usr/local/stonedb-boost/lib.
+The installation directory of Boost in the example is `/usr/local/stonedb-boost`. You can change it based on your actual conditions. In this step, the following directories and files are generated in `/usr/local/stonedb-boost/lib`.
 
 ```bash
 root@htap-dev-64-2:/usr/local/stonedb-boost177/lib$ ls -l
@@ -253,7 +258,7 @@ sudo make
 sudo make install
 ```
 
-Install in /usr/local/ by default.
+Install in `/usr/local/` by default.
 
 ```bash
 ls /usr/local/include/
@@ -274,7 +279,7 @@ git clone https://github.com/stoneatom/stonedb.git
 
 Before compilation, modify the compilation script as follows:
 
-Change the installation directory of StoneDB based on your actual conditions. In the example, /stonedb/is used.
+Change the installation directory of StoneDB based on your actual conditions. In the example, `/stonedb/`is used.
 Change the installation directories of marisa, RocksDB, and Boost based on your actual conditions.
 
 ```bash

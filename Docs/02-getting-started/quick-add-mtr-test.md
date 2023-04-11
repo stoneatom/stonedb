@@ -11,13 +11,15 @@ When you contribute your code into StoneDB, test your code in the meantime.
 
 Test cases are in the path \${StoneDB-Source-DIR}/mysql-test/suite/tianmu/.
 
-> \${StoneDB-Source-DIR} is your StoneDB source code directory.
-> 
-> \${TEST-PATH}=\${StoneDB-Source-DIR}/mysql-test/suite/tianmu/ in the following context.
+:::info
+`${StoneDB-Source-DIR}` is your StoneDB source code directory.
+ 
+`${TEST-PATH}=${StoneDB-Source-DIR}/mysql-test/suite/tianmu/` in the following context.
+:::
 
 ### Step 1. Write your test file and result file
 
-Put your test file in the \${TEST-PATH}/t/ and result file in the \${TEST-PATH}/r/.
+Put your test file in the `${TEST-PATH}/t/` and result file in the `${TEST-PATH}/r/`.
 
 You can write your test cases like this.
 
@@ -51,7 +53,7 @@ DROP TABLE t1;
 
 ### Step 2. Compile your StoneDB.
 
-In this example, I compile my StoneDB in \${StoneDB-Source-DIR}/build/mysql8/ and install in \${StoneDB-Source-DIR}/build/install8/
+In this example, I compile my StoneDB in `${StoneDB-Source-DIR}/build/mysql8/` and install in `${StoneDB-Source-DIR}/build/install8/`
 
  ```shell
 cd stonedb/build
@@ -62,7 +64,7 @@ mkdir mysql8 install8
 
 ### Step 3. Run your test.
 
-After installation, test cases will be moved into your installation directory.In this example, the path is \${StoneDB-Source-DIR}/build/install8/mysql-test
+After installation, test cases will be moved into your installation directory.In this example, the path is `${StoneDB-Source-DIR}/build/install8/mysql-test`
 
 ``` shell
 cd install8/mysql-test

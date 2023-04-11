@@ -58,13 +58,15 @@ sudo apt install -y libssl-dev
 sudo apt install -y pkg-config
 ```
 
-> libssl-dev可能安装不成功，你可以使用aptitude安装，安装过程中的选项要选择n y y
-> ```bash
-> sudo apt install aptitude
-> sudo aptitude install libssl-dev
-> ...
-> # type n y y
-> ```  
+:::info
+libssl-dev可能安装不成功，你可以使用aptitude安装，安装过程中的选项要选择n y y
+```bash
+sudo apt install aptitude
+sudo aptitude install libssl-dev
+...
+# type n y y
+```
+:::  
 
 ### 第二步：安装第三方库
 
@@ -82,14 +84,15 @@ apt remove cmake -y
 ln -s /usr/local/bin/cmake /usr/bin/
 cmake --version
 ```
-
-> 如果你的gcc版本过高, 可能导致编译失败. 你可以在cmake-3.72/Source/cmServerProtocal.cxx的文件开头加上#include <limits>来解决这个问题.
-> ```c++
-> #include <algorithm>
-> #include <string>
-> #include <vector>
-> #include <limits>
-> ```
+:::info
+如果你的gcc版本过高, 可能导致编译失败. 你可以在`cmake-3.72/Source/cmServerProtocal.cxx`的文件开头加上`#include <limits>`来解决这个问题.
+```c++
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <limits>
+```
+:::
 
 2.如果你的make版本 < 3.82, 安装Make
 注意先检查你的Make版本.
@@ -115,7 +118,7 @@ autoreconf -i
 sudo make && make install 
 ```
 
-在这个例子中marisa的安装路径是/usr/local/stonedb-marisa. 你可以根据实际情况修改路径. 在这一步中, /usr/local/stonedb-marisa/lib目录中的内容如下.
+在这个例子中marisa的安装路径是`/usr/local/stonedb-marisa`. 你可以根据实际情况修改路径. 在这一步中, `/usr/local/stonedb-marisa/lib`目录中的内容如下.
 
 ```bash
 root@htap-dev-64-2:/usr/local/stonedb-marisa/lib$ ls -l
@@ -155,18 +158,20 @@ sudo make -j`nproc`
 sudo make install -j`nproc`
 ```
 
-> 你的gcc版本可能过高, 可以将你的CMakeLists.txt的310-317行改成下方这样.
-> ```shell
-> if(FAIL_ON_WARNINGS)
->   if(MSVC)
->     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
->   else() # assume GCC
-> 	  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
->   endif()
-> endif()
-> ```
+:::info
+你的gcc版本可能过高, 可以将你的CMakeLists.txt的310-317行改成下方这样.
+```shell
+if(FAIL_ON_WARNINGS)
+  if(MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
+  else() # assume GCC
+	  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+  endif()
+endif()
+```
+:::
 
-在本例中RocksDB的安装目录为/usr/local/stonedb-gcc-rocksdb. 你可以根据实际情况修改路径. 在这一步中, /usr/local/stonedb-gcc-rocksdb目录中文件如下
+在本例中RocksDB的安装目录为`/usr/local/stonedb-gcc-rocksdb`. 你可以根据实际情况修改路径. 在这一步中, `/usr/local/stonedb-gcc-rocksdb`目录中文件如下
 
 ```bash
 root@htap-dev-64-2:/usr/local/stonedb-gcc-rocksdb$ ls -l
@@ -189,7 +194,7 @@ cd boost_1_77_0
 ./b2 install --with=all
 ```
 
-在本例中boost的安装目录为/usr/local/stonedb-boost. 你可以根据实际情况修改路径. 在这一步中, /usr/local/stonedb-boost/lib目录中的内容如下.
+在本例中boost的安装目录为`/usr/local/stonedb-boost`. 你可以根据实际情况修改路径. 在这一步中, `/usr/local/stonedb-boost/lib`目录中的内容如下.
 
 ```bash
 root@htap-dev-64-2:/usr/local/stonedb-boost177/lib$ ls -l
@@ -249,7 +254,7 @@ sudo make
 sudo make install
 ```
 
-默认安装路径为/usr/local/.
+默认安装路径为`/usr/local/`.
 
 ```bash
 ls /usr/local/include/
@@ -270,7 +275,7 @@ git clone https://github.com/stoneatom/stonedb.git
 
 在编译前, 像下文一样更改编译脚本:
 
-将安装目录改为你的实际安装目录. 本例中用的是/stonedb/.
+将安装目录改为你的实际安装目录. 本例中用的是`/stonedb/`.
 将marisa, RocksDB, and Boost的路径改为你的这三个库的实际安装路径.
 
 ```bash

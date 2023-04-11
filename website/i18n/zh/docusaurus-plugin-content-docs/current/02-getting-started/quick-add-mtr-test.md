@@ -9,15 +9,17 @@ sidebar_position: 3.6
 
 当你在StoneDB贡献代码的同时，你需要测试你贡献的代码
 
-测试用例在路径 \${StoneDB-Source-DIR}/mysql-test/suite/tianmu/中.
+测试用例在路径 `${StoneDB-Source-DIR}/mysql-test/suite/tianmu/`中.
 
-> \${StoneDB-Source-DIR} 是你的StoneDB源码目录.
-> 
-> 下文中我们将用\${TEST-PATH}来指代路径\${StoneDB-Source-DIR}/mysql-test/suite/tianmu/.
+:::info
+`${StoneDB-Source-DIR}` 是你的StoneDB源码目录.
+
+下文中我们将用`${TEST-PATH}`来指代路径`${StoneDB-Source-DIR}/mysql-test/suite/tianmu/`.
+:::
 
 ### 第一步. 编写你的测试用例和应该输出的结果的文件
 
-将你的测试文件放在 \${TEST-PATH}/t/ 中，并将你的结果文件放在 \${TEST-PATH}/r/ 中.
+将你的测试文件放`${TEST-PATH}/t/` 中，并将你的结果文件放在 `${TEST-PATH}/r/` 中.
 
 你可以像下面的例子中一样编写你的测试用例和结果.
 
@@ -51,7 +53,7 @@ DROP TABLE t1;
 
 ### 第二步. 编译安装StoneDB.
 
-在这个例子中, 我将StoneDB编译在 \${StoneDB-Source-DIR}/build/mysql8/ 中，并且将其安装在 \${StoneDB-Source-DIR}/build/install8/ 中
+在这个例子中, 我将StoneDB编译在 `${StoneDB-Source-DIR}/build/mysql8/` 中，并且将其安装在 `${StoneDB-Source-DIR}/build/install8/` 中
 
  ```shell
 cd stonedb/build
@@ -62,7 +64,7 @@ mkdir mysql8 install8
 
 ### 第三步. 运行测试用例.
 
-在安装完成后, 测试用例会被移动至安装目录中. 在这个例子中, 路径为 \${StoneDB-Source-DIR}/build/install8/mysql-test
+在安装完成后, 测试用例会被移动至安装目录中. 在这个例子中, 路径为 `${StoneDB-Source-DIR}/build/install8/mysql-test`
 
 ``` shell
 cd install8/mysql-test
