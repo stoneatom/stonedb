@@ -32,7 +32,6 @@ namespace Tianmu {
 namespace core {
 PackInt::PackInt(DPN *dpn, PackCoordinate pc, ColumnShare *s) : Pack(dpn, pc, s) {
   is_real_ = ATI::IsRealType(s->ColType().GetTypeName());
-
   if (dpn_->NotTrivial()) {
     system::TianmuFile f;
     f.OpenReadOnly(s->DataFile());
@@ -177,7 +176,9 @@ void PackInt::ExpandOrShrink(uint64_t maxv, int64_t delta) {
 
 void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
   if (IsNull(locationInPack)) {
-    ASSERT(v.HasValue());
+    if (!v.HasValue())
+      return;
+    // ASSERT(v.HasValue(), col_share_->DataFile() + " locationInPack: " + std::to_string(locationInPack));
 
     // update null to non-null
     dpn_->synced = false;
@@ -344,9 +345,10 @@ void PackInt::DeleteByRow(size_t locationInPack) {
 
 void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
   if (IsNull(locationInPack)) {
-    ASSERT(v.HasValue());
-
-    // update null to non-null
+    if (!v.HasValue())
+      return;
+    // ASSERT(v.HasValue(), col_share_->DataFile() + " locationInPack: " + std::to_string(locationInPack));
+    //  update null to non-null
     dpn_->synced = false;
     UnsetNull(locationInPack);
 

@@ -7,15 +7,94 @@ CREATE TABLE `test1` (
 CREATE TABLE `test2` (
 `user_id` varchar(32) NOT NULL COMMENT '用户ID'
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+CREATE TABLE `test3` (
+`id` varchar(32) NOT NULL COMMENT '用户ID'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+CREATE TABLE `test4` (
+`id` varchar(32) NOT NULL COMMENT '用户ID'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8;
 insert test1 values('aaa');
 insert test1 values('bbb');
 insert test1 values('ccc');
+insert test1 values('eee');
 insert test2 values('aaa');
 insert test2 values('bbb');
 insert test2 values('ccc');
+insert test2 values('fff');
+insert test3 values('aaa');
+insert test3 values('bbb');
+insert test3 values('ccc');
+insert test3 values('ddd');
+insert test4 values('aaa');
+insert test4 values('bbb');
+insert test4 values('ccc');
+insert test4 values('hhh');
+insert test4 values('ggg');
 select test1.id,test2.user_id  from test2,test1 where test2.user_id = test1.id ;
 id	user_id
 aaa	aaa
 bbb	bbb
 ccc	ccc
+select test1.id,test2.user_id,test3.id  from test2,test1,test3 where test2.user_id = test1.id and test2.user_id = test3.id;
+id	user_id	id
+aaa	aaa	aaa
+bbb	bbb	bbb
+ccc	ccc	ccc
+select test1.id,test2.user_id,test3.id,test4.id  from test2,test1,test3,test4 where test2.user_id = test1.id and test2.user_id = test3.id and test3.id = test4.id;
+id	user_id	id	id
+aaa	aaa	aaa	aaa
+bbb	bbb	bbb	bbb
+ccc	ccc	ccc	ccc
+CREATE TABLE `t1` (
+`id` int NOT NULL COMMENT 'ID'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `t2` (
+`user_id` int NOT NULL COMMENT '用户ID'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+CREATE TABLE `t3` (
+`id` int NOT NULL COMMENT '用户ID'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+CREATE TABLE `t4` (
+`id` int NOT NULL COMMENT '用户ID'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+insert t1 values(101);
+insert t1 values(103);
+insert t1 values(103);
+insert t1 values(201);
+insert t2 values(101);
+insert t2 values(102);
+insert t2 values(103);
+insert t2 values(202);
+insert t3 values(101);
+insert t3 values(102);
+insert t3 values(103);
+insert t3 values(203);
+insert t4 values(101);
+insert t4 values(102);
+insert t4 values(103);
+insert t4 values(204);
+insert t4 values(205);
+select t1.id,t2.user_id  from t2,t1 where t2.user_id = t1.id ;
+id	user_id
+101	101
+103	103
+103	103
+select t1.id,t2.user_id,t3.id  from t2,t1,t3 where t2.user_id = t1.id and t2.user_id = t3.id;
+id	user_id	id
+101	101	101
+103	103	103
+103	103	103
+select t1.id,t2.user_id,t3.id,t4.id  from t2,t1,t3,t4 where t2.user_id = t1.id and t2.user_id = t3.id and t3.id = t4.id;
+id	user_id	id	id
+101	101	101	101
+103	103	103	103
+103	103	103	103
+drop table test1;
+drop table test2;
+drop table test3;
+drop table test4;
+drop table t1;
+drop table t2;
+drop table t3;
+drop table t4;
 DROP DATABASE hash_join_test;

@@ -33,7 +33,11 @@
 namespace Tianmu {
 namespace core {
 namespace {
-const int kJoinSplittedMinPacks = 5;
+// bug 1538: The instance occasionally crashes when the parallel degree is enabled for
+// the hash join. To change this from 5 to INT_MAX32/2, to disable the parallel of
+// right table, btw. the kTraversedPacksPerFragment is for left table.
+// we'll re-enable the hash join later if the bug is fixed in near future.
+const int kJoinSplittedMinPacks = INT_MAX32 / 2;
 // bug 1476:  change this threhold from 30 to INT_MAX32 to disable the parallel hash join
 // because the result is sometimes wrong if parallel hash join is enabled.
 // we'll re-enable the hash join later if the bug is fixed in near future.
