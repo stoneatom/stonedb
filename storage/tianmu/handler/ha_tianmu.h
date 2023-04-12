@@ -71,7 +71,8 @@ class ha_tianmu final : public handler {
   uint max_supported_record_length() const override { return HA_MAX_REC_LENGTH; }
   uint max_supported_keys() const override { return MAX_INDEXES; }
   uint max_supported_key_parts() const override { return MAX_REF_PARTS; }
-  uint max_supported_key_length() const override { return 1024; }
+  uint max_supported_key_length() const override { return 16 * 1024; }
+  uint max_supported_key_part_length([[maybe_unused]] HA_CREATE_INFO *create_info) const override;
   /*
    Called in test_quick_select to determine if indexes should be used.
    */

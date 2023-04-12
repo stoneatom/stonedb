@@ -31,6 +31,7 @@ extern bool tianmu_sysvar_parallel_filloutput;
 extern bool tianmu_sysvar_parallel_mapjoin;
 extern bool tianmu_sysvar_pushdown;
 extern bool tianmu_sysvar_qps_log;
+extern bool tianmu_sysvar_large_prefix;
 extern bool tianmu_sysvar_refresh_sys_table;
 extern bool tianmu_sysvar_usemysqlimportexportdefaults;
 extern char *tianmu_sysvar_cachefolder;

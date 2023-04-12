@@ -75,6 +75,9 @@ enum class ColumnType : unsigned char {
 
 enum class PackType { INT, STR };
 
+constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_LARGE = 3072;
+constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
+
 constexpr double PLUS_INF_DBL = DBL_MAX;
 constexpr double MINUS_INF_DBL = DBL_MAX * -1;
 constexpr int64_t PLUS_INF_64 = 0x7FFFFFFFFFFFFFFFULL;
