@@ -37,6 +37,7 @@ bool AtLeastOneTianmuTableInvolved(LEX *lex) {
     if (core::Engine::IsTianmuTable(table))
       return true;
   }
+
   return false;
 }
 
@@ -49,7 +50,10 @@ bool ForbiddenMySQLQueryPath(LEX *lex [[maybe_unused]]) {
 void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                                CHARSET_INFO *cs) {
   try {
-    ha_tianmu_engine_->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
+    eng->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s.", e.what());
@@ -85,9 +89,11 @@ QueryRouteTo ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result_output
   try {
     // handle_select_ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
-    QueryRouteTo handle_select_ret =
-        ha_tianmu_engine_->HandleSelect(thd, lex, result_output, setup_tables_done_option, res,
-                                        is_optimize_after_tianmu, tianmu_free_join, with_insert);
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
+    QueryRouteTo handle_select_ret = eng->HandleSelect(thd, lex, result_output, setup_tables_done_option, res,
+                                                       is_optimize_after_tianmu, tianmu_free_join, with_insert);
     if (handle_select_ret == QueryRouteTo::kToMySQL && AtLeastOneTianmuTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
@@ -116,7 +122,10 @@ int tianmu_load_impl(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *a
     return static_cast<int>(TianmuEngineReturnValues::kLoadContinue);
 
   try {
-    tianmu_error = ha_tianmu_engine_->RunLoader(thd, ex, table_list, arg);
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
+    tianmu_error = eng->RunLoader(thd, ex, table_list, arg);
     if (tianmu_error.GetErrorCode() != common::ErrorCode::SUCCESS) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
     } else {

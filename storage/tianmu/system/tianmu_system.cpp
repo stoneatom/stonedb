@@ -36,9 +36,6 @@ char global_hostIP_[FN_REFLEN];
 // global server info.
 char global_serverinfo_[FN_REFLEN];
 
-// key-value engine handler.
-core::Engine *ha_tianmu_engine_ = nullptr;
-
 // global mutex
 std::mutex global_mutex_;
 

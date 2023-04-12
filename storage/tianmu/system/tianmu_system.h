@@ -48,9 +48,6 @@ extern char global_hostIP_[FN_REFLEN];
 // host server info string.
 extern char global_serverinfo_[FN_REFLEN];
 
-// row-column engine handler.
-extern core::Engine *ha_tianmu_engine_;
-
 // global mutex.
 extern std::mutex global_mutex_;
 

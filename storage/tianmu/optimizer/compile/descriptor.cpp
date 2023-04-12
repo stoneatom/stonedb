@@ -1909,12 +1909,16 @@ bool Descriptor::ExsitTmpTable() const {
 bool Descriptor::IsleftIndexSearch() const {
   if (!tianmu_sysvar_index_search || IsType_OrTree() || IsType_Between())
     return false;
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if (IsType_AttrValOrAttrValVal() && encoded) {
     auto col = static_cast<vcolumn::SingleColumn *>(attr.vc);
     if (table && table->NumOfTables() == 1 && table->GetTableP(0)->TableType() == TType::TABLE &&
         col->GetPhysical()->ColType() == PhysicalColumn::phys_col_t::kTianmuAttr) {
       auto path = (static_cast<TianmuTable *>(table->GetTableP(0))->Path());
-      auto indextab = ha_tianmu_engine_->GetTableIndex(path.replace_extension().string());
+      auto indextab = eng->GetTableIndex(path.replace_extension().string());
       uint32_t colid = static_cast<TianmuAttr *>(col->GetPhysical())->ColId();
 
       if (indextab) {

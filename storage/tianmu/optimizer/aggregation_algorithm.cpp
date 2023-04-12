@@ -893,10 +893,12 @@ void AggregationAlgorithm::ParallelFillOutputWrapper(GroupByWrapper &gbw, int64_
     vgbw.push_back(gbwtmp);
   }
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   utils::result_set<void> res;
   for (auto &gb : vgbw) {
-    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&AggregationAlgorithm::TaskFillOutput, this, &gb, conn,
-                                                             offset, limit));
+    res.insert(eng->query_thread_pool.add_task(&AggregationAlgorithm::TaskFillOutput, this, &gb, conn, offset, limit));
   }
   res.get_all_with_except();
 }
@@ -1018,9 +1020,11 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit, uint64_t 
              packnum, threads_num, loopcnt, num, mod, mit.NumOfTuples());
 
   utils::result_set<void> res;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   for (int i = 0; i < loopcnt; ++i) {
-    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&AggregationWorkerEnt::PrepShardingCopy, this, &mit,
-                                                             gb_main, &vGBW));
+    res.insert(eng->query_thread_pool.add_task(&AggregationWorkerEnt::PrepShardingCopy, this, &mit, gb_main, &vGBW));
 
     int pack_start = i * num;
     int pack_end = 0;
@@ -1066,8 +1070,8 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit, uint64_t 
 
   for (size_t i = 0; i < vTask.size(); ++i) {
     GroupByWrapper *gbw = i == 0 ? gb_main : vGBW[i].get();
-    res1.insert(ha_tianmu_engine_->query_thread_pool.add_task(
-        &AggregationWorkerEnt::TaskAggrePacks, this, &taskIterator[i], &dims, &mit, &vTask[i], gbw, conn, mem_used));
+    res1.insert(eng->query_thread_pool.add_task(&AggregationWorkerEnt::TaskAggrePacks, this, &taskIterator[i], &dims,
+                                                &mit, &vTask[i], gbw, conn, mem_used));
   }
   res1.get_all_with_except();
 

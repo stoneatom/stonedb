@@ -98,7 +98,12 @@ void TaskExecutor::Exit() {
 void TaskExecutor::AddTask(std::unique_ptr<Task> task) { _app_template->AddTask(std::move(task)); }
 
 #ifndef DISABLE_USED_FOR_TIANMU
-TaskExecutor *GetTaskExecutor() { return ha_tianmu_engine_->GetTaskExecutor(); }
+TaskExecutor *GetTaskExecutor() {
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  return eng->GetTaskExecutor();
+}
 #endif
 
 }  // namespace core

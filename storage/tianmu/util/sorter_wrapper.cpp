@@ -242,30 +242,38 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
   TIANMU_LOG(LogCtl_Level::DEBUG, "InitPackrow: no_values_encoded %d, begin to loadpacks scol size %d ",
              no_values_encoded, scol.size());
   // Not excluded: lock packs
-  if (!ha_tianmu_engine_->query_thread_pool.is_owner()) {
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  if (!eng->query_thread_pool.is_owner()) {
     utils::result_set<void> res;
     for (uint i = 0; i < scol.size(); i++)
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ColumnBinEncoder::LoadPacks, &scol[i], &mit));
+      res.insert(eng->query_thread_pool.add_task(&ColumnBinEncoder::LoadPacks, &scol[i], &mit));
+
     res.get_all_with_except();
   } else {
     for (uint i = 0; i < scol.size(); i++)
       if (scol[i].IsEnabled() && scol[i].IsNontrivial())  // constant num. columns are trivial
         scol[i].LockSourcePacks(mit);
   }
+
   return false;
 }
 
 bool SorterWrapper::PutValues(MIIterator &mit) {
   if (s == nullptr)
     return false;  // trivial sorter (constant values)
+
   if (mi_encoder)
     mi_encoder->Encode(input_buf, mit);
+
   bool update_stats =
       (rough_sort_by > -1 && limit > -1 && no_values_encoded <= limit);  // otherwise statistics are either not used
                                                                          // or already prepared
   for (uint i = 0; i < scol.size(); i++)
     if (scol[i].IsEnabled() && scol[i].IsNontrivial())  // constant num. columns are trivial
       scol[i].Encode(input_buf, mit, nullptr, update_stats);
+
   no_values_encoded++;
   return s->PutValue(input_buf);
 }
@@ -273,6 +281,7 @@ bool SorterWrapper::PutValues(MIIterator &mit) {
 bool SorterWrapper::PutValues(SorterWrapper &sw) {
   if (s == nullptr)
     return false;  // trivial sorter (constant values)
+
   no_values_encoded += sw.GetEncodedValNum();
   TIANMU_LOG(LogCtl_Level::DEBUG, "PutValues: no_values_encoded %d \n", no_values_encoded);
   return s->PutValue(sw.GetSorter());
