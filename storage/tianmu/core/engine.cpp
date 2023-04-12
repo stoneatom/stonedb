@@ -199,27 +199,32 @@ Engine::Engine()
                                                            : std::thread::hardware_concurrency()),
       insert_buffer(BUFFER_FILE, tianmu_sysvar_insert_buffer_size) {
   tianmu_data_dir = mysql_real_data_home;
+  store_ = nullptr;
 }
 
 int Engine::Init(uint engine_slot) {
   m_slot = engine_slot;
   ConfigureRCControl();
+
   if (tianmu_sysvar_controlquerylog > 0) {
     tianmu_querylog_.setOn();
   } else {
     tianmu_querylog_.setOff();
   }
+
   std::srand(unsigned(time(nullptr)));
 
   if (tianmu_sysvar_servermainheapsize == 0) {
     long pages = sysconf(_SC_PHYS_PAGES);
     long pagesize = sysconf(_SC_PAGESIZE);
+
     if (pagesize > 0 && pages > 0) {
       tianmu_sysvar_servermainheapsize = pages * pagesize / 1_MB / 2;
     } else {
       tianmu_sysvar_servermainheapsize = 10000;
     }
   }
+
   size_t main_size = size_t(tianmu_sysvar_servermainheapsize) << 20;
 
   std::string hugefiledir = tianmu_sysvar_hugefiledir;
@@ -236,13 +241,14 @@ int Engine::Init(uint engine_slot) {
   boost::trim_if(cachefolder_path, boost::is_any_of("\""));
   if (SetUpCacheFolder(cachefolder_path) != 0)
     return 1;
+
   system::ClearDirectory(cachefolder_path);
 
   m_resourceManager = new system::ResourceManager();
 
   // init the tianmu key-value store, aka, rocksdb engine.
-  ha_kvstore_ = new index::KVStore();
-  ha_kvstore_->Init();
+  store_ = new index::KVStore();
+  store_->Init();
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
   fet = new FunctionsExecutionTimes();
@@ -311,6 +317,7 @@ int Engine::Init(uint engine_slot) {
     }
     TIANMU_LOG(LogCtl_Level::INFO, "Tianmu monitor thread exiting...");
   });
+
   m_load_thread = std::thread([this] { ProcessInsertBufferMerge(); });
   m_merge_thread = std::thread([this] { ProcessDeltaStoreMerge(); });
   m_purge_thread = std::thread([this] {
@@ -378,8 +385,21 @@ Engine::~Engine() {
   table_share_map.clear();
   m_table_deltas.clear();
   m_table_keys.clear();
-  delete m_resourceManager;
-  delete the_filter_block_owner;
+
+  if (m_resourceManager) {
+    delete m_resourceManager;
+    m_resourceManager = nullptr;
+  }
+
+  if (store_) {
+    delete store_;
+    store_ = nullptr;
+  }
+
+  if (the_filter_block_owner) {
+    delete the_filter_block_owner;
+    the_filter_block_owner = nullptr;
+  }
 
   try {
     mm::MemoryManagerInitializer::EnsureNoLeakedTraceableObject();
@@ -388,10 +408,8 @@ Engine::~Engine() {
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Unkown exception caught");
   }
-  if (tianmu_control_.isOn())
-    mm::MemoryManagerInitializer::deinit(true);
-  else
-    mm::MemoryManagerInitializer::deinit(false);
+
+  mm::MemoryManagerInitializer::deinit(tianmu_control_.isOn() ? true : false);
 
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu engine destroyed.");
 }

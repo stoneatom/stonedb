@@ -44,12 +44,14 @@ void KVStore::Init() {
   // set the DBOptions's params.
   auto rocksdb_datadir = kv_data_dir_ / ".index";
   int max_compact_threads = std::thread::hardware_concurrency() / 4;
+
   max_compact_threads = (max_compact_threads > 1) ? max_compact_threads : 1;
   db_option.max_background_compactions = max_compact_threads;
   db_option.max_subcompactions = max_compact_threads;
   db_option.env->SetBackgroundThreads(max_compact_threads, rocksdb::Env::Priority::LOW);
   db_option.statistics = rocksdb::CreateDBStatistics();
   rocksdb::Status status = rocksdb::DB::ListColumnFamilies(db_option, rocksdb_datadir, &cf_names);
+
   if (!status.ok() &&
       ((status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound))) {
     TIANMU_LOG(LogCtl_Level::INFO, "First init rocksdb, create default cloum family");
@@ -327,7 +329,7 @@ std::string KVStore::generate_cf_name(uint index, TABLE *table) {
 void KVStore::create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def,
                             rocksdb::ColumnFamilyHandle *cf_handle) {
   // assign a new id for this index.
-  uint index_id = ha_kvstore_->GetNextIndexId();
+  uint index_id = GetNextIndexId();
 
   std::vector<ColAttr> vcols;
   KEY *key_info = &table->key_info[pos];
@@ -371,7 +373,7 @@ common::ErrorCode KVStore::create_keys_and_cf(TABLE *table, std::shared_ptr<RdbT
       throw common::Exception("column family not valid for storing index data. cf: " + DEFAULT_SYSTEM_CF_NAME);
 
     // isnot default cf, then get the cf name.
-    rocksdb::ColumnFamilyHandle *cf_handle = ha_kvstore_->GetCfHandle(cf_name);
+    rocksdb::ColumnFamilyHandle *cf_handle = GetCfHandle(cf_name);
 
     if (!cf_handle) {
       return common::ErrorCode::FAILED;
@@ -393,9 +395,10 @@ bool IndexCompactFilter::Filter([[maybe_unused]] int level, const rocksdb::Slice
   GlobalId gl_index_id;
   gl_index_id.cf_id = cf_id_;
   gl_index_id.index_id = be_to_uint32(reinterpret_cast<const uchar *>(key.data()));
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
 
   if (gl_index_id.index_id != prev_index_.index_id) {
-    should_delete_ = ha_kvstore_->IndexDroping(gl_index_id);
+    should_delete_ = store->IndexDroping(gl_index_id);
     prev_index_ = gl_index_id;
   }
 
