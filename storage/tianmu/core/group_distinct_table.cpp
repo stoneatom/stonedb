@@ -56,8 +56,8 @@ void GroupDistinctTable::InitializeVC(int64_t max_no_groups, vcolumn::VirtualCol
   DEBUG_ASSERT(!initialized);
   if (max_bytes > 0)
     max_total_size = max_bytes;
-  if (max_bytes > 2_GB)  // possible for large aggregation settings, but
-                         // not allowed here - limit to 1 GB
+  if (static_cast<size_t>(max_bytes) > 2_GB)  // possible for large aggregation settings, but
+                                              // not allowed here - limit to 1 GB
     max_total_size = 1_GB;
   if (max_no_rows == common::NULL_VALUE_64)
     max_no_rows = 0;  // not known
