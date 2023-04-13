@@ -1,0 +1,15 @@
+#
+# Fix assertion errors caused by syntax optimization of the tianmu engine #669
+#
+drop database if exists issue669;
+create database issue669;
+use issue669;
+create table t11 (a int NOT NULL, b int, primary key (a)) ENGINE=TIANMU;
+create table t12 (a int NOT NULL, b int, primary key (a)) ENGINE=TIANMU;
+create table t2 (a int NOT NULL, b int, primary key (a)) ENGINE=TIANMU;
+insert into t11 values (0, 10),(1, 11),(2, 12);
+insert into t12 values (33, 10),(0, 11),(2, 12);
+insert into t2 values (1, 21),(2, 12),(3, 23);
+delete from t11 where t11.b not in (select b from t2 where t11.a < t2.a);
+drop table t11, t12, t2;
+drop database issue669;

@@ -1,3 +1,5 @@
+drop database if exists add_column;
+create database add_column;
 CREATE TABLE `column_type_test` (
 `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
@@ -50,3 +52,4 @@ select count(*) from column_type_test;
 count(*)
 100001
 drop table column_type_test;
+drop database add_column;

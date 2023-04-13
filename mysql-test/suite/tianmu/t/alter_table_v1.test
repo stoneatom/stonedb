@@ -4,6 +4,12 @@
 --echo # Test of alter table
 --echo #
 
+--disable_warnings
+drop database if exists alter_table_v1;
+--enable_warnings
+create database alter_table_v1;
+use alter_table_v1;
+
 create table t1 (bandID MEDIUMINT NOT NULL PRIMARY KEY, payoutID SMALLINT NOT NULL);
 insert into t1 (bandID,payoutID) VALUES (1,6),(2,6),(3,4),(4,9),(5,10),(6,1),(7,12),(8,12);
 alter table t1 add column new_col int, order by payoutid,bandid;
@@ -91,4 +97,4 @@ alter table t1 rename to ``;
 rename table t1 to ``;
 drop table t1;
 
-
+drop database alter_table_v1;

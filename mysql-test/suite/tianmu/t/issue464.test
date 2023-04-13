@@ -27,6 +27,7 @@ select FROM_UNIXTIME(UNIX_TIMESTAMP(date_test)), FROM_UNIXTIME(UNIX_TIMESTAMP(da
 select HOUR(date_test), HOUR(time_test), HOUR(datetime_test), HOUR(timestamp_test) from tt;
 select TIME(date_test), TIME(time_test), TIME(datetime_test), TIME(timestamp_test) from tt;
 select TIMESTAMP(date_test), TIMESTAMP(datetime_test), TIMESTAMP(timestamp_test) from tt;
+--replace_column 2 #
 select TIMESTAMPADD(WEEK, 1, date_test), TIMESTAMPADD(WEEK, 1, time_test), TIMESTAMPADD(WEEK, 1, datetime_test), TIMESTAMPADD(WEEK, 1, timestamp_test) from tt;
 select TIMESTAMPDIFF(MINUTE, '2017-01-01', date_test), TIMESTAMPDIFF(MINUTE, '2017-01-01', datetime_test), TIMESTAMPDIFF(MINUTE, '2017-01-01', timestamp_test) from tt;
 select TIME_TO_SEC(time_test), TO_DAYS(date_test) from tt;
