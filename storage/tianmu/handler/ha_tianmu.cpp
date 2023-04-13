@@ -788,7 +788,7 @@ int ha_tianmu::close() {
   DBUG_RETURN(free_share());
 }
 
-uint ha_tianmu::max_supported_key_part_length(HA_CREATE_INFO *create_info) const {
+uint ha_tianmu::max_supported_key_part_length([[maybe_unused]] HA_CREATE_INFO *create_info) const {
   if (tianmu_sysvar_large_prefix)
     return (Tianmu::common::TIANMU_MAX_INDEX_COL_LEN_LARGE);
   else
