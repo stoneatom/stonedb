@@ -1223,14 +1223,15 @@ int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CR
 
 int ha_tianmu::truncate() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  int ret = 1;
+  int ret = 0;
   try {
     ha_tianmu_engine_->TruncateTable(table_name_, ha_thd());
-    ret = 0;
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
+    ret = 1;
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
+    ret = 1;
   }
   DBUG_RETURN(ret);
 }
