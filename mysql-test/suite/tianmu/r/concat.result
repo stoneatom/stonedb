@@ -1,4 +1,6 @@
-use test;
+drop database if exists concat;
+create database concat;
+use concat;
 CREATE TABLE `test_case` (
 `id` int DEFAULT NULL,
 `name` text
@@ -12,3 +14,4 @@ concat(id,name)
 NULL
 3test3
 drop table test_case;
+drop database concat;

@@ -1,6 +1,9 @@
 #
 # Test of alter table
 #
+drop database if exists alter_table_v1;
+create database alter_table_v1;
+use alter_table_v1;
 create table t1 (bandID MEDIUMINT NOT NULL PRIMARY KEY, payoutID SMALLINT NOT NULL);
 insert into t1 (bandID,payoutID) VALUES (1,6),(2,6),(3,4),(4,9),(5,10),(6,1),(7,12),(8,12);
 alter table t1 add column new_col int, order by payoutid,bandid;
@@ -130,3 +133,4 @@ ERROR 42000: Incorrect table name ''
 rename table t1 to ``;
 ERROR 42000: Incorrect table name ''
 drop table t1;
+drop database alter_table_v1;

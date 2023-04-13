@@ -1,4 +1,11 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists concat;
+--enable_warnings
+create database concat;
+use concat;
+
 CREATE TABLE `test_case` (
   `id` int DEFAULT NULL,
   `name` text
@@ -9,3 +16,4 @@ insert into test_case values(3,'test3');
 select concat(id,name) from test_case;
 drop table test_case;
 
+drop database concat;
