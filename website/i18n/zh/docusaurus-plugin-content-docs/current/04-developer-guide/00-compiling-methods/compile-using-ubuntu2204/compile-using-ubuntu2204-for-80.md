@@ -15,10 +15,14 @@ sidebar_position: 5.151
 * RocksDB 6.12.6
 * Boost 1.77
 
-### 第一步：安装依赖包
+:::info
+以下命令的执行可能会遇到权限问题，建议在管理员权限下运行，或者使用 sudo
+:::
+
+## 第一步：安装依赖包
 
 ```bash
-sudo apt install -y gcc
+sudo apt install -y gcc 
 sudo apt install -y g++
 sudo apt install -y make
 sudo apt install -y cmake
@@ -68,12 +72,10 @@ sudo aptitude install libssl-dev
 ```
 :::  
 
-### 第二步：安装第三方库
-
-如果你的 ubuntu 版本 >= 20.04, 你可以直接跳至安装marisa.
-1.如果你的cmake 版本 < 3.72, 安装 CMake, 否则跳过
-注意先检查你的CMake版本.
-
+## 第二步：安装第三方库
+StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径，你可以根据自己的需求更改安装路径。
+### 1. 安装 cmake
+注意检查你的 cmake 版本，如果你的cmake 版本 < 3.72, 安装 cmake
 ```bash
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
 tar -zxvf cmake-3.7.2.tar.gz
@@ -94,9 +96,8 @@ cmake --version
 ```
 :::
 
-2.如果你的make版本 < 3.82, 安装Make
-注意先检查你的Make版本.
-
+### 2. 安装 make
+注意检查你的Make版本，如果你的make版本 < 3.82, 安装 make
 ```bash
 wget http://mirrors.ustc.edu.cn/gnu/make/make-3.82.tar.gz
 tar -zxvf make-3.82.tar.gz
@@ -108,8 +109,7 @@ ln -s /usr/local/make/bin/make /usr/local/bin/make
 make --version
 ```
 
-3.安装marisa
-
+### 3. 安装marisa
 ```bash
 git clone https://github.com/s-yata/marisa-trie.git
 cd marisa-trie
@@ -131,7 +131,7 @@ lrwxrwxrwx 1 root root      18 Mar 20 16:25 libmarisa.so.0 -> libmarisa.so.0.0.0
 drwxrwxr-x 2 root root    4096 Mar 20 16:25 pkgconfig
 ```
 
-4.安装RocksDB
+### 4. 安装RocksDB
 
 ```bash
 wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz 
@@ -184,7 +184,7 @@ lrwxrwxrwx 1 root root       20 Mar 20 17:12 librocksdb.so.6 -> librocksdb.so.6.
 -rw-r--r-- 1 root root  9490272 Mar 20 17:12 librocksdb.so.6.12.6
 ```
 
-5.安装Boost
+### 5. 安装Boost
 
 ```bash
 wget https://sourceforge.net/projects/boost/files/boost/1.77.0/boost_1_77_0.tar.gz
@@ -242,7 +242,7 @@ lrwxrwxrwx  1 root root      25 Mar 20 18:56 libboost_locale.so -> libboost_loca
 -rwxrwxr-x  1 root root 1177200 Mar 20 18:56 libboost_locale.so.1.77.0
 ```
 
-6.安装Gtest
+### 6. 安装Gtest
 
 ```bash
 sudo git clone https://github.com/google/googletest.git -b release-1.12.0
@@ -264,7 +264,7 @@ ls /usr/local/lib64/ # 64-bit os
 ...... cmake  libgtest.a  libgtest_main.a
 ```
 
-### 第三步：编译StoneDB
+## 第三步：编译StoneDB
 
 现在StoneDB有三个分支: StoneDB-5.6 (for MySQL 5.6)、 StoneDB-5.7 (for MySQL 5.7) and StoneDB-8.0 (for MySQL 8.0). 本文安装的是StoneDB-8.0. 在本例中源代码保存在/目录中.
 
@@ -274,9 +274,9 @@ git clone https://github.com/stoneatom/stonedb.git
 ```
 
 在编译前, 像下文一样更改编译脚本:
-
-将安装目录改为你的实际安装目录. 本例中用的是`/stonedb/`.
-将marisa, RocksDB, and Boost的路径改为你的这三个库的实际安装路径.
+:::info
+你可以根据自己的需求将安装目录更改为你的实际安装目录， 本例中用的是`/stonedb/`，记得将marisa, RocksDB, 和 Boost的路径改为你的这三个库的实际安装路径.
+:::
 
 ```bash
 cd stonedb
@@ -299,54 +299,32 @@ make -j`nproc`
 make install -j`nproc`
 ```
 
-### 第四步：启动StoneDB
+## 第四步：启动StoneDB
 
 你需要手动创建几个目录, 然后初始化并启动StoneDB. 你还需要填写你的配置文件my.cnf, 包括安装目录和端口.
 
 ```bash
 cd ../install8
-### Create directories.
-mkdir -p /stonedb/build/install8/data
-mkdir -p /stonedb/build/install8/binlog
-mkdir -p /stonedb/build/install8/log
-mkdir -p /stonedb/build/install8/tmp
-mkdir -p /stonedb/build/install8/redolog
-mkdir -p /stonedb/build/install8/undolog
+### 新建目录
+sudo mkdir data binlog log tmp redolog undolog
 
-### Configure parameters in my.cnf.
-mv my.cnf my.cnf.bak
-vim /stonedb/install8/my.cnf
-[client]
-port = 3306
-socket          = /stonedb/build/install8/tmp/mysql.sock
+### 配置my.cnf
+sudo cp ../../scripts/my.cnf.sample my.cnf
+sudo sed -i "s|YOUR_ABS_PATH|$(pwd)|g" my.cnf
 
-[mysqld]
-port                            = 3306
-basedir                         = /stonedb/build/install8/
-character-sets-dir              = /stonedb/build/install8/share/charsets/
-lc-messages-dir                 = /stonedb/build/install8/share/
-plugin_dir                      = /stonedb/build/install8/lib/plugin/
-tmpdir                          = /stonedb/build/install8/tmp/
-socket                          = /stonedb/build/install8/tmp/mysql.sock
-datadir                         = /stonedb/build/install8/data/
-pid-file                        = /stonedb/build/install8/data/mysqld.pid
-log-error                       = /stonedb/build/install8/log/mysqld.log
-lc-messages-dir                 = /stonedb/build/install8/share/english/
-local-infile
-
-### Initialize StoneDB.
+### 初始化StoneDB
 sudo ./bin/mysqld --defaults-file=./my.cnf --initialize-insecure
 
-### Start StoneDB.
+### 启动StoneDB
 sudo ./bin/mysqld --user=root &
 ```
 
-### 登录 StoneDB
-
+## 第五步：登录 StoneDB
 ```bash
 ./bin/mysql -uroot
-use mysql;
-### user='root' password='stonedb123'
-alter user 'root'@'localhost' identified by 'stonedb123';
-update user set host='%' where user='root';
+### 设置用户 root 的密码为 'stonedb123'
+mysql> alter user 'root'@'localhost' identified by 'stonedb123';
+Query OK, 0 rows affected
+### 允许远程访问
+mysql> update user set host='%' where user='root';
 ```

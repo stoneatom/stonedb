@@ -49,7 +49,6 @@ sudo apt install -y libaio-dev
 sudo apt install -y libncurses5-dev 
 sudo apt install -y libreadline-dev
 sudo apt install -y libpam0g-dev
-sudo apt install -y zlib1g-dev
 sudo apt install -y libicu-dev
 sudo apt install -y libboost-dev
 sudo apt install -y libgflags-dev

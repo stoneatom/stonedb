@@ -18,7 +18,9 @@ Ensure that the tools and third-party libraries used in your environment meet th
 * Boost 1.77
 
 ## Procedure
-
+:::info
+When executing following commands, you may run into peimission issues, so using 'sudo' is a good idea.
+:::
 ### Step 1. Install the dependencies
 
 ```bash
@@ -72,11 +74,9 @@ sudo aptitude install libssl-dev
 :::  
 
 ### Step 2. Install third-party dependencies
-
-If your ubuntu version >= 20.04, skip to install marisa.
-1.If cmake version < 3.72, install CMake
-Check your CMake version first.
-
+StoneDB is dependent on marisa, RocksDB, and Boost. You are advised to specify paths for saving these libraries when you install them, instead of using the default paths.
+#### 1. Install cmake
+Check your CMake version first. If your cmake version < 3.72, install cmake
 ```bash
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
 tar -zxvf cmake-3.7.2.tar.gz
@@ -98,8 +98,8 @@ If your gcc version too high, it may cause the compilation to fail. You can add 
 ```
 :::
 
-2.If make version < 3.82, install Make
-Check your make version first.
+#### 2. Install make
+If your make version < 3.82, install make
 
 ```bash
 wget http://mirrors.ustc.edu.cn/gnu/make/make-3.82.tar.gz
@@ -112,7 +112,7 @@ ln -s /usr/local/make/bin/make /usr/local/bin/make
 make --version
 ```
 
-3.Install marisa
+#### 3. Install marisa
 
 ```bash
 git clone https://github.com/s-yata/marisa-trie.git
@@ -135,7 +135,7 @@ lrwxrwxrwx 1 root root      18 Mar 20 16:25 libmarisa.so.0 -> libmarisa.so.0.0.0
 drwxrwxr-x 2 root root    4096 Mar 20 16:25 pkgconfig
 ```
 
-4.Install RocksDB
+#### 4. Install RocksDB
 
 ```bash
 wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz 
@@ -188,7 +188,7 @@ lrwxrwxrwx 1 root root       20 Mar 20 17:12 librocksdb.so.6 -> librocksdb.so.6.
 -rw-r--r-- 1 root root  9490272 Mar 20 17:12 librocksdb.so.6.12.6
 ```
 
-5.Install Boost
+#### 5. Install Boost
 
 ```bash
 wget https://sourceforge.net/projects/boost/files/boost/1.77.0/boost_1_77_0.tar.gz
@@ -246,7 +246,7 @@ lrwxrwxrwx  1 root root      25 Mar 20 18:56 libboost_locale.so -> libboost_loca
 -rwxrwxr-x  1 root root 1177200 Mar 20 18:56 libboost_locale.so.1.77.0
 ```
 
-6.Install Gtest
+#### 6.Install Gtest
 
 ```bash
 sudo git clone https://github.com/google/googletest.git -b release-1.12.0
@@ -278,10 +278,9 @@ git clone https://github.com/stoneatom/stonedb.git
 ```
 
 Before compilation, modify the compilation script as follows:
-
-Change the installation directory of StoneDB based on your actual conditions. In the example, `/stonedb/`is used.
-Change the installation directories of marisa, RocksDB, and Boost based on your actual conditions.
-
+:::info
+You cna change the installation directory of StoneDB based on your actual conditions. In this example, `/stonedb/`is used. Remember to change the installation directories of marisa, RocksDB, and Boost based on your actual conditions.
+:::
 ```bash
 cd stonedb
 git checkout -b 8.0 origin/stonedb-8.0-dev
@@ -310,33 +309,11 @@ You need to manually create directories, and then initialize and start StoneDB. 
 ```bash
 cd ../install8
 ### Create directories.
-mkdir -p /stonedb/build/install8/data
-mkdir -p /stonedb/build/install8/binlog
-mkdir -p /stonedb/build/install8/log
-mkdir -p /stonedb/build/install8/tmp
-mkdir -p /stonedb/build/install8/redolog
-mkdir -p /stonedb/build/install8/undolog
+sudo mkdir data binlog log tmp redolog undolog
 
 ### Configure parameters in my.cnf.
-mv my.cnf my.cnf.bak
-vim /stonedb/install8/my.cnf
-[client]
-port = 3306
-socket          = /stonedb/build/install8/tmp/mysql.sock
-
-[mysqld]
-port                            = 3306
-basedir                         = /stonedb/build/install8/
-character-sets-dir              = /stonedb/build/install8/share/charsets/
-lc-messages-dir                 = /stonedb/build/install8/share/
-plugin_dir                      = /stonedb/build/install8/lib/plugin/
-tmpdir                          = /stonedb/build/install8/tmp/
-socket                          = /stonedb/build/install8/tmp/mysql.sock
-datadir                         = /stonedb/build/install8/data/
-pid-file                        = /stonedb/build/install8/data/mysqld.pid
-log-error                       = /stonedb/build/install8/log/mysqld.log
-lc-messages-dir                 = /stonedb/build/install8/share/english/
-local-infile
+sudo cp ../../scripts/my.cnf.sample my.cnf
+sudo sed -i "s|YOUR_ABS_PATH|$(pwd)|g" my.cnf
 
 ### Initialize StoneDB.
 sudo ./bin/mysqld --defaults-file=./my.cnf --initialize-insecure
@@ -349,8 +326,9 @@ sudo ./bin/mysqld --user=root &
 
 ```bash
 ./bin/mysql -uroot
-use mysql;
-### user='root' password='stonedb123'
-alter user 'root'@'localhost' identified by 'stonedb123';
-update user set host='%' where user='root';
+### set the password of user root to stonedb123
+mysql> alter user 'root'@'localhost' identified by 'stonedb123';
+Query OK, 0 rows affected
+### allow remote access
+mysql> update user set host='%' where user='root';
 ```
