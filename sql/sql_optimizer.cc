@@ -303,7 +303,10 @@ bool JOIN::optimize(bool finalize_access_paths, OptimizePhase phase) {
   assert(query_block->leaf_table_count == 0 ||
          thd->lex->is_query_tables_locked() ||
          query_block == query_expression()->fake_query_block);
-  assert(tables == 0 && primary_tables == 0 && tables_list == (TABLE_LIST *)1);
+  // For tianmu engine, if do optimize for LOJ in phase > Beginning, tables_list will be set real ptr.
+  (OptimizePhase::Beginning == phase) ?
+  assert(tables == 0 && primary_tables == 0 && tables_list == (TABLE_LIST *)1) :
+  assert(tables == 0 && primary_tables == 0);
 
   // to prevent double initialization on EXPLAIN
   if (optimized)

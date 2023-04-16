@@ -298,25 +298,16 @@ QueryRouteTo Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIS
   // on first call first_table = true. It indicates if it is the first table to
   // be added is_left is true iff it is nested left join which needs to be
   // flatten (all tables regardless of their join type need to be left-joined)
-  // stonedb8 start
-  //  TABLE_LIST *join_ptr;
-  //  List_iterator<TABLE_LIST> li(join);
-  //  std::vector<TABLE_LIST *> reversed;
-  // stonedb8 end
 
-  if (join.empty())                 // stonedb8
+  if (join.empty())                 // stonedb8 start
     return QueryRouteTo::TO_MYSQL;  // no tables in table list in this
                                     // select
                                     // if the table list was empty altogether, we wouldn't even enter
                                     // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
-                                    // we are in the second select in the union
-                                    // stonedb8 start
-                                    // while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
-  // size_t size = reversed.size();
-  //  for (unsigned int i = 0; i < size; i++) {
-  for (TABLE_LIST *join_ptr : join) {
-    // join_ptr = reversed[size - i - 1];
-    // stonedb8 end
+                                    // we are in the second select in the union stonedb8 end
+
+  for (int idx = join.size() - 1; idx >= 0; idx--) {
+    TABLE_LIST *join_ptr = join[idx];
     if (join_ptr->nested_join) {
       std::vector<TableID> local_left, local_right;
       if (AddJoins(join_ptr->nested_join->join_list, tmp_table, local_left, local_right, in_subquery, first_table,

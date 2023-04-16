@@ -75,8 +75,8 @@ sku	sppr	name	sku	pr
 10	10	aaa	10	10
 20	10	bbb	10	10
 30	10	ccc	10	10
-40	20	ddd	20	10
 50	10	eee	10	10
+40	20	ddd	20	10
 60	20	fff	20	10
 70	20	ggg	20	10
 80	30	hhh	30	20
@@ -90,9 +90,9 @@ issue282_t1.sku=60 OR
 (issue282_t2.sku=issue282_t1.sku OR 
 issue282_t2.sppr=issue282_t1.sku));
 sku	sppr	name	sku	pr
-10	10	aaa	60	10
 20	10	bbb	10	10
 20	10	bbb	20	10
+10	10	aaa	60	10
 20	10	bbb	60	10
 30	10	ccc	60	10
 40	20	ddd	60	10
