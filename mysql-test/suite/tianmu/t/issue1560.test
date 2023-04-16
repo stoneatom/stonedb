@@ -1,0 +1,25 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue1560;
+--enable_warnings
+create database issue1560;
+
+create table t1(a1 int, b1 int) engine=tianmu charset UTF8MB4 collate utf8mb4_bin;
+create table t2(a2 int, b2 int) engine=tianmu charset UTF8MB4 collate utf8mb4_bin;
+create table t3(a3 int, b3 int) engine=tianmu charset UTF8MB4 collate utf8mb4_bin;
+
+insert into t1 values(11,11), (1,1), (2,2), (44,44);
+insert into t2 values(22,22), (2,2), (1,2), (11,13);
+insert into t3 values(33,33), (3,3), (1,4), (44,33), (1,5);
+
+select * from t1, t2, t3;
+
+select * from t1 left join (t2 join t3) on t1.a1=t2.a2;
+select * from t1 left join (t2 join t3 on t2.a2=t3.a3) on t1.a1=t2.a2;
+select * from t1 left join (t2 left join t3 on t2.a2=t3.a3) on t1.a1=t2.a2;
+select * from t1 left join (t2 left join t3 on t2.a2=t3.a3) on t1.a1=t2.a2 and t1.a1=t3.a3;
+
+drop table t1, t2, t3;
+
+drop database issue1560;
