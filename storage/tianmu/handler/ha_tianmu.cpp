@@ -2357,7 +2357,7 @@ static MYSQL_SYSVAR_UINT(result_sender_rows, tianmu_sysvar_result_sender_rows, P
 static MYSQL_SYSVAR_BOOL(large_prefix, tianmu_sysvar_large_prefix, PLUGIN_VAR_RQCMDARG,
                          "Support large index prefix length of 3072 bytes. If off, the maximum "
                          "index prefix length is 767.",
-                         NULL, NULL, false);
+                         NULL, NULL, true);
 
 void debug_update(MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr, const void *save) {
   if (ha_rcengine_) {
