@@ -1396,7 +1396,7 @@ int ha_tianmu::set_cond_iter() {
         filter_ptr_.reset(new core::Filter(*filter));
 
       table_ptr_ = push_down_result->GetTableP(0);
-      table_new_iter_ = ((core::RCTable *)table_ptr_)->Begin(GetAttrsUseIndicator(table), *filter);
+      table_new_iter_ = ((core::RCTable *)table_ptr_)->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
       table_new_iter_end_ = ((core::RCTable *)table_ptr_)->End();
       ret = 0;
     } catch (common::Exception const &e) {
