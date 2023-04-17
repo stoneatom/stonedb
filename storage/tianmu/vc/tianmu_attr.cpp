@@ -291,6 +291,7 @@ bool TianmuAttr::SaveVersion() {
 
       get_pack(i)->Save();
       get_pack(i)->Unlock();  // now it can be released by MM
+      ha_tianmu_engine_->cache.DropObject(get_pc(i));
       dpn.SetPackPtr(0);
     }
   }
@@ -947,6 +948,7 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
     assert(eng);
 
     eng->cache.DropObject(get_pc(pi));
+    dpn.SetLocal(false);
     dpn.SetPackPtr(0);
   }
 
@@ -1283,7 +1285,7 @@ void TianmuAttr::ResetMaxMin(DPN &dpn) {
 }
 
 void TianmuAttr::CopyPackForWrite(common::PACK_INDEX pi) {
-  if (get_dpn(pi).IsLocal())
+  if (get_dpn(pi).IsLocal() && get_pack(pi))
     return;
 
   auto &old_dpn(get_dpn(pi));  // save a ref to the old dpn

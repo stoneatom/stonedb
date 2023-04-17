@@ -112,14 +112,14 @@ void PackStr::LoadDataFromFile(system::Stream *f) {
 }
 
 void PackStr::Destroy() {
-  if (pack_str_state_ == PackStrtate::kPackArray) {
-    for (auto &it : data_.v) {
-      dealloc(it.ptr);
-    }
-  } else {
-    marisa_trie_.clear();
-    compressed_data_.reset(nullptr);
+  for (auto &it : data_.v) {
+    dealloc(it.ptr);
   }
+  data_.v.clear();
+
+  marisa_trie_.clear();
+  compressed_data_.reset(nullptr);
+
   dealloc(data_.index);
   data_.index = nullptr;
   dealloc(data_.lens);
@@ -489,6 +489,7 @@ void PackStr::CompressTrie() {
   dpn_->dataLength = bufsz;
   std::ostringstream oss;
   oss << marisa_trie_;
+  compressed_data_.reset(nullptr);
   compressed_data_ = alloc_ptr(bufsz, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   char *buf_ptr = static_cast<char *>(compressed_data_.get());
   std::memcpy(buf_ptr, oss.str().data(), oss.str().length());
@@ -707,7 +708,7 @@ void PackStr::LoadCompressed(system::Stream *f) {
 
 void PackStr::LoadCompressedTrie(system::Stream *f) {
   ASSERT(IsModeCompressionApplied());
-
+  compressed_data_.reset(nullptr);
   compressed_data_ = alloc_ptr(dpn_->dataLength + 1, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   f->ReadExact(compressed_data_.get(), dpn_->dataLength);
   auto trie_length = dpn_->dataLength - (dpn_->numOfRecords * sizeof(unsigned short)) - 8;

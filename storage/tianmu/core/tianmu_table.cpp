@@ -1702,7 +1702,7 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
                                                               current_txn_, update_cols_buf[att]));
       }
     }
-    res.get_all_with_except();
+    res.get_all();
   }
 
   clock_gettime(CLOCK_REALTIME, &t2);
@@ -1726,7 +1726,7 @@ int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) 
       res.insert(eng->delete_or_update_thread_pool.add_task(&TianmuAttr::DeleteBatchData, m_attrs[att].get(),
                                                             current_txn_, delete_records));
     }
-    res.get_all_with_except();
+    res.get_all();
   }
 
   return delete_records.size();
