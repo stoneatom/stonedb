@@ -1,4 +1,11 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists drop_column;
+--enable_warnings
+create database drop_column;
+
+use drop_column;
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
   `c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
@@ -21,4 +28,4 @@ CREATE TABLE `column_type_test` (
 alter table column_type_test drop column c_char;
 show create table column_type_test;
 drop table column_type_test;
-
+drop database drop_column;

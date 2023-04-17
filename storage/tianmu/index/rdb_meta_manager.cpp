@@ -37,8 +37,8 @@
 namespace Tianmu {
 namespace index {
 
-RdbKey::RdbKey(uint pos, uint keyno, rocksdb::ColumnFamilyHandle *cf_handle, uint16_t index_ver, uchar index_type,
-               bool is_reverse_cf, const char *_name, std::vector<ColAttr> &cols)
+RdbKey::RdbKey(uint pos, [[maybe_unused]] uint keyno, rocksdb::ColumnFamilyHandle *cf_handle, uint16_t index_ver,
+               uchar index_type, bool is_reverse_cf, const char *_name, std::vector<ColAttr> &cols)
     : index_pos_(pos),
       cf_handle_(cf_handle),
       index_ver_(index_ver),
@@ -535,7 +535,7 @@ void DDLManager::put_and_write(std::shared_ptr<RdbTable> tbl, rocksdb::WriteBatc
   key.write_uint32(static_cast<uint32_t>(MetaType::DDL_INDEX));
 
   const std::string &dbname_tablename = tbl->fullname();
-  key.write((uchar *)dbname_tablename.data(), dbname_tablename.length());
+  key.write((const uchar *)dbname_tablename.data(), dbname_tablename.length());
 
   tbl->put_dict(dict_, batch, key.ptr(), key.length());
   put(tbl);
@@ -583,7 +583,7 @@ bool DDLManager::rename(const std::string &from, const std::string &to, rocksdb:
   key.write_uint32(static_cast<uint32_t>(MetaType::DDL_INDEX));
 
   const std::string &dbname_tablename = new_rec->fullname();
-  key.write((uchar *)dbname_tablename.data(), dbname_tablename.length());
+  key.write((const uchar *)dbname_tablename.data(), dbname_tablename.length());
   if (rec->if_exist_cf(dict_)) {
     remove(rec, batch);
     new_rec->put_dict(dict_, batch, key.ptr(), key.length());
@@ -878,7 +878,7 @@ bool DICTManager::get_max_index_id(uint32_t *const index_id) const {
   bool found = false;
   std::string value;
 
-  const rocksdb::Status status = get_value({(char *)max_index_, INDEX_NUMBER_SIZE}, &value);
+  const rocksdb::Status status = get_value({(const char *)max_index_, INDEX_NUMBER_SIZE}, &value);
   if (status.ok()) {
     uint16_t version = 0;
     StringReader reader({value.data(), value.length()});
@@ -903,7 +903,7 @@ bool DICTManager::update_max_index_id(rocksdb::WriteBatch *const batch, const ui
   StringWriter value;
   value.write_uint16(static_cast<uint>(VersionType::MAX_INDEX_ID_VERSION));
   value.write_uint32(index_id);
-  batch->Put(system_cf_, {(char *)max_index_, INDEX_NUMBER_SIZE}, {(char *)value.ptr(), value.length()});
+  batch->Put(system_cf_, {(const char *)max_index_, INDEX_NUMBER_SIZE}, {(char *)value.ptr(), value.length()});
 
   return false;
 }
