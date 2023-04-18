@@ -48,7 +48,8 @@ PackStr::PackStr(DPN *dpn, PackCoordinate pc, ColumnShare *col_share) : Pack(dpn
     data_.len_mode = sizeof(uint16_t);
 
   try {
-    data_.index = (char **)alloc(sizeof(char *) * (1 << col_share->pss), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+    data_.index =
+        reinterpret_cast<char **>(alloc(sizeof(char *) * (1 << col_share_->pss), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED));
     data_.lens = alloc((data_.len_mode * (1 << col_share->pss)), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
     std::memset(data_.lens, 0, data_.len_mode * (1 << col_share->pss));
 
@@ -104,8 +105,8 @@ void PackStr::LoadDataFromFile(system::Stream *f) {
 
   if (IsModeNoCompression()) {
     LoadUncompressed(f);
-  } else if (col_share_->ColType().GetFmt() == common::PackFmt::TRIE) {
-    LoadCompressedTrie(f);
+  //} else if (col_share_->ColType().GetFmt() == common::PackFmt::TRIE) {
+    //LoadCompressedTrie(f);
   } else {
     LoadCompressed(f);
   }
@@ -157,10 +158,14 @@ size_t PackStr::CalculateMaxLen() const {
 void PackStr::TransformIntoArray() {
   if (pack_str_state_ == PackStrtate::kPackArray)
     return;
-  data_.lens = alloc((data_.len_mode * (1 << col_share_->pss)), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-  std::memset(data_.lens, 0, data_.len_mode * (1 << col_share_->pss));
-  data_.index =
+  if(data_.lens == nullptr){
+    data_.lens = alloc((data_.len_mode * (1 << col_share_->pss)), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+    std::memset(data_.lens, 0, data_.len_mode * (1 << col_share_->pss));
+  }
+  if(data_.index == nullptr){
+    data_.index =
       reinterpret_cast<char **>(alloc(sizeof(char *) * (1 << col_share_->pss), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED));
+  }
 
   data_.v.push_back(
       {reinterpret_cast<char *>(alloc(data_.sum_len + 1, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED)), data_.sum_len, 0});
@@ -184,7 +189,7 @@ void PackStr::TransformIntoArray() {
 void PackStr::UpdateValue(size_t locationInPack, const Value &v) {
   if (IsDeleted(locationInPack))  // The deleted value should not be updated.
     return;
-  TransformIntoArray();
+  //TransformIntoArray();
   dpn_->synced = false;
 
   if (IsNull(locationInPack)) {
@@ -246,7 +251,7 @@ void PackStr::UpdateValue(size_t locationInPack, const Value &v) {
 void PackStr::DeleteByRow(size_t locationInPack) {
   if (IsDeleted(locationInPack))
     return;
-  TransformIntoArray();
+  //TransformIntoArray();
   dpn_->synced = false;
   if (!IsNull(locationInPack)) {
     data_.sum_len -= GetValueBinary(locationInPack).size();
@@ -268,7 +273,7 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
 
   auto total = vc->NumOfValues();
 
-  TransformIntoArray();
+  //TransformIntoArray();
 
   for (uint i = 0; i < total; i++) {
     if (vc->IsNull(i) && col_share_->ColType().IsNullable()) {
@@ -529,8 +534,8 @@ void PackStr::Save() {
                  data_.sum_len);
       SetModeNoCompression();
       dpn_->dataLength = bitmap_size_ * kDeleteOrNullBitmap + data_.sum_len + (data_.len_mode * (1 << col_share_->pss));
-    } else if (col_share_->ColType().GetFmt() == common::PackFmt::TRIE) {
-      CompressTrie();
+   // } else if (col_share_->ColType().GetFmt() == common::PackFmt::TRIE) {
+    //  CompressTrie();
     } else {
       auto res = Compress();
       dpn_->dataLength = res.second;
@@ -545,11 +550,11 @@ void PackStr::Save() {
   f.OpenCreate(col_share_->DataFile());
   f.Seek(dpn_->dataAddress, SEEK_SET);
   if (IsModeCompressionApplied()) {
-    if (pack_str_state_ == PackStrtate::kPackTrie) {
-      f.WriteExact(compressed_data_.get(), dpn_->dataLength);
-    } else {
+    //if (pack_str_state_ == PackStrtate::kPackTrie) {
+     // f.WriteExact(compressed_data_.get(), dpn_->dataLength);
+   // } else {
       f.WriteExact(compressed_buf.get(), dpn_->dataLength);
-    }
+  //  }
   } else {
     SaveUncompressed(&f);
   }
@@ -738,8 +743,8 @@ types::BString PackStr::GetValueBinary(int locationInPack) const {
   if (IsNull(locationInPack))
     return types::BString();
   DEBUG_ASSERT(locationInPack <= (int)dpn_->numOfRecords);
-  if (pack_str_state_ == PackStrtate::kPackTrie)
-    return GetStringValueTrie(locationInPack);
+  //if (pack_str_state_ == PackStrtate::kPackTrie)
+    //return GetStringValueTrie(locationInPack);
   size_t str_size;
   if (data_.len_mode == sizeof(ushort))
     str_size = data_.lens16[locationInPack];

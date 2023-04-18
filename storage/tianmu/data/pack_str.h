@@ -128,9 +128,9 @@ class PackStr final : public Pack {
   struct {
     std::vector<buf> v;
     size_t sum_len;
-    char **index;
+    char **index = nullptr;
     union {
-      void *lens;
+      void *lens = nullptr;
       uint32_t *lens32;
       uint16_t *lens16;
     };
