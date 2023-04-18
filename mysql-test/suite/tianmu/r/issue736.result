@@ -1,4 +1,6 @@
-use test;
+drop database if exists issue736;
+create database issue736;
+use issue736;
 CREATE TABLE t1(col1 INT, col2 CHAR(5))ENGINE=tianmu;
 INSERT INTO t1 VALUES(NULL,''),(1,'a'),(1,'b'),(1,'c'),(2,'dd'),(3,'eee');
 INSERT INTO t1 VALUES(8,UNHEX('CEB2'));
@@ -9,3 +11,4 @@ SELECT COUNT(DISTINCT col1) FROM t1;
 COUNT(DISTINCT col1)
 4
 DROP TABLE t1;
+drop database issue736;

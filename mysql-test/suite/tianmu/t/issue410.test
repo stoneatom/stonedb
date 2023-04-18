@@ -1,5 +1,12 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue410;
+--enable_warnings
+create database issue410;
+use issue410;
 create table tlike (val varchar(255)) ENGINE=TIANMU;
 insert into tlike values ('abcde');
 select * from tlike where val like NULL;
 drop table tlike;
+drop database issue410;

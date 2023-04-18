@@ -4,6 +4,7 @@
 drop database if exists add_column;
 --enable_warnings
 create database add_column;
+use add_column;
 
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',

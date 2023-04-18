@@ -1,5 +1,6 @@
 drop database if exists add_column;
 create database add_column;
+use add_column;
 CREATE TABLE `column_type_test` (
 `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
