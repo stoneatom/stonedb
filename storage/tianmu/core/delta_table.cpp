@@ -134,7 +134,7 @@ void DeltaTable::Init(uint64_t base_row_num) {
 
   row_id.store(base_row_num);
 
-  if (iter->Valid() && iter->key().starts_with(prefix)) {
+  while(iter->Valid() && iter->key().starts_with(prefix)) {
     // row_id
     auto type = *reinterpret_cast<RecordType *>(const_cast<char *>(iter->value().data()));
     if (type == RecordType::kInsert) {
