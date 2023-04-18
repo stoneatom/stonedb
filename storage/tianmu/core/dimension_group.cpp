@@ -92,14 +92,16 @@ DimensionGroupMaterialized::DimensionGroupMaterialized(DimensionVector &dims) {
 DimensionGroup *DimensionGroupMaterialized::Clone(bool shallow) {
   DimensionGroupMaterialized *new_value = new DimensionGroupMaterialized(dims_used);
   new_value->no_obj = no_obj;
-  if (shallow)
-    return new_value;
   for (int i = 0; i < no_dims; i++) {
     if (t[i]) {
       new_value->nulls_possible[i] = nulls_possible[i];
-      t[i]->Lock();
-      new_value->t[i] = new IndexTable(*t[i]);
-      t[i]->Unlock();
+      if (shallow)
+        new_value->t[i] = t[i];
+      else {
+        t[i]->Lock();
+        new_value->t[i] = new IndexTable(*t[i]);
+        t[i]->Unlock();
+      }
     }
   }
   return new_value;
