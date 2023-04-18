@@ -1,0 +1,30 @@
+--source include/have_tianmu.inc
+--disable_warnings
+drop database if exists test_func;
+--enable_warnings
+create database test_func;
+use test_func;
+create table txxx(a int);
+create view v as select * from txxx;
+select max(a) from txxx;
+select min(a) from txxx;
+select count(a) from txxx;
+select max(a) from v;
+select min(a) from v;
+select count(a) from v;
+select * from v;
+insert into txxx values (1);
+insert into txxx values (2);
+insert into txxx values (3);
+insert into txxx values (4);
+insert into txxx values (5);
+insert into txxx values (6);
+select max(a) from txxx;
+select min(a) from txxx;
+select count(a) from txxx;
+select max(a) from v;
+select min(a) from v;
+select count(a) from v;
+select * from v;
+DROP TABLE txxx;
+drop database test_func;

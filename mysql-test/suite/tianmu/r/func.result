@@ -1,0 +1,59 @@
+drop database if exists test_func;
+create database test_func;
+use test_func;
+create table txxx(a int);
+create view v as select * from txxx;
+select max(a) from txxx;
+max(a)
+NULL
+select min(a) from txxx;
+min(a)
+NULL
+select count(a) from txxx;
+count(a)
+0
+select max(a) from v;
+max(a)
+NULL
+select min(a) from v;
+min(a)
+NULL
+select count(a) from v;
+count(a)
+0
+select * from v;
+a
+insert into txxx values (1);
+insert into txxx values (2);
+insert into txxx values (3);
+insert into txxx values (4);
+insert into txxx values (5);
+insert into txxx values (6);
+select max(a) from txxx;
+max(a)
+6
+select min(a) from txxx;
+min(a)
+1
+select count(a) from txxx;
+count(a)
+6
+select max(a) from v;
+max(a)
+6
+select min(a) from v;
+min(a)
+1
+select count(a) from v;
+count(a)
+6
+select * from v;
+a
+1
+2
+3
+4
+5
+6
+DROP TABLE txxx;
+drop database test_func;
