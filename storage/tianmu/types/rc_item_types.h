@@ -109,7 +109,6 @@ class Item_sum_hybrid_rcbase : public Item_sum {
 
  public:
   String value_;
-  enum_field_types hybrid_field_type_;
   Item_result hybrid_type_;
 
  protected:

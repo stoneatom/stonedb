@@ -72,16 +72,16 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
       case Item::SUBSELECT_ITEM:
       case Item::FUNC_ITEM:
       case Item::REF_ITEM: {  // select from view
-        types::Item_sum_hybrid_rcbase *tmp = new types::Item_sum_hybrid_rcbase();
+        isum_hybrid_rcbase = new types::Item_sum_hybrid_rcbase();
         items_backup[item_id] = item;
-        tmp->decimals = item->decimals;
-        tmp->hybrid_type_ = item->result_type();
-        tmp->unsigned_flag = item->unsigned_flag;
-        tmp->hybrid_field_type_ = item->data_type();
-        tmp->collation.set(item->collation);
-        tmp->value_.set_charset(item->collation.collation);
-        tmp->set_data_type(item->data_type());
-        fields[item_id] = tmp;
+        isum_hybrid_rcbase->decimals = item->decimals;
+        isum_hybrid_rcbase->hybrid_type_ = item->result_type();
+        isum_hybrid_rcbase->unsigned_flag = item->unsigned_flag;
+        isum_hybrid_rcbase->set_data_type(item->data_type());
+        isum_hybrid_rcbase->collation.set(item->collation);
+        isum_hybrid_rcbase->value_.set_charset(item->collation.collation);
+        isum_hybrid_rcbase->set_data_type(item->data_type());
+        fields[item_id] = isum_hybrid_rcbase;
         break;
       }
       case Item::SUM_FUNC_ITEM: {
@@ -97,7 +97,7 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
           isum_hybrid_rcbase->decimals = is->decimals;
           isum_hybrid_rcbase->hybrid_type_ = is->result_type();
           isum_hybrid_rcbase->unsigned_flag = is->unsigned_flag;
-          isum_hybrid_rcbase->hybrid_field_type_ = is->data_type();
+          isum_hybrid_rcbase->set_data_type(is->data_type());
           isum_hybrid_rcbase->collation.set(is->collation);
           isum_hybrid_rcbase->value_.set_charset(is->collation.collation);
           fields[item_id] = isum_hybrid_rcbase;
@@ -107,6 +107,7 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
                    sum_type == Item_sum::SUM_BIT_FUNC) {
           isum_int_rcbase = new types::Item_sum_int_rcbase();
           isum_int_rcbase->unsigned_flag = is->unsigned_flag;
+          isum_int_rcbase->set_data_type(is->data_type());
           items_backup[item_id] = item;
           fields[item_id] = isum_int_rcbase;
           buf_lens[item_id] = 0;
@@ -121,6 +122,7 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
           // We have to add some knowledge to our item from original item
           isum_sum_rcbase->decimals = is->decimals;
           isum_sum_rcbase->hybrid_type_ = is->result_type();
+          isum_sum_rcbase->set_data_type(is->data_type());
           isum_sum_rcbase->unsigned_flag = is->unsigned_flag;
           fields[item_id] = isum_sum_rcbase;  // stonedb8
           buf_lens[item_id] = 0;
@@ -321,13 +323,13 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
             Engine::Convert(is_null, isum_hybrid_rcbase->dec_value(), rcdt, item->decimals);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == INT_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), rcdt, isum_hybrid_rcbase->hybrid_field_type_);
+            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), rcdt, isum_hybrid_rcbase->data_type());
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == REAL_RESULT) {
             Engine::Convert(is_null, isum_hybrid_rcbase->real_value(), rcdt);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == STRING_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), rcdt, isum_hybrid_rcbase->hybrid_field_type_);
+            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), rcdt, isum_hybrid_rcbase->data_type());
             isum_hybrid_rcbase->null_value = is_null;
           }
           break;
