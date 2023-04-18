@@ -36,6 +36,7 @@ MultiIndex::MultiIndex(uint32_t power) : m_conn(current_txn_) {
   dimension_group_ = nullptr;
   group_num_for_dimension_ = nullptr;
   iterator_lock_ = 0;
+  shallow_dim_groups_ = false;
 }
 
 MultiIndex::MultiIndex(const MultiIndex &s) : m_conn(s.m_conn) {
@@ -63,6 +64,7 @@ MultiIndex::MultiIndex(const MultiIndex &s) : m_conn(s.m_conn) {
   }
 
   iterator_lock_ = 0;
+  shallow_dim_groups_ = false;
 }
 
 MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
@@ -89,12 +91,15 @@ MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
     group_num_for_dimension_ = nullptr;
   }
   iterator_lock_ = 0;
+  shallow_dim_groups_ = false;
 }
 
 MultiIndex::~MultiIndex() {
-  for (uint i = 0; i < dim_groups_.size(); i++) {
-    delete dim_groups_[i];
-    dim_groups_[i] = nullptr;
+  if (!shallow_dim_groups_) {
+    for (uint i = 0; i < dim_groups_.size(); i++) {
+      delete dim_groups_[i];
+      dim_groups_[i] = nullptr;
+    }
   }
   delete[] dim_size_;
   delete[] dimension_group_;
@@ -262,9 +267,19 @@ void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct_ tabl
   }
 }
 
-void MultiIndex::LockForGetIndex(int dim) { dimension_group_[dim]->Lock(dim); }
+void MultiIndex::LockForGetIndex(int dim) {
+  if (shallow_dim_groups_) {
+    return;
+  }
+  dimension_group_[dim]->Lock(dim);
+}
 
-void MultiIndex::UnlockFromGetIndex(int dim) { dimension_group_[dim]->Unlock(dim); }
+void MultiIndex::UnlockFromGetIndex(int dim) {
+  if (shallow_dim_groups_) {
+    return;
+  }
+  dimension_group_[dim]->Unlock(dim);
+}
 
 uint64_t MultiIndex::DimSize(int dim)  // the size of one dimension: material_no_tuples for materialized,
                                        // NumOfOnes for virtual
@@ -273,10 +288,16 @@ uint64_t MultiIndex::DimSize(int dim)  // the size of one dimension: material_no
 }
 
 void MultiIndex::LockAllForUse() {
+  if (shallow_dim_groups_) {
+    return;
+  }
   for (uint32_t dim = 0; dim < num_of_dimensions_; dim++) LockForGetIndex(dim);
 }
 
 void MultiIndex::UnlockAllFromUse() {
+  if (shallow_dim_groups_) {
+    return;
+  }
   for (uint32_t dim = 0; dim < num_of_dimensions_; dim++) UnlockFromGetIndex(dim);
 }
 
