@@ -86,10 +86,12 @@ class Exception : public std::runtime_error {
  public:
   Exception(std::string const &msg);
   virtual ~Exception() {}
-  virtual const std::string &trace() const { return stack_trace; }
+  virtual const std::string &trace() const { return stack_trace_; }
+  virtual const std::string &getExceptionMsg() const { return exception_msg_; }
 
  protected:
-  std::string stack_trace;
+  std::string stack_trace_;
+  std::string exception_msg_;
 };
 
 // internal error

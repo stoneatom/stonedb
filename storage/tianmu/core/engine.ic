@@ -152,7 +152,7 @@ static QueryRouteTo handle_exceptions(THD *thd, Transaction *cur_connection, boo
 
   } catch (common::Exception const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
-    my_message(ER_UNKNOWN_ERROR, "Tianmu other specific error", MYF(0));
+    my_message(ER_UNKNOWN_ERROR, x.getExceptionMsg().data(), MYF(0));
 
     throw ReturnMeToMySQLWithError();
 
