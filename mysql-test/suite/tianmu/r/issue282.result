@@ -1,4 +1,6 @@
-use test;
+drop database if exists issue282;
+create database issue282;
+use issue282;
 CREATE TABLE issue282_t1 (sku int PRIMARY KEY, pr int)engine=tianmu;
 CREATE TABLE issue282_t2 (sku int PRIMARY KEY, sppr int, name varchar(255))engine=tianmu;
 INSERT INTO issue282_t1 VALUES
@@ -109,3 +111,4 @@ issue282_t2.sppr=issue282_t1.sku));
 sku	sppr	name	sku	pr
 20	10	bbb	10	10
 drop table issue282_t1 ,issue282_t2;
+drop database issue282;

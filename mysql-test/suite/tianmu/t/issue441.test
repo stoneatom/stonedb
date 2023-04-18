@@ -1,4 +1,10 @@
-USE test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue441;
+--enable_warnings
+create database issue441;
+use issue441;
 CREATE TEMPORARY TABLE `t_test1`(
 `id` INT NOT NULL AUTO_INCREMENT,
 `first_name` VARCHAR(10) NOT NULL,
@@ -11,3 +17,4 @@ PRIMARY KEY (`id`)
 INSERT INTO t_test1 values(1,'张','三','1',100,1);
 SELECT id FROM t_test1;
 DROP TABLE t_test1;
+drop database issue441;

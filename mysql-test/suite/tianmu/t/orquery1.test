@@ -1,4 +1,10 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists orquery1;
+--enable_warnings
+create database orquery1;
+use orquery1;
 CREATE TABLE `test_or` (
   `id` int DEFAULT NULL,
   `name` varchar(11) DEFAULT NULL
@@ -7,4 +13,4 @@ insert into test_or values(1,'1');
 insert into test_or values(2,'2');
 select count(*) from test_or where id=1 or name='2';
 drop table test_or;
-
+drop database orquery1;

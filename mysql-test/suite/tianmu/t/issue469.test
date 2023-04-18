@@ -1,5 +1,12 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue469;
+--enable_warnings
+create database issue469;
+use issue469;
 create table tt (v1 int, v2 int, v3 int) ENGINE=TIANMU;
 insert into tt values (20, 30, 40);
 select * from tt where (v1 = 20) OR ((v1 <=> 80) OR (v2 = 70) AND (v3 = 60)) AND (1);
 drop table tt;
+drop database issue469;

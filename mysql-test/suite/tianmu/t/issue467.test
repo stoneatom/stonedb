@@ -1,5 +1,12 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue467;
+--enable_warnings
+create database issue467;
+use issue467;
 create table tt (date_test date) ENGINE=TIANMU;
 insert into tt values ('2010-02-22');
 select * from tt where (date_test<='2003-04-05')AND (date_test>='2011-06-22')OR  (date_test<='2012-12-13' );
 drop table tt;
+drop database issue467;

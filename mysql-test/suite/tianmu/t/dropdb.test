@@ -1,4 +1,10 @@
-create database b;
-use b;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists dropdb;
+--enable_warnings
+create database dropdb;
+use dropdb;
+
 create table `mysql50` (f1 int primary key) engine=tianmu;
-drop database b;
+drop database dropdb;

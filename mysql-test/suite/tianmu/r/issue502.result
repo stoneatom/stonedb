@@ -1,4 +1,6 @@
-use test;
+drop database if exists issue502;
+create database issue502;
+use issue502;
 CREATE TABLE `auto_20` (
 `pk` bigint NOT NULL AUTO_INCREMENT,
 `varchar_test` varchar(255) DEFAULT NULL,
@@ -13,3 +15,4 @@ pk	varchar_test
 2	aaaa
 3	bbb
 drop table auto_20;
+drop database issue502;

@@ -1,4 +1,6 @@
-use test;
+drop database if exists orquery1;
+create database orquery1;
+use orquery1;
 CREATE TABLE `test_or` (
 `id` int DEFAULT NULL,
 `name` varchar(11) DEFAULT NULL
@@ -9,3 +11,4 @@ select count(*) from test_or where id=1 or name='2';
 count(*)
 2
 drop table test_or;
+drop database orquery1;

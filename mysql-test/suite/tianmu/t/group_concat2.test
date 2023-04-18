@@ -1,7 +1,11 @@
 --source include/have_tianmu.inc
 
 --disable_query_log
-use test;
+--disable_warnings
+drop database if exists group_concat2;
+--enable_warnings
+create database group_concat2;
+use group_concat2;
 
 CREATE TABLE `test_groupconcat2_case` (
   `id` int(11) DEFAULT NULL,
@@ -18,4 +22,5 @@ select id,group_concat(distinct val SEPARATOR ":") from test_groupconcat2_case g
 
 --disable_query_log
 drop table test_groupconcat2_case;
+drop database group_concat2;
 --enable_query_log
