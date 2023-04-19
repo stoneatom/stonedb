@@ -199,7 +199,8 @@ class MultiIndex {
   int *group_num_for_dimension_{nullptr};      // an element number of dim_groups, for faster
                                                // dimension identification
 
-  int iterator_lock_{0};  // 0 - unlocked, >0 - normal iterator exists, -1 -updating iterator exists
+  int iterator_lock_{0};             // 0 - unlocked, >0 - normal iterator exists, -1 -updating iterator exists
+  bool shallow_dim_groups_ = false;  // Indicates whether dim_groups is a shallow copy
 };
 
 }  // namespace core
