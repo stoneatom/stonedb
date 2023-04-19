@@ -1529,13 +1529,16 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
       pack_some++;
   }
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   MIUpdatingIterator mit(mind_, dims);
   desc.CopyDesCond(mit);
   if (desc.EvaluateOnIndex(mit, limit) == common::ErrorCode::SUCCESS) {
     tianmu_control_.lock(mind_->m_conn->GetThreadID())
         << "EvaluateOnIndex done, desc number " << desc_number << system::unlock;
   } else {
-    int poolsize = ha_tianmu_engine_->query_thread_pool.size();
+    int poolsize = eng->query_thread_pool.size();
     if ((tianmu_sysvar_threadpoolsize > 0) && (packs_no / poolsize > 0) && !desc.IsType_Subquery() &&
         !desc.ExsitTmpTable()) {
       int step = 0;
@@ -1573,9 +1576,8 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
 
       utils::result_set<void> res;
       for (int i = 0; i < task_num; ++i) {
-        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParameterizedFilter::TaskProcessPacks, this,
-                                                                 &taskIterator[i], current_txn_, rf, &dims, desc_number,
-                                                                 limit, one_dim));
+        res.insert(eng->query_thread_pool.add_task(&ParameterizedFilter::TaskProcessPacks, this, &taskIterator[i],
+                                                   current_txn_, rf, &dims, desc_number, limit, one_dim));
       }
       res.get_all_with_except();
 

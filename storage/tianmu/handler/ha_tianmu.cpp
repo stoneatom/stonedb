@@ -192,21 +192,23 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
   if (thd->lex->sql_command == SQLCOM_LOCK_TABLES)
     DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
   try {
     if (lock_type == F_UNLCK) {
       if (thd->lex->sql_command == SQLCOM_UNLOCK_TABLES)
         current_txn_->ExplicitUnlockTables();
 
       if (thd->killed)
-        ha_tianmu_engine_->Rollback(thd, true);
+        eng->Rollback(thd, true);
       if (current_txn_) {
         current_txn_->RemoveTable(share_);
         if (current_txn_->Empty()) {
-          ha_tianmu_engine_->ClearTx(thd);
+          eng->ClearTx(thd);
         }
       }
     } else {
-      auto tx = ha_tianmu_engine_->GetTx(thd);
+      auto tx = eng->GetTx(thd);
       if (thd->lex->sql_command == SQLCOM_LOCK_TABLES)
         tx->ExplicitLockTables();
 
@@ -219,6 +221,7 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
           trans_register_ha(thd, true, tianmu_hton, nullptr);
       }
     }
+
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Tianmu internal error", MYF(0));
@@ -230,7 +233,7 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
 
   // destroy the tx on failure
   if (ret != 0)
-    ha_tianmu_engine_->ClearTx(thd);
+    eng->ClearTx(thd);
 
   DBUG_RETURN(ret);
 }
@@ -356,16 +359,21 @@ inline bool has_dup_key(std::shared_ptr<index::TianmuTableIndex> &indextab, TABL
 int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
   int ret = 1;
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   try {
     if (ha_thd()->lex->duplicates == DUP_UPDATE || ha_thd()->lex->duplicates == DUP_REPLACE) {  // add DUP_REPLACE
-      if (auto indextab = ha_tianmu_engine_->GetTableIndex(table_name_)) {
+      if (auto indextab = eng->GetTableIndex(table_name_)) {
         if (size_t row; has_dup_key(indextab, table, row)) {
           dupkey_pos_ = row;
           DBUG_RETURN(HA_ERR_FOUND_DUPP_KEY);
         }
       }
     }
-    ret = ha_tianmu_engine_->InsertRow(table_name_, current_txn_, table, share_);
+
+    ret = eng->InsertRow(table_name_, current_txn_, table, share_);
   } catch (common::OutOfMemoryException &e) {
     DBUG_RETURN(ER_LOCK_WAIT_TIMEOUT);
   } catch (common::DatabaseException &e) {
@@ -392,6 +400,7 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
+
   DBUG_RETURN(ret);
 }
 
@@ -412,6 +421,10 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
  */
 int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int ret = HA_ERR_INTERNAL_ERROR;
   auto org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
 
@@ -419,8 +432,8 @@ int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
                               [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
 
   try {
-    ha_tianmu_engine_->UpdateRow(table_name_, table, share_, current_position_, old_data, new_data);
-    ha_tianmu_engine_->IncTianmuStatUpdate();
+    eng->UpdateRow(table_name_, table, share_, current_position_, old_data, new_data);
+    eng->IncTianmuStatUpdate();
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Update exception: %s.", e.what());
@@ -436,6 +449,7 @@ int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
+
   DBUG_RETURN(ret);
 }
 
@@ -454,6 +468,10 @@ int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
  */
 int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int ret = HA_ERR_INTERNAL_ERROR;
   auto org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
 
@@ -461,7 +479,7 @@ int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
                               [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
 
   try {
-    ha_tianmu_engine_->DeleteRow(table_name_, table, share_, current_position_);
+    eng->DeleteRow(table_name_, table, share_, current_position_);
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
@@ -489,22 +507,31 @@ int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
  */
 int ha_tianmu::delete_all_rows() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int ret = 1;
   try {
-    ha_tianmu_engine_->TruncateTable(table_name_, ha_thd());
+    eng->TruncateTable(table_name_, ha_thd());
     ret = 0;
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
+
   DBUG_RETURN(ret);
 }
 
 int ha_tianmu::rename_table(const char *from, const char *to) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   try {
-    if (!ha_tianmu_engine_->RenameTable(current_txn_, from, to, ha_thd())) {
+    if (!eng->RenameTable(current_txn_, from, to, ha_thd())) {
       DBUG_RETURN(0);
     } else {
       DBUG_RETURN(1);
@@ -573,6 +600,10 @@ void ha_tianmu::update_create_info(HA_CREATE_INFO *create_info) {
  */
 int ha_tianmu::info(uint flag) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int ret = 1;
   try {
     std::scoped_lock guard(global_mutex_);
@@ -581,10 +612,12 @@ int ha_tianmu::info(uint flag) {
       if (current_txn_ != nullptr) {
         tab = current_txn_->GetTableByPath(table_name_);
       } else
-        tab = ha_tianmu_engine_->GetTableRD(table_name_);
+        tab = eng->GetTableRD(table_name_);
+
       stats.records = (ha_rows)(tab->NumOfValues() - tab->NumOfDeleted());
       stats.data_file_length = 0;
       stats.mean_rec_length = 0;
+
       if (stats.records > 0) {
         std::vector<core::AttrInfo> attr_info(tab->GetAttributesInfo());
         uint no_attrs = tab->NumOfAttrs();
@@ -609,8 +642,9 @@ int ha_tianmu::info(uint flag) {
       if (current_txn_ != nullptr) {
         tab = current_txn_->GetTableByPath(table_name_);
       } else {
-        tab = ha_tianmu_engine_->GetTableRD(table_name_);
+        tab = eng->GetTableRD(table_name_);
       }
+
       for (uint colno = 0; colno < tab->NumOfAttrs(); colno++) {
         auto attr = tab->GetAttr(colno);
         if (attr->GetIfAutoInc()) {
@@ -618,6 +652,7 @@ int ha_tianmu::info(uint flag) {
         }
       }
     }
+
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -645,6 +680,9 @@ my_bool tianmu_check_status([[maybe_unused]] void *param) { return 0; }
 int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]] uint test_if_locked) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   table_name_ = name;
   int ret = 1;
 
@@ -654,15 +692,17 @@ int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]
     // Keeping the share together with mysql handler cache makes
     // more sense that would mean once a table is opened the TableShare
     // would be kept.
-    if (!(share_ = ha_tianmu_engine_->GetTableShare(table_share)))
+    if (!(share_ = eng->GetTableShare(table_share)))
       DBUG_RETURN(ret);
 
     thr_lock_data_init(&share_->thr_lock, &lock_, nullptr);
     share_->thr_lock.check_status = tianmu_check_status;
+
     // have primary key, use table index
     if (table->s->primary_key != MAX_INDEXES)
-      ha_tianmu_engine_->AddTableIndex(name, table, ha_thd());
-    ha_tianmu_engine_->AddTableDelta(table, share_);
+      eng->AddTableIndex(name, table, ha_thd());
+
+    eng->AddTableDelta(table, share_);
     ret = 0;
   } catch (common::Exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Error from Tianmu engine", MYF(0));
@@ -703,6 +743,7 @@ int ha_tianmu::close() {
 
 int ha_tianmu::fill_row_by_id([[maybe_unused]] uchar *buf, uint64_t rowid) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
     auto tab = current_txn_->GetTableByPath(table_name_);
@@ -719,6 +760,7 @@ int ha_tianmu::fill_row_by_id([[maybe_unused]] uchar *buf, uint64_t rowid) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   }
+
   DBUG_RETURN(rc);
 }
 
@@ -743,12 +785,17 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
                           [[maybe_unused]] uint key_len __attribute__((unused)),
                           enum ha_rkey_function find_flag __attribute__((unused))) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
     table->status = STATUS_NOT_FOUND;
-    auto index = ha_tianmu_engine_->GetTableIndex(table_name_);
+    auto index = eng->GetTableIndex(table_name_);
+
     if (index && (active_index == table_share->primary_key)) {
-      auto tab = ha_tianmu_engine_->GetTableRD(table_name_);
+      auto tab = eng->GetTableRD(table_name_);
       std::vector<std::string> keys;
       tab->GetKeys(table, keys, index);
 
@@ -758,17 +805,20 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
           current_position_ = rowid;
           rc = 0;
         }
+
         if (!rc)
           table->status = 0;
       } else if (find_flag == HA_READ_AFTER_KEY || find_flag == HA_READ_KEY_OR_NEXT) {
         auto iter = current_txn_->KVTrans().KeyIter();
         common::Operator op = (find_flag == HA_READ_AFTER_KEY) ? common::Operator::O_MORE : common::Operator::O_MORE_EQ;
         iter->ScanToKey(index, keys, op);
+
         uint64_t rowid;
         if (iter->GetRowid(rowid) == common::ErrorCode::SUCCESS) {
           current_position_ = rowid;
           rc = 0;
         }
+
         if (!rc)
           table->status = 0;
       } else {
@@ -796,14 +846,20 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
  */
 int ha_tianmu::index_next([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int rc = HA_ERR_END_OF_FILE;
   try {
     auto iter = current_txn_->KVTrans().KeyIter();
     ++(*iter);
+
     if (iter->IsValid()) {
       uint64_t rowid;
       iter->GetRowid(rowid);
       rc = fill_row_by_id(buf, rowid);
+
       if (!rc)
         table->status = 0;
     } else {
@@ -814,6 +870,7 @@ int ha_tianmu::index_next([[maybe_unused]] uchar *buf) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   }
+
   DBUG_RETURN(rc);
 }
 
@@ -822,6 +879,7 @@ int ha_tianmu::index_next([[maybe_unused]] uchar *buf) {
  */
 int ha_tianmu::index_prev([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
   int rc = HA_ERR_END_OF_FILE;
   try {
     auto iter = current_txn_->KVTrans().KeyIter();
@@ -851,9 +909,13 @@ int ha_tianmu::index_prev([[maybe_unused]] uchar *buf) {
  */
 int ha_tianmu::index_first([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int rc = HA_ERR_END_OF_FILE;
   try {
-    auto index = ha_tianmu_engine_->GetTableIndex(table_name_);
+    auto index = eng->GetTableIndex(table_name_);
     if (index && current_txn_) {
       uint64_t rowid;
       auto iter = current_txn_->KVTrans().KeyIter();
@@ -883,9 +945,13 @@ int ha_tianmu::index_first([[maybe_unused]] uchar *buf) {
  */
 int ha_tianmu::index_last([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int rc = HA_ERR_END_OF_FILE;
   try {
-    auto index = ha_tianmu_engine_->GetTableIndex(table_name_);
+    auto index = eng->GetTableIndex(table_name_);
     if (index && current_txn_) {
       uint64_t rowid;
       auto iter = current_txn_->KVTrans().KeyIter();
@@ -919,6 +985,9 @@ int ha_tianmu::index_last([[maybe_unused]] uchar *buf) {
 int ha_tianmu::rnd_init(bool scan) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int ret = 1;
   try {
     if (query_ && !result_ && table_ptr_->NumOfObj() != 0) {
@@ -946,6 +1015,7 @@ int ha_tianmu::rnd_init(bool scan) {
                         << system::unlock;
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in push-down execution: %s", e.what());
       }
+
       query_.reset();
       cq_.reset();
     } else {
@@ -953,12 +1023,13 @@ int ha_tianmu::rnd_init(bool scan) {
         iterator_ = std::make_unique<core::CombinedIterator>((core::TianmuTable *)table_ptr_,
                                                              GetAttrsUseIndicator(table), *filter_ptr_);
       } else {
-        std::shared_ptr<core::TianmuTable> rctp = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
+        std::shared_ptr<core::TianmuTable> rctp = eng->GetTx(table->in_use)->GetTableByPath(table_name_);
         table_ptr_ = rctp.get();
         filter_ptr_.reset();
         iterator_ = std::make_unique<core::CombinedIterator>(rctp.get(), GetAttrsUseIndicator(table));
       }
     }
+
     ret = 0;
     blob_buffers_.resize(0);
     if (table_ptr_ != nullptr)
@@ -1054,6 +1125,9 @@ void ha_tianmu::position([[maybe_unused]] const uchar *record) {
 int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   int ret = HA_ERR_END_OF_FILE;
   try {
     if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES) {
@@ -1064,12 +1138,13 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
       filter_ptr_->Reset();
       filter_ptr_->Set(position);
 
-      auto tab_ptr = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
+      auto tab_ptr = eng->GetTx(table->in_use)->GetTableByPath(table_name_);
       iterator_ = std::make_unique<core::CombinedIterator>(tab_ptr.get(), GetAttrsUseIndicator(table), *filter_ptr_);
       table_ptr_ = tab_ptr.get();
       iterator_->SeekTo(position);
       table->status = 0;
       blob_buffers_.resize(table->s->fields);
+
       if (fill_row(buf) == HA_ERR_END_OF_FILE) {
         table->status = STATUS_NOT_FOUND;
         DBUG_RETURN(ret);
@@ -1111,7 +1186,11 @@ int ha_tianmu::start_stmt(THD *thd, thr_lock_type lock_type) {
       if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) {
         trans_register_ha(thd, true, tianmu_hton, nullptr);
       }
-      current_txn_ = ha_tianmu_engine_->GetTx(thd);
+
+      core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+      assert(eng);
+
+      current_txn_ = eng->GetTx(thd);
       current_txn_->AddTableWRIfNeeded(share_);
     }
   } catch (std::exception &e) {
@@ -1152,7 +1231,10 @@ my_bool ha_tianmu::register_query_cache_table(THD *thd, char *table_key, size_t 
 int ha_tianmu::delete_table(const char *name) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    if (!ha_tianmu_engine_->DeleteTable(name, ha_thd())) {
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
+    if (!eng->DeleteTable(name, ha_thd())) {
       DBUG_RETURN(0);
     } else {
       DBUG_RETURN(1);
@@ -1193,6 +1275,7 @@ ha_rows ha_tianmu::records_in_range([[maybe_unused]] uint inx, [[maybe_unused]] 
  */
 int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *create_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
   try {
     // fix issue 487: bug for create table #mysql50#q.q should return failure and actually return success
     const size_t table_name_len = strlen(name);
@@ -1201,7 +1284,10 @@ int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CR
       DBUG_RETURN(ER_WRONG_TABLE_NAME);
     }
 
-    ha_tianmu_engine_->CreateTable(name, table_arg, create_info);
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
+    eng->CreateTable(name, table_arg, create_info);
     DBUG_RETURN(0);
   } catch (common::AutoIncException &e) {
     my_message(ER_WRONG_AUTO_KEY, e.what(), MYF(0));
@@ -1223,9 +1309,14 @@ int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CR
 
 int ha_tianmu::truncate() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  int ret = 0;
+
+  int ret = 1;
   try {
-    ha_tianmu_engine_->TruncateTable(table_name_, ha_thd());
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
+    eng->TruncateTable(table_name_, ha_thd());
+    ret = 0;
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
     ret = 1;
@@ -1258,6 +1349,7 @@ int ha_tianmu::fill_row(uchar *buf) {
     buffer.reset(new char[table->s->reclength]);
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
+
   if (iterator_->IsBase()) {
     /*
       Determine whether the current row is invalid in the base layer,
@@ -1269,6 +1361,7 @@ int ha_tianmu::fill_row(uchar *buf) {
       dbug_tmp_restore_column_map(table->write_set, org_bitmap);
       return HA_ERR_RECORD_DELETED;
     }
+
     for (uint col_id = 0; col_id < table->s->fields; col_id++) {
       core::Engine::ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)), &blob_buffers_[col_id]);
     }
@@ -1333,13 +1426,17 @@ char *ha_tianmu::update_table_comment(const char *comment) {
       return ((char *)comment);  // string too long
     }
 
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
     //  get size & ratio
     int64_t sum_c = 0, sum_u = 0;
-    std::vector<core::AttrInfo> attr_info = ha_tianmu_engine_->GetTableAttributesInfo(table_name_, table_share);
+    std::vector<core::AttrInfo> attr_info = eng->GetTableAttributesInfo(table_name_, table_share);
     for (uint j = 0; j < attr_info.size(); j++) {
       sum_c += attr_info[j].comp_size;
       sum_u += attr_info[j].uncomp_size;
     }
+
     char buf[256] = {0};
     double ratio = (sum_c > 0 ? double(sum_u) / double(sum_c) : 0);
     int count = std::sprintf(buf, "Overall compression ratio: %.3f, Raw size=%ld MB", ratio, sum_u >> 20);
@@ -1422,9 +1519,12 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
   Item const *ret = a_cond;
   Item *cond = const_cast<Item *>(a_cond);
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   try {
     if (!query_) {
-      std::shared_ptr<core::TianmuTable> rctp = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
+      std::shared_ptr<core::TianmuTable> rctp = eng->GetTx(table->in_use)->GetTableByPath(table_name_);
       table_ptr_ = rctp.get();
       query_.reset(new core::Query(current_txn_));
       cq_.reset(new core::CompiledQuery);
@@ -1432,8 +1532,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
 
       query_->AddTable(rctp);
       core::TabID t_out;
-      cq_->TableAlias(t_out,
-                      core::TabID(0));  // we apply it to the only table in this query
+      cq_->TableAlias(t_out, core::TabID(0));  // we apply it to the only table in this query
       cq_->TmpTable(tmp_table_, t_out);
 
       std::string ext_alias;
@@ -1441,6 +1540,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
         ext_alias = std::string(table->pos_in_table_list->referencing_view->table_name);
       else
         ext_alias = std::string(table->s->table_name.str);
+
       ext_alias += std::string(":") + std::string(table->alias);
       query_->table_alias2index_ptr.insert(std::make_pair(ext_alias, std::make_pair(t_out.n, table)));
 
@@ -1462,8 +1562,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
     }
 
     if (result_)
-      return a_cond;  // if result_ there is already a result command in
-                      // compilation
+      return a_cond;  // if result_ there is already a result command in compilation.
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*cq_));
     core::CondID cond_id;
@@ -1473,6 +1572,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
       query_.reset();
       return a_cond;
     }
+
     tmp_cq->AddConds(tmp_table_, cond_id, core::CondType::WHERE_COND);
     tmp_cq->ApplyConds(tmp_table_);
     cq_.reset(tmp_cq.release());
@@ -1600,17 +1700,25 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
 
 bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   try {
     if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
       if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
         DBUG_RETURN(false);
+
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
         DBUG_RETURN(false);
+
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
         DBUG_RETURN(false);
+
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_AUTO) {
         auto tab = current_txn_->GetTableByPath(table_name_);
         fs::path tab_dir = table_name_ + common::TIANMU_EXT;
+
         for (uint i = 0; i < table_share->fields; i++) {
           if (table_share->field[i]->flags & AUTO_INCREMENT_FLAG) {
             system::TianmuFile fv, fw;
@@ -1630,14 +1738,17 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
             fw.Flush();
           }
         }
-        ha_tianmu_engine_->cache.ReleaseTable(tab->GetID());
-        ha_tianmu_engine_->UnRegisterTable(table_name_);
+
+        eng->cache.ReleaseTable(tab->GetID());
+        eng->UnRegisterTable(table_name_);
         DBUG_RETURN(false);
       }
     } else if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
       std::vector<Field *> v_new(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
-      ha_tianmu_engine_->PrepareAlterTable(table_name_, v_new, v_old, ha_thd());
+
+      eng->PrepareAlterTable(table_name_, v_new, v_old, ha_thd());
+
       DBUG_RETURN(false);
     } else if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
       DBUG_RETURN(false);
@@ -1905,11 +2016,12 @@ char *strmov_str(char *dst, const char *src) {
 static int tianmu_done_func([[maybe_unused]] void *p) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
+  assert(p == tianmu_hton);
+
   if (tianmu_hton->data) {
     core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
     delete eng;
     tianmu_hton->data = nullptr;
-    ha_tianmu_engine_ = nullptr;
   }
 
   DBUG_RETURN(0);
@@ -1919,11 +2031,12 @@ int tianmu_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function 
   if (tianmu_bootstrap)
     return 0;
 
-  if (flag == HA_PANIC_CLOSE) {
+  assert(hton == tianmu_hton);
+
+  if (flag == HA_PANIC_CLOSE && tianmu_hton->data) {
     core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
     delete eng;
     tianmu_hton->data = nullptr;
-    ha_tianmu_engine_ = nullptr;
   }
 
   return 0;
@@ -1934,7 +2047,10 @@ int tianmu_rollback([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
 
   int ret = 1;
   try {
-    ha_tianmu_engine_->Rollback(thd, all);
+    assert(hton == tianmu_hton);
+
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    eng->Rollback(thd, all);
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1952,8 +2068,11 @@ int tianmu_close_connection(handlerton *hton, THD *thd) {
 
   int ret = 1;
   try {
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng && hton == tianmu_hton);
+
     tianmu_rollback(hton, thd, true);
-    ha_tianmu_engine_->ClearTx(thd);
+    eng->ClearTx(thd);
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1971,10 +2090,12 @@ int tianmu_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
 
   int ret = 1;
   std::string error_message;
+  assert(hton == tianmu_hton);
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
 
   if (!(thd->no_errors != 0 || thd->killed || thd->transaction_rollback_request)) {
     try {
-      ha_tianmu_engine_->CommitTx(thd, all);
+      eng->CommitTx(thd, all);
       ret = 0;
     } catch (std::exception &e) {
       error_message = std::string("Error: ") + e.what();
@@ -1985,7 +2106,8 @@ int tianmu_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
 
   if (ret) {
     try {
-      ha_tianmu_engine_->Rollback(thd, all, true);
+      eng->Rollback(thd, all, true);
+
       if (!error_message.empty()) {
         TIANMU_LOG(LogCtl_Level::ERROR, "%s", error_message.c_str());
         my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), error_message.c_str(), MYF(0));
@@ -2059,25 +2181,23 @@ int tianmu_init_func(void *p) {
     DBUG_RETURN(0);
 
   int ret = 1;
-  ha_tianmu_engine_ = nullptr;
 
   try {
     std::string log_file = mysql_home_ptr;
     log_setup(log_file + "/log/tianmu.log");
     tianmu_control_.addOutput(new system::FileOut(log_file + "/log/trace.log"));
     tianmu_querylog_.addOutput(new system::FileOut(log_file + "/log/query.log"));
+
     struct hostent *hent = nullptr;
     hent = gethostbyname(glob_hostname);
     if (hent)
       strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
+
     my_snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
                 global_hostIP_, glob_hostname, mysqld_port);
 
     // startup tianmu engine.
-    ha_tianmu_engine_ = new core::Engine();
-    tianmu_hton->data = reinterpret_cast<void *>(ha_tianmu_engine_);
-
-    // startup tianmu engine.
+    tianmu_hton->data = reinterpret_cast<void *>(new core::Engine());
     if (tianmu_hton->data) {
       ret = reinterpret_cast<core::Engine *>(tianmu_hton->data)->Init(total_ha);
       TIANMU_LOG(LogCtl_Level::INFO,
@@ -2120,7 +2240,11 @@ struct st_mysql_storage_engine tianmu_storage_engine = {MYSQL_HANDLERTON_INTERFA
 int get_DelayedBufferUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *var, char *buff) {
   var->type = SHOW_CHAR;
   var->value = buff;
-  std::string str = ha_tianmu_engine_->DelayedBufferStat();
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  std::string str = eng->DelayedBufferStat();
   std::memcpy(buff, str.c_str(), str.length() + 1);
   return 0;
 }
@@ -2128,27 +2252,40 @@ int get_DelayedBufferUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *v
 int get_RowStoreUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *var, char *buff) {
   var->type = SHOW_CHAR;
   var->value = buff;
-  std::string str = ha_tianmu_engine_->DeltaStoreStat();
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  std::string str = eng->DeltaStoreStat();
   std::memcpy(buff, str.c_str(), str.length() + 1);
   return 0;
 }
 
 int get_InsertPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetIPM();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetIPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_QueryPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetQPM();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetQPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_LoadPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetLPM();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetLPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
@@ -2176,49 +2313,70 @@ int get_MemoryScale_StatusVar([[maybe_unused]] MYSQL_THD thd, struct st_mysql_sh
 }
 
 int get_InsertTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetIT();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetIT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_QueryTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetQT();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetQT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_LoadTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetLT();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetLT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_LoadDupTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetLDT();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetLDT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_LoadDupPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetLDPM();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetLDPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_UpdateTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetUT();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetUT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_UpdatePerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = ha_tianmu_engine_->GetUPM();
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  *((int64_t *)tmp) = eng->GetUPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
@@ -2249,6 +2407,7 @@ int tianmu_throw_error_func([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] str
 static void update_func_str([[maybe_unused]] THD *thd, struct st_mysql_sys_var *var, void *tgt, const void *save) {
   char *old = *(char **)tgt;
   *(char **)tgt = *(char **)save;
+
   if (var->flags & PLUGIN_VAR_MEMALLOC) {
     *(char **)tgt = my_strdup(PSI_NOT_INSTRUMENTED, *(char **)save, MYF(0));
     my_free(old);
@@ -2268,7 +2427,8 @@ extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void 
 
 #define STATUS_FUNCTION(name, show_type, member)                                                            \
   int get_##name##_StatusVar([[maybe_unused]] MYSQL_THD thd, struct st_mysql_show_var *outvar, char *tmp) { \
-    *((int64_t *)tmp) = ha_tianmu_engine_->cache.member();                                                  \
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);                                \
+    *((int64_t *)tmp) = eng->cache.member();                                                                \
     outvar->value = tmp;                                                                                    \
     outvar->type = show_type;                                                                               \
     return 0;                                                                                               \
@@ -2511,11 +2671,14 @@ static MYSQL_SYSVAR_UINT(result_sender_rows, tianmu_sysvar_result_sender_rows, P
                          nullptr, nullptr, 65536, 1024, 131072, 0);
 
 void debug_update(MYSQL_THD thd, [[maybe_unused]] struct st_mysql_sys_var *var, void *var_ptr, const void *save) {
-  if (ha_tianmu_engine_) {
-    auto cur_conn = ha_tianmu_engine_->GetTx(thd);
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+
+  if (eng) {
+    auto cur_conn = eng->GetTx(thd);
     // set debug_level for connection level
     cur_conn->SetDebugLevel(*((int *)save));
   }
+
   *((int *)var_ptr) = *((int *)save);
 }
 
@@ -2523,8 +2686,11 @@ void trace_update(MYSQL_THD thd, [[maybe_unused]] struct st_mysql_sys_var *var, 
   *((int *)var_ptr) = *((int *)save);
   // get global mysql_sysvar_control_trace
   tianmu_sysvar_controltrace = THDVAR(nullptr, control_trace);
-  if (ha_tianmu_engine_) {
-    core::Transaction *cur_conn = ha_tianmu_engine_->GetTx(thd);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+
+  if (eng) {
+    core::Transaction *cur_conn = eng->GetTx(thd);
     cur_conn->SetSessionTrace(*((int *)save));
     ConfigureRCControl();
   }
@@ -2534,7 +2700,9 @@ void controlquerylog_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] str
                             void *var_ptr, const void *save) {
   *((int *)var_ptr) = *((int *)save);
   int control = *((int *)var_ptr);
-  if (ha_tianmu_engine_) {
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  if (eng) {
     control ? tianmu_querylog_.setOn() : tianmu_querylog_.setOff();
   }
 }
@@ -2543,8 +2711,10 @@ void start_async_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct 
                         const void *save) {
   int percent = *((int *)save);
   *((int *)var_ptr) = percent;
-  if (ha_tianmu_engine_) {
-    ha_tianmu_engine_->ResetTaskExecutor(percent);
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  if (eng) {
+    eng->ResetTaskExecutor(percent);
   }
 }
 

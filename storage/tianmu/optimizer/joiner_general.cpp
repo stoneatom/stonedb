@@ -33,16 +33,21 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   std::vector<bool> pack_desc_locked;
   bool false_desc_found = false;
   bool non_true_desc_found = false;
+
   for (int i = 0; i < no_desc; i++) {
     if (cond[i].IsFalse())
       false_desc_found = true;
+
     if (!cond[i].IsTrue())
       non_true_desc_found = true;
+
     pack_desc_locked.push_back(false);
     cond[i].DimensionUsed(all_dims);
   }
+
   if (!non_true_desc_found)
     return;
+
   mind->MarkInvolvedDimGroups(all_dims);
   DimensionVector outer_dims(cond[0].right_dims);
   if (!outer_dims.IsEmpty()) {
@@ -50,14 +55,17 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     all_dims.Plus(outer_dims);
     all_dims.Plus(cond[0].left_dims);
   }
+
   if (false_desc_found && outer_dims.IsEmpty()) {
     all_dims.Plus(cond[0].left_dims);  // for FALSE join condition
                                        // DimensionUsed() does not mark anything
     for (int i = 0; i < mind->NumOfDimensions(); i++)
       if (all_dims[i])
         mind->Empty(i);
+
     return;  // all done
   }
+
   MIIterator mit(mind, all_dims);
   MINewContents new_mind(mind, tips);
   new_mind.SetDimensions(all_dims);
@@ -68,7 +76,6 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   int64_t tuples_in_output = 0;
 
   // The main loop for checking conditions
-
   if (!outer_dims.IsEmpty())
     ExecuteOuterJoinLoop(cond, new_mind, all_dims, outer_dims, tuples_in_output, tips.limit);
   else {
@@ -83,11 +90,13 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
                                      tips.count_only);
 #endif
   }
+
   // Postprocessing and cleanup
   if (tips.count_only)
     new_mind.CommitCountOnly(tuples_in_output);
   else
     new_mind.Commit(tuples_in_output);
+
   for (int i = 0; i < no_desc; i++) {
     cond[i].UnlockSourcePacks();
     cond[i].done = true;
@@ -348,10 +357,13 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
   }
 
   utils::result_set<void> res;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   for (size_t i = 0; i < vTask.size(); ++i) {
-    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(
-        &JoinerGeneral::TaskInnerJoinPacks, this, &taskIterator[i], &vTask[i], &cond, &new_mind, &all_dims,
-        &pack_desc_locked, &tuples_in_output, limit, count_only, &stop_execution, &rows_passed, &rows_omitted));
+    res.insert(eng->query_thread_pool.add_task(&JoinerGeneral::TaskInnerJoinPacks, this, &taskIterator[i], &vTask[i],
+                                               &cond, &new_mind, &all_dims, &pack_desc_locked, &tuples_in_output, limit,
+                                               count_only, &stop_execution, &rows_passed, &rows_omitted));
   }
 
   res.get_all_with_except();

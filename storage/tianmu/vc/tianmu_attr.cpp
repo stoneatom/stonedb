@@ -171,8 +171,11 @@ void TianmuAttr::LoadVersion(common::TX_ID xid) {
   SetUniqueUpdated(hdr.unique_updated);
 
   if (hdr.dict_ver != 0) {
-    m_dict = ha_tianmu_engine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+    m_dict = eng->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
   }
+
   m_idx.resize(hdr.numOfPacks);
   fattr.ReadExact(&m_idx[0], sizeof(common::PACK_INDEX) * hdr.numOfPacks);
 }
@@ -266,6 +269,9 @@ void TianmuAttr::SaveFilters() {
 bool TianmuAttr::SaveVersion() {
   ASSERT(m_tx != nullptr, "Attempt to modify table in read-only transaction");
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  ASSERT(eng);
+
   // save modified pack data
   for (size_t i = 0; i < m_idx.size(); i++) {
     auto &dpn = get_dpn(i);
@@ -277,7 +283,7 @@ bool TianmuAttr::SaveVersion() {
         // trivial or already saved to disk
         if (auto p = get_pack(i); p != nullptr) {
           p->Unlock();
-          ha_tianmu_engine_->cache.DropObject(get_pc(i));
+          eng->cache.DropObject(get_pc(i));
           dpn.SetPackPtr(0);
         }
         continue;
@@ -328,25 +334,25 @@ bool TianmuAttr::SaveVersion() {
 
 void TianmuAttr::PostCommit() {
   if (!no_change) {
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
     for (size_t i = 0; i < m_idx.size(); i++) {
       auto &dpn = get_dpn(i);
       if (dpn.IsLocal()) {
         dpn.SetLocal(false);
         if (dpn.base != common::INVALID_PACK_INDEX)
-          m_share->get_dpn_ptr(dpn.base)->xmax = ha_tianmu_engine_->MaxXID();
+          m_share->get_dpn_ptr(dpn.base)->xmax = eng->MaxXID();
       }
     }
 
-    ha_tianmu_engine_->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
+    eng->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_bloom)
-      ha_tianmu_engine_->DeferRemove(
-          Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(), m_tid);
+      eng->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_cmap)
-      ha_tianmu_engine_->DeferRemove(
-          Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(), m_tid);
+      eng->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_hist)
-      ha_tianmu_engine_->DeferRemove(
-          Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(), m_tid);
+      eng->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(), m_tid);
 
     m_version = m_tx->GetID();
   }
@@ -354,10 +360,13 @@ void TianmuAttr::PostCommit() {
 }
 
 void TianmuAttr::Rollback() {
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   for (size_t i = 0; i < m_idx.size(); i++) {
     auto &dpn(get_dpn(i));
     if (dpn.IsLocal()) {
-      ha_tianmu_engine_->cache.DropObject(get_pc(i));
+      eng->cache.DropObject(get_pc(i));
       dpn.reset();
     }
   }
@@ -366,7 +375,9 @@ void TianmuAttr::Rollback() {
 
 void TianmuAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
   if (hdr.dict_ver != 0 && !m_dict) {
-    m_dict = ha_tianmu_engine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+    m_dict = eng->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
   }
 }
 
@@ -657,11 +668,14 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
 int TianmuAttr::EncodeValue_T(const types::BString &tianmu_s, bool new_val, common::ErrorCode *tianmu_err_code) {
   if (tianmu_err_code)
     *tianmu_err_code = common::ErrorCode::SUCCESS;
+
   if (tianmu_s.IsNull())
     return common::NULL_VALUE_32;
+
   if (ATI::IsStringType(TypeName())) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     LoadPackInfo();
+
     int vs = m_dict->GetEncodedValue(tianmu_s.val_, tianmu_s.len_);
     if (vs < 0) {
       if (!new_val) {
@@ -669,6 +683,8 @@ int TianmuAttr::EncodeValue_T(const types::BString &tianmu_s, bool new_val, comm
       }
 
       ASSERT(m_tx != nullptr, "attempt to update dictionary in readonly transaction");
+      core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+      assert(eng);
 
       // copy on write
       if (!m_dict->Changed()) {
@@ -676,24 +692,29 @@ int TianmuAttr::EncodeValue_T(const types::BString &tianmu_s, bool new_val, comm
         m_dict = sp->Clone();
         sp->Unlock();
         hdr.dict_ver++;
-        ha_tianmu_engine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
+        eng->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
       }
       vs = m_dict->Add(tianmu_s.val_, tianmu_s.len_);
     }
     return vs;
   }
+
   char const *val = tianmu_s.val_;
   if (val == 0)
     val = ZERO_LENGTH_STRING;
+
   if (ATI::IsDateTimeType(TypeName()) || TypeName() == common::ColumnType::BIGINT) {
     ASSERT(0, "Wrong data type!");
   } else {
     types::TianmuNum tianmu_n;
     common::ErrorCode tmp_tianmu_rc = types::TianmuNum::Parse(tianmu_s, tianmu_n, TypeName());
+
     if (tianmu_err_code)
       *tianmu_err_code = tmp_tianmu_rc;
+
     return (int)(int64_t)tianmu_n;
   }
+
   return common::NULL_VALUE_32;
 }
 
@@ -786,6 +807,9 @@ void TianmuAttr::LockPackForUse(common::PACK_INDEX pn) {
   if (dpn->Trivial() && !dpn->IsLocal())
     return;
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   while (true) {
     if (dpn->IncRef())
       return;
@@ -797,7 +821,7 @@ void TianmuAttr::LockPackForUse(common::PACK_INDEX pn) {
       // we win the chance to load data
       std::shared_ptr<Pack> sp;
       try {
-        sp = ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+        sp = eng->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
       } catch (std::exception &e) {
         dpn->SetPackPtr(0);
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -908,16 +932,21 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
       throw common::DatabaseException("Unknown pack type" + Path().string());
       break;
   }
+
   DPN &dpn = get_dpn(pi);
   if (current_txn_->LoadSource() == common::LoadSource::LS_File || dpn.numOfRecords == (1U << pss)) {
     Pack *pack = get_pack(pi);
     if (!dpn.Trivial()) {
       pack->Save();
     }
+
     if (pack) {
       pack->Unlock();
     }
-    ha_tianmu_engine_->cache.DropObject(get_pc(pi));
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    assert(eng);
+
+    eng->cache.DropObject(get_pc(pi));
     dpn.SetPackPtr(0);
   }
 
@@ -973,6 +1002,9 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   // now dpn->sum has been updated
 
   // uniform package
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if ((dpn.numOfNulls + load_nulls) == 0 && load_min == load_max && nvs->NumOfDeletes() == 0 &&
       (dpn.numOfRecords == 0 || (dpn.min_i == load_min && dpn.max_i == load_max))) {
     dpn.min_i = load_min;
@@ -982,11 +1014,12 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
     // new package (also in case of expanding so-far-uniform package)
     if (dpn.Trivial()) {
       // we need a pack struct for the previous trivial dp
-      auto sp = ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+      auto sp = eng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
 
       // we don't need any synchronization here because the dpn is local!
       dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
     }
+
     get_packN(pi)->LoadValues(nvs, nv);
   }
 
@@ -1026,9 +1059,12 @@ void TianmuAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
     return;
   }
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   // new package or expanding so-far-null package
   if (dpn.numOfRecords == 0 || dpn.NullOnly()) {
-    auto sp = ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+    auto sp = eng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
     dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
   }
 
@@ -1050,6 +1086,9 @@ void TianmuAttr::UpdateData(uint64_t row, Value &old_v, Value &new_v) {
   auto &dpn = get_dpn(pn);
   auto dpn_save = dpn;
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if (ct.Lookup() && new_v.HasValue()) {
     auto &str = new_v.GetString();
     int code = m_dict->GetEncodedValue(str.data(), str.size());
@@ -1061,8 +1100,9 @@ void TianmuAttr::UpdateData(uint64_t row, Value &old_v, Value &new_v) {
         m_dict = sp->Clone();
         sp->Unlock();
         hdr.dict_ver++;
-        ha_tianmu_engine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
+        eng->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
       }
+
       code = m_dict->Add(str.data(), str.size());
     }
     new_v.SetInt(code);
@@ -1096,6 +1136,9 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx,
     }
   }
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   for (const auto &pack : packs) {
     auto pn = pack.first;
     FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
@@ -1116,7 +1159,7 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx,
             m_dict = sp->Clone();
             sp->Unlock();
             hdr.dict_ver++;
-            ha_tianmu_engine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
+            eng->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
           }
           code = m_dict->Add(str.data(), str.size());
         }
@@ -1254,16 +1297,19 @@ void TianmuAttr::CopyPackForWrite(common::PACK_INDEX pi) {
   const PackCoordinate pc_old(m_tid, m_cid, m_share->GetPackIndex(&old_dpn));
   const PackCoordinate pc_new(get_pc(pi));
   std::shared_ptr<Pack> new_pack;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   // if the pack data is already loaded, just clone it to avoid disk IO
   // otherwise, load pack data from disk
-  auto pack = ha_tianmu_engine_->cache.GetLockedObject<Pack>(pc_old);
+  auto pack = eng->cache.GetLockedObject<Pack>(pc_old);
   if (pack) {
     new_pack = pack->Clone(pc_new);
     new_pack->SetDPN(&dpn);  // need to set dpn after clone
-    ha_tianmu_engine_->cache.PutObject(pc_new, new_pack);
+    eng->cache.PutObject(pc_new, new_pack);
     pack->Unlock();
   } else {
-    new_pack = ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+    new_pack = eng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
   }
   dpn.SetPackPtr(reinterpret_cast<unsigned long>(new_pack.get()) + tag_one);
 }
@@ -1426,8 +1472,12 @@ std::shared_ptr<RSIndex_Hist> TianmuAttr::GetFilter_Hist() {
       filter_hist = std::make_shared<RSIndex_Hist>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_hist;
   }
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if (!filter_hist)
-    filter_hist = std::static_pointer_cast<RSIndex_Hist>(ha_tianmu_engine_->filter_cache.Get(
+    filter_hist = std::static_pointer_cast<RSIndex_Hist>(eng->filter_cache.Get(
         FilterCoordinate(m_tid, m_cid, (int)FilterType::HIST, m_version.v1, m_version.v2), filter_creator));
   return filter_hist;
 }
@@ -1445,7 +1495,11 @@ std::shared_ptr<RSIndex_CMap> TianmuAttr::GetFilter_CMap() {
       filter_cmap = std::make_shared<RSIndex_CMap>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_cmap;
   }
-  return std::static_pointer_cast<RSIndex_CMap>(ha_tianmu_engine_->filter_cache.Get(
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  return std::static_pointer_cast<RSIndex_CMap>(eng->filter_cache.Get(
       FilterCoordinate(m_tid, m_cid, (int)FilterType::CMAP, m_version.v1, m_version.v2), filter_creator));
 }
 
@@ -1462,7 +1516,11 @@ std::shared_ptr<RSIndex_Bloom> TianmuAttr::GetFilter_Bloom() {
       filter_bloom = std::make_shared<RSIndex_Bloom>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_bloom;
   }
-  return std::static_pointer_cast<RSIndex_Bloom>(ha_tianmu_engine_->filter_cache.Get(
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  return std::static_pointer_cast<RSIndex_Bloom>(eng->filter_cache.Get(
       FilterCoordinate(m_tid, m_cid, (int)FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
 }
 
@@ -1471,11 +1529,16 @@ void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col
   if (tx == nullptr) {
     tx = current_txn_;
   }
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   auto path = m_share->owner->Path();
-  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(path);
+  std::shared_ptr<index::TianmuTableIndex> tab = eng->GetTableIndex(path);
   // col is not primary key
   if (!tab)
     return;
+
   std::vector<uint> keycols = tab->KeyCols();
   if (std::find(keycols.begin(), keycols.end(), col) == keycols.end())
     return;
@@ -1507,11 +1570,15 @@ void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col
 }
 
 void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   auto path = m_share->owner->Path();
-  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(path);
+  std::shared_ptr<index::TianmuTableIndex> tab = eng->GetTableIndex(path);
   // col is not primary key
   if (!tab)
     return;
+
   std::vector<uint> keycols = tab->KeyCols();
   if (std::find(keycols.begin(), keycols.end(), col) == keycols.end())
     return;

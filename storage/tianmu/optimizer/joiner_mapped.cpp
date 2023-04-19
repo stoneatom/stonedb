@@ -331,12 +331,12 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
       vc1->Type().Lookup() || vc2->Type().Lookup())
     return;
 
-  vc1->MarkUsedDims(traversed_dims);  // "traversed" is unique now (a "dimension" table)
-  vc2->MarkUsedDims(matched_dims);    // a "fact" table for 1:n relation
+  // "traversed" is unique now (a "dimension" table)  a "fact" table for 1:n relation
+  vc1->MarkUsedDims(traversed_dims);
+  vc2->MarkUsedDims(matched_dims);
   mind->MarkInvolvedDimGroups(traversed_dims);
   mind->MarkInvolvedDimGroups(matched_dims);
-  if (traversed_dims.Intersects(matched_dims))  // both materialized - we should
-                                                // rather use a simple loop
+  if (traversed_dims.Intersects(matched_dims))  // both materialized - we should rather use a simple loop
     return;
 
   MIIterator mit_m(mind, matched_dims);
@@ -351,6 +351,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     traversed_dims = matched_dims;
     matched_dims = temp_dims;
   }
+
   if (traversed_dims.NoDimsUsed() > 1 ||         // more than just a number
       matched_dims.Intersects(desc.right_dims))  // only traversed dimension may be outer
     return;
@@ -372,8 +373,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   mind->LockAllForUse();
   if (!tips.count_only)
     new_mind->Init(dim2_size, dims_involved);
-  else if (outer_join) {  // outer join on keys verified as unique - a trivial
-                          // answer
+  else if (outer_join) {  // outer join on keys verified as unique - a trivial  answer
     new_mind->CommitCountOnly(dim2_size);
     why_failed = JoinFailure::NOT_FAILED;
     mind->UnlockAllFromUse();
@@ -391,20 +391,24 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   int64_t joined_tuples = 0;
   int tids =
       (packnums < std::thread::hardware_concurrency() / 2) ? packnums : (std::thread::hardware_concurrency() / 2);
+
   if (tids <= 2)
     tids = 1;
+
   std::vector<std::shared_ptr<MultiIndexBuilder::BuildItem>> indextable(tids);
   utils::result_set<int64_t> res;
   std::vector<int64_t> matched_tuples(tids);
   CTask task;
   task.dwPackNum = tids;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   for (int table_id = 0; table_id < tids; table_id++) {
     task.dwTaskId = table_id;
     task.dwStartPackno = table_id * (packnums / tids);
     task.dwEndPackno = (table_id == tids - 1) ? packnums : (table_id + 1) * (packnums / tids);
-    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this,
-                                                             &indextable[table_id], packrows, &matched_tuples[table_id],
-                                                             vc2, task, map_function.get()));
+    res.insert(eng->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this, &indextable[table_id],
+                                               packrows, &matched_tuples[table_id], vc2, task, map_function.get()));
   }
   res.get_all();
 
@@ -415,6 +419,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     joined_tuples += matched_tuples[i];
     new_mind->AddBuildItem(indextable[i]);
   }
+
   tianmu_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
 
   new_mind->Commit(joined_tuples, tips.count_only);

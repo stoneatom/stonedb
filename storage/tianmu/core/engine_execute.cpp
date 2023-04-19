@@ -114,6 +114,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
   // at this point all tables are in RCBase engine, so we can proceed with the
   // query and we know that if the result goes to the file, the TIANMU_DATAFORMAT is
   // one of TIANMU formats
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
   QueryRouteTo route = QueryRouteTo::kToTianmu;
   SELECT_LEX *save_current_select = lex->current_select();
   List<st_select_lex_unit> derived_optimized;  // collection to remember derived
@@ -127,6 +128,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
     res = FALSE;
     int tianmu_free_join = FALSE;
     lex->thd->derived_tables_processing = TRUE;
+
     for (SELECT_LEX *sl = lex->all_selects_list; sl; sl = sl->next_select_in_list())        // for all selects
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)  // for all tables
         if (cursor->table && cursor->is_view_or_derived()) {  // data source (view or FROM subselect)
@@ -191,7 +193,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
         is_optimize_after_tianmu = TRUE;
         if (!res) {
           try {
-            route = ha_tianmu_engine_->Execute(unit->thd, unit->thd->lex, result, unit);
+            route = eng->Execute(unit->thd, unit->thd->lex, result, unit);
             if (route == QueryRouteTo::kToMySQL) {
               if (in_case_of_failure_can_go_to_mysql)
                 if (old_executed)

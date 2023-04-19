@@ -206,6 +206,7 @@ void ColumnShare::init_dpn(DPN &dpn, const common::TX_ID xid, const DPN *from) {
       dpn.max_i = -1;
     }
   }
+
   dpn.used = 1;
   dpn.local = 1;   // a new allocated dpn is __always__ owned by write session
   dpn.synced = 1;  // would be reset by Pack when there is update
@@ -226,11 +227,12 @@ transaction will not be changed, and if the current transaction fails, it can be
 committed transaction.
 */
 int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
   for (uint32_t i = 0; i < capacity; i++) {
     if (start[i].used == 1) {
-      if (!(start[i].xmax < ha_tianmu_engine_->MinXID()))
+      if (!(start[i].xmax < eng->MinXID()))
         continue;
-      ha_tianmu_engine_->cache.DropObject(PackCoordinate(owner->TabID(), col_id, i));
+      eng->cache.DropObject(PackCoordinate(owner->TabID(), col_id, i));
       // Remove the space pointer from the discarded pack
       segs.remove_if([i](const auto &s) { return s.idx == i; });
     }

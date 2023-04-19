@@ -547,6 +547,9 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   int64_t traversed_rows = 0;
   bool no_except = true;
   utils::result_set<int64_t> res;
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+
   try {
     for (MITaskIterator *iter : task_iterators) {
       auto &ht = traversed_hash_tables_.emplace_back(hash_table_key_size_, hash_table_tuple_size_,
@@ -559,7 +562,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
       params.build_item = multi_index_builder_->CreateBuildItem();
       params.task_miter = iter;
 
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
+      res.insert(eng->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();
@@ -793,6 +796,10 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
   std::vector<MatchTaskParams> match_task_params;
   match_task_params.reserve(task_iterators.size());
   int64_t matched_rows = 0;
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if (task_iterators.size() > 1) {
     bool no_except = true;
     utils::result_set<int64_t> res;
@@ -803,7 +810,7 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
         params.build_item = multi_index_builder_->CreateBuildItem();
         params.task_miter = iter;
 
-        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
+        res.insert(eng->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
       }
     } catch (std::exception &e) {
       res.get_all_with_except();
@@ -1173,14 +1180,18 @@ int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
   std::vector<OuterMatchedParams> outer_matched_params;
   outer_matched_params.reserve(task_iterators.size());
   utils::result_set<void> res;
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   try {
     for (MITaskIterator *iter : task_iterators) {
       auto &params = outer_matched_params.emplace_back();
       params.task_iter = iter;
       params.build_item = multi_index_builder_->CreateBuildItem();
 
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this,
-                                                               &params, outer_matched_filter_.get()));
+      res.insert(eng->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this, &params,
+                                                 outer_matched_filter_.get()));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();
