@@ -9,6 +9,12 @@ NULL
 select min(a) from txxx;
 min(a)
 NULL
+select sum(a) from txxx;
+sum(a)
+NULL
+select avg(a) from txxx;
+avg(a)
+NULL
 select count(a) from txxx;
 count(a)
 0
@@ -35,6 +41,12 @@ max(a)
 select min(a) from txxx;
 min(a)
 1
+select sum(a) from txxx;
+sum(a)
+21
+select avg(a) from txxx;
+avg(a)
+3.5000
 select count(a) from txxx;
 count(a)
 6
