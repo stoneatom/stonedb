@@ -291,7 +291,7 @@ bool TianmuAttr::SaveVersion() {
 
       get_pack(i)->Save();
       get_pack(i)->Unlock();  // now it can be released by MM
-      ha_tianmu_engine_->cache.DropObject(get_pc(i));
+      //ha_tianmu_engine_->cache.DropObject(get_pc(i));
       dpn.SetPackPtr(0);
     }
   }
