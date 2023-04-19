@@ -1,3 +1,6 @@
+drop database if exists select_test;
+create database select_test;
+use select_test;
 #
 # Simple select test
 #
@@ -6,8 +9,8 @@ drop table if exists t1,t2,t3,t4,t11;
 drop table if exists t1_1,t1_2,t9_1,t9_2,t1aa,t2aa;
 drop view if exists v1;
 CREATE TABLE t1 (
-Period smallint(4) DEFAULT '0000' NOT NULL,
-Varor_period smallint(4) DEFAULT '0' NOT NULL
+Period smallint DEFAULT '0000' NOT NULL,
+Varor_period smallint DEFAULT '0' NOT NULL
 )engine=tianmu;
 INSERT INTO t1 VALUES (9410,9412);
 select period from t1;
@@ -24,8 +27,8 @@ Period	Varor_period
 #
 CREATE TABLE t2 (
 auto int not null auto_increment,
-fld1 int(6) DEFAULT '000000' NOT NULL,
-companynr tinyint(2) DEFAULT '00' NOT NULL,
+fld1 int DEFAULT '000000' NOT NULL,
+companynr tinyint DEFAULT '00' NOT NULL,
 fld3 char(30) DEFAULT '' NOT NULL,
 fld4 char(35) DEFAULT '' NOT NULL,
 fld5 char(35) DEFAULT '' NOT NULL,
@@ -475,14 +478,15 @@ Ado
 #
 #insert into....select
 #
+drop database select_test;
 create database aa;
 use aa;
 create table t3 (
 period    int not null,
 name      char(32) not null,
 companynr int not null,
-price     double(11,0),
-price2     double(11,0),
+price     double,
+price2     double,
 key (period),
 key (name)
 )engine=tianmu;
@@ -500,8 +504,8 @@ create table t3_1 (
 period    int not null,
 name      char(32) not null,
 companynr int not null,
-price     double(11,0),
-price2     double(11,0),
+price     double,
+price2     double,
 key (period),
 key (name)
 )engine=tianmu;

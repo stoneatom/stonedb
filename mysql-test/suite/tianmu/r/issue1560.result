@@ -1,5 +1,6 @@
 drop database if exists issue1560;
 create database issue1560;
+use issue1560;
 create table t1(a1 int, b1 int) engine=tianmu charset UTF8MB4 collate utf8mb4_bin;
 create table t2(a2 int, b2 int) engine=tianmu charset UTF8MB4 collate utf8mb4_bin;
 create table t3(a3 int, b3 int) engine=tianmu charset UTF8MB4 collate utf8mb4_bin;
