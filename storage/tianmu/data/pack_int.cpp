@@ -193,8 +193,10 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
       dpn_->min_d = d;
       dpn_->max_d = d;
       data_.value_type_ = 8;
-      data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-      std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
+      if (data_.empty()) {
+        data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+        std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
+      }
       SetValD(locationInPack, d);
     } else {
       dpn_->numOfNulls--;
@@ -239,6 +241,10 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
       dpn_->numOfNulls++;
       // easy mode
       dpn_->sum_d -= oldv;
+      if ((oldv == dpn_->min_d || oldv == dpn_->max_d) && dpn_->min_d != dpn_->max_d) {
+        dpn_->min_d = newmin;
+        dpn_->max_d = newmax;
+      }
       return;
     }
 
@@ -265,11 +271,13 @@ void PackInt::UpdateValue(size_t locationInPack, const Value &v) {
     UpdateValueFixed(locationInPack, v);
 
   // release buffer if the pack becomes trivial
-  if (dpn_->Trivial()) {
+  if (dpn_->NullOnly() || dpn_->Uniform()) {
     dealloc(data_.ptr_);
     data_.ptr_ = nullptr;
     data_.value_type_ = 0;
-    dpn_->dataAddress = DPN_INVALID_ADDR;
+    if(dpn_->numOfDeleted == 0){
+      dpn_->dataAddress = DPN_INVALID_ADDR;
+    }
   }
 }
 
@@ -286,12 +294,14 @@ void PackInt::DeleteByRow(size_t locationInPack) {
         data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
         for (uint i = 0; i < dpn_->numOfRecords; i++) SetValD(i, dpn_->min_d);
       }
+      
       auto oldv = GetValDouble(locationInPack);
-
       ASSERT(oldv <= dpn_->max_d);
-      dpn_->sum_d -= oldv;
 
-      if (oldv == dpn_->min_d || oldv == dpn_->max_d) {
+      SetNull(locationInPack);
+      dpn_->numOfNulls++;
+
+      if ((oldv == dpn_->min_d || oldv == dpn_->max_d) && dpn_->min_d != dpn_->max_d) {
         // get max/min **without** the value to update
         auto newmax = std::numeric_limits<double>::min();
         auto newmin = std::numeric_limits<double>::max();
@@ -304,9 +314,12 @@ void PackInt::DeleteByRow(size_t locationInPack) {
               newmin = val;
           }
         }
-        dpn_->min_d = newmin;
-        dpn_->max_d = newmax;
+        if (!dpn_->NullOnly()){
+          dpn_->min_d = newmin;
+          dpn_->max_d = newmax;
+        }
       }
+      dpn_->sum_d -= oldv;
     } else {
       if (data_.empty()) {
         ASSERT(dpn_->Uniform());
@@ -314,11 +327,16 @@ void PackInt::DeleteByRow(size_t locationInPack) {
         data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
         std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
       }
+
       auto oldv = GetValInt(locationInPack);
       oldv += dpn_->min_i;
+
       ASSERT(oldv <= dpn_->max_i);
-      dpn_->sum_i -= oldv;
-      if (oldv == dpn_->min_i || oldv == dpn_->max_i) {
+
+      SetNull(locationInPack);
+      dpn_->numOfNulls++;
+
+      if ((oldv == dpn_->min_i || oldv == dpn_->max_i) && dpn_->min_i != dpn_->max_i) {
         // get max/min **without** the value to update
         auto newmax = std::numeric_limits<int64_t>::min();
         auto newmin = std::numeric_limits<int64_t>::max();
@@ -331,16 +349,23 @@ void PackInt::DeleteByRow(size_t locationInPack) {
               newmin = val;
           }
         }
-        ExpandOrShrink(newmax - newmin, dpn_->min_i - newmin);
-        dpn_->min_i = newmin;
-        dpn_->max_i = newmax;
+        if (!dpn_->NullOnly()){
+          ExpandOrShrink(newmax - newmin, dpn_->min_i - newmin);
+          dpn_->min_i = newmin;
+          dpn_->max_i = newmax;
+        }
       }
+      dpn_->sum_i -= oldv;
     }
-    SetNull(locationInPack);
-    dpn_->numOfNulls++;
   }
   SetDeleted(locationInPack);
   dpn_->numOfDeleted++;
+  // release buffer if the pack becomes trivial
+  if (dpn_->NullOnly() || dpn_->Uniform()) {
+    dealloc(data_.ptr_);
+    data_.ptr_ = nullptr;
+    data_.value_type_ = 0;
+  }
 }
 
 void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
@@ -361,9 +386,10 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
       dpn_->max_i = l;
 
       data_.value_type_ = 1;
-      data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-      // for fixed number, it is sufficient to simply zero the data_
-      std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
+      if (data_.empty()) {
+        data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+        std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
+      }
       dpn_->numOfNulls--;
       SetVal64(locationInPack, l - dpn_->min_i);
     } else {
@@ -433,9 +459,13 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
       // easy mode
       dpn_->sum_i -= oldv;
 
-      if (!dpn_->NullOnly())
-        ExpandOrShrink(newmax - newmin, 0);
-
+      if (!dpn_->NullOnly()){
+        if ((oldv == dpn_->min_i || oldv == dpn_->max_i) && dpn_->min_i != dpn_->max_i) {
+          ExpandOrShrink(newmax - newmin, dpn_->min_i - newmin);
+          dpn_->min_i = newmin;
+          dpn_->max_i = newmax;
+        }
+      }
       return;
     }
 
@@ -465,7 +495,7 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
   auto new_min = std::min(vc->MinDouble(), dpn_->min_d);
   auto new_max = std::max(vc->MaxDouble(), dpn_->max_d);
   auto new_nr = dpn_->numOfRecords + vc->NumOfValues();
-  if (dpn_->Trivial()) {
+  if (dpn_->NullOnly() || dpn_->Uniform()) {
     ASSERT(data_.ptr_ == nullptr);
     data_.value_type_ = sizeof(double);
     data_.ptr_ = alloc(data_.value_type_ * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
@@ -526,7 +556,7 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
 
   auto delta = dpn_->min_i - new_min;
 
-  if (dpn_->Trivial()) {
+  if (dpn_->NullOnly() || dpn_->Uniform()) {
     ASSERT(data_.ptr_ == nullptr);
     data_.ptr_ = alloc(new_vt * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
     if (dpn_->Uniform()) {
@@ -598,17 +628,20 @@ PackInt::~PackInt() {
 void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
   FunctionExecutor fe([this]() { Lock(); }, [this]() { Unlock(); });
 
-  data_.value_type_ = GetValueSize(dpn_->max_i - dpn_->min_i);
+  if(dpn_->NullOnly() || dpn_->Uniform()) data_.value_type_ = 0;
+  else data_.value_type_ = GetValueSize(dpn_->max_i - dpn_->min_i);
+
   if (IsModeNoCompression()) {
-    if (dpn_->numOfNulls) {
+    if (dpn_->numOfNulls > 0) {
       fcurfile->ReadExact(nulls_ptr_.get(), bitmap_size_);
     }
-    if (dpn_->numOfDeleted) {
+    if (dpn_->numOfDeleted > 0) {
       fcurfile->ReadExact(deletes_ptr_.get(), bitmap_size_);
     }
-    ASSERT(data_.value_type_ * dpn_->numOfRecords != 0);
-    data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-    fcurfile->ReadExact(data_.ptr_, data_.value_type_ * dpn_->numOfRecords);
+    if(data_.value_type_ * dpn_->numOfRecords > 0){
+      data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+      fcurfile->ReadExact(data_.ptr_, data_.value_type_ * dpn_->numOfRecords);
+    }
     dpn_->synced = false;
   } else {
     UniquePtr uptr = alloc_ptr(dpn_->dataLength + 1, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
@@ -697,9 +730,9 @@ void PackInt::Save() {
   if (ShouldNotCompress()) {
     SetModeNoCompression();
     dpn_->dataLength = 0;
-    if (dpn_->numOfNulls)
+    if (dpn_->numOfNulls > 0)
       dpn_->dataLength += bitmap_size_;
-    if (dpn_->numOfDeleted)
+    if (dpn_->numOfDeleted > 0)
       dpn_->dataLength += bitmap_size_;
     dpn_->dataLength += data_.value_type_ * dpn_->numOfRecords;
   } else {
@@ -724,9 +757,9 @@ void PackInt::Save() {
 }
 
 void PackInt::SaveUncompressed(system::Stream *f) {
-  if (dpn_->numOfNulls)
+  if (dpn_->numOfNulls > 0)
     f->WriteExact(nulls_ptr_.get(), bitmap_size_);
-  if (dpn_->numOfDeleted)
+  if (dpn_->numOfDeleted > 0)
     f->WriteExact(deletes_ptr_.get(), bitmap_size_);
   if (data_.ptr_)
     f->WriteExact(data_.ptr_, data_.value_type_ * dpn_->numOfRecords);

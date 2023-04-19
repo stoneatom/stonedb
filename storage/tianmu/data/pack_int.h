@@ -124,6 +124,8 @@ class PackInt final : public Pack {
   void RemoveNullsAndCompress(compress::NumCompressor<etype> &nc, char *tmp_comp_buffer, uint &tmp_cb_len,
                               uint64_t &maxv);
 
+  //void alloc_data_ptr(uint32_t recordNum);
+
   bool is_real_ = false;
   struct {
     int64_t operator[](size_t n) const {
@@ -150,7 +152,7 @@ class PackInt final : public Pack {
       uint32_t *ptr_int32_;
       uint64_t *ptr_int64_;
       double *ptr_double_;
-      void *ptr_;
+      void *ptr_ = nullptr;
     };
   } data_ = {};
 };
