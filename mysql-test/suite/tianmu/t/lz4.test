@@ -1,4 +1,10 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists lz4;
+--enable_warnings
+create database lz4;
+use lz4;
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint DEFAULT NULL COMMENT 'lz4',
   `c_smallint` smallint DEFAULT NULL COMMENT 'lz4',
@@ -32,3 +38,4 @@ values(104,104,104,104,104,5.2,10.88,104.083,'2016-02-25','2016-02-25 10:20:01',
 
 select * from column_type_test;
 drop table column_type_test;
+drop database lz4;

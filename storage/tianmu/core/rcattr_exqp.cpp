@@ -304,7 +304,13 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
 
 void RCAttr::EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim) {
   MEASURE_FET("RCAttr::EvaluatePack_IsNoDelete(...)");
-  auto pack = row2pack(mit[dim]);
+  // Keep consistent with the method of other functions to obtain the pack index
+  auto pack = mit.GetCurPackrow(dim);
+  if (pack == -1) {
+    mit.ResetCurrentPack();
+    mit.NextPackrow();
+    return;
+  }
   auto const &dpn(get_dpn(pack));
   if (dpn.numOfDeleted > 0) {
     if (dpn.numOfDeleted == dpn.numOfRecords) {

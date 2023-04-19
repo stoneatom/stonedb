@@ -1,10 +1,12 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
 drop database if exists issue430;
+--enable_warnings
 create database issue430;
 use issue430;
 create table tt2 (a tinyint, b smallint, c bigint) ENGINE=TIANMU;
 insert into tt2 values (15, 20, 18), (1, 6, 4);
 select (a/b)/c as agf from tt2 group by agf;
-agf
-0.04166667
 drop table tt2;
 drop database issue430;

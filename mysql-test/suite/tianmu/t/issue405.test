@@ -1,5 +1,12 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue405;
+--enable_warnings
+create database issue405;
+use issue405;
 create table timehi (val time) ENGINE=TIANMU;
 insert into timehi values ('00:00:00'), ('01:15:39'), ('09:11:12'), ('20:30:29');
 select * from timehi where val >= '08:02:45';
 drop table timehi;
+drop database issue405;

@@ -1,4 +1,11 @@
-USE test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue364;
+--enable_warnings
+create database issue364;
+use issue364;
+
 CREATE TABLE `t_test1`(
 `id` INT NOT NULL AUTO_INCREMENT,
 `first_name` VARCHAR(10) NOT NULL,
@@ -29,3 +36,4 @@ SELECT id FROM t_test2;
 DROP TRIGGER insert_trigger_t_test2;
 DROP TABLE t_test2;
 DROP TABLE t_test1;
+drop database issue364;

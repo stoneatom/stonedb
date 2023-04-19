@@ -1,6 +1,9 @@
-use test;
+drop database if exists issue410;
+create database issue410;
+use issue410;
 create table tlike (val varchar(255)) ENGINE=TIANMU;
 insert into tlike values ('abcde');
 select * from tlike where val like NULL;
 val
 drop table tlike;
+drop database issue410;

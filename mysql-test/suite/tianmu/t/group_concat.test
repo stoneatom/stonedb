@@ -1,8 +1,11 @@
 --source include/have_tianmu.inc
 
 --disable_query_log
-
-use test;
+--disable_warnings
+drop database if exists group_concat;
+--enable_warnings
+create database group_concat;
+use group_concat;
 
 CREATE TABLE `test_groupconcat_case` (
   `id` int DEFAULT NULL,
@@ -26,4 +29,5 @@ select id,group_concat(distinct name SEPARATOR ":") from test_groupconcat_case g
 
 --disable_query_log
 drop table test_groupconcat_case;
+drop database group_concat;
 --enable_query_log

@@ -1016,6 +1016,10 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   } else { /*Judge whether there is filtering logic of the current table.
             If not, filter the data of the current table*/
     auto &rcTables = table->GetTables();
+    /*
+      no_dims is a destination number of dimensions.
+      It needs to be increased according to the number of executions.
+    */
     int no_dims = 0;
     for (auto rcTable : rcTables) {
       if (rcTable->TableType() == TType::TEMP_TABLE)
@@ -1026,15 +1030,17 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
         /*The number of values in the (var_map) corresponding to the entity column is always 1,
         so only the first element in the (var_map) is judged here.*/
         if (desc.attr.vc && desc.attr.vc->GetVarMap().size() >= 1 &&
-            desc.attr.vc->GetVarMap()[0].just_a_table_ptr == rcTable) {
+            // Use the tab object in VarMap to compare with the corresponding table
+            desc.attr.vc->GetVarMap()[0].GetTabPtr().get() == rcTable &&
+            (desc.GetJoinType() == DescriptorJoinType::DT_NON_JOIN)) {
           isVald = true;
           break;
         }
       }
       if (!isVald) {
         FilterDeletedByTable(rcTable, no_dims);
+        no_dims++;
       }
-      no_dims++;
     }
   }
 
@@ -1517,14 +1523,6 @@ void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable, int no_dims)
   desc.op = common::Operator::O_EQ_ALL;
   desc.encoded = true;
 
-  DimensionVector dims(mind->NumOfDimensions());
-  desc.DimensionUsed(dims);
-  mind->MarkInvolvedDimGroups(dims);  // create iterators on whole groups (important for
-                                      // multidimensional updatable iterators)
-  dims.SetAll();
-
-  MIUpdatingIterator mit(mind, dims);
-  desc.CopyDesCond(mit);
   // Use column 0 to filter the table data
   int firstColumn = 0;
   PhysicalColumn *phc = rcTable->GetColumn(firstColumn);
@@ -1532,15 +1530,28 @@ void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable, int no_dims)
   if (!vc)
     throw common::OutOfMemoryException();
 
+  DimensionVector dims(mind->NumOfDimensions());
+  vc->MarkUsedDims(dims);
+  mind->MarkInvolvedDimGroups(
+      dims);  // create iterators on whole groups (important for multidimensional updatable iterators)
+
+  MIUpdatingIterator mit(mind, dims);
+  desc.CopyDesCond(mit);
+
   vc->LockSourcePacks(mit);
   while (mit.IsValid()) {
     vc->EvaluatePack(mit, desc);
+
     if (mind->m_conn->Killed())
       throw common::KilledException();
   }
+
   vc->UnlockSourcePacks();
   mit.Commit();
-  delete vc;
+  if (vc) {
+    delete vc;
+    vc = nullptr;
+  }
 }
 
 void ParameterizedFilter::FilterDeletedForSelectAll() {

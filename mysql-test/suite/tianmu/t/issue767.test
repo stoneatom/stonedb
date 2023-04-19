@@ -1,5 +1,10 @@
 --source include/have_tianmu.inc
-use test;
+
+--disable_warnings
+drop database if exists issue767;
+--enable_warnings
+create database issue767;
+use issue767;
 create table t1(val int) ENGINE=tianmu;
 create table t2(val2 int) ENGINE=tianmu;
 
@@ -47,3 +52,4 @@ select * from t1 where val not in (select * from t2 where val2 > t1.val);
 
 drop table t1;
 drop table t2;
+drop database issue767;

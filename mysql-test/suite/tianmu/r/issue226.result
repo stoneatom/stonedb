@@ -1,5 +1,6 @@
-create database test_tmp;
-use test_tmp;
+drop database if exists issue226;
+create database issue226;
+use issue226;
 CREATE TABLE t1 (f1 VARCHAR(255) CHARACTER SET utf8mb4) ENGINE=TIANMU;
 CREATE TABLE t2 AS SELECT LEFT(f1,171) AS f2 FROM t1 UNION SELECT LEFT(f1,171) AS f2 FROM t1;
 INSERT INTO t2 VALUES ('a');
@@ -12,4 +13,4 @@ b
 c
 DROP TABLE t1;
 DROP TABLE t2;
-drop database test_tmp;
+drop database issue226;

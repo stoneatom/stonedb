@@ -1,7 +1,14 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+drop database if exists create_index;
+--enable_warnings
+create database create_index;
+use create_index;
+
 create table t1 (f1 binary(5)) engine=innodb;
 insert into t1 values ('w'), ('w');
 --error ER_DUP_ENTRY
 create unique index index_t1 on t1(f1(4));
 drop table t1;
+drop database create_index;

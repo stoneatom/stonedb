@@ -1,6 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue515;
+--enable_warnings
+create database issue515;
+use issue515;
 create table timetest (val timestamp) ENGINE=TIANMU;
 insert into timetest values ('2010-02-22 18:35:23');
 select val not between '2010-02-22 18:35:23' and '2015-11-23 08:02:45' from (select * from timetest) as A;
 select val, val >= '2010-02-22 18:35:23' from (select * from timetest) as A;
 drop table timetest;
+drop database issue515;

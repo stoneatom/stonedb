@@ -1,6 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue222;
+--enable_warnings
+create database issue222;
+use issue222;
 create table $tt (a$1 int, $b int, c$ int) engine=tianmu;
 insert into $tt values (1,2,3);
 sleep 1;
 select a$1, $b, c$ from $tt;
 drop table $tt;
+drop database issue222;

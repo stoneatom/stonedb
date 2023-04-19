@@ -42,7 +42,7 @@
 #include "util/fs.h"
 #include "util/thread_pool.h"
 
-#include "engine.ic"  //optimize_for_tianmu
+#include "engine.ic"  // optimize_for_tianmu
 
 namespace Tianmu {
 

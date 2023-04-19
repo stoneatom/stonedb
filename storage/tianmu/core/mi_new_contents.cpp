@@ -330,7 +330,8 @@ void MINewContents::CommitNewTableValues()  // set a value (common::NULL_VALUE_6
           if (roughsorter)
             roughsorter->Barrier();
 
-          t_new[dim]->ExpandTo(obj < (2 * 1_KB) ? (2 * 1_KB) : obj * 4);  // enlarge with a safe backup
+          t_new[dim]->ExpandTo(static_cast<size_t>(obj) < (2 * 1_KB) ? (2 * 1_KB)
+                                                                     : obj * 4);  // enlarge with a safe backup
         }
 
         if (new_value[dim] == common::NULL_VALUE_64) {
