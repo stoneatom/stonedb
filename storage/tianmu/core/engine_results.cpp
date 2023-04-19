@@ -348,9 +348,11 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
           if (isum_sum_rcbase->result_type() == DECIMAL_RESULT) {
             Engine::Convert(is_null, isum_sum_rcbase->dec_value(), rcdt);
             isum_sum_rcbase->null_value = is_null;
+            isum_sum_rcbase->set_nullable(is_null);
           } else if (isum_sum_rcbase->result_type() == REAL_RESULT) {
             Engine::Convert(is_null, isum_sum_rcbase->real_value(), rcdt);
             isum_sum_rcbase->null_value = is_null;
+            isum_sum_rcbase->set_nullable(is_null);
           }
           break;
         }
