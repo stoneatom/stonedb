@@ -372,6 +372,9 @@ void TianmuAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
 
 PackOntologicalStatus TianmuAttr::GetPackOntologicalStatus(int pack_no) {
   LoadPackInfo();
+  if (m_idx.empty() || (!m_idx.size())) {
+    return PackOntologicalStatus::NULLS_ONLY;
+  }
   DPN const *dpn(pack_no >= 0 ? &get_dpn(pack_no) : nullptr);
   if (pack_no < 0 || dpn->NullOnly())
     return PackOntologicalStatus::NULLS_ONLY;
