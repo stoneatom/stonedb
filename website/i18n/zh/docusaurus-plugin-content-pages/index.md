@@ -79,7 +79,7 @@ StoneDB for MySQL
                 - 减少企业的TCO成本，人人皆可获得低成本的数据服务。
 ```
 
-```custom-roadMap 2023-01-15
+```custom-roadMap 2023-03-20
 - Roadmap
     - StoneDB_5.6_v1.0.0
         1. 一体化行列混存+内存计算架构
@@ -112,7 +112,7 @@ StoneDB for MySQL
         2. 部分数据对象的定义
         3. Binlog 改造
         4. 主备集群自动寻主功能
-        - 2023-02-30
+        - 2023-03-20
     - StoneDB_5.7_v1.0.4
         1. 存储过程增强
         2. MySQL Event（批量加工能力）
@@ -128,7 +128,7 @@ StoneDB for MySQL
         - 2023-06-30
     - StoneDB_8.0_v1.0.0
         - 适配 MySQL 8.0
-        - 2023-03-06
+        - 2023-04-30
     - StoneDB_v2.0.0
         - 全新架构
         - 2023年~
