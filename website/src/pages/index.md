@@ -80,7 +80,7 @@ A Real-time HTAP Database
                 - Minimal TCO, Making Data Services Affordable to Everyone
 ```
 
-```custom-roadMap 2023-01-15
+```custom-roadMap 2023-03-20
 - Roadmap
     - StoneDB_5.6_v1.0.0
         1. Support integrated hybrid row-column storage and use an in-memory computing architecture.
@@ -111,7 +111,7 @@ A Real-time HTAP Database
         2. Definition of some data objects
         3. Binlog modification
         4. The active and standby clusters automatically search for the master
-        - 2023-02-30
+        - 2023-03-20
     - StoneDB_5.7_v1.0.4
         1. Stored procedure enhancement
         2. MySQL Event (Batch processing capability)
@@ -127,7 +127,7 @@ A Real-time HTAP Database
         - 2023-06-30
     - StoneDB_8.0_v1.0.0
         - Adapt to MySQL 8.0.
-        - 2023-03-06
+        - 2023-04-30
     - StoneDB_v2.0.0
         - Launch the brand new V2.0 architecture.
         - 2023~
