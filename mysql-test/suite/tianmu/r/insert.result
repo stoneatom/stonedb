@@ -3,11 +3,11 @@
 #
 use test;
 CREATE TABLE `column_type_test` (
-`c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-`c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
-`c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
-`c_int` int(11) DEFAULT NULL COMMENT 'int',
-`c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
+`c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+`c_int` int DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
 `c_float` float DEFAULT NULL COMMENT 'float',
 `c_double` double DEFAULT NULL COMMENT 'double',
 `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
@@ -44,8 +44,6 @@ drop table column_type_test;
 #
 drop table if exists t1,t2,t3;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
-Warnings:
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 create table t1 (a int not null);
 insert into t1 values (1);
 insert into t1 values (a+2);
@@ -132,12 +130,12 @@ number int auto_increment primary key,
 original_value varchar(50),
 f_double double,
 f_float float,
-f_double_7_2 double(7,2),
-f_float_4_3 float (4,3),
+f_double_7_2 double,
+f_float_4_3 float,
 f_double_u double,
 f_float_u float,
-f_double_15_1_u double(15,1),
-f_float_3_1_u float (3,1));
+f_double_15_1_u double,
+f_float_3_1_u float);
 set @value= "aa";
 insert into t1 values(null,@value,@value,@value,@value,@value,@value,@value,@value,@value);
 Warnings:
@@ -181,13 +179,11 @@ Warning	1264	Out of range value for column 'f_double' at row 1
 Warning	1264	Out of range value for column 'f_float' at row 1
 Warning	1264	Out of range value for column 'f_float' at row 1
 Warning	1264	Out of range value for column 'f_double_7_2' at row 1
-Warning	1264	Out of range value for column 'f_double_7_2' at row 1
 Warning	1264	Out of range value for column 'f_float_4_3' at row 1
 Warning	1264	Out of range value for column 'f_float_4_3' at row 1
 Warning	1264	Out of range value for column 'f_double_u' at row 1
 Warning	1264	Out of range value for column 'f_float_u' at row 1
 Warning	1264	Out of range value for column 'f_float_u' at row 1
-Warning	1264	Out of range value for column 'f_double_15_1_u' at row 1
 Warning	1264	Out of range value for column 'f_double_15_1_u' at row 1
 Warning	1264	Out of range value for column 'f_float_3_1_u' at row 1
 Warning	1264	Out of range value for column 'f_float_3_1_u' at row 1
@@ -199,13 +195,11 @@ Warning	1264	Out of range value for column 'f_double' at row 1
 Warning	1264	Out of range value for column 'f_float' at row 1
 Warning	1264	Out of range value for column 'f_float' at row 1
 Warning	1264	Out of range value for column 'f_double_7_2' at row 1
-Warning	1264	Out of range value for column 'f_double_7_2' at row 1
 Warning	1264	Out of range value for column 'f_float_4_3' at row 1
 Warning	1264	Out of range value for column 'f_float_4_3' at row 1
 Warning	1264	Out of range value for column 'f_double_u' at row 1
 Warning	1264	Out of range value for column 'f_float_u' at row 1
 Warning	1264	Out of range value for column 'f_float_u' at row 1
-Warning	1264	Out of range value for column 'f_double_15_1_u' at row 1
 Warning	1264	Out of range value for column 'f_double_15_1_u' at row 1
 Warning	1264	Out of range value for column 'f_float_3_1_u' at row 1
 Warning	1264	Out of range value for column 'f_float_3_1_u' at row 1
@@ -218,20 +212,16 @@ set @value= 1e+111;
 insert into t1 values(null,@value,@value,@value,@value,@value,@value,@value,@value,@value);
 Warnings:
 Warning	1264	Out of range value for column 'f_float' at row 1
-Warning	1264	Out of range value for column 'f_double_7_2' at row 1
 Warning	1264	Out of range value for column 'f_float_4_3' at row 1
 Warning	1264	Out of range value for column 'f_float_u' at row 1
-Warning	1264	Out of range value for column 'f_double_15_1_u' at row 1
 Warning	1264	Out of range value for column 'f_float_3_1_u' at row 1
 select * from t1 where number =last_insert_id();
 set @value= -1e+111;
 insert into t1 values(null,@value,@value,@value,@value,@value,@value,@value,@value,@value);
 Warnings:
 Warning	1264	Out of range value for column 'f_float' at row 1
-Warning	1264	Out of range value for column 'f_double_7_2' at row 1
 Warning	1264	Out of range value for column 'f_float_4_3' at row 1
 Warning	1264	Out of range value for column 'f_float_u' at row 1
-Warning	1264	Out of range value for column 'f_double_15_1_u' at row 1
 Warning	1264	Out of range value for column 'f_float_3_1_u' at row 1
 select * from t1 where number =last_insert_id();
 set @value= 1;
@@ -253,7 +243,7 @@ count(*)
 insert into  t2 select t1.* from t1, t2 t, t3 where  t1.id1 = t.id2 and t.id2 = t3.id3;
 select count(*) from t2;
 count(*)
-500
+25500
 drop table t1,t2,t3;
 #
 # Test different cases of duplicate fields
@@ -263,12 +253,14 @@ insert into t1 (a,b) values (a,b);
 insert into t1 SET a=1, b=a+1;
 insert into t1 (a,b) select 1,2;
 INSERT INTO t1 ( a ) SELECT 0 ON DUPLICATE KEY UPDATE a = a + VALUES (a);
+Warnings:
+Warning	1287	'VALUES function' is deprecated and will be removed in a future release. Please use an alias (INSERT INTO ... VALUES (...) AS alias) and replace VALUES(col) in the ON DUPLICATE KEY UPDATE clause with alias.col instead
 prepare stmt1 from ' replace into t1 (a,a) select 100, ''hundred'' ';
 ERROR 42000: Column 'a' specified twice
 insert into t1 (a,b,b) values (1,1,1);
 ERROR 42000: Column 'b' specified twice
 insert into t1 (a,a) values (1,1,1);
-ERROR 21S01: Column count doesn't match value count at row 1
+ERROR 42000: Column 'a' specified twice
 insert into t1 (a,a) values (1,1);
 ERROR 42000: Column 'a' specified twice
 insert into t1 SET a=1,b=2,a=1;
@@ -290,7 +282,7 @@ row_count()
 3
 insert ignore into t1 values (1, 1);
 Warnings:
-Warning	1062	Duplicate entry '1' for key 'PRIMARY'
+Warning	1062	Duplicate entry '1' for key 't1.PRIMARY'
 select row_count();
 row_count()
 -1
