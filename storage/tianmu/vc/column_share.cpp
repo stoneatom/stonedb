@@ -54,7 +54,7 @@ static constexpr size_t DPN_INC_CNT = ALLOC_UNIT / sizeof(DPN);
 
 ColumnShare::~ColumnShare() {
   if (start != nullptr) {
-    if (::munmap(start, common::COL_DN_FILE_SIZE) != 0) {
+    if (::munmap(start, COL_DN_FILE_SIZE) != 0) {
       // DO NOT throw in dtor!
       TIANMU_LOG(LogCtl_Level::WARN, "Failed to unmap DPN file. Error %d(%s)", errno, std::strerror(errno));
     }
@@ -85,12 +85,12 @@ void ColumnShare::map_dpn() {
   ASSERT(sb.st_size % sizeof(DPN) == 0);
   capacity = sb.st_size / sizeof(DPN);
 
-  auto addr = ::mmap(0, common::COL_DN_FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dn_fd, 0);
+  auto addr = ::mmap(0, COL_DN_FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dn_fd, 0);
   if (addr == MAP_FAILED) {
     throw std::system_error(errno, std::system_category(), "mmap() " + dpn_file.string());
   }
 
-  // TODO: should we mlock(addr, common::COL_DN_FILE_SIZE)?
+  // TODO: should we mlock(addr, COL_DN_FILE_SIZE)?
 
   start = static_cast<DPN *>(addr);
 }
@@ -240,8 +240,7 @@ int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
     return i;
   }
 
-  ASSERT((capacity + DPN_INC_CNT) <= (common::COL_DN_FILE_SIZE / sizeof(DPN)),
-         "Failed to allocate new DN: " + m_path.string());
+  ASSERT((capacity + DPN_INC_CNT) <= (COL_DN_FILE_SIZE / sizeof(DPN)), "Failed to allocate new DN: " + m_path.string());
   capacity += DPN_INC_CNT;
 
   //  NOTICE:
@@ -272,7 +271,7 @@ void ColumnShare::alloc_seg(DPN *dpn) {
 }
 
 void ColumnShare::sync_dpns() {
-  int ret = ::msync(start, common::COL_DN_FILE_SIZE, MS_SYNC);
+  int ret = ::msync(start, COL_DN_FILE_SIZE, MS_SYNC);
   if (ret != 0)
     throw std::system_error(errno, std::system_category(), "msync() " + m_path.string());
 }

@@ -151,7 +151,7 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
     }
     fdn.WriteExact(&dpn, sizeof(dpn));
     fdn.Flush();
-    fs::resize_file(dir / common::COL_DN_FILE, common::COL_DN_FILE_SIZE);
+    fs::resize_file(dir / common::COL_DN_FILE, core::COL_DN_FILE_SIZE);
   }
 
   // create filter directories
@@ -383,6 +383,9 @@ void TianmuAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
 
 PackOntologicalStatus TianmuAttr::GetPackOntologicalStatus(int pack_no) {
   LoadPackInfo();
+  if (m_idx.empty() || (!m_idx.size())) {
+    return PackOntologicalStatus::NULLS_ONLY;
+  }
   DPN const *dpn(pack_no >= 0 ? &get_dpn(pack_no) : nullptr);
   if (pack_no < 0 || dpn->NullOnly())
     return PackOntologicalStatus::NULLS_ONLY;

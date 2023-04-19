@@ -1319,8 +1319,10 @@ int ha_tianmu::truncate() {
     ret = 0;
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
+    ret = 1;
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
+    ret = 1;
   }
   DBUG_RETURN(ret);
 }
@@ -1349,8 +1351,10 @@ int ha_tianmu::fill_row(uchar *buf) {
   }
 
   if (iterator_->IsBase()) {
-    // judge whether this line has been deleted.
-    // if this line has been deleted, data will not be copied.
+    /*
+      Determine whether the current row is invalid in the base layer,
+      If it is invalid, directly return to the SQL layer that the current row has been deleted
+    */
     if (iterator_->BaseCurrentRowIsInvalid()) {
       current_position_ = iterator_->Position();
       iterator_->Next();
@@ -1366,6 +1370,7 @@ int ha_tianmu::fill_row(uchar *buf) {
     if (!delta_record.empty()) {
       switch (core::DeltaRecordHead::GetRecordType(delta_record.data())) {
         case core::RecordType::kInsert:
+          // If the function change fails, it will be considered that the row change has been deleted.
           if (!core::Engine::DecodeInsertRecordToField(delta_record.data(), table->field)) {
             current_position_ = iterator_->Position();
             iterator_->Next();
@@ -1374,6 +1379,11 @@ int ha_tianmu::fill_row(uchar *buf) {
           }
           break;
         case core::RecordType::kUpdate:
+          /*
+            Merge data from the base layer and delta layer.
+            At the same time, record the status of switching to the delta layer
+            When iterating the base layer data, it is judged as invalid for changing rows
+          */
           current_txn_->GetTableByPath(table_name_)->FillRowByRowid(table, iterator_->Position());
           core::Engine::DecodeUpdateRecordToField(delta_record.data(), table->field);
           iterator_->InDeltaUpdateRow.insert(
@@ -1381,6 +1391,11 @@ int ha_tianmu::fill_row(uchar *buf) {
           break;
         case core::RecordType::kDelete:
           current_position_ = iterator_->Position();
+          /*
+            If there is deleted data with a new row in the delta layer,
+            Just record it down,
+            When iterating the base layer data, it is judged as invalid for changing rows
+          */
           iterator_->InDeltaDeletedRow.insert(std::unordered_map<int64_t, bool>::value_type(current_position_, true));
           iterator_->Next();
           dbug_tmp_restore_column_map(table->write_set, org_bitmap);

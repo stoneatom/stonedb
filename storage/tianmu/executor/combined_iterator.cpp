@@ -51,9 +51,6 @@ void CombinedIterator::Next() {
     }
   } else {
     base_iter_->Next();
-    if (base_iter_->Valid()) {
-      TIANMU_LOG(LogCtl_Level::ERROR, "base pos: %d", base_iter_->Position());
-    }
   }
 }
 
@@ -85,8 +82,8 @@ bool CombinedIterator::Valid() const { return Position() != -1; }
 bool CombinedIterator::IsBase() const { return is_base_; }
 
 bool CombinedIterator::BaseCurrentRowIsInvalid() const {
-  if (base_iter_->CurrentRowIsDeleted() || InDeltaDeletedRow.find(base_iter_->Position()) != InDeltaDeletedRow.end() ||
-      InDeltaUpdateRow.find(base_iter_->Position()) != InDeltaUpdateRow.end()) {
+  if (InDeltaDeletedRow.find(base_iter_->Position()) != InDeltaDeletedRow.end() ||
+      InDeltaUpdateRow.find(base_iter_->Position()) != InDeltaUpdateRow.end() || base_iter_->CurrentRowIsDeleted()) {
     return true;
   }
   return false;
