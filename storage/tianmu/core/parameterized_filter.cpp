@@ -1021,7 +1021,8 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       It needs to be increased according to the number of executions.
     */
     int no_dims = 0;
-    for (auto rcTable : rcTables) {
+    for (int tableIndex = 0; tableIndex < rcTables.size(); ++tableIndex) {
+      auto rcTable = rcTables[tableIndex];
       if (rcTable->TableType() == TType::TEMP_TABLE)
         continue;
       bool isVald = false;
@@ -1038,7 +1039,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
         }
       }
       if (!isVald) {
-        FilterDeletedByTable(rcTable, no_dims);
+        FilterDeletedByTable(rcTable, no_dims, tableIndex);
         no_dims++;
       }
     }
@@ -1518,7 +1519,7 @@ void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Tra
   taskIterator->Commit(false);
 }
 
-void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable, int no_dims) {
+void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable, int &no_dims, int &tableIndex) {
   Descriptor desc(table, no_dims);
   desc.op = common::Operator::O_EQ_ALL;
   desc.encoded = true;
@@ -1526,7 +1527,7 @@ void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable, int no_dims)
   // Use column 0 to filter the table data
   int firstColumn = 0;
   PhysicalColumn *phc = rcTable->GetColumn(firstColumn);
-  vcolumn::SingleColumn *vc = new vcolumn::SingleColumn(phc, mind, 0, 0, rcTable, no_dims);
+  vcolumn::SingleColumn *vc = new vcolumn::SingleColumn(phc, mind, 0, 0, rcTable, tableIndex);
   if (!vc)
     throw common::OutOfMemoryException();
 
@@ -1558,10 +1559,11 @@ void ParameterizedFilter::FilterDeletedForSelectAll() {
   if (table) {
     auto &rcTables = table->GetTables();
     int no_dims = 0;
-    for (auto rcTable : rcTables) {
+    for (int tableIndex = 0; tableIndex < rcTables.size(); ++tableIndex) {
+      auto rcTable = rcTables[tableIndex];
       if (rcTable->TableType() == TType::TEMP_TABLE)
         continue;
-      FilterDeletedByTable(rcTable, no_dims);
+      FilterDeletedByTable(rcTable, no_dims, tableIndex);
       no_dims++;
     }
     mind->UpdateNumOfTuples();
