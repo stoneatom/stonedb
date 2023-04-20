@@ -124,7 +124,7 @@ class PackInt final : public Pack {
   void RemoveNullsAndCompress(compress::NumCompressor<etype> &nc, char *tmp_comp_buffer, uint &tmp_cb_len,
                               uint64_t &maxv);
 
-  //void alloc_data_ptr(uint32_t recordNum);
+  // void alloc_data_ptr(uint32_t recordNum);
 
   bool is_real_ = false;
   struct {
