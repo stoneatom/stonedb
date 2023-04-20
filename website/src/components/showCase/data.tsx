@@ -3,6 +3,10 @@ import Translate from "@docusaurus/Translate";
 import kunpeng from '@site/static/resource/kunpeng.png';
 import tx from '@site/static/resource/tx.png';
 import Opengauss from '@site/static/resource/Opengauss.png';
+import zkfd from '@site/static/resource/zkfd.png';
+import ghzz from '@site/static/resource/ghzz.png';
+import hgxx from '@site/static/resource/hgxx.png';
+import zkkk from '@site/static/resource/zkkk.png';
 
 export const list = [
   {
@@ -28,5 +32,37 @@ export const list = [
         100%兼容MySQL 5.7
       </Translate>
     )
+  },
+  {
+    logo: zkfd,
+    name: (
+      <Translate id="home.compatible.title">
+        100%兼容MySQL 5.7
+      </Translate>
+    )
+  },
+  {
+    logo: ghzz,
+    name: (
+      <Translate id="home.compatible.title">
+        100%兼容MySQL 5.7
+      </Translate>
+    )
+  },
+  {
+    logo: hgxx,
+    name: (
+      <Translate id="home.compatible.title">
+        100%兼容MySQL 5.7
+      </Translate>
+      )
+  },
+  {
+    logo: zkkk,
+    name: (
+      <Translate id="home.compatible.title">
+        100%兼容MySQL 5.7
+      </Translate>
+      )
   }
 ]
