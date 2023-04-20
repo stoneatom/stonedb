@@ -221,7 +221,8 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
     }
     auto oldv = GetValDouble(locationInPack);
 
-    ASSERT(oldv <= dpn_->max_d);
+    ASSERT(oldv <= dpn_->max_d,
+           col_share_->DataFile() + " oldv=" + std::to_string(oldv) + ", dpn_->max_d=" + std::to_string(dpn_->max_d));
 
     // get max/min **without** the value to update
     auto newmax = std::numeric_limits<double>::min();
@@ -275,7 +276,7 @@ void PackInt::UpdateValue(size_t locationInPack, const Value &v) {
     dealloc(data_.ptr_);
     data_.ptr_ = nullptr;
     data_.value_type_ = 0;
-    if(dpn_->numOfDeleted == 0){
+    if (dpn_->numOfDeleted == 0) {
       dpn_->dataAddress = DPN_INVALID_ADDR;
     }
   }
@@ -294,12 +295,14 @@ void PackInt::DeleteByRow(size_t locationInPack) {
         data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
         for (uint i = 0; i < dpn_->numOfRecords; i++) SetValD(i, dpn_->min_d);
       }
-      
+
       auto oldv = GetValDouble(locationInPack);
-      ASSERT(oldv <= dpn_->max_d);
+      ASSERT(oldv <= dpn_->max_d,
+             col_share_->DataFile() + " oldv=" + std::to_string(oldv) + ", dpn_->max_d=" + std::to_string(dpn_->max_d));
 
       SetNull(locationInPack);
       dpn_->numOfNulls++;
+      dpn_->sum_d -= oldv;
 
       if ((oldv == dpn_->min_d || oldv == dpn_->max_d) && dpn_->min_d != dpn_->max_d) {
         // get max/min **without** the value to update
@@ -314,12 +317,11 @@ void PackInt::DeleteByRow(size_t locationInPack) {
               newmin = val;
           }
         }
-        if (!dpn_->NullOnly()){
+        if (!dpn_->NullOnly()) {
           dpn_->min_d = newmin;
           dpn_->max_d = newmax;
         }
       }
-      dpn_->sum_d -= oldv;
     } else {
       if (data_.empty()) {
         ASSERT(dpn_->Uniform());
@@ -331,10 +333,13 @@ void PackInt::DeleteByRow(size_t locationInPack) {
       auto oldv = GetValInt(locationInPack);
       oldv += dpn_->min_i;
 
-      ASSERT(oldv <= dpn_->max_i);
+      ASSERT(oldv <= dpn_->max_i,
+             col_share_->DataFile() + " oldv=" + std::to_string(oldv) + ", dpn_->max_i=" + std::to_string(dpn_->max_i));
 
       SetNull(locationInPack);
+      SetVal64(locationInPack, 0);
       dpn_->numOfNulls++;
+      dpn_->sum_i -= oldv;
 
       if ((oldv == dpn_->min_i || oldv == dpn_->max_i) && dpn_->min_i != dpn_->max_i) {
         // get max/min **without** the value to update
@@ -349,13 +354,12 @@ void PackInt::DeleteByRow(size_t locationInPack) {
               newmin = val;
           }
         }
-        if (!dpn_->NullOnly()){
+        if (!dpn_->NullOnly()) {
           ExpandOrShrink(newmax - newmin, dpn_->min_i - newmin);
           dpn_->min_i = newmin;
           dpn_->max_i = newmax;
         }
       }
-      dpn_->sum_i -= oldv;
     }
   }
   SetDeleted(locationInPack);
@@ -436,7 +440,8 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
     auto oldv = GetValInt(locationInPack);
     oldv += dpn_->min_i;
 
-    ASSERT(oldv <= dpn_->max_i);
+    ASSERT(oldv <= dpn_->max_i,
+           col_share_->DataFile() + " oldv=" + std::to_string(oldv) + ", dpn_->max_i=" + std::to_string(dpn_->max_i));
 
     // get max/min **without** the value to update
     int64_t newmax = std::numeric_limits<int64_t>::min();
@@ -455,11 +460,12 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
     if (!v.HasValue()) {
       // update non-null to null
       SetNull(locationInPack);
+      SetVal64(locationInPack, 0);
       dpn_->numOfNulls++;
       // easy mode
       dpn_->sum_i -= oldv;
 
-      if (!dpn_->NullOnly()){
+      if (!dpn_->NullOnly()) {
         if ((oldv == dpn_->min_i || oldv == dpn_->max_i) && dpn_->min_i != dpn_->max_i) {
           ExpandOrShrink(newmax - newmin, dpn_->min_i - newmin);
           dpn_->min_i = newmin;
@@ -628,8 +634,10 @@ PackInt::~PackInt() {
 void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
   FunctionExecutor fe([this]() { Lock(); }, [this]() { Unlock(); });
 
-  if(dpn_->NullOnly() || dpn_->Uniform()) data_.value_type_ = 0;
-  else data_.value_type_ = GetValueSize(dpn_->max_i - dpn_->min_i);
+  if (dpn_->NullOnly() || dpn_->Uniform())
+    data_.value_type_ = 0;
+  else
+    data_.value_type_ = GetValueSize(dpn_->max_i - dpn_->min_i);
 
   if (IsModeNoCompression()) {
     if (dpn_->numOfNulls > 0) {
@@ -638,7 +646,7 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
     if (dpn_->numOfDeleted > 0) {
       fcurfile->ReadExact(deletes_ptr_.get(), bitmap_size_);
     }
-    if(data_.value_type_ * dpn_->numOfRecords > 0){
+    if (data_.value_type_ * dpn_->numOfRecords > 0) {
       data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
       fcurfile->ReadExact(data_.ptr_, data_.value_type_ * dpn_->numOfRecords);
     }

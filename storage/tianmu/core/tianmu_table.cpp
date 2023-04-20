@@ -1549,8 +1549,8 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   uint64 expected_count = m_delta->CountRecords() < tianmu_sysvar_merge_rocks_expected_count
                               ? m_delta->CountRecords()
                               : tianmu_sysvar_merge_rocks_expected_count;
-                              
-  uint64_t total_load_num = 0, total_read_cnt = 0, total_read_bytes = 0;                            
+
+  uint64_t total_load_num = 0, total_read_cnt = 0, total_read_bytes = 0;
   {
     // combine prefix key
     uchar key_buf[sizeof(uint32_t)];
