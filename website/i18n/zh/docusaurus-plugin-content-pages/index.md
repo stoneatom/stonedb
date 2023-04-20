@@ -135,13 +135,22 @@ StoneDB for MySQL
 ```
 
 ```custom-showCase
-- 国产化适配
+- 信创国产化
     - kunpeng
         - 鲲鹏技术认证
     - tx
         - 统信软件认证
+    - zkfd
+        - 中科方德认证
+    - hgxx
+        - 海光信息认证
+    - zkkk
+        - 中科可控认证
+    - ghzz
+        - 光合组织成员单位
     - Opengauss
-        - OpenGauss共建社区
+        - OpenGauss共建社区    
+
 ```
 
 ```custom-customers
