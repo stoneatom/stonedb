@@ -79,7 +79,7 @@ class ParameterizedFilter final {
   void TaskProcessPacks(MIUpdatingIterator *taskIterator, Transaction *ci, common::RoughSetValue *rf,
                         DimensionVector *dims, int desc_number, int64_t limit, int one_dim);
 
-  void FilterDeletedByTable(JustATable *rcTable, int no_dims);
+  void FilterDeletedByTable(JustATable *rcTable, int &no_dims, int &tableIndex);
   void FilterDeletedForSelectAll();
 
   MultiIndex *mind;
