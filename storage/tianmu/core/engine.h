@@ -26,13 +26,13 @@
 
 #include "common/assert.h"
 #include "common/exception.h"
-#include "core/combined_iterator.h"
 #include "core/data_cache.h"
 #include "core/object_cache.h"
 #include "core/query.h"
 #include "core/table_share.h"
 #include "core/temp_table.h"
 #include "core/tianmu_table.h"
+#include "executor/combined_iterator.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
 #include "index/tianmu_table_index.h"
@@ -79,6 +79,8 @@ class Engine final {
   ~Engine();
 
   int Init(uint engine_slot);
+  index::KVStore *getStore() const { return store_; }
+
   void CreateTable(const std::string &table, TABLE *from, HA_CREATE_INFO *create_info);
   int DeleteTable(const char *table, THD *thd);
   void TruncateTable(const std::string &table_path, THD *thd);
@@ -282,6 +284,7 @@ class Engine final {
   std::unique_ptr<TaskExecutor> task_executor;
   uint64_t m_mem_available_ = 0;
   uint64_t m_swap_used_ = 0;
+  index::KVStore *store_;
 };
 
 class ResultSender {

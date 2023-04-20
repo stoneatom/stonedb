@@ -21,9 +21,9 @@
 */
 
 #include "core/engine.h"
-#include "core/mi_iterator.h"
-#include "core/pack_orderer.h"
 #include "core/temp_table.h"
+#include "data/pack_orderer.h"
+#include "optimizer/iterators/mi_iterator.h"
 #include "vc/single_column.h"
 
 namespace Tianmu {

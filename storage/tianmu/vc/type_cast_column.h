@@ -18,7 +18,7 @@
 #define TIANMU_VC_TYPE_CAST_COLUMN_H_
 #pragma once
 
-#include "core/mi_iterator.h"
+#include "optimizer/iterators/mi_iterator.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {

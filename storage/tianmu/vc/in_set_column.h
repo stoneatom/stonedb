@@ -18,10 +18,10 @@
 #define TIANMU_VC_IN_SET_COLUMN_H_
 #pragma once
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
 #include "core/temp_table.h"
 #include "core/value_set.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "vc/multi_value_column.h"
 
 namespace Tianmu {

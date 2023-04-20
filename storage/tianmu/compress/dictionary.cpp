@@ -19,7 +19,7 @@
 
 #include <cstring>
 
-#include "core/bin_tools.h"
+#include "util/bin_tools.h"
 #include "util/qsort.h"
 
 namespace Tianmu {

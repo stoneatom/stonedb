@@ -18,6 +18,7 @@
 #define TIANMU_COMMON_DEFS_H_
 #pragma once
 
+#include <stddef.h>
 #include <cstdint>
 
 namespace Tianmu {
@@ -42,19 +43,17 @@ constexpr const char *COL_FILTER_HIST_DIR = "hist";
 constexpr const char *COL_KN_FILE = "KN";
 constexpr const char *COL_META_FILE = "META";
 constexpr const char *COL_DN_FILE = "DN";
-/*
-   The size of the file where the DPN metadata resides, in bytes
-   At present, the size of a single DPN is 88 bytes, and the storage limit is 8.589 billion lines
-*/
-constexpr size_t COL_DN_FILE_SIZE = 11 * 1024 * 1024;
+
+constexpr uint8_t MAX_PSS = 16;  // max pack size shift
+constexpr uint8_t DFT_PSS = 16;
+constexpr size_t MAX_ROW_NUMS_EACH_PACK = 1 << common::MAX_PSS;  // max 64K rows per pack
+
+constexpr size_t MAX_CMPR_SIZE = 0x007D000000;
 constexpr const char *COL_DATA_FILE = "DATA";
 constexpr const char *COL_VERSION_DIR = "v";
 constexpr uint32_t COL_FILE_VERSION = 3;
 constexpr uint32_t MAX_COLUMNS_PER_TABLE = 4000;
-
-constexpr uint8_t MAX_PSS = 16;
-constexpr uint8_t DFT_PSS = 16;
-constexpr size_t MAX_CMPR_SIZE = 0x007D000000;
+constexpr uint32_t MAX_ROW_NUM_SHIFT = 33;  // max 8G (1 << 33) rows per storage limitation
 
 using PACK_INDEX = uint32_t;
 constexpr PACK_INDEX INVALID_PACK_INDEX = -1;

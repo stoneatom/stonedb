@@ -38,21 +38,22 @@ class KVStore;
 // Channel for debugging information, not
 // displayed in the standard running mode.
 extern system::Channel tianmu_control_;
+
 // the channel for query log.
 extern system::Channel tianmu_querylog_;
+
 // host ip addr.
 extern char global_hostIP_[FN_REFLEN];
+
 // host server info string.
 extern char global_serverinfo_[FN_REFLEN];
 
-// row-column engine handler.
-extern core::Engine *ha_tianmu_engine_;
-// key-value store handler.
-extern index::KVStore *ha_kvstore_;
 // global mutex.
 extern std::mutex global_mutex_;
+
 // drop or rename mutex.
 extern std::shared_mutex drop_rename_mutex_;
+
 // current transaction handler.
 extern thread_local core::Transaction *current_txn_;
 

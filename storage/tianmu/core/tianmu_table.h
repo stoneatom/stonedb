@@ -23,9 +23,9 @@
 #include "common/common_definitions.h"
 #include "core/delta_table.h"
 #include "core/just_a_table.h"
-#include "core/tianmu_attr.h"
 #include "index/tianmu_table_index.h"
 #include "util/fs.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 

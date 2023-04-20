@@ -21,8 +21,8 @@
 #include <atomic>
 
 #include "common/assert.h"
-#include "core/tools.h"
 #include "mm/memory_handling_policy.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 

@@ -18,12 +18,12 @@
 #include <algorithm>
 
 #include "common/mysql_gate.h"
-#include "core/compilation_tools.h"
-#include "core/compiled_query.h"
 #include "core/engine.h"
 #include "core/mysql_expression.h"
 #include "core/query.h"
 #include "core/transaction.h"
+#include "optimizer/compile/compilation_tools.h"
+#include "optimizer/compile/compiled_query.h"
 
 namespace Tianmu {
 namespace core {

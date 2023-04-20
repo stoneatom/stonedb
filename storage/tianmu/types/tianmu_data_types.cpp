@@ -17,8 +17,8 @@
 
 #include "tianmu_data_types.h"
 
-#include "core/tianmu_attr.h"
-#include "core/tianmu_attr_typeinfo.h"
+#include "vc/tianmu_attr.h"
+#include "vc/tianmu_attr_typeinfo.h"
 
 namespace Tianmu {
 namespace types {
