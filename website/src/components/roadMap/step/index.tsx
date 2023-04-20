@@ -4,7 +4,7 @@ import {IStep} from './interface';
 import {StepWrap, StepItemWrap, StepContext, ButtonWrap, ButtonIcon, Logo} from './styles';
 
 export const Step: React.FC<IStep> = ({dataSource, value}) => {
-  const [scroll, setScroll] = useState(0);
+  const [scroll, setScroll] = useState(960);
   const { ref, inView } = useInView({
     threshold: 0.8,
   });
