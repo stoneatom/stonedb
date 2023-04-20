@@ -127,7 +127,7 @@ A Real-time HTAP Database
         - 2023-06-30
     - StoneDB_8.0_v1.0.0
         - Adapt to MySQL 8.0.
-        - 2023-04-30
+        - 2023-05-05
     - StoneDB_v2.0.0
         - Launch the brand new V2.0 architecture.
         - 2023~
