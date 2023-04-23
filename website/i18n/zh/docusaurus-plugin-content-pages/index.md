@@ -128,20 +128,29 @@ StoneDB for MySQL
         - 2023-06-30
     - StoneDB_8.0_v1.0.0
         - 适配 MySQL 8.0
-        - 2023-04-30
+        - 2023-05-04
     - StoneDB_v2.0.0
         - 全新架构
         - 2023年~
 ```
 
 ```custom-showCase
-- 国产化适配
+- 信创国产化
     - kunpeng
         - 鲲鹏技术认证
     - tx
         - 统信软件认证
+    - zkfd
+        - 中科方德认证
+    - hgxx
+        - 海光信息认证
+    - zkkk
+        - 中科可控认证
+    - ghzz
+        - 光合组织成员单位
     - Opengauss
-        - OpenGauss共建社区
+        - OpenGauss共建社区    
+
 ```
 
 ```custom-customers
