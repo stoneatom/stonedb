@@ -1,6 +1,6 @@
 ---
 id: compile-using-docker
-sidebar_position: 5.15
+sidebar_position: 5.16
 ---
 
 # Compile StoneDB in a Docker Container
@@ -162,7 +162,7 @@ After the `make` commands are successful, you can choose either to compress the 
 [root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb56.tar.gz /stonedb56/
 ```
 ### Directly use StoneDB in the container
-You can refer to [Quick Deployment](.../../../../02-getting-started/quick-deployment) or the following code to deploy and use StoneDB in the container.
+You can refer to [Quick Deployment](.../../../../02-getting-started/quick-deployment/quick-deployment-56.md) or the following code to deploy and use StoneDB in the container.
 ```bash
 [root@06f1f385d3b3 build]# cd /stonedb56/install/
 

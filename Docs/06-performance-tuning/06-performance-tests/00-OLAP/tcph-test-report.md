@@ -1757,13 +1757,34 @@ Compare the performance data between ClickHouse and StoneDB.
 ## **OS resource usage comparison**
 StoneDB provides better performance than ClickHouse, when comparing OS resource overhead, such as disk I/O, CPU utilization, system load, and IOPS.
 ### CPU
-StoneDB<br />![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568598543-214925cf-590b-428e-b91b-7ab246358731.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=277&id=u50016df5&margin=%5Bobject%20Object%5D&name=image.png&originHeight=416&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=103201&status=done&style=none&taskId=uf40b8a8e-0dc7-44a3-a721-d4f1d233e8b&title=&width=576.6666666666666)<br />ClickHouse<br />![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568611137-b982bc1f-9a4b-43a3-b046-8e36bc69bd22.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=277&id=u938b1f0f&margin=%5Bobject%20Object%5D&name=image.png&originHeight=416&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=110865&status=done&style=none&taskId=u0ad44ad9-ced0-45ed-be50-40461cbb04e&title=&width=576.6666666666666)
+**StoneDB**
+
+![stonedb-cpu](./stonedb-cpu.png)
+
+**ClickHouse**
+
+![clickhouse-cpu.png](./clickhouse-cpu.png)
 ### Disk IOPS
-StoneDB<br />![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568637102-2e714ace-fece-43a3-9d83-2a08cccdb178.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=279&id=u196cc277&margin=%5Bobject%20Object%5D&name=image.png&originHeight=418&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=129235&status=done&style=none&taskId=u43a5f00d-c561-4341-956a-f630cd0ef4b&title=&width=576.6666666666666)<br />ClickHouse<br />![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568649723-b2639bd3-ccc4-4bec-84a4-d984cf65de90.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=277&id=u2a40ff0d&margin=%5Bobject%20Object%5D&name=image.png&originHeight=416&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=87178&status=done&style=none&taskId=u20cb5854-d12a-403e-8b68-86f3d27b363&title=&width=576.6666666666666)
+**StoneDB**
+![stonedb-disk-iops.pn](./stonedb-disk-iops.png)
+
+**ClickHouse**
+
+![clickhouse-disk-iops.png](./clickhouse-disk-iops.png)
 ### Memory
-StoneDB<br />![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568670524-30f85a75-1578-474a-8f4c-a16deb71575b.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=279&id=u3fa26688&margin=%5Bobject%20Object%5D&name=image.png&originHeight=418&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=67793&status=done&style=none&taskId=u2c29a120-9e0e-4495-bf87-7647af82d34&title=&width=576.6666666666666)<br />ClickHouse <br />![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568682032-7a384cd6-04ea-475d-b4d2-7b67f9a35031.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=279&id=uc95e26c7&margin=%5Bobject%20Object%5D&name=image.png&originHeight=418&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=91026&status=done&style=none&taskId=u7a6f7472-f4c1-42d9-8f86-43ab252a21b&title=&width=576.6666666666666)
-### System load
-StoneDB<br />![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568786483-4d4971a3-a937-4d3a-a457-0fe5b7eb3a88.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=277&id=ub4de92c7&margin=%5Bobject%20Object%5D&name=image.png&originHeight=416&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=118979&status=done&style=none&taskId=u1d0cba81-4461-4ccf-b34e-b8230549e56&title=&width=576.6666666666666)<br />ClickHouse<br />![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568820117-3336183b-5c85-4b40-b13f-b77b7eeb5e89.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=279&id=u84462ee6&margin=%5Bobject%20Object%5D&name=image.png&originHeight=418&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=168860&status=done&style=none&taskId=u12c19798-3577-4ed1-9aba-5ed93a2ded8&title=&width=576.6666666666666)
+**StoneDB**
+
+![stonedb-memory.png](./stonedb-memory.png)
+
+**ClickHouse**
+
+![click-memory.png](./click-memory.png)
+### System Load
+**StoneDB**
+![stonedb-system-load.png](./stonedb-system-load.png)
+
+**ClickHouse**
+![clickhouse-system-load.png](./clickhouse-system-load.png)
 
 ## **Scripts used in the tests**
 ### CREATE TABLE

@@ -75,7 +75,7 @@
   --safe-heading-5-size: 16px;
   --safe-line-height-base: 1.5715;
   --safe-border-radius-base: 10px;
-  --safe-border-radius-sm: 10px;
+  --safe-border-radius-sm: 2px;
   --safe-control-border-radius: 10px;
   --safe-arrow-border-radius: 2px;
   --safe-padding-lg: 24px;
@@ -149,7 +149,7 @@
   --safe-btn-primary-shadow: 0 2px 0 rgba(0, 0, 0, 0.045);
   --safe-btn-text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.12);
   --safe-btn-primary-color: #fff;
-  --safe-btn-primary-bg: #373C43;
+  --safe-btn-primary-bg: #00A6FB;
   --safe-btn-default-color: #646A7D;
   --safe-btn-default-bg: #F2F3F7;
   --safe-btn-default-border: #E5E8F0;
@@ -354,9 +354,9 @@
   --safe-cascader-dropdown-line-height: 22px;
   --safe-anchor-bg: transparent;
   --safe-anchor-border-color: #f0f0f0;
-  --safe-anchor-link-top: 7px;
+  --safe-anchor-link-top: 4px;
   --safe-anchor-link-left: 16px;
-  --safe-anchor-link-padding: 7px 0 7px 16px;
+  --safe-anchor-link-padding: 4px 0 4px 16px;
   --safe-tooltip-max-width: 250px;
   --safe-tooltip-color: #646A7D;
   --safe-tooltip-bg: #ffffff;
@@ -383,7 +383,7 @@
   --safe-modal-header-title-line-height: 22px;
   --safe-modal-header-title-font-size: 16px;
   --safe-modal-header-border-color-split: #f0f0f0;
-  --safe-modal-header-close-size: 56px;
+  --safe-modal-header-close-size: 54px;
   --safe-modal-content-bg: #fff;
   --safe-modal-heading-color: rgba(0, 0, 0, 0.85);
   --safe-modal-close-color: #646A7D;
@@ -396,6 +396,7 @@
   --safe-modal-mask-bg: rgba(0, 0, 0, 0.45);
   --safe-modal-confirm-body-padding: 32px 32px 24px;
   --safe-modal-confirm-title-font-size: 16px;
+  --safe-modal-border-radius: 10px;
   --safe-progress-default-color: #1890ff;
   --safe-progress-remaining-color: #f5f5f5;
   --safe-progress-info-text-color: #373c43;
@@ -646,6 +647,7 @@
   --safe-slider-handle-color-tooltip-open: #00A6FB;
   --safe-slider-handle-size: 14px;
   --safe-slider-handle-margin-top: -5px;
+  --safe-slider-handle-margin-left: -5px;
   --safe-slider-handle-shadow: 0;
   --safe-slider-dot-border-color: #f0f0f0;
   --safe-slider-dot-border-color-active: #80d3fd;

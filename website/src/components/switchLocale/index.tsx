@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import { IconFont } from '../icon';
+import { IconFont } from '../iconFont';
 import {SelectStyle} from './styles';
 
 export const SwitchLocal = () => {

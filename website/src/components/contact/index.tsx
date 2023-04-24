@@ -3,9 +3,9 @@ import {Row, Divider, Image} from 'antd';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Translate from '@docusaurus/Translate';
 import { useHistory } from '@docusaurus/router';
-import { IconFont } from "../icon";
+import { IconFont } from "../iconFont";
 import {EmailModal} from '../emailModal';
-import {Title, Context} from '../styles'
+import {Title, Context, Panel} from '../styles'
 import {DL, DT, DD, Item, US, Link, FT} from './styles';
 
 const Concat = () => {
@@ -21,6 +21,7 @@ const Concat = () => {
   }
 
   return (
+    <Panel>
     <Context>
       <Title>
         <Translate id="home.contact.title">
@@ -96,8 +97,9 @@ const Concat = () => {
               <Item>
                 <IconFont type="icon-a-bianzu27"  className='icon' />
                 <Translate id="home.social">
-                  关注公众号
+                  关注我们
                 </Translate>
+                <Image className='more' width={80} src="https://cms.stoneatom.com/assets/beda17c3-516f-46c9-9e4a-2849e8c7a4cf" />
                 <Image className='more' width={80} src="http://static.stoneatom.com/assets/rc-upload-1654065031076-2_qrcode_for_gh_8fb79cdb61cd_344.jpg" />
               </Item>
               <Divider />
@@ -115,6 +117,7 @@ const Concat = () => {
         }
       </Row>
     </Context>
+    </Panel>
   )
 }
 export default Concat;
