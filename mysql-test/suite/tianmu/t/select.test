@@ -1,4 +1,9 @@
 --source include/have_tianmu.inc
+--disable_warnings
+drop database if exists select_test;
+--enable_warnings
+create database select_test;
+use select_test;
 
 --echo #
 --echo # Simple select test
@@ -13,8 +18,8 @@ drop view if exists v1;
 --enable_warnings
 
 CREATE TABLE t1 (
-  Period smallint(4) DEFAULT '0000' NOT NULL,
-  Varor_period smallint(4) DEFAULT '0' NOT NULL
+  Period smallint DEFAULT '0000' NOT NULL,
+  Varor_period smallint DEFAULT '0' NOT NULL
 )engine=tianmu;
 
 INSERT INTO t1 VALUES (9410,9412);
@@ -29,8 +34,8 @@ select t1.* from t1;
 
 CREATE TABLE t2 (
   auto int not null auto_increment,
-  fld1 int(6) DEFAULT '000000' NOT NULL,
-  companynr tinyint(2) DEFAULT '00' NOT NULL,
+  fld1 int DEFAULT '000000' NOT NULL,
+  companynr tinyint DEFAULT '00' NOT NULL,
   fld3 char(30) DEFAULT '' NOT NULL,
   fld4 char(35) DEFAULT '' NOT NULL,
   fld5 char(35) DEFAULT '' NOT NULL,
@@ -1350,6 +1355,7 @@ select distinct substring(fld3,1,3) from t2 where fld3 like "A%" limit 10;
 --echo #
 --echo #insert into....select
 --echo #
+drop database select_test;
 
 create database aa;
 use aa;
@@ -1357,8 +1363,8 @@ create table t3 (
  period    int not null,
  name      char(32) not null,
  companynr int not null,
- price     double(11,0),
- price2     double(11,0),
+ price     double,
+ price2     double,
  key (period),
  key (name)
 )engine=tianmu;
@@ -1380,8 +1386,8 @@ create table t3_1 (
  period    int not null,
  name      char(32) not null,
  companynr int not null,
- price     double(11,0),
- price2     double(11,0),
+ price     double,
+ price2     double,
  key (period),
  key (name)
 )engine=tianmu;
@@ -1407,4 +1413,3 @@ insert into t3_1 select * from t3;
 
 select * from t3_1;
 drop database aa;
-

@@ -5,11 +5,11 @@
 --echo #
 use test;
 CREATE TABLE `column_type_test` (
- `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-  `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
-  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
-  `c_int` int(11) DEFAULT NULL COMMENT 'int',
-  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+ `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint DEFAULT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
   `c_float` float DEFAULT NULL COMMENT 'float',
   `c_double` double DEFAULT NULL COMMENT 'double',
   `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
@@ -125,12 +125,12 @@ create table t1(
  original_value varchar(50),
  f_double double,
  f_float float,
- f_double_7_2 double(7,2),
- f_float_4_3 float (4,3),
+ f_double_7_2 double,
+ f_float_4_3 float,
  f_double_u double,
  f_float_u float,
- f_double_15_1_u double(15,1),
- f_float_3_1_u float (3,1));
+ f_double_15_1_u double,
+ f_float_3_1_u float);
 
 set @value= "aa";
 insert into t1 values(null,@value,@value,@value,@value,@value,@value,@value,@value,@value);
@@ -222,7 +222,7 @@ INSERT INTO t1 ( a ) SELECT 0 ON DUPLICATE KEY UPDATE a = a + VALUES (a);
 prepare stmt1 from ' replace into t1 (a,a) select 100, ''hundred'' ';
 --error 1110
 insert into t1 (a,b,b) values (1,1,1);
---error 1136
+--error 1110
 insert into t1 (a,a) values (1,1,1);
 --error 1110
 insert into t1 (a,a) values (1,1);
