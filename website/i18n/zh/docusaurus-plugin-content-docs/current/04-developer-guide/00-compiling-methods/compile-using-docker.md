@@ -1,9 +1,9 @@
 ---
 id: compile-using-docker
-sidebar_position: 5.15
+sidebar_position: 5.16
 ---
 
-# Docker 编译环境搭建和使用 StoneDB
+# Docker 下编译使用 StoneDB
 ## 环境简介
 由于编译环境搭建第三方库较为繁琐，且Fedora，Ubuntu等环境编译存在大量依赖缺失，需要补充安装依赖，搭建麻烦，所以搭建一个Docker  Centos 编译环境容器，可以通过Docker 容器快速编译StoneDB，解决编译环境搭建繁琐问题，也可以通过Docker 容器编译后直接启动StoneDB进行调试使用。
 

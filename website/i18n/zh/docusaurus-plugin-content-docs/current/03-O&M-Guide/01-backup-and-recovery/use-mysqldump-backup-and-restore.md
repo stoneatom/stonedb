@@ -4,7 +4,8 @@ sidebar_position: 4.31
 ---
 
 # 使用mysqldump备份恢复StoneDB
-## mysqldump 介绍
+
+## mysqldump介绍
 mysqldump 是 MySQL 逻辑备份工具，执行 mysqldump 后会生成一组SQL语句，可以通过这些语句来重现原始数据库定义的库表数据，它可以转储一个或者多个本地 MySQL 数据库或者远程可访问的数据库备份。mysqldump 的使用可以参考 MySQL 官方文档说明：[4.5.4 mysqldump — A Database Backup Program](https://dev.mysql.com/doc/refman/5.6/en/mysqldump.html)，或者参考以下 mysqldump 使用参数。
 ```shell
 /stonedb56/install/bin/mysqldump --help
@@ -66,4 +67,3 @@ mysql> select * from dumpdb.dumptb;
 ```bash
 /stonedb56/install/bin/mysql  -uroot -p****** -P3306 dumpdb < /tmp/dumpdb.sql
 ```
-

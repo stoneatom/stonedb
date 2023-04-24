@@ -5,22 +5,22 @@ sidebar_position: 6.44
 
 # 高级函数
 
-| **Function** | **Description** | **Example** |
-| --- | --- | :-- |
-| BIN(x) | Returns the binary string equivalent to _x_. | SELECT BIN(28);<br /><br />->11100 |
-| BINARY(s) | Converts string _s_ to a binary string. | SELECT BINARY('STONEDB');<br /><br />-> STONEDB |
-| CASE expression<br />WHEN condition1 THEN result1<br />WHEN condition2 THEN result2<br />...<br />WHEN conditionN THEN resultN<br />ELSE result<br />END | **CASE** specifies the start of the function and **END** specifies the end of the function. <br />If _condition1_ is met, _result1_ is returned. If _condition2_ is met, _result2_ is returned. If all conditions are not met, _result_ is returned. <br />This function stops checking subsequent conditions immediately after a condition is met and returns the corresponding result. | SELECT CASE <br />WHEN 1>0<br />THEN '1 > 0'<br />WHEN 2>0<br />THEN '2 > 0'<br />ELSE '3 > 0'<br />END;<br /><br />->1>0 |
-| CAST(x AS type) | Converts the data type of _x_. | SELECT CAST('2022-06-11' AS DATE);<br /><br />->2022-06-11 |
-| COALESCE(expr1, expr2, ...., expr_n) | Returns the first non-null value in the specified list. | SELECT COALESCE(NULL, NULL,'CHINA', NULL, NULL,'STONEDB');<br /><br />->CHINA |
-| CONNECTION_ID() | Returns the ID of the current connection. | SELECT CONNECTION_ID();<br /><br />->5 |
-| CONV(x,f1,f2) | Converts _x_ from base _f1_ to_ f2_. | SELECT CONV(28,10,16);<br /><br />->1C |
-| CONVERT(s USING cs) | Changes the character set of string _s_ to character set _cs_. | SELECT CHARSET('ABC');<br /><br />->utf8 <br /><br />SELECT CHARSET(CONVERT('ABC' USING gbk));<br /><br />->gbk |
-| CURRENT_USER() | Returns the current user. | SELECT CURRENT_USER();<br /><br />->root@localhost |
-| DATABASE() | Returns the name of the current database. | SELECT DATABASE(); <br /><br />->test |
-| IF(expr,v1,v2) | Returns value _v1_ if expression _expr_ is true or value _v2_ if expression _expr_ is false. | SELECT IF(1>10,'true','false') ;<br /><br />->false |
-| IFNULL(v1,v2) | Returns value _v1_ if value _v1_ is not **null**. Otherwise, value _v2_ is returned. | SELECT IFNULL(null,'Hello Word');<br /><br />->HelloWord |
-| ISNULL(expression) | Checks whether _expression_ is **NULL**. | SELECT ISNULL(NULL);<br /><br />->1 |
-| LAST_INSERT_ID() | Returns the last AUTO_INCREMENT value. | SELECT LAST_INSERT_ID();<br /><br />->0 |
-| NULLIF(expr1, expr2) | Compares two strings _expr1_ and _expr2_.<br />If they are the same, **NULL** is returned. Otherwise, _expr1_ is returned. | SELECT NULLIF(25,25);<br /><br />->NULL |
-| SESSION_USER()<br />SYSTEM_USER()<br />USER() | Returns the current user. | SELECT SESSION_USER();<br /><br />->root@localhost |
-| VERSION() | Returns the version number of the database. | SELECT VERSION();<br /><br />->5.6.24-StoneDB-log |
+| **函数名** | **描述** | **示例** |
+| --- | --- | --- |
+| BIN(x) | 返回 x 的二进制编码 | SELECT BIN(28);<br />->11100 |
+| BINARY(s) | 将字符串 s 转换为二进制字符串 | SELECT BINARY('STONEDB');<br />-> STONEDB |
+| CASE expression<br />    WHEN condition1 THEN result1<br />    WHEN condition2 THEN result2<br />   ...<br />    WHEN conditionN THEN resultN<br />    ELSE result<br />END | CASE 表示函数开始，END 表示函数结束。如果 condition1 成立，则返回 result1, 如果 condition2 成立，则返回 result2，当全部不成立则返回 result，而当有一个成立之后，后面的就不执行了 | SELECT CASE <br /> WHEN 1>0<br /> THEN '1 > 0'<br /> WHEN 2>0<br /> THEN '2 > 0'<br /> ELSE '3 > 0'<br />END;<br />->1>0 |
+| CAST(x AS type) | 转换数据类型 | SELECT CAST('2022-06-11' AS DATE);<br />->2022-06-11 |
+| COALESCE(expr1, expr2, ...., expr_n) | 返回参数中的第一个非空表达式(从左向右) | SELECT COALESCE(NULL, NULL,'CHINA', NULL, NULL,'STONEDB');<br />->CHINA |
+| CONNECTION_ID() | 返回当前线程 ID | SELECT CONNECTION_ID();<br />->5 |
+| CONV(x,f1,f2) | 返回 f1 进制数变成 f2 进制数 | SELECT CONV(28,10,16);<br />->1C |
+| CONVERT(s USING cs) | 函数将字符串 s 的字符集变成 cs | SELECT CHARSET('ABC');<br />->utf8 <br /><br />SELECT CHARSET(CONVERT('ABC' USING gbk));<br />->gbk |
+| CURRENT_USER() | 返回当前用户 | SELECT CURRENT_USER();<br />->root@localhost |
+| DATABASE() | 返回当前数据库名 | SELECT DATABASE();   <br />->test |
+| IF(expr,v1,v2) | 如果表达式 expr 成立，返回结果 v1；否则返回结果 v2 | SELECT IF(1>10,'true','false') ;<br />->false |
+| IFNULL(v1,v2) | 如果 v1 的值不为 NULL，则返回 v1，否则返回 v2 | SELECT IFNULL(null,'Hello Word');<br />->HelloWord |
+| ISNULL(expression) | 判断表达式是否为 NULL | SELECT ISNULL(NULL);<br />->1 |
+| LAST_INSERT_ID() | 返回最近生成的 AUTO_INCREMENT 值 | SELECT LAST_INSERT_ID();<br />->0 |
+| NULLIF(expr1, expr2) | 比较两个字符串，如果字符串 expr1 与 expr2 相等，返回 NULL，否则返回 expr1 | SELECT NULLIF(25,25);<br />->NULL |
+| SESSION_USER()<br />SYSTEM_USER()<br />USER()| 返回当前用户 | SELECT SESSION_USER();<br />->root@localhost |
+| VERSION() | 返回数据库的版本号 | SELECT VERSION();<br />->5.6.24-StoneDB-log |

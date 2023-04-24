@@ -218,7 +218,7 @@
 @heading-5-size: ceil(@font-size-base * 1.14);
 @line-height-base: 1.5715;
 @border-radius-base: 10px;
-@border-radius-sm: @border-radius-base;
+@border-radius-sm: 2px;
 @control-border-radius: @border-radius-base;
 @arrow-border-radius: 2px;
 @padding-lg: 24px;
@@ -297,7 +297,7 @@
 @btn-primary-shadow: 0 2px 0 rgba(0, 0, 0, 0.045);
 @btn-text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.12);
 @btn-primary-color: #fff;
-@btn-primary-bg: #373C43;
+@btn-primary-bg: #00A6FB;
 @btn-default-color: #646A7D;
 @btn-default-bg: #F2F3F7;
 @btn-default-border: @border-color-base;
@@ -512,7 +512,7 @@
 @cascader-dropdown-line-height: @dropdown-line-height;
 @anchor-bg: transparent;
 @anchor-border-color: @border-color-split;
-@anchor-link-top: 7px;
+@anchor-link-top: 4px;
 @anchor-link-left: 16px;
 @anchor-link-padding: @anchor-link-top 0 @anchor-link-top @anchor-link-left;
 @tooltip-max-width: 250px;
@@ -541,7 +541,7 @@
 @modal-header-title-line-height: 22px;
 @modal-header-title-font-size: @font-size-lg;
 @modal-header-border-color-split: @border-color-split;
-@modal-header-close-size: 56px;
+@modal-header-close-size: @modal-header-title-line-height + 2 * @modal-header-padding-vertical;
 @modal-content-bg: @component-background;
 @modal-heading-color: @heading-color;
 @modal-close-color: @text-color-secondary;
@@ -554,6 +554,7 @@
 @modal-mask-bg: fade(@black, 45%);
 @modal-confirm-body-padding: 32px 32px 24px;
 @modal-confirm-title-font-size: @font-size-lg;
+@modal-border-radius: @border-radius-base;
 @progress-default-color: @processing-color;
 @progress-remaining-color: @background-color-base;
 @progress-info-text-color: @progress-text-color;
@@ -807,6 +808,7 @@
 @slider-handle-color-tooltip-open: @primary-color;
 @slider-handle-size: 14px;
 @slider-handle-margin-top: -5px;
+@slider-handle-margin-left: -5px;
 @slider-handle-shadow: 0;
 @slider-dot-border-color: @border-color-split;
 @slider-dot-border-color-active: tint(@primary-color, 50%);

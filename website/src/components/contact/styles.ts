@@ -1,6 +1,6 @@
 import { Col } from 'antd';
 import styled from 'styled-components';
-import { IconFont } from "../icon";
+import { IconFont } from "../iconFont";
 
 export const DL = styled.dl`
   border-bottom: 1px solid var(--safe-border-color-base);

@@ -11,38 +11,39 @@ zookeeper 项目地址：[https://github.com/apache/zookeeper](https://github.co
 zookeeper下载部署文件可以通过镜像网站下载：[http://archive.apache.org/dist/zookeeper/](http://archive.apache.org/dist/zookeeper/)
 ## otter介绍
 otter 是阿里巴巴基于数据库增量日志解析，使用纯java语言编写的准实时同步到本机房或异地机房的mysql/oracle数据库. 一个分布式数据库同步系统。
-如需全量+增量数据迁移，请先使用[MySQL全量数据备份-mydumper-OK](https://stoneatom.yuque.com/staff-ft8n1u/dghuxr/cdqzu8?view=doc_embed) 迁移全量数据后再配置otter进行增量数据迁移。
+如需全量 + 增量数据迁移，请先使用[MySQL全量数据备份-mydumper](https://stonedb.io/zh/docs/O&M-Guide/backup-and-recovery/use-mydumper-full-backup) 迁移全量数据后再配置otter进行增量数据迁移。
 目前同步规模：
 
 1. 同步数据量6亿
-1. 文件同步1.5TB(2000w张图片)
-1. 涉及200+个数据库实例之间的同步
-1. 80+台机器的集群规模
+2. 文件同步1.5TB(2000w张图片)
+3. 涉及200+个数据库实例之间的同步
+4. 80+台机器的集群规模
 ### 工作原理
 ![](otter_arc.jpg)
 截图来自otter github 截图
 原理描述：
 
 1.  基于Canal开源产品，获取数据库增量日志数据。 由于otter是基于canal的开源产品，所以otter中已经集成了canal，不需要再搭建新的canal环境，当然，也支持独立搭建的canal配置
-1.  典型管理系统架构，manager(web管理)+node(工作节点)
-a. manager运行时推送同步配置到node节点
-b. node节点将同步状态反馈到manager上 
-1.  基于zookeeper，解决分布式状态调度的，允许多node节点之间协同工作. 
+2.  典型管理系统架构，manager(web管理)+node(工作节点)
+    - a. manager运行时推送同步配置到node节点
+    - b. node节点将同步状态反馈到manager上 
+3.  基于zookeeper，解决分布式状态调度的，允许多node节点之间协同工作. 
 
 名词解释：
 **Pipeline**：从源端到目标端的整个过程描述，主要由一些同步映射过程组成
 **Channel**：同步通道，单向同步中一个Pipeline组成，在双向同步中有两个Pipeline组成
 **DataMediaPair**：根据业务表定义映射关系，比如源表和目标表，字段映射，字段组等
-**DataMedia **: 抽象的数据介质概念，可以理解为数据表/mq队列定义
-**DataMediaSource **: 抽象的数据介质源信息，补充描述DateMedia
-**ColumnPair **: 定义字段映射关系
-**ColumnGroup **: 定义字段映射组
-**Node **: 处理同步过程的工作节点，对应一个jvm
+**DataMedia**: 抽象的数据介质概念，可以理解为数据表/mq队列定义
+**DataMediaSource**: 抽象的数据介质源信息，补充描述DateMedia
+**ColumnPair**: 定义字段映射关系
+**ColumnGroup**: 定义字段映射组
+**Node**: 处理同步过程的工作节点，对应一个jvm
 
+:::tip
 扩展：
 什么是canal?
 otter之前开源的一个子项目，开源链接地址：[http://github.com/alibaba/canal](http://github.com/alibaba/canal)
-
+:::
 ## 安装部署
 ### 部署节点配置
 StoneDB：192.168.64.10:3306
@@ -376,8 +377,9 @@ CREATE TABLE IF NOT EXISTS `meta_snapshot` (
 insert into USER(ID,USERNAME,PASSWORD,AUTHORIZETYPE,DEPARTMENT,REALNAME,GMT_CREATE,GMT_MODIFIED) values(null,'admin','801fc357a5a74743894a','ADMIN','admin','admin',now(),now());
 insert into USER(ID,USERNAME,PASSWORD,AUTHORIZETYPE,DEPARTMENT,REALNAME,GMT_CREATE,GMT_MODIFIED) values(null,'guest','471e02a154a2121dc577','OPERATOR','guest','guest',now(),now());
 ```
-另外otter采用纯java开发，所以也需要安装jdk，过程不做详细描述，可自行百度
-otter部署需要的组件总结来说需要manager，node，manager使用的单独mysql，jdk，zookeeper
+另外 otter 采用纯 java 开发，所以也需要安装 jdk，过程不做详细描述，可自行搜索。
+
+otter 部署需要的组件总结来说需要 manager，node，manager 使用的单独 mysql，jdk，zookeeper。
 ### 部署zookeeper
 
 ```shell
@@ -450,43 +452,67 @@ otter.zookeeper.cluster.default = 127.0.0.1:2181
 启动成后[http://192.168.64.30:8080](http://192.168.64.30:8080/)
 首次进去是访客模式，只有只读权限，需要右上角退出后重新以管理员身份进入才可以配置，默认管理员账号admin 密码：admin
 ##### 配置zookeeper
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1648089462691-9ddbac38-7fba-4b69-844d-b7d0bfb40163.png#clientId=u4e9c2c71-b6a7-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=uc40e9801&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=166547&status=done&style=none&taskId=u0e540290-4da4-45fb-a8f9-43ea553738c&title=&width=1493.3333333333333)
+![image.png](./zookeeper-01.png)
 ##### 配置node
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1648089547844-aa02ba0d-edba-4144-92a9-9b6ba58b231b.png#clientId=u4e9c2c71-b6a7-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=uc1abf82e&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=176709&status=done&style=none&taskId=u6e96261c-388f-474c-b86b-d022bd8b11d&title=&width=1493.3333333333333)
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1648089583004-42787d6d-a4b4-43f1-8293-1812b39aa763.png#clientId=u4e9c2c71-b6a7-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=u97731f66&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=181079&status=done&style=none&taskId=ufadc7517-621f-4550-94cf-830b3b4140a&title=&width=1493.3333333333333)
+![image.png](./zookeeper-node.png)
+
+![image.png](./zookeeper-node-2.png)
+
 配置完后我们可以看到node是未启动状态的，需要部署完node后才会显示启动，这里要记住node的序列号，等下下面node部署的时候需要配置序列号到node/conf/nid文件中—[Node部署](#wswke)
+
 上面都配置完，并启动完node后，就可以继续后面的任务配置了
 
 ##### 添加canal
 （建议先了解下单独搭建的canal配置和原理）
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1655192130333-2deadaaa-8798-4763-a583-c7d4db94cc60.png#clientId=u1beec70a-5d51-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=1174&id=ube41dd96&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=214350&status=done&style=none&taskId=udcd08701-cd96-468e-a0b1-fccd6068a9f&title=&width=2240)
+
+![image.png](./zookeeper-canal.png)
 canal可以使用内嵌和独立服务形式两种选择，如果是要实现全量+增量同步的话，需要从全量备份文件中找到一 致性备份的binlog文件和pos点,或者可以在源端mysql内执行show master status获取，启用位点同步
 pos点设置参考：
 ```bash
 {"journalName":"mysql-bin.000002","position":5404,"timestamp":0};
 ```
 ##### 配置数据源
-**源端数据源（配置完可以点击下验证链接数据源看配置是否正确,如果连通性无法测试通过，请查看logs/manager.log）**
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1648093161055-87e8437b-085b-4372-9206-000bd1d6d874.png#clientId=u4e9c2c71-b6a7-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=u9ebfc4a2&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=203724&status=done&style=none&taskId=u5298f21f-f1f4-401a-bf30-d136291f5e5&title=&width=1493.3333333333333)
-**目标端数据源配置**
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1655194402096-3b87b35a-4061-444c-bca1-ab97f798e06b.png#clientId=u802aa721-067d-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=u26030968&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=190951&status=done&style=none&taskId=ud10600e3-df51-4e5f-b2b8-7eed9e8bd39&title=&width=1493.3333333333333)
-配置数据表用于同步数据（同样需要配置源端和目标端库名和表名）
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1648100991171-a629aa8c-0f38-4bb0-b8e7-6a7063400735.png#clientId=u4e9c2c71-b6a7-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=ubd1a9d4d&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=191610&status=done&style=none&taskId=ue8b7ad27-fc83-4d6c-af6a-c54b99c4bfc&title=&width=1493.3333333333333)
-##### 配置同步管理
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1655192782621-ff9d9e61-4609-4acb-b628-f05e4c5322df.png#clientId=u1beec70a-5d51-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=1174&id=uee9dd202&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=169257&status=done&style=none&taskId=u9dcda531-58df-4858-8cb1-269c529ac8f&title=&width=2240)
-添加pipeLine
 
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1655192803373-42873072-ab2c-4bc6-814f-3ac21e853317.png#clientId=u1beec70a-5d51-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=1174&id=uac004ccb&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=183388&status=done&style=none&taskId=ub67025ca-7e58-47a8-930a-ea35209b810&title=&width=2240)
-点击channel名字进入pipeline配置界面![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1655193543674-e5533c1b-2a3a-4064-aa1c-36bf0b589bce.png#clientId=u1beec70a-5d51-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=1174&id=u98951f81&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=194720&status=done&style=none&taskId=u8439058a-28e0-4086-8bec-242d62f25a3&title=&width=2240)
-选择配置的node节点，还有canal
-添加表映射关系
-点击pipeline名称进入添加表映射关系界面
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1655193576764-8e21fb66-d01a-4a22-b61b-4196e992a3b4.png#clientId=u1beec70a-5d51-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=1174&id=u07590142&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=179917&status=done&style=none&taskId=ud41d1b4a-e7f8-460b-a5f6-12383d34035&title=&width=2240)
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1648104282720-86ea244c-73d1-45f2-a6eb-26a1cd63c1f9.png#clientId=u4e9c2c71-b6a7-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=245&id=u9cbf390a&margin=%5Bobject%20Object%5D&name=image.png&originHeight=368&originWidth=2216&originalType=binary&ratio=1&rotation=0&showTitle=false&size=91725&status=done&style=none&taskId=ud38da5b3-1689-49a9-aa12-8c30b5a9213&title=&width=1477.3333333333333)
-点击添加，根据源端和目标端区别分别选择之前设置的表信息
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1648104336059-0e0921b8-b99b-4378-aa16-8737fdd48a1d.png#clientId=u4e9c2c71-b6a7-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=u5586a788&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=175311&status=done&style=none&taskId=u2b84e43a-9dbd-4d63-bd48-b8d9bdffce7&title=&width=1493.3333333333333)
-下一步选择表字段的映射关系，如果平滑迁移可以直接下一步保存，然后回到channel界面点击启动后状态为运行状态即可
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1655193831976-35fb0f94-a465-4807-bc72-529081aad6c7.png#clientId=u1beec70a-5d51-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=u5581d2e6&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=181305&status=done&style=none&taskId=ue2246df2-f8c2-46fc-b0f6-aaec961700a&title=&width=1493.3333333333333)
+**源端数据源（配置完可以点击下验证链接数据源看配置是否正确,如果连通性无法测试通过，请查看logs/manager.log）**
+
+![image.png](./zookeeper-managerdata.png)
+
+**目标端数据源配置**
+
+![image.png](./zookeeper-managerdata-01.png)
+
+**配置数据表用于同步数据（同样需要配置源端和目标端库名和表名）**
+
+![image.png](./zookeeper-managerdata-02.png)
+##### 配置同步管理
+![image.png](./zookeeper-managerdata-03.png)
+
+**添加pipeLine**
+
+![image.png](./zookeeper-managerdata-04.png)
+
+**点击channel名字进入pipeline配置界面**
+
+![image.png](./zookeeper-managerdata-05.png)
+
+
+**选择配置的node节点，还有canal**
+
+**添加表映射关系**
+
+**点击pipeline名称进入添加表映射关系界面**
+
+![image.png](./zookeeper-managerdata-06.png)
+
+![image.png](./zookeeper-managerdata-07.png)
+
+**点击添加，根据源端和目标端区别分别选择之前设置的表信息**
+
+![image.png](./zookeeper-managerdata-08.png)
+
+**下一步选择表字段的映射关系，如果平滑迁移可以直接下一步保存，然后回到channel界面点击启动后状态为运行状态即可**
+
+![image.png](./zookeeper-managerdata-09.png)
 
 #### Node部署
 ```shell
@@ -512,8 +538,9 @@ Java HotSpot(TM) 64-Bit Server VM warning: ignoring option MaxPermSize=128m; sup
 2022-03-24 10:51:13.555 [main] INFO  com.alibaba.otter.node.deployer.OtterLauncher - INFO ## the otter server is running now ......
 ping 
 ```
-启动成功后可以看到上面的manager 的node管理界面的node为启动状态
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/26909006/1648090666995-b823610a-5712-432e-b0cf-72e74d53355f.png#clientId=u4e9c2c71-b6a7-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=783&id=ud06e9ec5&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1174&originWidth=2240&originalType=binary&ratio=1&rotation=0&showTitle=false&size=181036&status=done&style=none&taskId=u7364a71b-4958-49b7-b2ae-f5c17c0d4df&title=&width=1493.3333333333333)
+**启动成功后可以看到上面的manager 的node管理界面的node为启动状态**
+
+![image.png](./zookeeper-10.png)
 
 
 ## 同步任务测试

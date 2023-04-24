@@ -51,7 +51,6 @@ sudo apt install -y libaio-dev
 sudo apt install -y libncurses5-dev 
 sudo apt install -y libreadline-dev
 sudo apt install -y libpam0g-dev
-sudo apt install -y zlib1g-dev
 sudo apt install -y libicu-dev
 sudo apt install -y libboost-dev
 sudo apt install -y libgflags-dev
@@ -164,7 +163,8 @@ Install in /usr/local/ by default.
 ```shell
 ls /usr/local/include/
 ...... gtest
-ls /usr/local/lib/
+ls /usr/local/lib/ # 32-bit os
+ls /usr/local/lib64/ # 64-bit os
 ...... cmake  libgtest.a  libgtest_main.a
 ```
 ### Step 3. Compile StoneDB
@@ -251,9 +251,9 @@ Differences between **reinstall.sh** and **install.sh**:
 - **install.sh** is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as **reinstall.sh**, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
 :::
 
-4. Log in to StoneDB.
+4. Login to StoneDB.
 ```shell
-cat /stonedb57/install/log/mysqld.log |grep passwd
+cat /stonedb57/install/log/mysqld.log |grep password
 [Note] A temporary password is generated for root@localhost: ceMuEuj6l4+!
 
 /stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install/tmp/mysql.sock
@@ -266,6 +266,9 @@ Copyright (c) 2021, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
+# Allow root user to log in remotely
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'stonedb123' WITH GRANT OPTION;
+mysql> FLUSH PRIVILEGES;
 ```
 :::info
 The temporary password of user root is recorded in mysqld.log. Upon your first login, you must change the temporary password.

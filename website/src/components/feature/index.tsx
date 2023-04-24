@@ -1,73 +1,84 @@
-import React from 'react';
-import {Space} from 'antd';
-import Translate from '@docusaurus/Translate';
-import { IconFont } from '../icon';
-import {Title, Context} from '../styles';
-import {Item, List} from './styles';
+import React, { useState, useEffect } from "react";
+import {unified} from 'unified';
+import remarkParse from 'remark-parse';
+import {flatten} from 'ramda';
+import {pickWhen} from '@site/src/utils';
+import { Grid, Row, Cell } from "@site/src/hm";
+import BgFeature from '@site/static/resource/BgFeature.png';
+import {Item} from './Item';
+import { Title, Context } from "../styles";
+import {PanelWrap} from './styles';
 
-const Feature = () => {
+const Feature: React.FC<any> = ({children}) => {
+  const [title, setTitle] = useState(null);
+  const [list, setList] = useState<any[]>(null);
+
+  function reduceParagraph(list: any[]) {
+    if(!list.length) {
+      return [];
+    }
+    return pickWhen('paragraph', (acc, cur) => {
+      const {value} = cur.children?.[0];
+      acc.push(value);
+      return acc;
+    }, list);
+  }
+
+  function reduceList(arr: any[]) {
+    return arr.map((item) => {
+      const title = item.children[0] && item.children[0].type === 'paragraph' ? item.children[0].children[0]?.value : '';
+      const nodeList = item.children[1]?.children;
+      const res =  nodeList?.map((data) => {
+        const icon = data.children?.[0].children?.[0]?.value;
+        const [title, desc] = reduceParagraph(data.children[1].children);
+        const restData = data.children.slice(2);
+        const list =  reduceParagraph(restData.filter((item: any) => item.ordered));
+        const values = restData.filter((item: any) => !item.ordered).map((node: any) => reduceList(node.children));
+        return {
+          icon,
+          title, desc,
+          list,
+          values: flatten(values)[0]
+        }
+      });
+      return {
+        title,
+        list: res
+      }
+    });
+  }
+
+  function reduceNode(node: any){
+    return node.children.map((data: any) => reduceList(data.children));
+  }
+
+  function init() {
+    const node: any = unified().use(remarkParse).parse(children);
+    const data = flatten(reduceNode(node))[0];
+    setTitle(data?.title);
+    setList(data?.list);
+  }
+
+  useEffect(() => {
+    init();
+  }, []);
   return (
+    <PanelWrap color='#232326' bg={BgFeature}>
     <Context>
-      <Title>
-        <Translate id="home.feat.title">版本特性</Translate>
-      </Title>
-      <List wrap={true}>
-        <Item>
-          <IconFont type='lottie-compatible' className='icon' trigger="hover" />
-          <b>
-            <Translate id="home.compatible.title">100%兼容MySQL 5.7</Translate>
-          </b>
-          <p>
-            <Translate id="home.compatible.desc">基于MySQL5.7版本开发，完全兼容所有MySQL语法与接口，支持从MySQL直接更新升级</Translate>
-          </p>
-        </Item>
-        <Item>
-          <IconFont type='lottie-hybrid' className='icon' />
-          <b>
-            <Translate id="home.hybrid.title">混合事务和分析处理</Translate>
-          </b>
-          <p>
-            <Translate id="home.hybrid.desc">在MySQL事务处理（TP）功能的基础上，增加分析处理（AP）功能</Translate>
-          </p>
-        </Item>
-        <Item>
-          <IconFont type='lottie-realTime' className='icon' />
-          <b>
-            <Translate id="home.realTime.title">实时分析，低时延</Translate>
-          </b>
-          <p>
-            <Translate id="home.realTime.desc">无需数据提取，直接实时分析，分析操作几乎无延时</Translate>
-          </p>
-        </Item>
-        <Item>
-          <IconFont type='lottie-query' className='icon' />
-          <b>
-            <Translate id="home.query.title">10倍查询速度</Translate>
-          </b>
-          <p>
-            <Translate id="home.query.desc">复杂query查询速度可提升10倍</Translate>
-          </p>
-        </Item>
-        <Item>
-          <IconFont type='lottie-initial' className='icon' />
-          <b>
-            <Translate id="home.initial.title">10倍初始导入速度</Translate>
-          </b>
-          <p>
-            <Translate id="home.initial.desc">数据库初始导入速度可提升10倍</Translate>
-          </p>
-        </Item>
-        <Item>
-          <IconFont type='lottie-storage' className='icon' />
-          <b>
-            <Translate id="home.storage.title">1/10 存储占用</Translate>
-          </b>
-          <p>
-            <Translate id="home.storage.desc">高效压缩算法，节省大量存储空间</Translate>
-          </p>
-        </Item>
-      </List>
+      <Title color="#FFFFFF">{title}</Title>
+      <Grid>
+        <Row>
+          {
+            list && list.map((item: any) => (
+              <Cell span={6} key={item.icon}>
+                <Item {...item} />
+              </Cell>
+            ))
+          }
+        </Row>
+      </Grid>
     </Context>
-  )
-}
+    </PanelWrap>
+  );
+};
 export default Feature;

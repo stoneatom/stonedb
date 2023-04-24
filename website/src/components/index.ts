@@ -6,7 +6,7 @@ export * from './image';
 export * from './seeMore';
 export * from './subscribeMail';
 export * from './Link';
-export * from './icon';
+export * from './iconFont';
 export * from './switchLocale'
 export * from './omit';
 export * from './emailModal'
