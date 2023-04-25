@@ -11,6 +11,7 @@ on:
       - '**.md'
       - 'scripts/setup/**'
       - '.devcontainer/**'
+      - '.github/ISSUE_TEMPLATE/**'
   pull_request:
     branches-ignore:
       - main
@@ -20,6 +21,7 @@ on:
       - 'docs/**'
       - 'website/**'
       - '**.md'
+      - '.github/ISSUE_TEMPLATE/**'
             #- 'scripts/**'
             #- 'install_scripts/**'
 
@@ -39,7 +41,7 @@ defaults:
 jobs:
   lint:
     name: lint
-    #if: ${{ contains(github.event.pull_request.labels.*.name, 'ready-for-testing') && github.event.pull_request.merged != true }}
+    # if: ${{ contains(github.event.pull_request.labels.*.name, 'ready-for-testing') && github.event.pull_request.merged != true }}
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
@@ -55,8 +57,8 @@ jobs:
           command -v clang-format-10 > /dev/null || (apt-get update && apt-get install -y clang-format-10)
       - name: Format check
         run: |
-          git diff -U0 --no-color ${{ github.event.pull_request.base.sha }} HEAD storage/tianmu/* | /usr/share/clang/clang-format-10/clang-format-diff.py -p1 | tee /tmp/.clang-format-diff
-          [ -s /tmp/.clang-format-diff ] && exit 1 || true
+          git diff -U0 --no-color ${{ github.event.pull_request.base.sha }} HEAD storage/tianmu | /usr/share/clang/clang-format-10/clang-format-diff.py -p1 | tee /tmp/.clang-format-diff
+          [ -s /tmp/.clang-format-diff ] && exit 1 || true 
   
   stonedb-build:
     name: stonedb-build
@@ -71,7 +73,7 @@ jobs:
         compiler:
           - gcc-9.3
         # exclude:
-        #   - os: centos7_1.0.3
+        #   - os: debian10_1.0.3
         #     compiler: gcc-9.3
     env:
       CCACHE_DIR: /tmp/ccache/stonedb/${{ matrix.os }}-${{ matrix.compiler }}
@@ -80,12 +82,25 @@ jobs:
       image: stoneatom/stonedb80_buildenv:${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+      - run: |
+          case ${{ matrix.os }} in
+            ubuntu2004_1.0.1)
+              apt-get update --fix-missing && apt-get --allow-releaseinfo-change update && apt-get install curl lcov bc  libssl-dev -y
+              ;;
+            centos7_1.0.1)
+              yum install curl lcov.noarch bc.x86_64 -y
+              rm -rf /usr/bin/gcc && ln -s /opt/rh/devtoolset-9/root/bin/gcc /usr/bin/gcc
+            ;;
+          esac
+        #with:
+        #  ssh-strict: 'false'
       - name: compile stonedb
         id: compile
         run: |
           # cp -rf include/boost_1_77_0/patches/boost/* /usr/local/stonedb-boost/include/boost/
           mkdir build && cd build
           git config --global --add safe.directory /__w/stonedb/stonedb
+          git fetch --tags
           cmake ../ \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/stonedb80/install \
@@ -107,18 +122,20 @@ jobs:
           -DDOWNLOAD_ROCKSDB=0 \
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
-          -DDOWNLOAD_ROCKSDB=0 \
-          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j`nproc` && make install
-
-      # - name: run gtest
-      #   run: |
-      #     cd build/storage/tianmu/unittest/
-      #     ./testgmock
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb -DENABLE_GCOV=1 && make -j`nproc` && make -j`nproc` install
 
       - name: mtr test
         run: |
           mkdir -p /stonedb80/install/log
           groupadd mysql && useradd -g mysql mysql
-          chown -R mysql:mysql /stonedb80
+          chown -R mysql:mysql /stonedb80 && chown -R mysql:mysql ./build
           cd /stonedb80/install/mysql-test
-          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --parallel=10 
+          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --retry=0 --parallel=10
+
+      - name: create coverage.info
+        run: |
+          cd build
+          lcov --capture --directory . --output-file  coverage.info --test-name coverage
+
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.1
