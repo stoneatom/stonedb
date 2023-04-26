@@ -45,9 +45,8 @@ show create table column_type_test;
 select count(*) from column_type_test;
 select max(c_int) from column_type_test;
 select min(c_int) from column_type_test;
-#TODO(stonedb8): wait avg/sum bug fixed
-#select avg(c_int) from column_type_test;
-#select sum(c_int) from column_type_test;
+select avg(c_int) from column_type_test;
+select sum(c_int) from column_type_test;
 
 --echo #
 --echo # DELETE FROM TABLE_NAME for select/insert/Aggregate query
@@ -62,14 +61,12 @@ select min(c_int) from column_type_test;
 select avg(c_int) from column_type_test;
 select sum(c_int) from column_type_test;
 delete from column_type_test;
-delete from column_type_test;
 select * from column_type_test;
 select count(*) from column_type_test;
 select max(c_int) from column_type_test;
 select min(c_int) from column_type_test;
-#TODO(stonedb8): wait avg/sum bug fixed
-#select avg(c_int) from column_type_test;
-#select sum(c_int) from column_type_test;
+select avg(c_int) from column_type_test;
+select sum(c_int) from column_type_test;
 drop table column_type_test;
 
 --echo #

@@ -114,13 +114,14 @@ insert into t1 values (NULL, 3);
 --error 1048
 insert into t1 values (NULL, NULL);
 drop table t1;
-create table t1 select x'4132';
+create table t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select x'4132';
 --error 1050
-create table t1 select 1,2,3;
-create table if not exists t1 select 1,2;
-create table if not exists t1 select 1,2,3,4;
-create table if not exists t1 select 1;
---echo # TODO select * from t1;
+create table t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select 1,2,3;
+create table if not exists t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select 1,2;
+create table if not exists t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select 1,2,3,4;
+create table if not exists t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select 1;
+# TODO: the result of this is same as innodb in mysql client, but different in mtr.
+# select * from t1;
 drop table t1;
 
 --echo #
@@ -130,7 +131,7 @@ drop table t1;
 create table t1 (a int not null, b int, primary key (a));
 insert into t1 values (1,1);
 select * from t1;
---echo # TODO show status like "Opened_tables";
+show status like "Opened_tables";
 select * from t1;
 drop table t1;
 

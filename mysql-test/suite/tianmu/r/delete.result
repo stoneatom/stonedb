@@ -316,13 +316,20 @@ drop table t1;
 #
 CREATE TABLE t1 (c int not null, d char (10) not null)ENGINE=TIANMU;
 insert into t1 values(1,""),(2,"a"),(3,"b");
-alter table t1 rename t2;
+CREATE TEMPORARY TABLE t2 (a int not null, b char (10) not null)ENGINE=TIANMU;
+insert into t2 values(4,"e"),(5,"f"),(6,"g");
 select * from t2;
+a	b
+4	e
+5	f
+6	g
+drop table t2;
+select * from t1;
 c	d
 1	
 2	a
 3	b
-drop table t2;
+drop table t1;
 #
 #  Multi engine
 #
@@ -339,5 +346,5 @@ insert into t1 values(3,'hhhb');
 insert into t1 values(2,'hhhb');
 insert into t1 values(1,'hhhb');
 delete tbIn,t1 from tbIn,t1 where tbIn.c1=t1.c1 and tbIn.c1=1;
-drop table tbIn,t1;
+drop tables tbIn,t1;
 DROP DATABASE delete_test;
