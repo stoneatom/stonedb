@@ -226,13 +226,14 @@ void PackStr::UpdateValue(size_t locationInPack, const Value &v) {
       SetPtrSize(locationInPack, nullptr, 0);
       SetNull(locationInPack);
       dpn_->numOfNulls++;
-      if(dpn_->NullOnly()){
+      if (dpn_->NullOnly()) {
         data_.sum_len = 0;
       }
     } else {
       // update non-null to another nonull
       auto vsize = GetValueBinary(locationInPack).size();
-      ASSERT(data_.sum_len >= vsize, col_share_->DataFile() + ", data_.sum_len:" + std::to_string(data_.sum_len) + ", vsize:"+std::to_string(vsize));
+      ASSERT(data_.sum_len >= vsize, col_share_->DataFile() + ", data_.sum_len:" + std::to_string(data_.sum_len) +
+                                         ", vsize:" + std::to_string(vsize));
       data_.sum_len -= vsize;
       auto &str = v.GetString();
       if (str.size() <= vsize) {
@@ -262,7 +263,7 @@ void PackStr::DeleteByRow(size_t locationInPack) {
     SetPtrSize(locationInPack, nullptr, 0);
     SetNull(locationInPack);
     dpn_->numOfNulls++;
-    if(dpn_->NullOnly()){
+    if (dpn_->NullOnly()) {
       data_.sum_len = 0;
     }
   }
@@ -386,8 +387,8 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
         reinterpret_cast<uint *>(alloc(comp_len_buf_size / 4 * sizeof(uint), mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
     uint tmp_comp_len_buf_size = comp_len_buf_size - 8;
     compress::NumCompressor<uint> nc;
-    CprsErr res = nc.Compress(reinterpret_cast<char *>(comp_len_buf.get() + 2), tmp_comp_len_buf_size,
-                              nc_buffer.get(), onn, maxv);
+    CprsErr res = nc.Compress(reinterpret_cast<char *>(comp_len_buf.get() + 2), tmp_comp_len_buf_size, nc_buffer.get(),
+                              onn, maxv);
     if (res != CprsErr::CPRS_SUCCESS) {
       throw common::InternalException("Compression of lengths of values failed for column " +
                                       std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
@@ -564,8 +565,9 @@ void PackStr::Save() {
     SaveUncompressed(&f);
   }
 
-  ASSERT(f.Tell() == off_t(dpn_->dataAddress + dpn_->dataLength), col_share_->DataFile() + ", " +
-         std::to_string(dpn_->dataAddress) + ":" + std::to_string(dpn_->dataLength) + "/" + std::to_string(f.Tell()));
+  ASSERT(f.Tell() == off_t(dpn_->dataAddress + dpn_->dataLength),
+         col_share_->DataFile() + ", " + std::to_string(dpn_->dataAddress) + ":" + std::to_string(dpn_->dataLength) +
+             "/" + std::to_string(f.Tell()));
   dpn_->synced = true;
 }
 
@@ -573,10 +575,9 @@ void PackStr::SaveUncompressed(system::Stream *f) {
   f->WriteExact(nulls_ptr_.get(), bitmap_size_);
   f->WriteExact(deletes_ptr_.get(), bitmap_size_);
   f->WriteExact(data_.lens, (data_.len_mode * (1 << col_share_->pss)));
-  if (data_.v.empty() || dpn_->NullOnly()){
+  if (data_.v.empty() || dpn_->NullOnly()) {
     return;
   }
-
 
   std::unique_ptr<char[]> buff(new char[data_.sum_len]);
   char *ptr = buff.get();
@@ -593,7 +594,7 @@ void PackStr::SaveUncompressed(system::Stream *f) {
 }
 
 void PackStr::LoadCompressed(system::Stream *f) {
-  ASSERT(IsModeCompressionApplied() , "path:" + col_share_->DataFile());
+  ASSERT(IsModeCompressionApplied(), "path:" + col_share_->DataFile());
 
   auto compressed_buf = alloc_ptr(dpn_->dataLength + 1, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   f->ReadExact(compressed_buf.get(), dpn_->dataLength);
@@ -634,8 +635,9 @@ void PackStr::LoadCompressed(system::Stream *f) {
       std::memcpy(deletes_ptr_.get(), reinterpret_cast<char *>(cur_buf) + sizeof(ushort), delete_buf_size);
     else {
       compress::BitstreamCompressor bsc;
-      CprsErr res = bsc.Decompress(reinterpret_cast<char *>(deletes_ptr_.get()), delete_buf_size,
-                                   reinterpret_cast<char *>(cur_buf) + sizeof(ushort), dpn_->numOfRecords, dpn_->numOfDeleted);
+      CprsErr res =
+          bsc.Decompress(reinterpret_cast<char *>(deletes_ptr_.get()), delete_buf_size,
+                         reinterpret_cast<char *>(cur_buf) + sizeof(ushort), dpn_->numOfRecords, dpn_->numOfDeleted);
       if (res != CprsErr::CPRS_SUCCESS) {
         throw common::DatabaseException("Decompression of deletes failed for column " +
                                         std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
@@ -653,8 +655,8 @@ void PackStr::LoadCompressed(system::Stream *f) {
     compress::NumCompressor<uint> nc;
     mm::MMGuard<uint> cn_ptr((uint *)alloc((1 << col_share_->pss) * sizeof(uint), mm::BLOCK_TYPE::BLOCK_TEMPORARY),
                              *this);
-    CprsErr res = nc.Decompress(cn_ptr.get(), reinterpret_cast<char *>(cur_buf + sizeof(uint32_t)*2), comp_len_buf_size - 8,
-                                dpn_->numOfRecords - dpn_->numOfNulls, maxv);
+    CprsErr res = nc.Decompress(cn_ptr.get(), reinterpret_cast<char *>(cur_buf + sizeof(uint32_t) * 2),
+                                comp_len_buf_size - sizeof(uint32_t) * 2, dpn_->numOfRecords - dpn_->numOfNulls, maxv);
     if (res != CprsErr::CPRS_SUCCESS) {
       std::stringstream msg_buf;
       msg_buf << "Decompression of lengths of std::string values failed for column "
@@ -675,7 +677,7 @@ void PackStr::LoadCompressed(system::Stream *f) {
   cur_buf += comp_len_buf_size;
 
   auto dlen = *reinterpret_cast<uint32_t *>(cur_buf);
-  cur_buf += sizeof(dlen);
+  cur_buf += sizeof(uint32_t);
   data_.sum_len = *reinterpret_cast<uint32_t *>(cur_buf);
   cur_buf += sizeof(uint32_t);
 
@@ -721,7 +723,7 @@ void PackStr::LoadCompressed(system::Stream *f) {
 }
 
 void PackStr::LoadCompressedTrie(system::Stream *f) {
-  ASSERT(IsModeCompressionApplied() , "path:" + col_share_->DataFile());
+  ASSERT(IsModeCompressionApplied(), "path:" + col_share_->DataFile());
   compressed_data_.reset(nullptr);
   compressed_data_ = alloc_ptr(dpn_->dataLength + 1, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   f->ReadExact(compressed_data_.get(), dpn_->dataLength);

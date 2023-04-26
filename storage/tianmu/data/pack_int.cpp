@@ -548,7 +548,8 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
   auto delta = dpn_->min_i - new_min;
 
   if (dpn_->NullOnly() || dpn_->Uniform()) {
-    if(data_.ptr_) dealloc(data_.ptr_);
+    if (data_.ptr_)
+      dealloc(data_.ptr_);
     data_.ptr_ = alloc(new_vt * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
     std::memset(data_.ptr_, 0, new_vt * new_nr);
     if (dpn_->Uniform()) {
