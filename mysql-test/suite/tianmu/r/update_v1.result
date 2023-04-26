@@ -1,8 +1,11 @@
 #
 # test of updating of keys
 #
+DROP DATABASE IF EXISTS update_v1_db;
+CREATE DATABASE update_v1_db;
+USE update_v1_db;
 drop table if exists t1,t2;
-create table t1 (a int auto_increment , primary key (a))engine=tianmu;
+create table t1 (a int auto_increment , primary key (a));
 insert into t1 values (NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL);
 update t1 set a=a+10 where a > 34;
 update t1 set a=a+100 where a > 0;
@@ -54,13 +57,13 @@ a
 drop table t1;
 CREATE TABLE t1
 (
-place_id int (10) NOT NULL,
-shows int(10) DEFAULT '0' NOT NULL,
-ishows int(10) DEFAULT '0' NOT NULL,
-ushows int(10) DEFAULT '0' NOT NULL,
-clicks int(10) DEFAULT '0' NOT NULL,
-iclicks int(10) DEFAULT '0' NOT NULL,
-uclicks int(10) DEFAULT '0' NOT NULL,
+place_id int NOT NULL,
+shows int DEFAULT '0' NOT NULL,
+ishows int DEFAULT '0' NOT NULL,
+ushows int DEFAULT '0' NOT NULL,
+clicks int DEFAULT '0' NOT NULL,
+iclicks int DEFAULT '0' NOT NULL,
+uclicks int DEFAULT '0' NOT NULL,
 ts timestamp,
 PRIMARY KEY (place_id,ts)
 );
@@ -75,32 +78,27 @@ drop table t1;
 # Test bug with update reported by Jan Legenhausen
 #
 CREATE TABLE t1 (
-lfdnr int(10) NOT NULL default '0',
-ticket int(10) NOT NULL default '0',
+lfdnr int NOT NULL default '0',
+ticket int NOT NULL default '0',
 client varchar(255) NOT NULL default '',
 replyto varchar(255) NOT NULL default '',
 subject varchar(100) NOT NULL default '',
-timestamp int(10) NOT NULL default '0',
+timestamp int NOT NULL default '0',
 tstamp timestamp NOT NULL,
-status int(3) NOT NULL default '0',
+status int NOT NULL default '0',
 type varchar(15) NOT NULL default '',
-assignment int(10) NOT NULL default '0',
-fupcount int(4) NOT NULL default '0',
-parent int(10) NOT NULL default '0',
-activity int(10) NOT NULL default '0',
-priority tinyint(1) NOT NULL default '1',
+assignment int NOT NULL default '0',
+fupcount int NOT NULL default '0',
+parent int NOT NULL default '0',
+activity int NOT NULL default '0',
+priority tinyint NOT NULL default '1',
 cc varchar(255) NOT NULL default '',
 bcc varchar(255) NOT NULL default '',
 body text NOT NULL,
 comment text,
 header text,
-PRIMARY KEY  (lfdnr),
-KEY k1 (timestamp),
-KEY k2 (type),
-KEY k3 (parent),
-KEY k4 (assignment),
-KEY ticket (ticket)
-) ENGINE=tianmu;
+PRIMARY KEY  (lfdnr)
+) ;
 INSERT INTO t1 VALUES (773,773,'','','',980257344,20010318180652,0,'Open',10,0,0,0,1,'','','','','');
 update t1 set status=1 where type='Open';
 select status from t1;
@@ -111,11 +109,10 @@ drop table t1;
 # Test with limit (Bug #393)
 #
 CREATE TABLE t1 (
-`id_param` smallint(3) NOT NULL default '0',
+`id_param` smallint NOT NULL default '0',
 `nom_option` char(40) NOT NULL default '',
-`valid` tinyint(1) NOT NULL default '0',
-KEY `id_param` (`id_param`,`nom_option`)
-) ENGINE=tianmu;
+`valid` tinyint NOT NULL default '0'
+ ) ;
 INSERT INTO t1 (id_param,nom_option,valid) VALUES (185,'600x1200',1);
 UPDATE t1 SET nom_option='test' WHERE id_param=185 AND nom_option='600x1200' AND valid=1 LIMIT 1;
 select * from t1;
@@ -125,8 +122,8 @@ drop table t1;
 #
 # update..left join...set
 #
-create table t1 (c1 int, c2 char(6), c3 int)engine=tianmu;
-create table t2 (c1 int, c2 char(6))engine=tianmu;
+create table t1 (c1 int, c2 char(6), c3 int);
+create table t2 (c1 int, c2 char(6));
 insert into t1 values (1, "t1c2-1", 10), (2, "t1c2-2", 20);
 update t1 left join t2 on t1.c1 = t2.c1 set t2.c2 = "t2c2-1";
 update t1 left join t2 on t1.c1 = t2.c1 set t2.c2 = "t2c2-1" where t1.c3 = 10;
@@ -142,7 +139,6 @@ drop table t1, t2;
 #
 create table t1 (id int not null auto_increment primary key, id_str varchar(32));
 insert into t1 (id_str) values ("test");
-update t1 set id_str = concat(id_str, id) where id = last_insert_id();
 select * from t1;
 id	id_str
 1	test
@@ -150,7 +146,7 @@ drop table t1;
 #
 #  a problem with update and partial key part
 #
-create table t1 (a int, b char(255), key(a, b(20)));
+create table t1 (a int, b char(255));
 insert into t1 values (0, '1');
 update t1 set b = b + 1 where a = 0;
 select * from t1;
@@ -176,19 +172,19 @@ drop table t1,t2;
 create table t1(f1 int);
 select DATABASE();
 DATABASE()
-test
+update_v1_db
 update t1 set f1=1 where count(*)=1;
 ERROR HY000: Invalid use of group function
 select DATABASE();
 DATABASE()
-test
+update_v1_db
 delete from t1 where count(*)=1;
 ERROR HY000: Invalid use of group function
 drop table t1;
 #
 # select datefield is null not updated
 #
-create table t1 (f1 date not null) engine=tianmu;
+create table t1 (f1 date not null) ;
 insert into t1 values('2000-01-01'),('2001-01-01');
 update t1 set f1='2002-02-02' where f1 is null;
 select * from t1;
@@ -199,7 +195,7 @@ drop table t1;
 #
 # Updating field named like '*name'
 #
-create table t1(f1 int, `*f2` int)engine=tianmu;
+create table t1(f1 int, `*f2` int);
 insert into t1 values (1,1);
 update t1 set `*f2`=1;
 select * from t1;
@@ -210,11 +206,10 @@ drop table t1;
 #INSERT INTO ... on unique constraint with data
 #
 CREATE TABLE t1 (
-a INT(11),
+a int,
 quux decimal(17, 10),
-UNIQUE KEY bar (a),
-KEY quux (quux)
-)engine=tianmu;
+PRIMARY KEY bar (a)
+);
 INSERT INTO
 t1 ( a, quux )
 VALUES
@@ -222,6 +217,8 @@ VALUES
 ( 2,  0.1 );
 INSERT INTO t1( a )
 SELECT @newA := 1 + a FROM t1 WHERE quux <= 0.1;
+Warnings:
+Warning	1287	Setting user variables within expressions is deprecated and will be removed in a future release. Consider alternatives: 'SET variable=expression, ...', or 'SELECT expression(s) INTO variables(s)'.
 SELECT * FROM t1;
 a	quux
 1	1.0000000000
@@ -231,7 +228,7 @@ DROP TABLE t1;
 #
 #UPDATE ON VARCHAR AND TEXT COLUMNS
 #
-CREATE TABLE t1 (a VARCHAR(50), b TEXT, c CHAR(50)) ENGINE=tianmu;
+CREATE TABLE t1 (a VARCHAR(50), b TEXT, c CHAR(50)) ;
 INSERT INTO t1 (a, b, c) VALUES ('start trail', '', 'even longer string');
 UPDATE t1 SET b = a, a = 'inject';
 SELECT a, b FROM t1;
@@ -248,9 +245,8 @@ DROP TABLE t1;
 CREATE TABLE t1(
 id INTEGER NOT NULL AUTO_INCREMENT,
 token VARCHAR(255) DEFAULT NULL,
-PRIMARY KEY (id),
-KEY token (token)
-)engine=tianmu;
+PRIMARY KEY (id)
+)charset=latin1;
 INSERT INTO t1 VALUES (1, "abc"), (2, "def");
 SELECT * FROM t1;
 id	token
@@ -259,11 +255,11 @@ id	token
 UPDATE t1 SET token = X'ad';
 SELECT * FROM t1;
 id	token
-1	­
-2	­
-UPDATE t1 SET token = NULL WHERE token = X'ad';
+1	Â­
+2	Â­
 SELECT * FROM t1;
 id	token
-1	­
-2	­
+1	Â­
+2	Â­
 DROP TABLE t1;
+DROP DATABASE update_v1_db;

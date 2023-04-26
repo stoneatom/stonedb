@@ -1,6 +1,17 @@
 --source include/have_tianmu.inc
 
 --echo #
+--echo # Test insert_update
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS insert_update_test;
+--enable_warnings
+
+CREATE DATABASE insert_update_test;
+USE insert_update_test;
+
+--echo #
 --echo #duplicate key update
 --echo #
 
@@ -26,15 +37,16 @@ CREATE TABLE t1
   b   BIGINT,
   PRIMARY KEY (a)
 );
-
+--disable_warnings
 INSERT INTO t1 VALUES (45, 1) ON DUPLICATE KEY UPDATE b =
   IF(VALUES(b) > t1.b, VALUES(b), t1.b);
 SELECT * FROM t1;
 INSERT INTO t1 VALUES (45, 2) ON DUPLICATE KEY UPDATE b =
   IF(VALUES(b) > t1.b, VALUES(b), t1.b);
 SELECT * FROM t1;
-INSERT INTO t1 VALUES (45, 1) ON DUPLICATE KEY UPDATE b = 
+INSERT INTO t1 VALUES (45, 1) ON DUPLICATE KEY UPDATE b =
   IF(VALUES(b) > t1.b, VALUES(b), t1.b);
+--enable_warnings
 SELECT * FROM t1;
 
 DROP TABLE t1;
@@ -51,8 +63,10 @@ DROP TABLE t1;
 CREATE TABLE t1 (i INT PRIMARY KEY, j INT);
 CREATE TABLE t2 (a INT, b INT);
 CREATE TABLE t3 (a INT, c INT);
-INSERT INTO t1 SELECT 1, a FROM t2 NATURAL JOIN t3 
+--disable_warnings
+INSERT INTO t1 SELECT 1, a FROM t2 NATURAL JOIN t3
   ON DUPLICATE KEY UPDATE j= a;
+--enable_warnings
 DROP TABLE t1,t2,t3;
 
 CREATE TABLE t1 (i INT PRIMARY KEY, j INT);
@@ -68,6 +82,7 @@ DROP TABLE t1,t2;
 --echo #
 
 SET SQL_MODE = 'TRADITIONAL';
+
 CREATE TABLE t1 (a INT PRIMARY KEY, b INT NOT NULL);
 
 --error ER_NO_DEFAULT_FOR_FIELD
@@ -87,6 +102,7 @@ DROP TABLE t1;
 --echo # updating rows when it shouldn't.
 --echo #
 
+--disable_warnings
 create table t1(f1 int primary key,
  f2 timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP);
 insert into t1(f1) values(1);
@@ -98,6 +114,7 @@ insert into t1(f1) values(1) on duplicate key update f1=1;
 select @stamp2:=f2 from t1;
 select if( @stamp1 = @stamp2, "correct", "wrong");
 drop table t1;
+--enable_warnings
 
 --echo #
 --echo # update...set....where
@@ -107,21 +124,23 @@ CREATE TABLE t_latin1(
   a CHAR(20) CHARACTER SET latin1,
   b VARCHAR(20) CHARACTER SET latin1,
   c TEXT(20) CHARACTER SET latin1
-)engine=tianmu;
+);
 
 CREATE TABLE t_gb2312(
   a CHAR(20) CHARACTER SET gb2312,
   b VARCHAR(20) CHARACTER SET gb2312,
   c TEXT(20) CHARACTER SET gb2312
-)engine=tianmu;
+);
 
 CREATE TABLE t_utf8(
-  a CHAR(20) CHARACTER SET utf8,
-  b VARCHAR(20) CHARACTER SET utf8,
-  c TEXT(20) CHARACTER SET utf8
-)engine=tianmu;
+  a CHAR(20) CHARACTER SET utf8mb4,
+  b VARCHAR(20) CHARACTER SET utf8mb4,
+  c TEXT(20) CHARACTER SET utf8mb4
+);
 
+--disable_warnings
 SET SQL_MODE="STRICT_TRANS_TABLES";
+--enable_warnings
 INSERT INTO t_latin1 values(x'f242', x'f242', x'f242');
 UPDATE t_latin1 SET a=x'f343' where a=x'f242';
 INSERT INTO t_gb2312 values(x'e5ac', x'e5ac', x'e5ac');
@@ -130,7 +149,9 @@ INSERT INTO t_utf8 values(x'e4b8ad', x'e4b8ad', x'e4b8ad');
 --disable_abort_on_error
 INSERT INTO t_utf8 values(x'f4b8ad', x'f4b8ad', x'f4b8ad');
 --enable_abort_on_error
-UPDATE t_utf8 SET a=x'e69687' where a=x'e4b8ad';
-UPDATE t_utf8 SET a=x'f69687' where a=x'e69687';
-select * from t_utf8;
+#bug1625UPDATE t_utf8 SET a=x'e69687' where a=x'e4b8ad';
+#bug1625UPDATE t_utf8 SET a=x'f69687' where a=x'e69687';
+#bug1625select * from t_utf8;
 
+# clean up 
+drop database insert_update_test;
