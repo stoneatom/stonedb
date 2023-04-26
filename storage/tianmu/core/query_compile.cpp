@@ -962,13 +962,19 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, Query_block *selects_
     int64_t limit_value = -1;
     int64_t offset_value = -1;
 
-    // according the meaning of `part`, which describs in JOIN::optimize
+    // Increase the identification of whether to create a JOIN object,
+    // which is used to release the JOIN object later.
+    // See #669 for the problems solved.
+    // e.g.: delete from ... where t.a <> (subquery)
+    bool ifNewJoinForTianmu = false;
     if (!sl->join) {
+      // according the meaning of `part`, which describs in JOIN::optimize
       auto thd = current_txn_->Thd();
       DEBUG_ASSERT(thd != nullptr);
       JOIN *join = new (thd->mem_root) JOIN(thd, sl);
 
       sl->set_join(thd, join);
+      ifNewJoinForTianmu = true;
       TIANMU_LOG(LogCtl_Level::INFO, "sl->join is nullptr!");
     }
 
@@ -976,7 +982,9 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, Query_block *selects_
       return QueryRouteTo::TO_MYSQL;
     SetLimit(sl, sl == selects_list ? 0 : sl->join->query_expression()->global_parameters(), offset_value, limit_value);
 
-    Item *conds = sl->where_cond();
+    // Item *conds = sl->where_cond();
+    Item *conds = (ifNewJoinForTianmu || !sl->join->where_cond) ? sl->where_cond() : sl->join->where_cond;
+
     ORDER *order = sl->order_list.first;
     mem_root_deque<Item *> *fields = sl->get_fields_list();
 
@@ -1066,8 +1074,10 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, Query_block *selects_
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert)
         list_to_reinsert->push_back(cond_to_reinsert);
+      if (ifNewJoinForTianmu)
+        sl->cleanup(m_conn->Thd(), true);
       return QueryRouteTo::TO_MYSQL;
-    }
+    }  // try end
 
     if (sl->join->select_distinct)
       cq->Mode(tmp_table, TMParameter::TM_DISTINCT);
@@ -1081,13 +1091,17 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, Query_block *selects_
         tmp_table = TableID();
         cq->Union(prev_result, prev_result, tmp_table, true);
       }
-    } else
+    } else {
       cq->Union(prev_result, prev_result, tmp_table, union_all);
+    }
+
     if (sl == last_distinct)
       union_all = true;
     if (cond_to_reinsert && list_to_reinsert)
       list_to_reinsert->push_back(cond_to_reinsert);
-  }
+    if (ifNewJoinForTianmu)
+      sl->cleanup(m_conn->Thd(), true);
+  }  // for loop end
 
   cq->BuildTableIDStepsMap();
 
