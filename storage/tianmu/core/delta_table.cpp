@@ -171,9 +171,9 @@ void DeltaTable::AddInsertRecord(Transaction *tx, uint64_t row_id, std::unique_p
     kv_trans.Acquiresnapshot();
     tx->ResetInsertRowNum();
   }
-  load_id++;
-  stat.write_cnt++;
-  stat.write_bytes += size;
+  load_id.fetch_add(1);
+  stat.write_cnt.fetch_add(1);
+  stat.write_bytes.fetch_add(size);
 }
 
 void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
@@ -192,9 +192,9 @@ void DeltaTable::AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<cha
     throw common::Exception("Error,kv_trans.PutData failed,date size: " + std::to_string(size) +
                             " date:" + std::string(buf.get()));
   }
-  load_id++;
-  stat.write_cnt++;
-  stat.write_bytes += size;
+  load_id.fetch_add(1);
+  stat.write_cnt.fetch_add(1);
+  stat.write_bytes.fetch_add(size);
 }
 
 void DeltaTable::Truncate(Transaction *tx) {
