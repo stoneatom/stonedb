@@ -291,7 +291,8 @@ int Engine::Init(uint engine_slot) {
          [this]() {
            for (auto &delta : m_table_deltas) {
              TIANMU_LOG(LogCtl_Level::INFO,
-                        "delta table id: %d delta_size: %d, current load id: %d, merge id: %d, current row_id: %d",
+                        "table name: %s, delta table id: %d delta_size: %ld, current load id: %ld, merge id: %ld, current row_id: %ld",
+                        delta.second->FullName().c_str(),
                         delta.second->GetDeltaTableID(), delta.second->load_id.load() - delta.second->merge_id.load(),
                         delta.second->load_id.load(), delta.second->merge_id.load(), delta.second->row_id.load());
            }
