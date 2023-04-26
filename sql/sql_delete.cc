@@ -507,6 +507,19 @@ bool Sql_cmd_delete::delete_from_single_table(THD *thd) {
     unique_ptr_destroy_only<Filesort> fsort;
     JOIN join(thd, query_block);  // Only for holding examined_rows.
     AccessPath *path;
+// stonedb8: add to fix incorrect trigger result.
+#ifdef TIANMU
+    if (table->s->db_type()->db_type == DB_TYPE_TIANMU
+        && table->triggers
+        && table->triggers->has_triggers(TRG_EVENT_DELETE, TRG_ACTION_AFTER)) {
+      /*
+      The table has AFTER DELETE triggers, trigger might need OLD records,
+       but RCTable of tianmu engine is only load required columns. So here
+       we set to all columns to be used.
+      */
+      bitmap_set_all(table->read_set);
+    }
+#endif
     if (usable_index == MAX_KEY || range_scan) {
       path =
           create_table_access_path(thd, table, range_scan,
