@@ -2016,8 +2016,6 @@ char *strmov_str(char *dst, const char *src) {
 static int tianmu_done_func([[maybe_unused]] void *p) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
-  assert(p == tianmu_hton);
-
   if (tianmu_hton->data) {
     core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
     delete eng;
