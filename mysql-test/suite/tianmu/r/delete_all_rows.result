@@ -73,6 +73,12 @@ NULL
 select min(c_int) from column_type_test;
 min(c_int)
 NULL
+select avg(c_int) from column_type_test;
+avg(c_int)
+NULL
+select sum(c_int) from column_type_test;
+sum(c_int)
+NULL
 #
 # DELETE FROM TABLE_NAME for select/insert/Aggregate query
 #
@@ -97,7 +103,6 @@ select sum(c_int) from column_type_test;
 sum(c_int)
 105
 delete from column_type_test;
-delete from column_type_test;
 select * from column_type_test;
 c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
 select count(*) from column_type_test;
@@ -108,6 +113,12 @@ max(c_int)
 NULL
 select min(c_int) from column_type_test;
 min(c_int)
+NULL
+select avg(c_int) from column_type_test;
+avg(c_int)
+NULL
+select sum(c_int) from column_type_test;
+sum(c_int)
 NULL
 drop table column_type_test;
 #

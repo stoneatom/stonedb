@@ -197,19 +197,18 @@ ERROR 23000: Column 'k1' cannot be null
 insert into t1 values (NULL, NULL);
 ERROR 23000: Column 'k1' cannot be null
 drop table t1;
-create table t1 select x'4132';
-create table t1 select 1,2,3;
+create table t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select x'4132';
+create table t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select 1,2,3;
 ERROR 42S01: Table 't1' already exists
-create table if not exists t1 select 1,2;
+create table if not exists t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select 1,2;
 Warnings:
 Note	1050	Table 't1' already exists
-create table if not exists t1 select 1,2,3,4;
+create table if not exists t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select 1,2,3,4;
 Warnings:
 Note	1050	Table 't1' already exists
-create table if not exists t1 select 1;
+create table if not exists t1 ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 select 1;
 Warnings:
 Note	1050	Table 't1' already exists
-# TODO select * from t1;
 drop table t1;
 #
 # Test create table if not exists with duplicate key error
@@ -219,7 +218,9 @@ insert into t1 values (1,1);
 select * from t1;
 a	b
 1	1
-# TODO show status like "Opened_tables";
+show status like "Opened_tables";
+Variable_name	Value
+Opened_tables	32
 select * from t1;
 a	b
 1	1
