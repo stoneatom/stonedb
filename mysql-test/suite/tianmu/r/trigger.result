@@ -120,7 +120,7 @@ select @log;
 set @log:= "";
 insert ignore t1 values (1, 2);
 Warnings:
-Warning	1062	Duplicate entry '1' for key 'PRIMARY'
+Warning	1062	Duplicate entry '1' for key 't1.PRIMARY'
 select @log;
 @log
 (BEFORE_INSERT: new=(id=1, data=2))
@@ -404,7 +404,7 @@ select @a, @b;
 select trigger_schema, trigger_name, event_object_schema,
 event_object_table, action_statement from information_schema.triggers
 where event_object_schema = 'test';
-trigger_schema	trigger_name	event_object_schema	event_object_table	action_statement
+TRIGGER_SCHEMA	TRIGGER_NAME	EVENT_OBJECT_SCHEMA	EVENT_OBJECT_TABLE	ACTION_STATEMENT
 test	t1_bi	test	t1	set @a:=new.id
 test	t1_ai	test	t1	set @b:=new.id
 rename table t1 to t2;
@@ -419,13 +419,9 @@ DROP  TRIGGER t1_ai;
 CREATE TABLE t1 (i1 INT)engine=tianmu;
 SET @save_sql_mode=@@sql_mode;
 SET SQL_MODE='';
-Warnings:
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 CREATE TRIGGER t1_ai AFTER INSERT ON t1 FOR EACH ROW
 SET @x = 5/0;
 SET SQL_MODE='traditional';
-Warnings:
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 CREATE TRIGGER t1_au AFTER UPDATE ON t1 FOR EACH ROW
 SET @x = 5/0;
 SET @x=1;
@@ -439,8 +435,6 @@ SELECT @x;
 @x
 NULL
 SET SQL_MODE='';
-Warnings:
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SET @x=3;
 INSERT INTO t1 VALUES (@x);
 SELECT @x;
@@ -452,8 +446,6 @@ SELECT @x;
 @x
 NULL
 SET @@sql_mode=@save_sql_mode;
-Warnings:
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 DROP TRIGGER t1_ai;
 DROP TRIGGER t1_au;
 DROP TABLE t1;
@@ -706,7 +698,7 @@ INSERT INTO t2 VALUES("POST UPDATE TRIGGER FOR UPDATE IGNORE ON t1 FIRED");
 END|
 UPDATE IGNORE t1 SET a=2 WHERE a=1;
 Warnings:
-Warning	1062	Duplicate entry '2' for key 'PRIMARY'
+Warning	1062	Duplicate entry '2' for key 't1.PRIMARY'
 SELECT * FROM t2;
 after_update
 UPDATE IGNORE t1,t3 SET t1.a=2 WHERE t1.a=1;
@@ -860,7 +852,7 @@ DROP TABLE t1, t2;
 CREATE TABLE t1 (fld1 VARCHAR(64) NOT NULL,
 fld2 INT DEFAULT 0, PRIMARY KEY (fld1));
 CREATE TABLE t2 (fld1 VARCHAR(64) NOT NULL,
-fld2 INT(11) DEFAULT NULL, PRIMARY KEY (fld1));
+fld2 INT DEFAULT NULL, PRIMARY KEY (fld1));
 INSERT INTO t1(fld1) VALUES (1100);
 INSERT INTO t2 VALUES (1100, 40);
 CREATE TRIGGER update_after_update
@@ -935,15 +927,62 @@ DROP TABLE t1, t2;
 #
 #bug569:After update trigger
 #
+create table t1 (i int)engine=tianmu;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg after update on t1 for each row
+set @total_change:=@total_change + new.i - old.i;
+set @total_change:=0;
+update t1 set i=3;
+select @total_change;
+@total_change
+2
+drop trigger trg;
+drop table t1;
 #
 #bug 570:Before delete trigger
 #
+create table t1 (i int)engine=innodb;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg before delete on t1 for each row
+set @del_sum:= @del_sum + old.i;
+set @del_sum:= 0;
+delete from t1 where i <= 3;
+select @del_sum;
+@del_sum
+6
+drop trigger trg;
+drop table t1;
 #
 #bug 571:After delete trigger
 #
+create table t1 (i int)engine=innodb;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg after delete on t1 for each row set @del:= 1;
+set @del:= 0;
+delete from t1 where i <> 0;
+select @del;
+@del
+1
+drop trigger trg;
+drop table t1;
 #
 # bug 580:Trigger.....delete
 #
+create table t1 (id int primary key, fk_t2 int)engine=tianmu;
+create table t2 (id int primary key, fk_t3 int)engine=tianmu;
+create table t3 (id int primary key)engine=tianmu;
+insert into t1 values (1,1), (2,1), (3,2);
+insert into t2 values (1,1), (2,2);
+insert into t3 values (1), (2);
+create trigger t3_ad after delete on t3 for each row
+delete from t2 where fk_t3=old.id;
+create trigger t2_ad after delete on t2 for each row
+delete from t1 where fk_t2=old.id;
+delete from t3 where id = 1;
+select * from t1 left join (t2 left join t3 on t2.fk_t3 = t3.id) on t1.fk_t2 = t2.id;
+id	fk_t2	id	fk_t3	id
+3	2	2	2	2
+drop table t1, t2, t3;
 #
 # bug 581:Trigger....inserted/updated
 #
@@ -953,3 +992,21 @@ DROP TABLE t1, t2;
 #
 #create temporary table inside trigger
 #
+CREATE TABLE t1 (a INT, b INT DEFAULT 150)engine=tianmu;
+CREATE TRIGGER t1_bi BEFORE INSERT ON t1
+FOR EACH ROW 
+BEGIN
+CREATE TEMPORARY TABLE t2 AS SELECT NEW.a, NEW.b;
+INSERT INTO t2(a) VALUES (10);
+INSERT INTO t2 VALUES (100, 500);
+INSERT INTO t2(a) VALUES (1000);
+END|
+INSERT INTO t1 VALUES (1, 2);
+SELECT * FROM t2;
+a	b
+1	2
+10	150
+100	500
+1000	150
+DROP TABLE t1;
+DROP TEMPORARY TABLE t2;

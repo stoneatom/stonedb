@@ -703,8 +703,9 @@ drop table t1, t2;
 --echo # SP INOUT HANDLING IS BROKEN FOR TEXT TYPE.
 --echo #
 
---disable_warnings ONCE
+--disable_warnings
 DROP TABLE IF EXISTS t1;
+--enable_warnings
 
 CREATE TABLE t1(c TEXT)engine=tianmu;
 
@@ -913,7 +914,7 @@ CREATE TABLE t1 (fld1 VARCHAR(64) NOT NULL,
 fld2 INT DEFAULT 0, PRIMARY KEY (fld1));
 
 CREATE TABLE t2 (fld1 VARCHAR(64) NOT NULL,
-fld2 INT(11) DEFAULT NULL, PRIMARY KEY (fld1));
+fld2 INT DEFAULT NULL, PRIMARY KEY (fld1));
 
 INSERT INTO t1(fld1) VALUES (1100);
 INSERT INTO t2 VALUES (1100, 40);
@@ -991,41 +992,42 @@ DROP TABLE t1, t2;
 --echo #bug569:After update trigger
 --echo #
 
-#create table t1 (i int)engine=tianmu;
-#insert into t1 values (1),(2),(3),(4);
-#create trigger trg after update on t1 for each row
-#  set @total_change:=@total_change + new.i - old.i;
-#set @total_change:=0;
-#update t1 set i=3;
-#select @total_change;
-#drop trigger trg;
-#drop table t1;
+create table t1 (i int)engine=tianmu;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg after update on t1 for each row
+  set @total_change:=@total_change + new.i - old.i;
+set @total_change:=0;
+update t1 set i=3;
+select @total_change;
+drop trigger trg;
+drop table t1;
 
 --echo #
 --echo #bug 570:Before delete trigger
 --echo #
 
-#create table t1 (i int)engine=innodb;
-#insert into t1 values (1),(2),(3),(4);
-#create trigger trg before delete on t1 for each row
-#  set @del_sum:= @del_sum + old.i;
-#set @del_sum:= 0;
-#delete from t1 where i <= 3;
-#select @del_sum;
-#drop trigger trg;
+create table t1 (i int)engine=innodb;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg before delete on t1 for each row
+  set @del_sum:= @del_sum + old.i;
+set @del_sum:= 0;
+delete from t1 where i <= 3;
+select @del_sum;
+drop trigger trg;
+drop table t1;
 
 --echo #
 --echo #bug 571:After delete trigger
 --echo #
 
-#create table t1 (i int)engine=innodb;
-#insert into t1 values (1),(2),(3),(4);
-#create trigger trg after delete on t1 for each row set @del:= 1;
-#set @del:= 0;
-#delete from t1 where i <> 0;
-#select @del;
-#drop trigger trg;
-#drop table t1;
+create table t1 (i int)engine=innodb;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg after delete on t1 for each row set @del:= 1;
+set @del:= 0;
+delete from t1 where i <> 0;
+select @del;
+drop trigger trg;
+drop table t1;
 
 --echo #
 --echo # bug 580:Trigger.....delete
@@ -1034,19 +1036,19 @@ DROP TABLE t1, t2;
 # Trigger which forces invocation of another trigger
 # (emulation of FK on delete cascade policy)
 
-#create table t1 (id int primary key, fk_t2 int)engine=tianmu;
-#create table t2 (id int primary key, fk_t3 int)engine=tianmu;
-#create table t3 (id int primary key)engine=tianmu;
-#insert into t1 values (1,1), (2,1), (3,2);
-#insert into t2 values (1,1), (2,2);
-#insert into t3 values (1), (2);
-#create trigger t3_ad after delete on t3 for each row
-#  delete from t2 where fk_t3=old.id;
-#create trigger t2_ad after delete on t2 for each row
-#  delete from t1 where fk_t2=old.id;
-#delete from t3 where id = 1;
-#select * from t1 left join (t2 left join t3 on t2.fk_t3 = t3.id) on t1.fk_t2 = t2.id;
-#drop table t1, t2, t3;
+create table t1 (id int primary key, fk_t2 int)engine=tianmu;
+create table t2 (id int primary key, fk_t3 int)engine=tianmu;
+create table t3 (id int primary key)engine=tianmu;
+insert into t1 values (1,1), (2,1), (3,2);
+insert into t2 values (1,1), (2,2);
+insert into t3 values (1), (2);
+create trigger t3_ad after delete on t3 for each row
+  delete from t2 where fk_t3=old.id;
+create trigger t2_ad after delete on t2 for each row
+  delete from t1 where fk_t2=old.id;
+delete from t3 where id = 1;
+select * from t1 left join (t2 left join t3 on t2.fk_t3 = t3.id) on t1.fk_t2 = t2.id;
+drop table t1, t2, t3;
 
 --echo #
 --echo # bug 581:Trigger....inserted/updated
@@ -1113,23 +1115,23 @@ DROP TABLE t1, t2;
 --echo #create temporary table inside trigger
 --echo #
 
-#CREATE TABLE t1 (a INT, b INT DEFAULT 150)engine=tianmu;
-#
-#delimiter |;
-#CREATE TRIGGER t1_bi BEFORE INSERT ON t1
-#FOR EACH ROW 
-#BEGIN
-#  CREATE TEMPORARY TABLE t2 AS SELECT NEW.a, NEW.b;
-#  INSERT INTO t2(a) VALUES (10);
-#  INSERT INTO t2 VALUES (100, 500);
-#  INSERT INTO t2(a) VALUES (1000);
-#END|
-#delimiter ;|
-#
-#INSERT INTO t1 VALUES (1, 2);    
-#SELECT * FROM t2;
-#
-#DROP TABLE t1;
-#DROP TEMPORARY TABLE t2;
+CREATE TABLE t1 (a INT, b INT DEFAULT 150)engine=tianmu;
+
+delimiter |;
+CREATE TRIGGER t1_bi BEFORE INSERT ON t1
+FOR EACH ROW 
+BEGIN
+  CREATE TEMPORARY TABLE t2 AS SELECT NEW.a, NEW.b;
+  INSERT INTO t2(a) VALUES (10);
+  INSERT INTO t2 VALUES (100, 500);
+  INSERT INTO t2(a) VALUES (1000);
+END|
+delimiter ;|
+
+INSERT INTO t1 VALUES (1, 2);    
+SELECT * FROM t2;
+
+DROP TABLE t1;
+DROP TEMPORARY TABLE t2;
 
 
