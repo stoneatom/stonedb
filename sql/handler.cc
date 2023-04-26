@@ -2836,7 +2836,8 @@ int handler::ha_rnd_init(bool scan) {
   int result;
   DBUG_TRACE;
   assert(table_share->tmp_table != NO_TMP_TABLE || m_lock_type != F_UNLCK);
-  assert(inited == NONE || (inited == RND && scan));
+  // stonedb8: add assert index with tianmu type, to fix incorrect trigger result.
+  assert(inited == NONE || (inited == RND && scan) || (inited == INDEX && ht->db_type == DB_TYPE_TIANMU));
   inited = (result = rnd_init(scan)) ? NONE : RND;
   end_range = nullptr;
   return result;
