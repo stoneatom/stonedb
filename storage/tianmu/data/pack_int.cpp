@@ -43,7 +43,7 @@ PackInt::PackInt(DPN *dpn, PackCoordinate pc, ColumnShare *s) : Pack(dpn, pc, s)
 PackInt::PackInt(const PackInt &apn, const PackCoordinate &pc) : Pack(apn, pc), is_real_(apn.is_real_) {
   data_.value_type_ = apn.data_.value_type_;
   if (apn.data_.value_type_ > 0) {
-    ASSERT(apn.data_.ptr_ != nullptr);
+    ASSERT(apn.data_.ptr_ != nullptr, "path:" + col_share_->DataFile());
     data_.ptr_ = alloc(data_.value_type_ * apn.dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
     std::memcpy(data_.ptr_, apn.data_.ptr_, data_.value_type_ * apn.dpn_->numOfRecords);
   }
@@ -167,6 +167,7 @@ void PackInt::ExpandOrShrink(uint64_t maxv, int64_t delta) {
   auto new_vt = GetValueSize(maxv);
   if (new_vt != data_.value_type_ || delta != 0) {
     auto tmp = alloc(new_vt * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+    std::memset(tmp, 0, new_vt * dpn_->numOfRecords);
     xf[{data_.value_type_, new_vt}](data_.ptr_, data_.ptr_int8_ + (data_.value_type_ * dpn_->numOfRecords), tmp, delta);
     dealloc(data_.ptr_);
     data_.ptr_ = tmp;
@@ -178,7 +179,6 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
   if (IsNull(locationInPack)) {
     if (!v.HasValue())
       return;
-    // ASSERT(v.HasValue(), col_share_->DataFile() + " locationInPack: " + std::to_string(locationInPack));
 
     // update null to non-null
     dpn_->synced = false;
@@ -193,12 +193,14 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
       dpn_->min_d = d;
       dpn_->max_d = d;
       data_.value_type_ = 8;
-      data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-      std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
+      if (data_.empty()) {
+        data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+        std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
+      }
       SetValD(locationInPack, d);
     } else {
       dpn_->numOfNulls--;
-      ASSERT(data_.ptr_ != nullptr);
+      ASSERT(data_.ptr_ != nullptr, "path:" + col_share_->DataFile());
 
       SetValD(locationInPack, d);
 
@@ -212,14 +214,15 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
     // update an original non-null value
 
     if (data_.empty()) {
-      ASSERT(dpn_->Uniform());
+      ASSERT(dpn_->Uniform(), "path:" + col_share_->DataFile());
       data_.value_type_ = 8;
       data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
       for (uint i = 0; i < dpn_->numOfRecords; i++) SetValD(i, dpn_->min_d);
     }
     auto oldv = GetValDouble(locationInPack);
 
-    ASSERT(oldv <= dpn_->max_d);
+    ASSERT(oldv <= dpn_->max_d,
+           col_share_->DataFile() + " oldv=" + std::to_string(oldv) + ", dpn_->max_d=" + std::to_string(dpn_->max_d));
 
     // get max/min **without** the value to update
     auto newmax = std::numeric_limits<double>::min();
@@ -239,12 +242,16 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
       dpn_->numOfNulls++;
       // easy mode
       dpn_->sum_d -= oldv;
+      if ((oldv == dpn_->min_d || oldv == dpn_->max_d) && dpn_->min_d != dpn_->max_d) {
+        dpn_->min_d = newmin;
+        dpn_->max_d = newmax;
+      }
       return;
     }
 
     // update non-null to another nonull
     auto newv = v.GetDouble();
-    ASSERT(oldv != newv);
+    ASSERT(oldv != newv, "path:" + col_share_->DataFile());
 
     newmin = std::min(newmin, newv);
     newmax = std::max(newmax, newv);
@@ -265,11 +272,13 @@ void PackInt::UpdateValue(size_t locationInPack, const Value &v) {
     UpdateValueFixed(locationInPack, v);
 
   // release buffer if the pack becomes trivial
-  if (dpn_->Trivial()) {
+  if (dpn_->NullOnly() || dpn_->Uniform()) {
     dealloc(data_.ptr_);
     data_.ptr_ = nullptr;
     data_.value_type_ = 0;
-    dpn_->dataAddress = DPN_INVALID_ADDR;
+    if (dpn_->numOfDeleted == 0) {
+      dpn_->dataAddress = DPN_INVALID_ADDR;
+    }
   }
 }
 
@@ -281,17 +290,21 @@ void PackInt::DeleteByRow(size_t locationInPack) {
   if (!IsNull(locationInPack)) {
     if (is_real_) {
       if (data_.empty()) {
-        ASSERT(dpn_->Uniform());
+        ASSERT(dpn_->Uniform(), "path:" + col_share_->DataFile());
         data_.value_type_ = 8;
         data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
         for (uint i = 0; i < dpn_->numOfRecords; i++) SetValD(i, dpn_->min_d);
       }
-      auto oldv = GetValDouble(locationInPack);
 
-      ASSERT(oldv <= dpn_->max_d);
+      auto oldv = GetValDouble(locationInPack);
+      ASSERT(oldv <= dpn_->max_d,
+             col_share_->DataFile() + " oldv=" + std::to_string(oldv) + ", dpn_->max_d=" + std::to_string(dpn_->max_d));
+
+      SetNull(locationInPack);
+      dpn_->numOfNulls++;
       dpn_->sum_d -= oldv;
 
-      if (oldv == dpn_->min_d || oldv == dpn_->max_d) {
+      if ((oldv == dpn_->min_d || oldv == dpn_->max_d) && dpn_->min_d != dpn_->max_d) {
         // get max/min **without** the value to update
         auto newmax = std::numeric_limits<double>::min();
         auto newmin = std::numeric_limits<double>::max();
@@ -304,21 +317,31 @@ void PackInt::DeleteByRow(size_t locationInPack) {
               newmin = val;
           }
         }
-        dpn_->min_d = newmin;
-        dpn_->max_d = newmax;
+        if (!dpn_->NullOnly()) {
+          dpn_->min_d = newmin;
+          dpn_->max_d = newmax;
+        }
       }
     } else {
       if (data_.empty()) {
-        ASSERT(dpn_->Uniform());
+        ASSERT(dpn_->Uniform(), "path:" + col_share_->DataFile());
         data_.value_type_ = GetValueSize(dpn_->max_i - dpn_->min_i);
         data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
         std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
       }
+
       auto oldv = GetValInt(locationInPack);
       oldv += dpn_->min_i;
-      ASSERT(oldv <= dpn_->max_i);
+
+      ASSERT(oldv <= dpn_->max_i,
+             col_share_->DataFile() + " oldv=" + std::to_string(oldv) + ", dpn_->max_i=" + std::to_string(dpn_->max_i));
+
+      SetNull(locationInPack);
+      SetVal64(locationInPack, 0);
+      dpn_->numOfNulls++;
       dpn_->sum_i -= oldv;
-      if (oldv == dpn_->min_i || oldv == dpn_->max_i) {
+
+      if ((oldv == dpn_->min_i || oldv == dpn_->max_i) && dpn_->min_i != dpn_->max_i) {
         // get max/min **without** the value to update
         auto newmax = std::numeric_limits<int64_t>::min();
         auto newmin = std::numeric_limits<int64_t>::max();
@@ -331,23 +354,28 @@ void PackInt::DeleteByRow(size_t locationInPack) {
               newmin = val;
           }
         }
-        ExpandOrShrink(newmax - newmin, dpn_->min_i - newmin);
-        dpn_->min_i = newmin;
-        dpn_->max_i = newmax;
+        if (!dpn_->NullOnly()) {
+          ExpandOrShrink(newmax - newmin, dpn_->min_i - newmin);
+          dpn_->min_i = newmin;
+          dpn_->max_i = newmax;
+        }
       }
     }
-    SetNull(locationInPack);
-    dpn_->numOfNulls++;
   }
   SetDeleted(locationInPack);
   dpn_->numOfDeleted++;
+  // release buffer if the pack becomes trivial
+  if (dpn_->NullOnly() || dpn_->Uniform()) {
+    dealloc(data_.ptr_);
+    data_.ptr_ = nullptr;
+    data_.value_type_ = 0;
+  }
 }
 
 void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
   if (IsNull(locationInPack)) {
     if (!v.HasValue())
       return;
-    // ASSERT(v.HasValue(), col_share_->DataFile() + " locationInPack: " + std::to_string(locationInPack));
     //  update null to non-null
     dpn_->synced = false;
     UnsetNull(locationInPack);
@@ -361,13 +389,14 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
       dpn_->max_i = l;
 
       data_.value_type_ = 1;
-      data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-      // for fixed number, it is sufficient to simply zero the data_
-      std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
+      if (data_.empty()) {
+        data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+        std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
+      }
       dpn_->numOfNulls--;
       SetVal64(locationInPack, l - dpn_->min_i);
     } else {
-      ASSERT(data_.ptr_ != nullptr);
+      ASSERT(data_.ptr_ != nullptr, "path:" + col_share_->DataFile());
       dpn_->numOfNulls--;
 
       if (l >= dpn_->min_i && l <= dpn_->max_i) {
@@ -378,31 +407,22 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
         return;
       }
 
-      decltype(data_.value_type_) new_vt;
       int64_t delta = 0;
       if (l < dpn_->min_i) {
         delta = dpn_->min_i - l;
         dpn_->min_i = l;
-        new_vt = GetValueSize(dpn_->max_i - dpn_->min_i);
       } else {  // so l > dpn_->max
         dpn_->max_i = l;
-        new_vt = GetValueSize(dpn_->max_i - dpn_->min_i);
       }
-      if (new_vt != data_.value_type_ || delta != 0) {
-        auto tmp = alloc(new_vt * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-        xf[{data_.value_type_, new_vt}](data_.ptr_, data_.ptr_int8_ + (data_.value_type_ * dpn_->numOfRecords), tmp,
-                                        delta);
-        dealloc(data_.ptr_);
-        data_.ptr_ = tmp;
-        data_.value_type_ = new_vt;
-      }
+
+      ExpandOrShrink(dpn_->max_i - dpn_->min_i, delta);
       SetVal64(locationInPack, l - dpn_->min_i);
     }
   } else {
     // update an original non-null value
 
     if (data_.empty()) {
-      ASSERT(dpn_->Uniform());
+      ASSERT(dpn_->Uniform(), "path:" + col_share_->DataFile());
       data_.value_type_ = GetValueSize(dpn_->max_i - dpn_->min_i);
       data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
       std::memset(data_.ptr_, 0, data_.value_type_ * dpn_->numOfRecords);
@@ -410,7 +430,8 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
     auto oldv = GetValInt(locationInPack);
     oldv += dpn_->min_i;
 
-    ASSERT(oldv <= dpn_->max_i);
+    ASSERT(oldv <= dpn_->max_i,
+           col_share_->DataFile() + " oldv=" + std::to_string(oldv) + ", dpn_->max_i=" + std::to_string(dpn_->max_i));
 
     // get max/min **without** the value to update
     int64_t newmax = std::numeric_limits<int64_t>::min();
@@ -429,13 +450,18 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
     if (!v.HasValue()) {
       // update non-null to null
       SetNull(locationInPack);
+      SetVal64(locationInPack, 0);
       dpn_->numOfNulls++;
       // easy mode
       dpn_->sum_i -= oldv;
 
-      if (!dpn_->NullOnly())
-        ExpandOrShrink(newmax - newmin, 0);
-
+      if (!dpn_->NullOnly()) {
+        if ((oldv == dpn_->min_i || oldv == dpn_->max_i) && dpn_->min_i != dpn_->max_i) {
+          ExpandOrShrink(newmax - newmin, dpn_->min_i - newmin);
+          dpn_->min_i = newmin;
+          dpn_->max_i = newmax;
+        }
+      }
       return;
     }
 
@@ -465,17 +491,11 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
   auto new_min = std::min(vc->MinDouble(), dpn_->min_d);
   auto new_max = std::max(vc->MaxDouble(), dpn_->max_d);
   auto new_nr = dpn_->numOfRecords + vc->NumOfValues();
-  if (dpn_->Trivial()) {
-    ASSERT(data_.ptr_ == nullptr);
-    data_.value_type_ = sizeof(double);
-    data_.ptr_ = alloc(data_.value_type_ * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-    if (dpn_->Uniform()) {
-      std::fill_n(reinterpret_cast<double *>(data_.ptr_), new_nr, dpn_->min_d);
-    }
-  } else {
-    // expanding existing pack data_
-    ASSERT(data_.ptr_ != nullptr);
-    data_.ptr_ = rc_realloc(data_.ptr_, data_.value_type_ * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+  data_.value_type_ = sizeof(double);
+
+  data_.ptr_ = rc_realloc(data_.ptr_, data_.value_type_ * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+  if (dpn_->Uniform()) {
+    std::fill_n(reinterpret_cast<double *>(data_.ptr_), new_nr, dpn_->min_d);
   }
 
   dpn_->synced = false;
@@ -522,13 +542,16 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
   auto new_vt = GetValueSize(new_max - new_min);
   auto new_nr = dpn_->numOfRecords + vc->NumOfValues();
 
-  ASSERT(new_vt >= data_.value_type_);
+  ASSERT(new_vt >= data_.value_type_, col_share_->DataFile() + ", new_vt=:" + std::to_string(new_vt) +
+                                          " , data_.value_type_:" + std::to_string(data_.value_type_));
 
   auto delta = dpn_->min_i - new_min;
 
-  if (dpn_->Trivial()) {
-    ASSERT(data_.ptr_ == nullptr);
+  if (dpn_->NullOnly() || dpn_->Uniform()) {
+    if (data_.ptr_)
+      dealloc(data_.ptr_);
     data_.ptr_ = alloc(new_vt * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+    std::memset(data_.ptr_, 0, new_vt * new_nr);
     if (dpn_->Uniform()) {
       switch (new_vt) {
         case 8:
@@ -550,8 +573,10 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
     }
   } else {
     // expanding existing pack data_
-    ASSERT(data_.ptr_ != nullptr);
+    ASSERT(data_.ptr_ != nullptr, "path:" + col_share_->DataFile());
+
     auto tmp_ptr = alloc(new_vt * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+    std::memset(tmp_ptr, 0, new_vt * new_nr);
     xf[{data_.value_type_, new_vt}](data_.ptr_, data_.ptr_int8_ + (data_.value_type_ * dpn_->numOfRecords), tmp_ptr,
                                     delta);
     dealloc(data_.ptr_);
@@ -566,10 +591,11 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
     if (vc->NotNull(i)) {
       AppendValue(*(reinterpret_cast<uint64_t *>(const_cast<char *>(vc->GetDataBytesPointer(i)))) - new_min);
     } else {
-      if (nv.has_value())
+      if (nv.has_value()) {
         AppendValue(nv->i - new_min);
-      else
+      } else {
         AppendNull();
+      }
       if (vc->IsDelete(i)) {
         if (!IsNull(dpn_->numOfRecords - 1)) {
           SetNull(dpn_->numOfRecords - 1);
@@ -580,6 +606,7 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
       }
     }
   }
+
   // sum has already been updated outside
   dpn_->min_i = new_min;
   dpn_->max_i = new_max;
@@ -598,24 +625,29 @@ PackInt::~PackInt() {
 void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
   FunctionExecutor fe([this]() { Lock(); }, [this]() { Unlock(); });
 
-  data_.value_type_ = GetValueSize(dpn_->max_i - dpn_->min_i);
+  if (dpn_->NullOnly() || dpn_->Uniform())
+    data_.value_type_ = 0;
+  else
+    data_.value_type_ = GetValueSize(dpn_->max_i - dpn_->min_i);
+
   if (IsModeNoCompression()) {
-    if (dpn_->numOfNulls) {
+    if (dpn_->numOfNulls > 0) {
       fcurfile->ReadExact(nulls_ptr_.get(), bitmap_size_);
     }
-    if (dpn_->numOfDeleted) {
+    if (dpn_->numOfDeleted > 0) {
       fcurfile->ReadExact(deletes_ptr_.get(), bitmap_size_);
     }
-    ASSERT(data_.value_type_ * dpn_->numOfRecords != 0);
-    data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-    fcurfile->ReadExact(data_.ptr_, data_.value_type_ * dpn_->numOfRecords);
+    if (data_.value_type_ * dpn_->numOfRecords > 0) {
+      data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+      fcurfile->ReadExact(data_.ptr_, data_.value_type_ * dpn_->numOfRecords);
+    }
     dpn_->synced = false;
   } else {
     UniquePtr uptr = alloc_ptr(dpn_->dataLength + 1, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
     fcurfile->ReadExact(uptr.get(), dpn_->dataLength);
     dpn_->synced = true;
     {
-      ASSERT(!IsModeNoCompression());
+      ASSERT(!IsModeNoCompression(), "path:" + col_share_->DataFile());
 
       uint *cur_buf = static_cast<uint *>(uptr.get());
       if (data_.ptr_ == nullptr && data_.value_type_ > 0)
@@ -697,9 +729,9 @@ void PackInt::Save() {
   if (ShouldNotCompress()) {
     SetModeNoCompression();
     dpn_->dataLength = 0;
-    if (dpn_->numOfNulls)
+    if (dpn_->numOfNulls > 0)
       dpn_->dataLength += bitmap_size_;
-    if (dpn_->numOfDeleted)
+    if (dpn_->numOfDeleted > 0)
       dpn_->dataLength += bitmap_size_;
     dpn_->dataLength += data_.value_type_ * dpn_->numOfRecords;
   } else {
@@ -717,16 +749,16 @@ void PackInt::Save() {
   else
     f.WriteExact(uptr.get(), dpn_->dataLength);
 
-  ASSERT(f.Tell() == off_t(dpn_->dataAddress + dpn_->dataLength));
+  ASSERT(f.Tell() == off_t(dpn_->dataAddress + dpn_->dataLength), "path:" + col_share_->DataFile());
 
   f.Close();
   dpn_->synced = true;
 }
 
 void PackInt::SaveUncompressed(system::Stream *f) {
-  if (dpn_->numOfNulls)
+  if (dpn_->numOfNulls > 0)
     f->WriteExact(nulls_ptr_.get(), bitmap_size_);
-  if (dpn_->numOfDeleted)
+  if (dpn_->numOfDeleted > 0)
     f->WriteExact(deletes_ptr_.get(), bitmap_size_);
   if (data_.ptr_)
     f->WriteExact(data_.ptr_, data_.value_type_ * dpn_->numOfRecords);
