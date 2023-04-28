@@ -32,6 +32,8 @@ Pack::Pack(DPN *dpn, PackCoordinate pc, ColumnShare *col_share) : col_share_(col
   bitmap_size_ = (1 << col_share->pss) / 8;
   nulls_ptr_ = std::make_unique<uint32_t[]>(bitmap_size_ / sizeof(uint32_t));
   deletes_ptr_ = std::make_unique<uint32_t[]>(bitmap_size_ / sizeof(uint32_t));
+  std::memset(nulls_ptr_.get(), 0, bitmap_size_);
+  std::memset(deletes_ptr_.get(), 0, bitmap_size_);
   // nulls MUST be initialized in the constructor, there are 3 cases in total:
   //   1. All values are nullptr. It is initialized here by InitNull();
   //   2. All values are uniform. Then it would be all zeros already.

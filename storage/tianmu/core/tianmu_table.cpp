@@ -1549,6 +1549,8 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   uint64 expected_count = m_delta->CountRecords() < tianmu_sysvar_merge_rocks_expected_count
                               ? m_delta->CountRecords()
                               : tianmu_sysvar_merge_rocks_expected_count;
+
+  uint64_t total_load_num = 0, total_read_cnt = 0, total_read_bytes = 0;
   {
     // combine prefix key
     uchar key_buf[sizeof(uint32_t)];
@@ -1568,6 +1570,7 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
                  index::be_to_uint64(reinterpret_cast<const uchar *>(iter->key().data()) + sizeof(uint32_t)));
     }
 #endif
+
     while (expected_count > 0 && iter->Valid() && iter->key().starts_with(prefix)) {
       auto key = iter->key();
       uint64_t row_id = index::be_to_uint64(reinterpret_cast<const uchar *>(key.data()) + sizeof(uint32_t));
@@ -1590,10 +1593,11 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       }
 
       m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());  // todo(dfx): change to DeleteRange
+
       expected_count -= load_num;
-      m_delta->merge_id.fetch_add(load_num);
-      m_delta->stat.read_cnt++;
-      m_delta->stat.read_bytes += value.size();
+      total_load_num += load_num;
+      total_read_cnt++;
+      total_read_bytes += value.size();
 
       if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
         insert_num += AsyncParseInsertRecords(&iop, &insert_records);
@@ -1627,6 +1631,10 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
     Engine *eng = reinterpret_cast<Engine *>(tianmu_hton->data);
     eng->getStore()->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_delta->GetCFHandle(), nullptr, nullptr);
   }
+
+  m_delta->merge_id.fetch_add(total_load_num);
+  m_delta->stat.read_cnt += total_read_cnt;
+  m_delta->stat.read_bytes += total_read_bytes;
 
   return insert_num + update_num + delete_num;
 }
@@ -1702,7 +1710,7 @@ int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
                                                               current_txn_, update_cols_buf[att]));
       }
     }
-    res.get_all_with_except();
+    res.get_all();
   }
 
   clock_gettime(CLOCK_REALTIME, &t2);
@@ -1726,7 +1734,7 @@ int TianmuTable::AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records) 
       res.insert(eng->delete_or_update_thread_pool.add_task(&TianmuAttr::DeleteBatchData, m_attrs[att].get(),
                                                             current_txn_, delete_records));
     }
-    res.get_all_with_except();
+    res.get_all();
   }
 
   return delete_records.size();

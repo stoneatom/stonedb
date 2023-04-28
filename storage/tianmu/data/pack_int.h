@@ -72,19 +72,23 @@ class PackInt final : public Pack {
   }
 
   void AppendNull() {
-    SetNull(dpn_->numOfRecords);
-    dpn_->numOfNulls++;
     dpn_->numOfRecords++;
+    if (likely(NotNull(dpn_->numOfRecords - 1))) {
+      SetNull(dpn_->numOfRecords - 1);
+    }
+    dpn_->numOfNulls++;
   }
   void SetValD(uint n, double v) {
     dpn_->synced = false;
-    ASSERT(n < dpn_->numOfRecords);
+    ASSERT(n < dpn_->numOfRecords,
+           "n: " + std::to_string(n) + " ,dpn->numOfRecords: " + std::to_string(dpn_->numOfRecords));
     ASSERT(is_real_);
     data_.ptr_double_[n] = v;
   }
   void SetVal64(uint n, uint64_t v) {
     dpn_->synced = false;
-    ASSERT(n < dpn_->numOfRecords);
+    ASSERT(n < dpn_->numOfRecords,
+           "n: " + std::to_string(n) + " ,dpn->numOfRecords: " + std::to_string(dpn_->numOfRecords));
     switch (data_.value_type_) {
       case 8:
         data_.ptr_int64_[n] = v;
@@ -124,6 +128,8 @@ class PackInt final : public Pack {
   void RemoveNullsAndCompress(compress::NumCompressor<etype> &nc, char *tmp_comp_buffer, uint &tmp_cb_len,
                               uint64_t &maxv);
 
+  // void alloc_data_ptr(uint32_t recordNum);
+
   bool is_real_ = false;
   struct {
     int64_t operator[](size_t n) const {
@@ -150,7 +156,7 @@ class PackInt final : public Pack {
       uint32_t *ptr_int32_;
       uint64_t *ptr_int64_;
       double *ptr_double_;
-      void *ptr_;
+      void *ptr_ = nullptr;
     };
   } data_ = {};
 };

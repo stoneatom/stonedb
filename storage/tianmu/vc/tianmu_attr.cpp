@@ -909,7 +909,10 @@ void TianmuAttr::PreparePackForLoad() {
     auto ret = m_share->alloc_dpn(m_tx->GetID());
     m_idx.push_back(ret);
   } else {
-    CopyPackForWrite(SizeOfPack() - 1);
+    DPN &dpn = get_dpn(SizeOfPack() - 1);
+    if (!dpn.Trivial()) {
+      CopyPackForWrite(SizeOfPack() - 1);
+    }
   }
 }
 
@@ -1283,7 +1286,7 @@ void TianmuAttr::ResetMaxMin(DPN &dpn) {
 }
 
 void TianmuAttr::CopyPackForWrite(common::PACK_INDEX pi) {
-  if (get_dpn(pi).IsLocal())
+  if (get_dpn(pi).IsLocal() && get_pack(pi))
     return;
 
   auto &old_dpn(get_dpn(pi));  // save a ref to the old dpn

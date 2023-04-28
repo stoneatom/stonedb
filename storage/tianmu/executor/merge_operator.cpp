@@ -169,16 +169,7 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
       return false;
     }
   } else if (existing_type == RecordType::kDelete) {
-    DeltaRecordHeadForDelete e_deleteRecord;
-    e_deleteRecord.recordDecode(e_ptr);
-
-    DeltaRecordHeadForDelete deleteRecord;
-    deleteRecord.recordDecode(ptr);
-
-    uint32_t n_load_num = e_deleteRecord.load_num_ + deleteRecord.load_num_;
-    DeltaRecordHeadForDelete n_deleteRecord(n_load_num);
-    n_ptr = n_deleteRecord.recordEncode(n_ptr);
-    *new_value = std::string(value_buff.get(), n_ptr - value_buff.get());
+    *new_value = existing_value->ToString();
     return true;
   } else {
     return false;
