@@ -1496,7 +1496,7 @@ void TianmuTable::DeleteToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, ui
   return m_delta->AddRecord(current_txn_, row_id, std::move(buf), size);
 }
 
-void TianmuTable::InsertIndexForDelta(TABLE *table, uint64_t row_id) {
+int TianmuTable::InsertIndexForDelta(TABLE *table, uint64_t row_id) {
   core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
   assert(eng);
 
@@ -1507,10 +1507,12 @@ void TianmuTable::InsertIndexForDelta(TABLE *table, uint64_t row_id) {
 
     if (tab->InsertIndex(current_txn_, fields, row_id) == common::ErrorCode::DUPP_KEY) {
       TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d, key: %s", row_id, fields[0].data());
-      throw common::DupKeyException("Insert duplicate key on row: " + std::to_string(row_id) +
-                                    ", pk: " + std::to_string(*(uint64_t *)(fields[0].data())));
+      /*throw common::DupKeyException("Insert duplicate key on row: " + std::to_string(row_id) +
+                                    ", pk: " + std::to_string(*(uint64_t *)(fields[0].data())));*/
+      return HA_ERR_FOUND_DUPP_KEY;
     }
   }
+  return 0;
 }
 
 void TianmuTable::UpdateIndexForDelta(TABLE *table, uint64_t row_id, uint64_t col) {

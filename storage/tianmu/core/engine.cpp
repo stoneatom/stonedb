@@ -1699,14 +1699,14 @@ void Engine::InsertDelayed(const std::string &table_path, TABLE *table) {
   }
 }
 
-void Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table) {
+int Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table) {
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
   auto tm_table = share->GetSnapshot();
   uint64_t row_id = tm_table->NextRowId();
   // Insert primary key first
-  tm_table->InsertIndexForDelta(table, row_id);
+  int ret = tm_table->InsertIndexForDelta(table, row_id);
 
   // check & encode
   uint32_t buf_sz = 0;
@@ -1714,6 +1714,7 @@ void Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableS
   EncodeInsertRecord(table_path, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz, table->in_use);
   // insert to delta
   tm_table->InsertToDelta(row_id, std::move(buf), buf_sz);
+  return ret;
 }
 
 void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table,
@@ -1784,7 +1785,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   try {
     if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
       if (tianmu_sysvar_enable_rowstore) {
-        InsertToDelta(table_path, share, table);
+        ret = InsertToDelta(table_path, share, table);
       } else {
         InsertDelayed(table_path, table);
       }
@@ -1798,7 +1799,6 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   } catch (common::DupKeyException &e) {
     ret = HA_ERR_FOUND_DUPP_KEY;
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed: %s", e.what());
-    my_message(static_cast<int>(common::ErrorCode::DUPP_KEY), e.what(), MYF(0));
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed. %s %s", e.what(), e.trace().c_str());
   } catch (std::exception &e) {

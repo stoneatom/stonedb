@@ -1,0 +1,8 @@
+DROP DATABASE IF EXISTS issue1637_test;
+CREATE DATABASE issue1637_test;
+USE issue1637_test;
+create table ttt(id int primary key,name varchar(10));
+insert into ttt values(1,'aaa');
+insert into ttt values(2,'bbb');
+insert ignore into ttt values(2,'ccc');
+DROP DATABASE issue1637_test;
