@@ -228,7 +228,7 @@ JOIN::optimize(OptimizePhase phase)
             if (phase == OptimizePhase::Before_LOJ_Transform)
             {
               if (tl->is_view_or_derived() && tl->optimize_derived_for_tianmu(thd))
-                DBUG_RETURN(1);
+                DBUG_RETURN(0);
             }          
           }
         }
@@ -10126,7 +10126,7 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
       DBUG_EXECUTE("where",print_where(*cond,"after const change", QT_ORDINARY););
     }
   }
-  if (*cond)
+  if ((*cond) && (!( (int64)(*cond) & 0x1)))
   {
     Opt_trace_object step_wrapper(trace);
     step_wrapper.add_alnum("transformation", "trivial_condition_removal");
