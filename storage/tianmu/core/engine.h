@@ -119,7 +119,7 @@ class Engine final {
                 const uchar *old_data, uchar *new_data);
   int DeleteRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id);
   void InsertDelayed(const std::string &table_path, TABLE *table);
-  void InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
+  int InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
   void UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id,
                      const uchar *old_data, uchar *new_data);
   void DeleteToDelta(std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id);
