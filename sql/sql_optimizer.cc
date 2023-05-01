@@ -5141,29 +5141,6 @@ bool JOIN::make_join_plan()
   if (unlikely(trace->is_started()))
     trace_table_dependencies(trace, join_tab, primary_tables);
 
-  // Build the key access information, which is the basis for ref access.
-  if (where_cond || select_lex->outer_join)
-  {
-    /*
-      The primary key of the tianmu engine does not support delete and update statements.
-      The following codes can be deleted after subsequent support
-    */
-    TABLE *const table= join_tab->table();
-    bool check_if_tianmu_engine = table && table->s && 
-                        (table->s->db_type() ? (table->s->db_type()->db_type == DB_TYPE_TIANMU): false);
-    enum_sql_command sql_command = SQLCOM_END;
-    if(thd->lex) sql_command = thd->lex->sql_command;
-    bool check_tianmu_delete_or_update = (check_if_tianmu_engine && ((sql_command == SQLCOM_DELETE) ||
-                                          (sql_command == SQLCOM_DELETE_MULTI) ||
-                                          (sql_command == SQLCOM_UPDATE) ||
-                                          (sql_command == SQLCOM_UPDATE_MULTI)));
-
-    if (!check_tianmu_delete_or_update && update_ref_and_keys(thd, &keyuse_array, join_tab, tables, where_cond,
-                            cond_equal, ~select_lex->outer_join, select_lex,
-                            &sargables))
-      DBUG_RETURN(true);
-  }
-
   /*
     Pull out semi-join tables based on dependencies. Dependencies are valid
     throughout the lifetime of a query, so this operation can be performed
