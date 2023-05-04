@@ -372,9 +372,10 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     return QueryRouteTo::kToMySQL;
   }
 
-  auto join_exec = ([&selects_list, &result_output] {
+  auto join_exec = ([&thd, &selects_list, &result_output] {
     selects_list->set_query_result(result_output);
     ASSERT(selects_list->join);
+    thd->lex->set_current_select(selects_list->join->select_lex);
     selects_list->join->exec();
     return QueryRouteTo::kToTianmu;
   });
@@ -384,7 +385,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     List_iterator_fast<Item> li(selects_list->fields_list);
     for (Item *item = li++; item; item = li++) {
       if ((item->type() == Item::Type::FUNC_ITEM) &&
-          (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
+          ((down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP))) {
         return join_exec();
       }
     }
@@ -427,10 +428,25 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     }
   }
 
-  for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
-    if (sl->join->m_select_limit == 0) {
-      exec_direct = true;
-      break;
+  if (!exec_direct) {
+    for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
+      if (sl->join->m_select_limit == 0) {
+        exec_direct = true;
+        break;
+      }
+    }
+  }
+
+  if (exec_direct) {
+    if ((!selects_list->table_list.elements) && (selects_list->fields_list.elements)) {
+      List_iterator_fast<Item> li(selects_list->fields_list);
+      for (Item *item = li++; item; item = li++) {
+        if ((item->type() == Item::Type::FUNC_ITEM) &&
+            ((down_cast<Item_func *>(item)->functype() == Item_func::Functype::SUSERVAR_FUNC))) {
+          exec_direct = false;
+          break;
+        }
+      }
     }
   }
 
