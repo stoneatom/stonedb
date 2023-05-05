@@ -111,6 +111,14 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
       for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
   }
   first_eval_ = false;
+
+  {
+    Item *item = expr_->GetItem();
+    if (item && (Item::FUNC_ITEM == item->type()) && (dynamic_cast<Item_func_if *>(item))) {
+      return true;
+    }
+  }
+
   return (diff || !deterministic_);
 }
 
@@ -123,6 +131,13 @@ int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
 }
 
 bool ExpressionColumn::IsNullImpl(const core::MIIterator &mit) {
+  {
+    Item *item = expr_->GetItem();
+    if (item && (Item::FUNC_ITEM == item->type()) && (dynamic_cast<Item_func_if *>(item))) {
+      return false;
+    }
+  }
+
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
   return last_val_->IsNull();
