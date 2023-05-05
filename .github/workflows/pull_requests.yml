@@ -85,7 +85,7 @@ jobs:
       - run: |
           case ${{ matrix.os }} in
             ubuntu2004_1.0.1)
-              apt-get update --fix-missing && apt-get --allow-releaseinfo-change update && apt-get install curl bc  libssl-dev -y
+              apt-get update --fix-missing && apt-get --allow-releaseinfo-change update && apt-get install curl bc lcov libssl-dev -y
               ;;
             centos7_1.0.1)
               yum install curl lcov.noarch bc.x86_64 -y
