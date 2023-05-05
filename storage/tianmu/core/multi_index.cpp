@@ -91,7 +91,7 @@ MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
     group_num_for_dimension_ = nullptr;
   }
   iterator_lock_ = 0;
-  shallow_dim_groups_ = false;
+  shallow_dim_groups_ = shallow;
 }
 
 MultiIndex::~MultiIndex() {
