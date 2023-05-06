@@ -438,7 +438,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
   }
 
   if (exec_direct) {
-    if ((!selects_list->table_list.elements) && (selects_list->fields_list.elements)) {
+    if ((selects_list->fields_list.elements)) {
       List_iterator_fast<Item> li(selects_list->fields_list);
       for (Item *item = li++; item; item = li++) {
         if ((item->type() == Item::Type::FUNC_ITEM) &&

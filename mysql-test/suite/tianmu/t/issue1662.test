@@ -1,0 +1,53 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+
+--let $my_var = 0
+
+--echo # Create test database
+CREATE DATABASE IF NOT EXISTS test_db_1662;
+
+USE test_db_1662;
+
+--echo # Create test table with tianmu engine
+CREATE TABLE IF NOT EXISTS test_table (
+  id INT,
+  value INT,
+  PRIMARY KEY (id)
+) ENGINE=tianmu;
+
+--echo # Insert data into test table
+INSERT INTO test_table (id, value) VALUES
+  (1, 10),
+  (2, 20),
+  (3, 10),
+  (4, 30),
+  (5, 20);
+
+--echo # Select data from test table with user-defined variable
+SELECT
+  id,
+  value,
+  @my_var := IF(value = @prev_value, @my_var, @my_var + 1) AS group_id,
+  @prev_value := value
+FROM
+  test_table,
+  (SELECT @my_var := 0, @prev_value := NULL) AS init
+ORDER BY
+  value,
+  id;
+
+SELECT
+  id,
+  value,
+  @my_var := IF(id = @prev_value, @my_var, @my_var + 1) AS group_id,
+  @prev_value := value
+FROM
+  test_table,
+  (SELECT @my_var := 0, @prev_value := NULL) AS init
+ORDER BY
+  value,
+  id;
+
+DROP DATABASE test_db_1662;
+
