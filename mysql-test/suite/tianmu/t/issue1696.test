@@ -52,13 +52,17 @@ FROM
   ) AS derived_table;
 DROP TABLE t1, t2, t3;
 
+set @rankno = 1;
+
 create table d(taxis_no int);
  
 insert into d values(1);
 insert into d values(1);
 insert into d values(1);
 
-SELECT IF(@rowno != d.taxis_no, @rankno := 1, @rankno := @rankno + 1)  from d;
+SELECT IF(@rankno != d.taxis_no, @rankno := 1, @rankno := @rankno + 1)  from d;
+
+set @rankno = 1;
 
 drop table d;
 create table d(taxis_no int);
@@ -67,7 +71,7 @@ insert into d values(1);
 insert into d values(2);
 insert into d values(3);
 
-SELECT IF(@rowno != d.taxis_no, @rankno := 1, @rankno := @rankno + 1)  from d;
+SELECT IF(@rankno != d.taxis_no, @rankno := 1, @rankno := @rankno + 1)  from d;
 
 --echo # Dropping test database test_db_1696
 DROP DATABASE IF EXISTS test_db_1696;
