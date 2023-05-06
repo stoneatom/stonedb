@@ -441,8 +441,16 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     if ((selects_list->fields_list.elements)) {
       List_iterator_fast<Item> li(selects_list->fields_list);
       for (Item *item = li++; item; item = li++) {
-        if ((item->type() == Item::Type::FUNC_ITEM) &&
-            ((down_cast<Item_func *>(item)->functype() == Item_func::Functype::SUSERVAR_FUNC))) {
+        if (Item::Type::FUNC_ITEM != item->type()) {
+          continue;
+        }
+
+        if (Item_func::Functype::SUSERVAR_FUNC == down_cast<Item_func *>(item)->functype()) {
+          exec_direct = false;
+          break;
+        }
+
+        if (dynamic_cast<Item_func_if *>(item)) {
           exec_direct = false;
           break;
         }
