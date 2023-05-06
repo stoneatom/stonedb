@@ -226,8 +226,7 @@ CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))ENGINE=TIANMU
 insert into t1 values (1,1),(2,1),(1,3);
 insert into t2 values (1,1),(2,2),(3,3);
 insert into t3 values (1,1),(2,1),(1,3);
-#TODO(stonedb8): and logical not correct, wait to backport
-#select * from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
+select * from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
 delete t2.*,t3.* from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
 # This should be empty
 select * from t3;
