@@ -5141,6 +5141,14 @@ bool JOIN::make_join_plan()
   if (unlikely(trace->is_started()))
     trace_table_dependencies(trace, join_tab, primary_tables);
 
+  // Build the key access information, which is the basis for ref access.
+  if (where_cond || select_lex->outer_join) {
+    if (update_ref_and_keys(thd, &keyuse_array, join_tab, tables, where_cond,
+                            cond_equal, ~select_lex->outer_join, select_lex,
+                            &sargables))
+      DBUG_RETURN(true);
+  }
+
   /*
     Pull out semi-join tables based on dependencies. Dependencies are valid
     throughout the lifetime of a query, so this operation can be performed
@@ -6878,19 +6886,17 @@ merge_key_fields(Key_field *start, Key_field *new_fields, Key_field *end,
             old->val= new_fields->val;
           /* The referred expression can be NULL: */ 
           old->null_rejecting= 0;
-	}
-	else
-	{
-	  /*
-	    We are comparing two different const.  In this case we can't
-	    use a key-lookup on this so it's better to remove the value
-	    and let the range optimizer handle it
-	  */
-	  if (old == --first_free)		// If last item
-	    break;
-	  *old= *first_free;			// Remove old value
-	  old--;				// Retry this value
-	}
+        } else {
+          /*
+            We are comparing two different const.  In this case we can't
+            use a key-lookup on this so it's better to remove the value
+            and let the range optimizer handle it
+          */
+          if (old == --first_free) // If last item
+            break;
+          *old = *first_free; // Remove old value
+          old--;              // Retry this value
+        }
       }
     }
   }
@@ -9381,13 +9387,11 @@ static bool make_join_select(JOIN *join, Item *cond)
               get_quick_record_count().
             */
             assert(tab->quick()->is_valid());
-	  }
-	  else
-          {
+          } else {
             delete tab->quick();
-	    tab->set_quick(NULL);
+            tab->set_quick(NULL);
           }
-	}
+        }
 
         if ((tab->type() == JT_ALL || tab->type() == JT_RANGE ||
             tab->type() == JT_INDEX_MERGE || tab->type() == JT_INDEX_SCAN) &&
