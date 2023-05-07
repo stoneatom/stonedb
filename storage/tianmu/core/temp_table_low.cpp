@@ -23,16 +23,16 @@
 #include "common/assert.h"
 #include "common/data_format.h"
 #include "core/engine.h"
-#include "core/pack_guardian.h"
-#include "core/sorter_wrapper.h"
 #include "core/temp_table.h"
 #include "core/transaction.h"
+#include "data/pack_guardian.h"
 #include "exporter/data_exporter.h"
 #include "system/fet.h"
 #include "system/io_parameters.h"
 #include "system/tianmu_system.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"
+#include "util/sorter_wrapper.h"
 #include "util/thread_pool.h"
 #include "vc/expr_column.h"
 #include "vc/virtual_column.h"
@@ -98,15 +98,6 @@ bool TempTable::OrderByAndMaterialize(
       SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset),
       SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset),
       SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset)};
-  /*
-      std::vector<SorterWrapper> v_sw;
-      if(task_num != 1) {
-          for(int i = 0; i < task_num; i++) {
-              SorterWrapper tmpsubsorted_table(*(filter.mind_), limit + offset);
-              v_sw.push_back(tmpsubsorted_table);
-          }
-      }
-  */
 
   int sort_order = 0;
   for (auto &j : attrs) {
@@ -142,6 +133,7 @@ bool TempTable::OrderByAndMaterialize(
       vc_for_prefetching.push_back(ord[i].vc);
     }
   }
+
   if (task_num == 1)
     sorted_table.InitSorter(*(filter.mind_), true);
   else
@@ -151,16 +143,22 @@ bool TempTable::OrderByAndMaterialize(
                sorted_table.GetSorter()->Name());
     task_num = 1;
   }
+
   // Put data
   std::vector<PackOrderer> po(filter.mind_->NumOfDimensions());
   if (task_num == 1) {
     sorted_table.SortRoughly(po);
   }
+
   MIIterator it(filter.mind_, all_dims, po);
   int64_t local_row = 0;
   bool continue_now = true;
 
   ord.clear();
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if (task_num == 1) {
     while (it.IsValid() && continue_now) {
       if (m_conn->Killed())
@@ -213,8 +211,8 @@ bool TempTable::OrderByAndMaterialize(
 
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
-                                                               current_txn_, &subsorted_table[i]));
+      res.insert(eng->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i], current_txn_,
+                                                 &subsorted_table[i]));
     if (filter.mind_->m_conn->Killed())
       throw common::KilledException("Query killed by user");
 
@@ -288,8 +286,8 @@ bool TempTable::OrderByAndMaterialize(
         ++offset_done;
       global_row++;
     } while (valid && global_row < limit + offset &&
-             !(sender && local_row >= tianmu_sysvar_result_sender_rows));  // a limit for
-                                                                           // streaming buffer
+             !(sender && local_row >= tianmu_sysvar_result_sender_rows));  // a limit for streaming buffer
+
     // Note: what about SetNumOfMaterialized()? Only no_obj is set now.
     if (sender) {
       TempTable::RecordIterator iter = begin();
@@ -381,6 +379,10 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
   // row		- a row number in orig. tables
   // no_obj	- a number of rows to be actually sent (offset already omitted)
   // start_row, page_end - in terms of orig. tables
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   while (it.IsValid() && row < no_obj + local_offset) { /* go thru all rows */
     bool outer_iterator_updated = false;
     MIIterator page_start(it);
@@ -404,11 +406,12 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
         outer_iterator_updated = true;
       }
     }
+
     utils::result_set<void> res;
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
-        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i],
-                                                                 current_txn_, &page_start, start_row, page_end));
+        res.insert(eng->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
+                                                   &page_start, start_row, page_end));
       }
     }
     res.get_all_with_except();

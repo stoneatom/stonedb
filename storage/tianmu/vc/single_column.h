@@ -18,9 +18,9 @@
 #define TIANMU_VC_SINGLE_COLUMN_H_
 #pragma once
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
-#include "core/physical_column.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
+#include "vc/physical_column.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {

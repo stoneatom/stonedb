@@ -20,10 +20,10 @@
 #include <algorithm>
 
 #include "common/assert.h"
-#include "core/tools.h"
 #include "system/io_parameters.h"
 #include "system/tianmu_file.h"
 #include "system/tianmu_system.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace system {

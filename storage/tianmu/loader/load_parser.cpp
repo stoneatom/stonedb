@@ -19,11 +19,11 @@
 
 #include "binlog.h"
 #include "core/engine.h"
-#include "core/tianmu_attr.h"
 #include "loader/value_cache.h"
 #include "log_event.h"
 #include "system/io_parameters.h"
 #include "util/timer.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 namespace loader {
@@ -51,7 +51,11 @@ LoadParser::LoadParser(TianmuAttrPtrVect_t &attrs, const system::IOParameters &i
   buf_end_ = cur_ptr_ + read_buffer_.BufSize();
 
   timer.Print(__PRETTY_FUNCTION__);
-  tab_index_ = ha_tianmu_engine_->GetTableIndex("./" + io_param_.TableName());
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
+  tab_index_ = eng->GetTableIndex("./" + io_param_.TableName());
 }
 
 uint LoadParser::GetPackrow(uint no_of_rows, std::vector<ValueCache> &value_buffers) {

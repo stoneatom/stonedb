@@ -18,7 +18,7 @@
 #define TIANMU_VC_VIRTUAL_COLUMN_H_
 #pragma once
 
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
 #include "vc/virtual_column_base.h"
 
 namespace Tianmu {

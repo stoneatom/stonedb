@@ -25,8 +25,8 @@
 #include "compress/range_code.h"
 #include "compress/top_bit_dict.h"
 #include "core/quick_math.h"
-#include "core/tools.h"
 #include "system/fet.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace compress {

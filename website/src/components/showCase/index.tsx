@@ -8,13 +8,21 @@ import kunpeng from '@site/static/resource/kunpeng.png';
 import tx from '@site/static/resource/tx.png';
 import Opengauss from '@site/static/resource/Opengauss.png';
 import BgChinaly from '@site/static/resource/BgChinaly.png';
+import zkfd from '@site/static/resource/zkfd.png';
+import ghzz from '@site/static/resource/ghzz.png';
+import hgxx from '@site/static/resource/hgxx.png';
+import zkkk from '@site/static/resource/zkkk.png';
 import { Title, Context } from "../styles";
 import {ItemWrap, PanelWrap} from './styles';
 
 const imgs: any = {
   kunpeng,
   tx,
-  Opengauss
+  Opengauss,
+  zkfd,
+  ghzz,
+  hgxx,
+  zkkk
 }
 
 const ShowCase: React.FC<any> = ({children}) => {

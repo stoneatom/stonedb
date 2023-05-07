@@ -6,7 +6,7 @@ sidebar_position: 3.12
 # 快速部署 StoneDB-5.7
 为方便用户快速上手，安装包是已经编译好的，只需要检查自己的环境是否缺少依赖。
 ## 下载安装包
-点击 [此处](https://static.stoneatom.com/custom/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz)下载最新的安装包。
+点击 [Github](https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz) or [Gitee](https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7-v1.0.3.el7.x86_64.tar.gz) 下载最新的安装包。
 ## 上传tar包并解压
 ```shell
 cd /

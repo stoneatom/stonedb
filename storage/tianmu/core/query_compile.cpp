@@ -18,12 +18,12 @@
 #include <algorithm>
 
 #include "common/mysql_gate.h"
-#include "core/compilation_tools.h"
-#include "core/compiled_query.h"
 #include "core/engine.h"
 #include "core/mysql_expression.h"
 #include "core/query.h"
 #include "core/transaction.h"
+#include "optimizer/compile/compilation_tools.h"
+#include "optimizer/compile/compiled_query.h"
 
 namespace Tianmu {
 namespace core {
@@ -1137,7 +1137,9 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
       List_iterator_fast<Item> li(*fields);
       for (Item *item = li++; item; item = li++) {
         if ((item->type() == Item::Type::FUNC_ITEM) &&
-            (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP) && (!sl->is_distinct())) {
+            ((down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP) ||
+             (down_cast<Item_func *>(item)->functype() == Item_func::Functype::SUSERVAR_FUNC)) &&
+            (!sl->is_distinct())) {
           sl->add_active_options(SELECT_DISTINCT);
           sl->join->select_distinct = TRUE;
           use_tmp_when_no_join = true;

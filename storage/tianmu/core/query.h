@@ -18,11 +18,11 @@
 #define TIANMU_CORE_QUERY_H_
 #pragma once
 
-#include "core/column_type.h"
 #include "core/item_tianmu_field.h"
-#include "core/joiner.h"
 #include "core/mysql_expression.h"
-#include "handler/ha_my_tianmu.h"
+#include "optimizer/joiner.h"
+#include "sql/ha_my_tianmu.h"
+#include "vc/column_type.h"
 
 namespace Tianmu {
 namespace core {

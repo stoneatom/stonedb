@@ -19,9 +19,9 @@
 
 #include "common/assert.h"
 #include "core/engine.h"
-#include "core/pack.h"
-#include "core/tools.h"
+#include "data/pack.h"
 #include "mm/release_tracker.h"
+#include "util/tools.h"
 
 #include "system/fet.h"
 #include "system/res_manager.h"
@@ -226,7 +226,13 @@ void TraceableObject::DestructionLock() {
   m_lock_count++;
 }
 
-int TraceableObject::MemorySettingsScale() { return ha_tianmu_engine_->getResourceManager()->GetMemoryScale(); }
+int TraceableObject::MemorySettingsScale() {
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  if (eng)
+    return eng->getResourceManager()->GetMemoryScale();
+  else
+    return -1;
+}
 
 void TraceableObject::deinitialize(bool detect_leaks) {
   if (TraceableType() != TO_TYPE::TO_INITIALIZER) {

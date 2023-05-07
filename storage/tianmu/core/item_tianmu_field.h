@@ -23,9 +23,9 @@
 #include <set>
 
 #include "common/common_definitions.h"
-#include "core/data_type.h"
 #include "core/value_or_null.h"
 #include "core/var_id.h"
+#include "types/data_type.h"
 
 namespace Tianmu {
 namespace core {

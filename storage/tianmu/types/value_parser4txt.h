@@ -20,8 +20,8 @@
 
 #include "common/assert.h"
 #include "common/exception.h"
-#include "core/tianmu_attr_typeinfo.h"
 #include "types/tianmu_data_types.h"
+#include "vc/tianmu_attr_typeinfo.h"
 
 namespace Tianmu {
 namespace types {

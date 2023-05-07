@@ -28,10 +28,9 @@
 #include "common/mysql_gate.h"
 #include "core/delta_table.h"
 #include "core/table_share.h"
-#include "core/task_executor.h"
 #include "core/temp_table.h"
-#include "core/tools.h"
 #include "core/transaction.h"
+#include "executor/task_executor.h"
 #include "mm/initializer.h"
 #include "mm/memory_statistics.h"
 #include "mysql/thread_pool_priv.h"
@@ -43,6 +42,7 @@
 #include "util/bitset.h"
 #include "util/fs.h"
 #include "util/thread_pool.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace DBHandler {
@@ -81,10 +81,11 @@ static int setup_sig_handler() {
 
 fs::path Engine::GetNextDataDir() {
   std::scoped_lock guard(v_mtx);
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
 
   if (tianmu_data_dirs.empty()) {
     // fall back to use MySQL data directory
-    auto p = ha_tianmu_engine_->tianmu_data_dir / TIANMU_DATA_DIR;
+    auto p = eng->tianmu_data_dir / TIANMU_DATA_DIR;
     if (!fs::is_directory(p))
       fs::create_directory(p);
     return p;
@@ -117,6 +118,7 @@ fs::path Engine::GetNextDataDir() {
     }
     return v[std::rand() % v.size()];
   }
+
   // round-robin
   static int idx = 0;
   return tianmu_data_dirs[idx++ % sz];
@@ -127,22 +129,27 @@ static int has_pack(const LEX_STRING &comment) {
   std::string str(comment.str, comment.length);
   boost::to_upper(str);
   std::string val;
+
   auto pos = str.find("PACK");
   if (pos == std::string::npos)
     return ret;
+
   size_t val_pos = str.find(':', pos);
   if (val_pos == std::string::npos)
     return ret;
+
   size_t term_pos = str.find(';', val_pos);
   if (term_pos == std::string::npos) {
     val = str.substr(val_pos + 1);
   } else {
     val = str.substr(val_pos + 1, term_pos - val_pos - 1);
   }
+
   boost::trim(val);
   ret = atoi(val.c_str());
   if (ret > common::DFT_PSS || ret <= 0)
     ret = common::DFT_PSS;
+
   return ret;
 }
 
@@ -150,12 +157,15 @@ static std::string has_mem_name(const LEX_STRING &comment) {
   std::string name = "";
   std::string str(comment.str, comment.length);
   boost::to_upper(str);
+
   auto pos = str.find("ROWSTORE");
   if (pos == std::string::npos)
     return name;
+
   size_t val_pos = str.find(':', pos);
   if (val_pos == std::string::npos)
     return name;
+
   size_t term_pos = str.find(';', val_pos);
   if (term_pos == std::string::npos) {
     name = str.substr(val_pos + 1);
@@ -199,27 +209,32 @@ Engine::Engine()
                                                            : std::thread::hardware_concurrency()),
       insert_buffer(BUFFER_FILE, tianmu_sysvar_insert_buffer_size) {
   tianmu_data_dir = mysql_real_data_home;
+  store_ = nullptr;
 }
 
 int Engine::Init(uint engine_slot) {
   m_slot = engine_slot;
   ConfigureRCControl();
+
   if (tianmu_sysvar_controlquerylog > 0) {
     tianmu_querylog_.setOn();
   } else {
     tianmu_querylog_.setOff();
   }
+
   std::srand(unsigned(time(nullptr)));
 
   if (tianmu_sysvar_servermainheapsize == 0) {
     long pages = sysconf(_SC_PHYS_PAGES);
     long pagesize = sysconf(_SC_PAGESIZE);
+
     if (pagesize > 0 && pages > 0) {
       tianmu_sysvar_servermainheapsize = pages * pagesize / 1_MB / 2;
     } else {
       tianmu_sysvar_servermainheapsize = 10000;
     }
   }
+
   size_t main_size = size_t(tianmu_sysvar_servermainheapsize) << 20;
 
   std::string hugefiledir = tianmu_sysvar_hugefiledir;
@@ -236,13 +251,14 @@ int Engine::Init(uint engine_slot) {
   boost::trim_if(cachefolder_path, boost::is_any_of("\""));
   if (SetUpCacheFolder(cachefolder_path) != 0)
     return 1;
+
   system::ClearDirectory(cachefolder_path);
 
   m_resourceManager = new system::ResourceManager();
 
   // init the tianmu key-value store, aka, rocksdb engine.
-  ha_kvstore_ = new index::KVStore();
-  ha_kvstore_->Init();
+  store_ = new index::KVStore();
+  store_->Init();
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
   fet = new FunctionsExecutionTimes();
@@ -275,9 +291,11 @@ int Engine::Init(uint engine_slot) {
          [this]() {
            for (auto &delta : m_table_deltas) {
              TIANMU_LOG(LogCtl_Level::INFO,
-                        "delta table id: %d delta_size: %d, current load id: %d, merge id: %d, current row_id: %d",
-                        delta.second->GetDeltaTableID(), delta.second->load_id.load() - delta.second->merge_id.load(),
-                        delta.second->load_id.load(), delta.second->merge_id.load(), delta.second->row_id.load());
+                        "table name: %s, delta table id: %d delta_size: %ld, current load id: %ld, merge id: %ld, "
+                        "current row_id: %ld",
+                        delta.second->FullName().c_str(), delta.second->GetDeltaTableID(),
+                        delta.second->load_id.load() - delta.second->merge_id.load(), delta.second->load_id.load(),
+                        delta.second->merge_id.load(), delta.second->row_id.load());
            }
          }},
         {tianmu_sysvar_log_loop_interval * 5,
@@ -311,6 +329,7 @@ int Engine::Init(uint engine_slot) {
     }
     TIANMU_LOG(LogCtl_Level::INFO, "Tianmu monitor thread exiting...");
   });
+
   m_load_thread = std::thread([this] { ProcessInsertBufferMerge(); });
   m_merge_thread = std::thread([this] { ProcessDeltaStoreMerge(); });
   m_purge_thread = std::thread([this] {
@@ -378,8 +397,21 @@ Engine::~Engine() {
   table_share_map.clear();
   m_table_deltas.clear();
   m_table_keys.clear();
-  delete m_resourceManager;
-  delete the_filter_block_owner;
+
+  if (m_resourceManager) {
+    delete m_resourceManager;
+    m_resourceManager = nullptr;
+  }
+
+  if (store_) {
+    delete store_;
+    store_ = nullptr;
+  }
+
+  if (the_filter_block_owner) {
+    delete the_filter_block_owner;
+    the_filter_block_owner = nullptr;
+  }
 
   try {
     mm::MemoryManagerInitializer::EnsureNoLeakedTraceableObject();
@@ -388,10 +420,8 @@ Engine::~Engine() {
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Unkown exception caught");
   }
-  if (tianmu_control_.isOn())
-    mm::MemoryManagerInitializer::deinit(true);
-  else
-    mm::MemoryManagerInitializer::deinit(false);
+
+  mm::MemoryManagerInitializer::deinit(tianmu_control_.isOn() ? true : false);
 
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu engine destroyed.");
 }
@@ -1356,6 +1386,7 @@ static void HandleDelayedLoad(uint32_t table_id, std::vector<std::unique_ptr<cha
   thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
   thd->get_stmt_da()->set_overwrite_status(false);
   close_thread_tables(thd);
+
   if (thd->transaction_rollback_request) {
     trans_rollback_implicit(thd);
     thd->mdl_context.release_transactional_locks();
@@ -1368,17 +1399,22 @@ static void HandleDelayedLoad(uint32_t table_id, std::vector<std::unique_ptr<cha
   if (thd->is_fatal_error) {
     TIANMU_LOG(LogCtl_Level::ERROR, "LOAD DATA failed on table '%s'", tab_name.c_str());
   }
+
   thd->release_resources();
   thd_manager->remove_thd(thd);
   delete thd;
+
   my_thread_end();
 }
 
 void DistributeLoad(std::unordered_map<uint32_t, std::vector<std::unique_ptr<char[]>>> &tm) {
   utils::result_set<void> res;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+
   for (auto &it : tm) {
-    res.insert(ha_tianmu_engine_->bg_load_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
+    res.insert(eng->bg_load_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
   }
+
   res.get_all();
   tm.clear();
 }
@@ -1444,6 +1480,7 @@ void Engine::ProcessDeltaStoreMerge() {
   while (!mysqld_server_started) {
     struct timespec abstime;
     set_timespec(&abstime, 1);
+
     mysql_cond_timedwait(&COND_server_started, &LOCK_server_started, &abstime);
     if (exiting) {
       mysql_mutex_unlock(&LOCK_server_started);
@@ -1454,6 +1491,8 @@ void Engine::ProcessDeltaStoreMerge() {
 
   std::map<std::string, uint> sleep_cnts;
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu merge delta store thread start...");
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+
   while (!exiting) {
     if (!tianmu_sysvar_enable_rowstore) {
       std::unique_lock<std::mutex> lk(cv_merge_mtx);
@@ -1469,16 +1508,21 @@ void Engine::ProcessDeltaStoreMerge() {
           uint64_t record_count = delta_table->CountRecords();
           if ((record_count >= tianmu_sysvar_insert_numthreshold ||
                (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold))) {
-            auto share = ha_tianmu_engine_->getTableShare(name);
+            auto share = eng->getTableShare(name);
             auto table_id = share->TabID();
+
             utils::BitSet null_mask(share->NumOfCols());
+
             std::unique_ptr<char[]> buf(new char[sizeof(uint32_t) + name.size() + 1 + null_mask.data_size()]);
             char *ptr = buf.get();
             *(uint32_t *)ptr = table_id;  // table id
             ptr += sizeof(uint32_t);
+
             std::memcpy(ptr, name.c_str(), name.size());
             ptr += name.size();
+
             *ptr++ = 0;  // end with NUL
+
             std::memcpy(ptr, null_mask.data(), null_mask.data_size());
             need_merge_table[table_id].emplace_back(std::move(buf));
             sleep_cnts[name] = 0;
@@ -1501,6 +1545,7 @@ void Engine::ProcessDeltaStoreMerge() {
         continue;
       }
     }
+
     if (!need_merge_table.empty())
       DistributeLoad(need_merge_table);
     else {
@@ -1508,6 +1553,7 @@ void Engine::ProcessDeltaStoreMerge() {
       cv_merge.wait_for(lk, std::chrono::milliseconds(tianmu_sysvar_insert_wait_ms));
     }
   }
+
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu merge delta store thread exiting...");
 }
 
@@ -1653,14 +1699,14 @@ void Engine::InsertDelayed(const std::string &table_path, TABLE *table) {
   }
 }
 
-void Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table) {
+int Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table) {
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
   auto tm_table = share->GetSnapshot();
   uint64_t row_id = tm_table->NextRowId();
   // Insert primary key first
-  tm_table->InsertIndexForDelta(table, row_id);
+  int ret = tm_table->InsertIndexForDelta(table, row_id);
 
   // check & encode
   uint32_t buf_sz = 0;
@@ -1668,6 +1714,7 @@ void Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableS
   EncodeInsertRecord(table_path, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz, table->in_use);
   // insert to delta
   tm_table->InsertToDelta(row_id, std::move(buf), buf_sz);
+  return ret;
 }
 
 void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table,
@@ -1738,7 +1785,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   try {
     if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
       if (tianmu_sysvar_enable_rowstore) {
-        InsertToDelta(table_path, share, table);
+        ret = InsertToDelta(table_path, share, table);
       } else {
         InsertDelayed(table_path, table);
       }
@@ -1752,7 +1799,6 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   } catch (common::DupKeyException &e) {
     ret = HA_ERR_FOUND_DUPP_KEY;
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed: %s", e.what());
-    my_message(static_cast<int>(common::ErrorCode::DUPP_KEY), e.what(), MYF(0));
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed. %s %s", e.what(), e.trace().c_str());
   } catch (std::exception &e) {
@@ -1966,12 +2012,13 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
 
   std::string data_dir;
   std::string data_path;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
 
   if (fs::path(path).is_absolute()) {
     data_dir = "";
     data_path = path;
   } else {
-    data_dir = ha_tianmu_engine_->tianmu_data_dir;
+    data_dir = eng->tianmu_data_dir;
     std::string db_name, tab_name;
     std::tie(db_name, tab_name) = GetNames(path);
     data_path += db_name;
@@ -2006,6 +2053,7 @@ void Engine::ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes)
     minutes = common::NULL_VALUE_SH;
     return;
   }
+
   MYSQL_TIME client_zone, utc;
   utc.year = 1970;
   utc.month = 1;
@@ -2021,8 +2069,10 @@ void Engine::ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes)
   long msecs;
   sign = 1;
   minutes = 0;
+
   if (calc_time_diff(&utc, &client_zone, 1, &secs, &msecs))
     sign = -1;
+
   minutes = (short)(secs / 60);
 }
 
@@ -2080,6 +2130,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
     tdb = (char *)thd.db().str;
 
   io_params = CreateIOParameters(&thd, table, arg);
+
   short sign, minutes;
   ComputeTimeZoneDiffInMinutes(&thd, sign, minutes);
   io_params->SetTimeZone(sign, minutes);
@@ -2238,6 +2289,7 @@ std::shared_ptr<TableShare> Engine::GetTableShare(const TABLE_SHARE *table_share
       table_share_map[name] = share;
       return share;
     }
+
     return it->second;
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create table share: %s", e.what());
@@ -2270,6 +2322,7 @@ bool Engine::DeleteTableIndex(const std::string &table_path, [[maybe_unused]] TH
   if (index::TianmuTableIndex::FindIndexTable(table_path)) {
     index::TianmuTableIndex::DropIndexTable(table_path);
   }
+
   if (m_table_keys.find(table_path) != m_table_keys.end()) {
     m_table_keys.erase(table_path);
   }

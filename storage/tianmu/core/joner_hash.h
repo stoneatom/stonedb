@@ -18,8 +18,8 @@
 #define TIANMU_CORE_JONER_HASH_H_
 #pragma once
 
-#include "core/joiner.h"
-#include "core/joiner_hash_table.h"
+#include "optimizer/joiner.h"
+#include "optimizer/joiner_hash_table.h"
 
 namespace Tianmu {
 namespace core {

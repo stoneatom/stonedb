@@ -19,8 +19,11 @@
 #include <sys/syscall.h>
 #include <time.h>
 
-#include "core/compilation_tools.h"
-#include "core/compiled_query.h"
+#include "optimizer/compile//compiled_query.h"
+#include "optimizer/compile/compilation_tools.h"
+#include "optimizer/compile/compiler.h"
+#include "optimizer/plan/query_plan.h"
+
 #include "core/engine.h"
 #include "core/query.h"
 #include "core/transaction.h"
@@ -111,6 +114,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
   // at this point all tables are in RCBase engine, so we can proceed with the
   // query and we know that if the result goes to the file, the TIANMU_DATAFORMAT is
   // one of TIANMU formats
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
   QueryRouteTo route = QueryRouteTo::kToTianmu;
   SELECT_LEX *save_current_select = lex->current_select();
   List<st_select_lex_unit> derived_optimized;  // collection to remember derived
@@ -124,6 +128,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
     res = FALSE;
     int tianmu_free_join = FALSE;
     lex->thd->derived_tables_processing = TRUE;
+
     for (SELECT_LEX *sl = lex->all_selects_list; sl; sl = sl->next_select_in_list())        // for all selects
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)  // for all tables
         if (cursor->table && cursor->is_view_or_derived()) {  // data source (view or FROM subselect)
@@ -188,7 +193,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
         is_optimize_after_tianmu = TRUE;
         if (!res) {
           try {
-            route = ha_tianmu_engine_->Execute(unit->thd, unit->thd->lex, result, unit);
+            route = eng->Execute(unit->thd, unit->thd->lex, result, unit);
             if (route == QueryRouteTo::kToMySQL) {
               if (in_case_of_failure_can_go_to_mysql)
                 if (old_executed)
@@ -367,9 +372,10 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     return QueryRouteTo::kToMySQL;
   }
 
-  auto join_exec = ([&selects_list, &result_output] {
+  auto join_exec = ([&thd, &selects_list, &result_output] {
     selects_list->set_query_result(result_output);
     ASSERT(selects_list->join);
+    thd->lex->set_current_select(selects_list->join->select_lex);
     selects_list->join->exec();
     return QueryRouteTo::kToTianmu;
   });
@@ -379,7 +385,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     List_iterator_fast<Item> li(selects_list->fields_list);
     for (Item *item = li++; item; item = li++) {
       if ((item->type() == Item::Type::FUNC_ITEM) &&
-          (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
+          ((down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP))) {
         return join_exec();
       }
     }
@@ -422,10 +428,33 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     }
   }
 
-  for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
-    if (sl->join->m_select_limit == 0) {
-      exec_direct = true;
-      break;
+  if (!exec_direct) {
+    for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
+      if (sl->join->m_select_limit == 0) {
+        exec_direct = true;
+        break;
+      }
+    }
+  }
+
+  if (exec_direct) {
+    if ((selects_list->fields_list.elements)) {
+      List_iterator_fast<Item> li(selects_list->fields_list);
+      for (Item *item = li++; item; item = li++) {
+        if (Item::Type::FUNC_ITEM != item->type()) {
+          continue;
+        }
+
+        if (Item_func::Functype::SUSERVAR_FUNC == down_cast<Item_func *>(item)->functype()) {
+          exec_direct = false;
+          break;
+        }
+
+        if (dynamic_cast<Item_func_if *>(item)) {
+          exec_direct = false;
+          break;
+        }
+      }
     }
   }
 

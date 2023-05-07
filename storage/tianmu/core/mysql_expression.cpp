@@ -18,10 +18,10 @@
 #include "mysql_expression.h"
 
 #include "common/assert.h"
-#include "core/compilation_tools.h"
 #include "core/engine.h"
 #include "core/transaction.h"
 #include "item_timefunc.h"
+#include "optimizer/compile/compilation_tools.h"
 #include "types/value_parser4txt.h"
 
 namespace Tianmu {

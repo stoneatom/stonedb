@@ -20,9 +20,9 @@
 #define TIANMU_CORE_FTREE_H_
 #pragma once
 
-#include "core/bin_tools.h"
 #include "mm/traceable_object.h"
 #include "types/tianmu_data_types.h"
+#include "util/bin_tools.h"
 #include "util/fs.h"
 
 namespace Tianmu {

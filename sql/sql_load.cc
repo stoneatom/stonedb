@@ -51,7 +51,7 @@
 
 #include <algorithm>
 
-#include "../storage/tianmu/handler/ha_my_tianmu.h" // tianmu code
+#include "../storage/tianmu/sql/ha_my_tianmu.h" // tianmu code
 
 using std::min;
 using std::max;

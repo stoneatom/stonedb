@@ -99,7 +99,7 @@ const Concat = () => {
                 <Translate id="home.social">
                   关注我们
                 </Translate>
-                <Image className='more' width={80} src="https://cms.stoneatom.com/assets/beda17c3-516f-46c9-9e4a-2849e8c7a4cf" />
+                <Image className='more' width={80} src="https://cms.stoneatom.com/assets/fc0d7dc6-3231-4fa4-b58e-d9facff2e7ef" />
                 <Image className='more' width={80} src="http://static.stoneatom.com/assets/rc-upload-1654065031076-2_qrcode_for_gh_8fb79cdb61cd_344.jpg" />
               </Item>
               <Divider />

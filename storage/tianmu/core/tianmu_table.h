@@ -23,9 +23,9 @@
 #include "common/common_definitions.h"
 #include "core/delta_table.h"
 #include "core/just_a_table.h"
-#include "core/tianmu_attr.h"
 #include "index/tianmu_table_index.h"
 #include "util/fs.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 
@@ -140,7 +140,7 @@ class TianmuTable final : public JustATable {
   void UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
   void DeleteToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
 
-  void InsertIndexForDelta(TABLE *table, uint64_t row_id);
+  int InsertIndexForDelta(TABLE *table, uint64_t row_id);
   void UpdateIndexForDelta(TABLE *table, uint64_t row_id, uint64_t col);
   void DeleteIndexForDelta(TABLE *table, uint64_t row_id);
 

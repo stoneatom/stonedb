@@ -1,0 +1,156 @@
+include/master-slave.inc
+[connection master]
+# on master:
+DROP DATABASE IF EXISTS issue1523_test;
+CREATE DATABASE issue1523_test;
+USE issue1523_test;
+include/sync_slave_sql_with_master.inc
+# on slave:
+USE issue1523_test;
+# on master:
+CREATE TABLE t1 (
+`id` int(10) NOT NULL AUTO_INCREMENT,
+`dev_code` varchar(20) NOT NULL,
+`port` smallint(2) DEFAULT '0',
+`server_ip` varchar(20) DEFAULT NULL,
+`work_status` int(1) DEFAULT '2',
+`port_link_car` int(1) NOT NULL DEFAULT '0',
+`last_order_sn` varchar(42) DEFAULT NULL,
+`last_charge_type` smallint(1) DEFAULT NULL,
+`last_charge_mode` int(2) DEFAULT '0',
+`last_status` smallint(1) DEFAULT NULL,
+`last_soc` int(3) DEFAULT NULL,
+`last_car_no` varchar(42) DEFAULT NULL,
+`last_vin` varchar(45) DEFAULT NULL,
+`create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+`update_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+PRIMARY KEY (`id`),
+UNIQUE KEY `portindex` (`dev_code`,`port`),
+KEY `dev_code` (`dev_code`)
+) ENGINE=INNODB;
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(1,'3301081000000019',0,'172.16.171.219',2,0,0,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(2,'3301081000000020',0,'172.16.171.219',3,1,1,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(3,'3301081000000021',0,'172.16.171.219',4,2,2,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+insert into t1 values
+(4,'3301081000000022',1,'172.16.171.219',2,1,'2023040314582504221842260',5,0,5,100,'JJY3786','LKLA6G1M4HA727506','2018-08-20 13:46:42','2023-04-02 22:10:30');
+insert into t1 values
+(5,'3301081000000023',1,'172.16.171.219',2,1,'2023040314582504221842261',6,0,6,101,'JJY3787','LKLA6G1M4HA727506','2018-08-20 13:46:42','2023-04-02 22:10:30');
+insert into t1 values
+(6,'3301081000000024',1,'172.16.171.219',2,1,'2023040314582504221842262',7,0,7,102,'JJY3788','LKLA6G1M4HA727506','2018-08-20 13:46:42','2023-04-02 22:10:30');
+update t1 set last_car_no='JJY3786' where id=1;
+update t1 set last_car_no=NULL where id=1;
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(7,'3301081000000025',0,'172.16.171.219',2,0,0,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+select last_car_no from t1 where id=1;
+last_car_no
+NULL
+select count(*) from t1;
+count(*)
+7
+include/sync_slave_sql_with_master.inc
+# on slave:
+select last_car_no from t1 where id=1;
+last_car_no
+NULL
+select count(*) from t1;
+count(*)
+7
+# on master:
+update t1 set last_car_no='JJY3786' where id=1;
+update t1 set last_car_no=NULL where id=1;
+update t1 set last_car_no='JJY3786' where id=1;
+update t1 set last_car_no=NULL where id=1;
+update t1 set last_car_no='JJY3786' where id=1;
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(8,'3301081000000026',0,'172.16.171.219',2,0,0,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+select last_car_no from t1 where id=1;
+last_car_no
+JJY3786
+select count(*) from t1;
+count(*)
+8
+include/sync_slave_sql_with_master.inc
+# on slave:
+select last_car_no from t1 where id=1;
+last_car_no
+JJY3786
+select count(*) from t1;
+count(*)
+8
+# on master:
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(9,'3301081000000027',0,'172.16.171.219',2,0,0,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+delete from t1 where id=9;
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(9,'3301081000000027',0,'172.16.171.219',2,0,0,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+select last_car_no from t1 where id=9;
+last_car_no
+NULL
+select count(*) from t1;
+count(*)
+9
+include/sync_slave_sql_with_master.inc
+# on slave:
+select last_car_no from t1 where id=9;
+last_car_no
+NULL
+select count(*) from t1;
+count(*)
+9
+# on master:
+update t1 set last_car_no=NULL where id=1;
+delete from t1 where id =1;
+select last_car_no from t1 where id=1;
+last_car_no
+select count(*) from t1;
+count(*)
+8
+include/sync_slave_sql_with_master.inc
+# on slave:
+select last_car_no from t1 where id=1;
+last_car_no
+select count(*) from t1;
+count(*)
+8
+# on master:
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(10,'3301081000000028',0,'172.16.171.219',2,0,0,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+update t1 set last_car_no='JJY3786' where id=10;
+select last_car_no from t1 where id=10;
+last_car_no
+JJY3786
+select count(*) from t1;
+count(*)
+9
+include/sync_slave_sql_with_master.inc
+# on slave:
+select last_car_no from t1 where id=10;
+last_car_no
+JJY3786
+select count(*) from t1;
+count(*)
+9
+# on master:
+insert into t1(id,dev_code,port,server_ip,work_status,port_link_car,last_charge_mode,create_time,update_time) values
+(11,'3301081000000029',0,'172.16.171.219',2,0,0,'2018-08-20 13:46:42','2023-04-02 22:10:30');
+update t1 set last_car_no='JJY3786' where id=11;
+delete from t1 where id =11;
+select last_car_no from t1 where id=11;
+last_car_no
+select count(*) from t1;
+count(*)
+9
+include/sync_slave_sql_with_master.inc
+# on slave:
+select last_car_no from t1 where id=11;
+last_car_no
+select count(*) from t1;
+count(*)
+9
+# on master:
+DROP DATABASE issue1523_test;
+include/sync_slave_sql_with_master.inc
+stop slave;
