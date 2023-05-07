@@ -389,7 +389,6 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
   } catch (common::DupKeyException &e) {
     ret = HA_ERR_FOUND_DUPP_KEY;
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s.", e.what());
-    my_message(static_cast<int>(common::ErrorCode::DUPP_KEY), e.what(), MYF(0));
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
