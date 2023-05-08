@@ -49,7 +49,7 @@ class MemBlockManager final : public mm::TraceableObject {
    */
   void SetBlockSize(int bsize) {
     std::scoped_lock guard(mx);
-    DEBUG_ASSERT((current_size == 0 || block_size == bsize));
+    assert((current_size == 0 || block_size == bsize));
     block_size = bsize;
   }
 
@@ -123,7 +123,7 @@ class BlockedRowMemStorage {
 
   //! provide the pointer to the requested row bytes
   void *GetRow(int64_t r) {
-    DEBUG_ASSERT(r < no_rows);
+    assert(r < no_rows);
     int64_t b = r >> npower;
     return ((char *)blocks[b]) + row_len * (r & ndx_mask);
   }
@@ -139,7 +139,7 @@ class BlockedRowMemStorage {
   int64_t AddEmptyRow();
 
   void Set(uint64_t idx, const void *r) {
-    DEBUG_ASSERT(idx < static_cast<uint64_t>(no_rows));
+    assert(idx < static_cast<uint64_t>(no_rows));
     std::memcpy(((char *)blocks[idx >> npower]) + (idx & ndx_mask) * row_len, r, row_len);
   }
 

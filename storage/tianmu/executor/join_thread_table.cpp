@@ -126,7 +126,7 @@ class JoinThreadTableManagerImpl : public JoinThreadTableManager {
   JoinThreadTableManagerImpl(uint32_t pack_power, size_t table_count, const HashTable::CreateParams &create_params,
                              std::vector<ColumnBinEncoder> &&column_encoder, bool watch_traversed = false,
                              bool ignore_conflicts = false) {
-    DEBUG_ASSERT(table_count >= 1u);
+    assert(table_count >= 1u);
     tables_.reserve(table_count);
     HashTable::CreateParams slice_create_params(create_params);
     slice_create_params.max_table_size /= table_count;
@@ -153,7 +153,7 @@ class JoinThreadTableManagerShared : public JoinThreadTableManager {
   JoinThreadTableManagerShared(uint32_t pack_power, size_t table_count, const HashTable::CreateParams &create_params,
                                std::vector<ColumnBinEncoder> &&column_encoder, bool watch_traversed = false,
                                bool ignore_conflicts = false) {
-    DEBUG_ASSERT(table_count >= 1u);
+    assert(table_count >= 1u);
 
     hash_table_ = std::make_shared<HashTable>(create_params);
     if (watch_traversed)

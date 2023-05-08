@@ -60,7 +60,7 @@ class MIIteratorPoller {
         if (tianmu_sysvar_async_join_setting.pack_per_step > 0)
           slice_type_ = base::sprint("per %d packs", tianmu_sysvar_async_join_setting.pack_per_step);
         else {
-          DEBUG_ASSERT(tianmu_sysvar_async_join_setting.rows_per_step > 0);
+          assert(tianmu_sysvar_async_join_setting.rows_per_step > 0);
           slice_type_ = base::sprint("per %d rows", tianmu_sysvar_async_join_setting.rows_per_step);
         }
       } else {
@@ -81,7 +81,7 @@ class MIIteratorPoller {
       size_t step = 1;
       int64_t sentry_pos = slice_capability_.slices.size();
       if (slice_capability_.type == MIIterator::SliceCapability::Type::kLinear) {
-        DEBUG_ASSERT(tianmu_sysvar_async_join_setting.pack_per_step > 0 ||
+        assert(tianmu_sysvar_async_join_setting.pack_per_step > 0 ||
                      tianmu_sysvar_async_join_setting.rows_per_step > 0);
         // Preferred iterating by pack.
         if (tianmu_sysvar_async_join_setting.pack_per_step > 0) {
@@ -96,7 +96,7 @@ class MIIteratorPoller {
             }
           }
         } else {
-          DEBUG_ASSERT(tianmu_sysvar_async_join_setting.rows_per_step > 0);
+          assert(tianmu_sysvar_async_join_setting.rows_per_step > 0);
 
           sentry_pos = origin_size_;
 
@@ -115,7 +115,7 @@ class MIIteratorPoller {
           }
         }
       } else {
-        DEBUG_ASSERT(slice_capability_.type == MIIterator::SliceCapability::Type::kFixed);
+        assert(slice_capability_.type == MIIterator::SliceCapability::Type::kFixed);
         pack_iter.reset(new MIStepIterator(cur_pos_, tianmu_sysvar_async_join_setting.pack_per_step, *miter_));
       }
 

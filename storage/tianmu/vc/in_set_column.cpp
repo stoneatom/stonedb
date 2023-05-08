@@ -87,13 +87,13 @@ void InSetColumn::RequestEval(const core::MIIterator &mit, const int tta) {
 
 types::BString InSetColumn::GetMinStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
-  DEBUG_ASSERT(!"To be implemented.");
+  assert(!"To be implemented.");
   return s;
 }
 
 types::BString InSetColumn::GetMaxStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
-  DEBUG_ASSERT(!"To be implemented.");
+  assert(!"To be implemented.");
   return s;
 }
 
@@ -103,14 +103,14 @@ size_t InSetColumn::MaxStringSizeImpl()  // maximal byte string length in column
 }
 
 core::PackOntologicalStatus InSetColumn::GetPackOntologicalStatusImpl([[maybe_unused]] const core::MIIterator &mit) {
-  DEBUG_ASSERT(!"To be implemented.");
+  assert(!"To be implemented.");
   return core::PackOntologicalStatus::NORMAL;
 }
 
 void InSetColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
                                    [[maybe_unused]] core::Descriptor &desc) {
-  DEBUG_ASSERT(!"To be implemented.");
-  DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
+  assert(!"To be implemented.");
+  assert(0);  // comparison of a const with a const should be simplified earlier
 }
 
 bool InSetColumn::IsSetEncoded(common::ColumnType at, int scale) {
@@ -233,7 +233,7 @@ void InSetColumn::PrepareCache(const core::MIIterator &mit, const int64_t &at_le
 }
 
 int64_t InSetColumn::AtLeastNoDistinctValuesImpl(const core::MIIterator &mit, int64_t const at_least) {
-  DEBUG_ASSERT(at_least > 0);
+  assert(at_least > 0);
   if (!full_cache_ || !is_const_)
     PrepareCache(mit, at_least);
   return cache_.NoVals();

@@ -1167,7 +1167,7 @@ int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
 }
 
 std::string get_parameter_name(enum tianmu_param_name vn) {
-  DEBUG_ASSERT(static_cast<int>(vn) >= 0 &&
+  assert(static_cast<int>(vn) >= 0 &&
                static_cast<int>(vn) <= static_cast<int>(tianmu_param_name::TIANMU_VAR_LIMIT));
   return tianmu_var_name_strings[static_cast<int>(vn)];
 }

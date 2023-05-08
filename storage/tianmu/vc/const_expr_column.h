@@ -62,7 +62,7 @@ class ConstExpressionColumn : public ExpressionColumn {
 
   ConstExpressionColumn(ConstExpressionColumn const &cc)
       : ExpressionColumn(nullptr, nullptr, common::NULL_VALUE_32, nullptr) {
-    DEBUG_ASSERT(params_.size() == 0 && "cannot copy expressions");
+    assert(params_.size() == 0 && "cannot copy expressions");
     last_val_ = cc.last_val_;
     ct = cc.ct;
     first_eval_ = cc.first_eval_;
@@ -140,7 +140,7 @@ class ConstExpressionColumn : public ExpressionColumn {
   // comparison of a const with a const should be simplified earlier
   virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
                                                 [[maybe_unused]] int64_t limit) override {
-    DEBUG_ASSERT(0);
+    assert(0);
     return common::ErrorCode::FAILED;
   }
 };

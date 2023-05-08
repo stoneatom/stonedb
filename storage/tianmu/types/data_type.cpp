@@ -65,7 +65,7 @@ DataType::DataType(common::ColumnType atype, int prec, int scale, DTCollation co
       break;
 
     case common::ColumnType::NUM:
-      DEBUG_ASSERT((prec > 0) && (prec <= 19) && (fixscale >= 0));
+      assert((prec > 0) && (prec <= 19) && (fixscale >= 0));
       if (prec == 19)
         fixmax = common::PLUS_INF_64;
       else

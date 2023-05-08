@@ -59,11 +59,11 @@ void *IncAlloc::_alloc_search(uint size) {
   }
 
   // allocate a new block
-  DEBUG_ASSERT(blk_ == blocks_.size());
+  assert(blk_ == blocks_.size());
   uint bsize = firstsize_;
   if (blk_ > 0) {
     bsize = (uint)(blocks_[blk_ - 1].size * GROW_SIZE_ + ROUNDUP_) / ROUNDUP_ * ROUNDUP_;
-    DEBUG_ASSERT(bsize > blocks_[blk_ - 1].size);
+    assert(bsize > blocks_[blk_ - 1].size);
     if (bsize < size)
       bsize = size;
   }

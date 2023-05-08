@@ -107,7 +107,7 @@ common::RoughSetValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pa
     double dmax_v = *(double *)(&max_v);
     double dpack_min = *(double *)(&pack_min);
     double dpack_max = *(double *)(&pack_max);
-    DEBUG_ASSERT(dmin_v <= dmax_v);
+    assert(dmin_v <= dmax_v);
     if (dmax_v < dpack_min || dmin_v > dpack_max)
       return common::RoughSetValue::RS_NONE;
     if (dmax_v >= dpack_max && dmin_v <= dpack_min)
@@ -120,7 +120,7 @@ common::RoughSetValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pa
     min_bit = int((dmin_v - dpack_min) / interval_len);
     max_bit = int((dmax_v - dpack_min) / interval_len);
   } else {
-    DEBUG_ASSERT(min_v <= max_v);
+    assert(min_v <= max_v);
     if (max_v < pack_min || min_v > pack_max)
       return common::RoughSetValue::RS_NONE;
     if (max_v >= pack_max && min_v <= pack_min)
@@ -138,7 +138,7 @@ common::RoughSetValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pa
       max_bit = int((max_v - pack_min - 1) / interval_len);
     }
   }
-  DEBUG_ASSERT(min_bit >= 0);
+  assert(min_bit >= 0);
   if (max_bit >= RSI_HIST_BITS)
     return common::RoughSetValue::RS_SOME;  // it may happen for extremely large numbers (
                                             // >2^52 )

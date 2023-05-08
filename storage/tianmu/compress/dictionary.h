@@ -121,19 +121,19 @@ class Dictionary final {
 
   // returns true when ESC was encoded ('key' is not in dictionary)
   bool Encode(RangeCoder *dest, T key) {
-    DEBUG_ASSERT(compress_);
+    assert(compress_);
 
     // find the 'key' in the hash
     uint b = hash(key);
     short k = buckets_[b];
     while ((k >= 0) && (keys_[k].key != key)) k = next_[k];
-    DEBUG_ASSERT(k >= 0);  // TODO: handle ESC encoding
+    assert(k >= 0);  // TODO: handle ESC encoding
 
     dest->EncodeShift(keys_[k].low, keys_[k].count, tot_shift_);
     return false;
   }
   bool Decode(RangeCoder *src, T &key) {
-    DEBUG_ASSERT(decompress_);
+    assert(decompress_);
     uint count = src->GetCountShift(tot_shift_);
     short k = cnt2val_[count];  // TODO: handle ESC decoding
     key = keys_[k].key;

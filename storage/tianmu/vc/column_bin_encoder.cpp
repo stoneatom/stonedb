@@ -139,7 +139,7 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
                                                                   // (above)
     my_encoder.reset(new ColumnBinEncoder::EncoderInt(vc, decodable, nulls_possible, descending));
   } else {
-    DEBUG_ASSERT(!"wrong combination of encoded columns");  // Other types not
+    assert(!"wrong combination of encoded columns");  // Other types not
                                                             // implemented yet
     my_encoder.reset(new ColumnBinEncoder::EncoderText(vc, decodable, nulls_possible, descending));
   }
@@ -238,7 +238,7 @@ types::BString ColumnBinEncoder::GetValueT(uchar *buf, const MIDummyIterator &mi
 
 void ColumnBinEncoder::UpdateStatistics(unsigned char *buf)  // get value from the buffer and update internal statistics
 {
-  DEBUG_ASSERT(!implicit);
+  assert(!implicit);
   my_encoder->UpdateStatistics(buf + val_offset);
 }
 
@@ -359,7 +359,7 @@ int64_t ColumnBinEncoder::EncoderInt::ValEncode(vcolumn::VirtualColumn *vc, MIIt
 }
 
 int64_t ColumnBinEncoder::EncoderInt::ValEncodeInt64(int64_t v, bool update_stats) {
-  DEBUG_ASSERT(null_status < 2);  // should be used only for small values, when
+  assert(null_status < 2);  // should be used only for small values, when
                                   // an additional byte is not needed
   if (v == common::NULL_VALUE_64) {
     if (descending)
@@ -388,7 +388,7 @@ void ColumnBinEncoder::EncoderInt::SetNull(uchar *buf, [[maybe_unused]] uchar *b
   // status=2, descend.|   1000    |   0xxx      |
   // ---------------------------------------------
 
-  DEBUG_ASSERT(null_status > 0);
+  assert(null_status > 0);
   std::memset(buf, 0,
               size);  // zero on the first and all other bytes (to be changed below)
   if (descending) {
@@ -817,7 +817,7 @@ void ColumnBinEncoder::EncoderDouble::SetNull(uchar *buf, [[maybe_unused]] uchar
   // status=2, ascend. |   00..00  |   1<64bit>  |
   // status=2, descend.|   10..00  |   0<64bit>  |
   // ---------------------------------------------
-  DEBUG_ASSERT(null_status == 2);
+  assert(null_status == 2);
   std::memset(buf, 0, 9);
   if (descending)
     *buf = '\1';
@@ -1073,12 +1073,12 @@ void ColumnBinEncoder::EncoderText_UTF::SetNull(uchar *buf, uchar *buf_sec) {
 }
 
 bool ColumnBinEncoder::EncoderText_UTF::IsNull([[maybe_unused]] uchar *buf, uchar *buf_sec) {
-  DEBUG_ASSERT(size_sec > 0);
+  assert(size_sec > 0);
   return (*(reinterpret_cast<uint32_t *>(buf_sec + size_sec - sizeof(uint32_t))) == 0);
 }
 
 types::BString ColumnBinEncoder::EncoderText_UTF::GetValueT(uchar *buf, uchar *buf_sec) {
-  DEBUG_ASSERT(size_sec > 0);
+  assert(size_sec > 0);
   if (null_status > 0 && IsNull(buf, buf_sec))
     return types::BString();
   uint32_t len = *(reinterpret_cast<uint32_t *>(buf_sec + size_sec - sizeof(uint32_t))) - 1;
@@ -1308,7 +1308,7 @@ ColumnBinEncoder::EncoderTextMD5::EncoderTextMD5(vcolumn::VirtualColumn *vc, boo
   size = HASH_FUNCTION_BYTE_SIZE;
   size_sec = 0;
   null_status = 1;  // ignored
-  DEBUG_ASSERT(!decodable);
+  assert(!decodable);
   std::memset(null_buf, 0, HASH_FUNCTION_BYTE_SIZE);
   std::memset(empty_buf, 0, HASH_FUNCTION_BYTE_SIZE);
   std::memcpy(null_buf, "-- null --",

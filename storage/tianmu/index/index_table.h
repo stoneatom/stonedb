@@ -37,8 +37,8 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
   ~IndexTable();
 
   inline void Set64(uint64_t n, uint64_t val) {
-    DEBUG_ASSERT(IsLocked());
-    DEBUG_ASSERT(n < size);
+    assert(IsLocked());
+    assert(n < size);
     int b = int(n >> block_shift);
     if (b != cur_block)
       LoadBlock(b);
@@ -54,8 +54,8 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
                    uint32_t power);  // add all positions where filter is one
 
   inline uint64_t Get64(uint64_t n) {
-    DEBUG_ASSERT(IsLocked());
-    DEBUG_ASSERT(n < size);
+    assert(IsLocked());
+    assert(n < size);
     int b = int(n >> block_shift);
     if (b != cur_block)
       LoadBlock(b);
@@ -71,7 +71,7 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
   }
 
   inline uint64_t Get64InsideBlock(uint64_t n) {  // faster version (no block checking)
-    DEBUG_ASSERT(int(n >> block_shift) == cur_block);
+    assert(int(n >> block_shift) == cur_block);
     uint64_t ndx = n & block_mask;
     uint64_t res;
     if (bytes_per_value == 4)
@@ -90,8 +90,8 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
 
   // use only on newly added data, assumption: block_changed == true
   inline void Swap(uint64_t n1, uint64_t n2) {
-    DEBUG_ASSERT(IsLocked());
-    DEBUG_ASSERT(block_changed);  // use only on newly added data
+    assert(IsLocked());
+    assert(block_changed);  // use only on newly added data
     uint64_t ndx1 = n1 & block_mask;
     uint64_t ndx2 = n2 & block_mask;
     if (bytes_per_value == 4)

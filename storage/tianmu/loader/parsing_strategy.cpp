@@ -435,7 +435,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
 
       str = new (thd_->mem_root) String(MAX_FIELD_WIDTH);
       String *res = field->val_str(str);
-      DEBUG_ASSERT(res);
+      assert(res);
       vec_field_Str_list_.push_back(str);
       vec_field_num_to_index_.push_back(0);
       map_field_name_to_index_[field_name] = i;
@@ -555,13 +555,13 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
   // step3,field in the set clause
   while ((fld = f++)) {
     Item_field *const field = fld->field_for_view_update();
-    DEBUG_ASSERT(field != NULL);
+    assert(field != NULL);
     Field *const rfield = field->field;
 
     Item *const value = v++;
 
     if (value->save_in_field(rfield, false) < 0) {
-      DEBUG_ASSERT(0);
+      assert(0);
     }
 
     rfield->check_constraints(ER_BAD_NULL_ERROR);

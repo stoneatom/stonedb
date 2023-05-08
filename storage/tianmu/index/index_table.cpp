@@ -26,7 +26,7 @@ namespace core {
 IndexTable::IndexTable(int64_t _size, int64_t _orig_size, [[maybe_unused]] int mem_modifier)
     : system::CacheableItem("JW", "INT"), m_conn(current_txn_) {
   // Note: buffer size should be 2^n
-  DEBUG_ASSERT(_orig_size >= 0);
+  assert(_orig_size >= 0);
   orig_size = _orig_size;
   bytes_per_value = ((orig_size + 1) > 0xFFFF ? ((orig_size + 1) > 0xFFFFFFFF ? 8 : 4) : 2);
 
@@ -103,7 +103,7 @@ IndexTable::~IndexTable() {
 }
 
 void IndexTable::LoadBlock(int b) {
-  DEBUG_ASSERT(IsLocked());
+  assert(IsLocked());
   if (buf == nullptr) {  // possible after block caching on disk
     buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
     if (!buf) {
@@ -112,7 +112,7 @@ void IndexTable::LoadBlock(int b) {
     }
   } else if (block_changed)
     CI_Put(cur_block, buf);
-  DEBUG_ASSERT(buf != nullptr);
+  assert(buf != nullptr);
   CI_Get(b, buf);
   if (m_conn->Killed())  // from time to time...
     throw common::KilledException();
@@ -122,7 +122,7 @@ void IndexTable::LoadBlock(int b) {
 }
 
 void IndexTable::ExpandTo(uint64_t new_size) {
-  DEBUG_ASSERT(IsLocked());
+  assert(IsLocked());
   if (new_size <= (uint64_t)size)
     return;
   if (size * bytes_per_value == buffer_size_in_bytes) {  // the whole table was in one buffer

@@ -25,8 +25,8 @@ namespace Tianmu {
 namespace system {
 CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int default_block_size)
     : default_block_size_(default_block_size) {
-  DEBUG_ASSERT(owner_name != nullptr);
-  DEBUG_ASSERT(object_id != nullptr);
+  assert(owner_name != nullptr);
+  assert(object_id != nullptr);
 
   constexpr size_t kMinOwnerNameLen = 3;
   constexpr size_t kOwnerAndObjectLen = 6;
@@ -88,7 +88,7 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
   std::snprintf(file_name_ + filename_offset, kSuffixLen + 1, "%s", ".tianmu_tmp");
   filename_offset += kSuffixLen;
 
-  DEBUG_ASSERT(file_name_[filename_offset] == 0);
+  assert(file_name_[filename_offset] == 0);
 }
 
 CacheableItem::~CacheableItem() {
@@ -138,7 +138,7 @@ void CacheableItem::CI_Put(int block, unsigned char *data, int size) {
         cur_file_handle_.OpenCreateEmpty(file_name_);
       else
         cur_file_handle_.OpenReadWrite(file_name_);
-      DEBUG_ASSERT(cur_file_handle_.IsOpen());
+      assert(cur_file_handle_.IsOpen());
       cur_file_number_ = file_number_[block];
       max_file_pos_ += size;
     }
@@ -149,7 +149,7 @@ void CacheableItem::CI_Put(int block, unsigned char *data, int size) {
       cur_file_handle_.Close();
       SetFilename(cur_file_number_);
       cur_file_handle_.OpenReadWrite(file_name_);
-      DEBUG_ASSERT(cur_file_handle_.IsOpen());
+      assert(cur_file_handle_.IsOpen());
     }
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
@@ -179,7 +179,7 @@ int CacheableItem::CI_Get(int block, uchar *data, int size, int off) {
       cur_file_handle_.Close();
       SetFilename(cur_file_number_);
       cur_file_handle_.OpenReadWrite(file_name_);
-      DEBUG_ASSERT(cur_file_handle_.IsOpen());
+      assert(cur_file_handle_.IsOpen());
     }
 
     // load the block

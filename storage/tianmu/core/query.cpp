@@ -461,9 +461,9 @@ void Query::ExtractOperatorType(Item *&conds, common::Operator &op, bool &negati
 vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpression *> const &exprs,
                                                           TempTable *temp_table, int temp_table_alias,
                                                           MultiIndex *mind) {
-  DEBUG_ASSERT(exprs.size() > 0);
+  assert(exprs.size() > 0);
   if (exprs.size() != 1) {
-    DEBUG_ASSERT(0);
+    assert(0);
   }
 
   vcolumn::VirtualColumn *vc = nullptr;
@@ -526,7 +526,7 @@ bool Query::IsParameterFromWhere(const TabID &params_table) {
     if (it.first == params_table)
       return it.second;
   }
-  DEBUG_ASSERT(!"Subquery not properly placed on compilation stack");
+  assert(!"Subquery not properly placed on compilation stack");
   return true;
 }
 
@@ -624,14 +624,14 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           ta[-step.t1.n - 1] = t2_ptr;
           break;
         case CompiledQuery::StepType::TMP_TABLE:
-          DEBUG_ASSERT(step.t1.n < 0);
+          assert(step.t1.n < 0);
           ta[-step.t1.n - 1] = step.n1
                                    ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, true)
                                    : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this);
           ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NumOfVirtualColumns(step.t1));
           break;
         case CompiledQuery::StepType::CREATE_CONDS:
-          DEBUG_ASSERT(step.t1.n < 0);
+          assert(step.t1.n < 0);
           if (step.ex_op == common::ExtraOperation::EX_COND_PUSH) {
             ((TempTable *)ta[-step.t1.n - 1].get())->MarkCondPush();
           }
@@ -652,7 +652,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                   (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE) ? char(step.n2)
                                                                                                    : '\\');
             } else {
-              DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
+              assert(conds[step.c2.n]->IsType_Tree());
               conds[step.c1.n]->AddDescriptor(static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
                                               (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1));
             }
@@ -662,7 +662,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                   new SingleTreeCondition(step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(),
                                           qu.GetNumOfDimens(step.t1), char(step.n2));
             else {
-              DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
+              assert(conds[step.c2.n]->IsType_Tree());
               conds[step.c1.n] = new Condition();
               conds[step.c1.n]->AddDescriptor(((SingleTreeCondition *)conds[step.c2.n])->GetTree(),
                                               (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1));
@@ -692,14 +692,14 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
               }
             }
           } else if (conds[step.c1.n]->IsType_Tree()) {  // on result = false
-            DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
+            assert(conds[step.c2.n]->IsType_Tree());
             common::LogicalOperator lop = (step.type == CompiledQuery::StepType::AND_F ? common::LogicalOperator::O_AND
                                                                                        : common::LogicalOperator::O_OR);
             static_cast<SingleTreeCondition *>(conds[step.c1.n])
                 ->AddTree(lop, static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
                           qu.GetNumOfDimens(step.t1));
           } else {
-            DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
+            assert(conds[step.c2.n]->IsType_Tree());
             conds[step.c1.n]->AddDescriptor(static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
                                             (TempTable *)ta[-qu.GetTableOfCond(step.c1).n - 1].get(),
                                             qu.GetNumOfDimens(qu.GetTableOfCond(step.c1)));
@@ -720,7 +720,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                            ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e3.vc_id)
                            : nullptr;
           if (!conds[step.c1.n]->IsType_Tree()) {
-            DEBUG_ASSERT(conds[step.c1.n]);
+            assert(conds[step.c1.n]);
             conds[step.c1.n]->AddDescriptor(
                 step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1),
                 (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE) ? char(step.n2)
@@ -735,15 +735,15 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         }
         case CompiledQuery::StepType::T_MODE:
-          DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           ((TempTable *)ta[-step.t1.n - 1].get())->SetMode(step.tmpar, step.n1, step.n2);
           break;
         case CompiledQuery::StepType::JOIN_T:
-          DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           ((TempTable *)ta[-step.t1.n - 1].get())->JoinT(t2_ptr.get(), step.t2.n, step.jt);
           break;
         case CompiledQuery::StepType::ADD_CONDS: {
-          DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           if (step.c1.n == common::NULL_VALUE_32)
             break;
           if (step.n1 != static_cast<int64_t>(CondType::HAVING_COND))
@@ -752,14 +752,14 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         }
         case CompiledQuery::StepType::LEFT_JOIN_ON: {
-          DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           if (step.c1.n == common::NULL_VALUE_32)
             break;
           ((TempTable *)ta[-step.t1.n - 1].get())->AddLeftConds(conds[step.c1.n], step.tables1, step.tables2);
           break;
         }
         case CompiledQuery::StepType::INNER_JOIN_ON: {
-          DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           if (step.c1.n == common::NULL_VALUE_32)
             break;
           ((TempTable *)ta[-step.t1.n - 1].get())->AddInnerConds(conds[step.c1.n], step.tables1);
@@ -798,7 +798,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         }
         case CompiledQuery::StepType::ADD_COLUMN: {
-          DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           CQTerm e(step.e1);
           if (e.vc_id != common::NULL_VALUE_32)
             e.vc =
@@ -808,13 +808,13 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         }
         case CompiledQuery::StepType::CREATE_VC: {
-          DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           TempTable *t = (TempTable *)ta[-step.t1.n - 1].get();
 
-          DEBUG_ASSERT(t);
+          assert(t);
           if (step.mysql_expr.size() > 0) {
             // vcolumn::VirtualColumn for Expression
-            DEBUG_ASSERT(step.mysql_expr.size() == 1);
+            assert(step.mysql_expr.size() == 1);
             MultiIndex *mind = (step.t2.n == step.t1.n) ? t->GetOutputMultiIndexP() : t->GetMultiIndexP();
             int c = ((TempTable *)ta[-step.t1.n - 1].get())
                         ->AddVirtColumn(CreateColumnFromExpression(step.mysql_expr, t, step.t1.n, mind), step.a1.n);
@@ -844,7 +844,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             ASSERT(c == step.a1.n, "AddVirtColumn failed");
           } else {
             // vcolumn::VirtualColumn for Subquery
-            DEBUG_ASSERT(ta[-step.t2.n - 1]->TableType() == TType::TEMP_TABLE);
+            assert(ta[-step.t2.n - 1]->TableType() == TType::TEMP_TABLE);
             int c =
                 ((TempTable *)ta[-step.t1.n - 1].get())
                     ->AddVirtColumn(new vcolumn::SubSelectColumn(
@@ -856,17 +856,17 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         }
         case CompiledQuery::StepType::ADD_ORDER: {
-          DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE && step.n1 >= 0 &&
-                       step.n1 < 2);
-          DEBUG_ASSERT(step.a1.n >= 0 && step.a1.n < qu.NumOfVirtualColumns(step.t1));
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE && step.n1 >= 0 &&
+                 step.n1 < 2);
+          assert(step.a1.n >= 0 && step.a1.n < qu.NumOfVirtualColumns(step.t1));
           TempTable *loc_t = (TempTable *)ta[-step.t1.n - 1].get();
           loc_t->AddOrder(loc_t->GetVirtualColumn(step.a1.n),
                           (int)step.n1);  // step.n1 = 0 for asc, 1 for desc
           break;
         }
         case CompiledQuery::StepType::UNION:
-          DEBUG_ASSERT(step.t1.n < 0 && step.t2.n < 0 && step.t3.n < 0);
-          DEBUG_ASSERT(ta[-step.t2.n - 1]->TableType() == TType::TEMP_TABLE &&
+          assert(step.t1.n < 0 && step.t2.n < 0 && step.t3.n < 0);
+          assert(ta[-step.t2.n - 1]->TableType() == TType::TEMP_TABLE &&
                        (step.t3.n == common::NULL_VALUE_32 || ta[-step.t3.n - 1]->TableType() == TType::TEMP_TABLE));
           if (step.t1.n != step.t2.n)
             ta[-step.t1.n - 1] = TempTable::Create(*(TempTable *)ta[-step.t2.n - 1].get(), false);
@@ -891,7 +891,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           }
           break;
         case CompiledQuery::StepType::RESULT:
-          DEBUG_ASSERT(step.t1.n < 0 && static_cast<size_t>(-step.t1.n - 1) < ta.size() &&
+          assert(step.t1.n < 0 && static_cast<size_t>(-step.t1.n - 1) < ta.size() &&
                        ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           output_table = (TempTable *)ta[-step.t1.n - 1].get();
           break;
@@ -923,7 +923,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
   an_arg = UnRef(an_arg);
   if (an_arg->type() == Item::SUBSELECT_ITEM) {
     Item_subselect *item_subs = dynamic_cast<Item_subselect *>(an_arg);
-    DEBUG_ASSERT(item_subs && "The cast to (Item_subselect*) was unsuccessful");
+    assert(item_subs && "The cast to (Item_subselect*) was unsuccessful");
 
     bool ignore_limit = false;
     if (dynamic_cast<Item_maxmin_subselect *>(item_subs) != nullptr ||
@@ -1061,7 +1061,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
           tab_id2expression.insert(std::make_pair(tmp_table, std::make_pair(vc.n, expr)));
         }
       } else if (IsAggregationItem(an_arg)) {
-        DEBUG_ASSERT(expr->GetItem()->type() == Item_tianmufield::get_tianmuitem_type());
+        assert(expr->GetItem()->type() == Item_tianmufield::get_tianmuitem_type());
         int col_num =
             ((Item_tianmufield *)expr->GetItem())->varID[((Item_tianmufield *)expr->GetItem())->varID.size() - 1].col;
         auto phys_vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, AttrID(-col_num - 1));
@@ -1470,7 +1470,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
           if (!item_func)
             continue;
           Item **args = item_func->arguments();
-          DEBUG_ASSERT(item_func->arg_count == 2);
+          assert(item_func->arg_count == 2);
           Item *first_arg = UnRef(args[0]);
           Item *sec_arg = UnRef(args[1]);
           if (IsConstItem(first_arg) && IsFieldItem(sec_arg))
@@ -1922,7 +1922,7 @@ QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const Tab
     if (filter_type == CondType::ON_RIGHT_FILTER) {
       filter_type = CondType::ON_LEFT_FILTER;
     }
-    DEBUG_ASSERT(PrefixCheck(conds) != TableStatus::TABLE_YET_UNSEEN_INVOLVED &&
+    assert(PrefixCheck(conds) != TableStatus::TABLE_YET_UNSEEN_INVOLVED &&
                  "Table not yet seen was involved in this condition");
 
     bool zero_result = conds->type() == Item::INT_ITEM && !conds->val_bool();

@@ -411,7 +411,7 @@ void JoinerSortWrapper::SetDimensions(MultiIndex *mind, DimensionVector &dim_tr,
     outer_offset = traverse_bytes - key_bytes;
     traverse_bytes += 8;
   }
-  DEBUG_ASSERT(buf == nullptr);
+  assert(buf == nullptr);
   buf_bytes = std::max(traverse_bytes, match_bytes);
   buf = new unsigned char[buf_bytes];
 }
@@ -523,7 +523,7 @@ void JoinerSortWrapper::InitCache(int64_t no_of_rows) {
 bool JoinerSortWrapper::AddToCache(unsigned char *v)  // return false if there is no more space in
                                                       // cache (i.e. the next operation would fail)
 {
-  DEBUG_ASSERT(cur_cache_used < cache_size);
+  assert(cur_cache_used < cache_size);
   if (cache_bytes > 0)
     std::memcpy(cache + cur_cache_used * cache_bytes, v, cache_bytes);
   cur_cache_used++;
@@ -532,7 +532,7 @@ bool JoinerSortWrapper::AddToCache(unsigned char *v)  // return false if there i
 
 int64_t JoinerSortWrapper::DimValue(int d, int cache_position, unsigned char *matched_buffer) {
   int64_t dim_value = 0;
-  DEBUG_ASSERT(dim_size[d] > 0);
+  assert(dim_size[d] > 0);
   if (dim_traversed[d])
     std::memcpy(&dim_value, cache + cache_bytes * cache_position + dim_offset[d],
                 dim_size[d]);  // get it from cache

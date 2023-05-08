@@ -346,7 +346,7 @@ bool TianmuNum::operator>=(const TianmuDataType &tianmu_dt) const {
 }
 
 TianmuNum &TianmuNum::operator-=(const TianmuNum &tianmu_n) {
-  DEBUG_ASSERT(!null_);
+  assert(!null_);
   if (tianmu_n.IsNull() || tianmu_n.IsNull())
     return *this;
   if (IsReal() || tianmu_n.IsReal()) {
@@ -370,7 +370,7 @@ TianmuNum &TianmuNum::operator-=(const TianmuNum &tianmu_n) {
 }
 
 TianmuNum &TianmuNum::operator+=(const TianmuNum &tianmu_n) {
-  DEBUG_ASSERT(!null_);
+  assert(!null_);
   if (tianmu_n.IsNull() || tianmu_n.IsNull())
     return *this;
   if (IsReal() || tianmu_n.IsReal()) {
@@ -394,7 +394,7 @@ TianmuNum &TianmuNum::operator+=(const TianmuNum &tianmu_n) {
 }
 
 TianmuNum &TianmuNum::operator*=(const TianmuNum &tianmu_n) {
-  DEBUG_ASSERT(!null_);
+  assert(!null_);
   if (tianmu_n.IsNull() || tianmu_n.IsNull())
     return *this;
   if (IsReal() || tianmu_n.IsReal()) {
@@ -431,7 +431,7 @@ void fcvt(char *buf, double val, int digits, int *dec, int *sign) {
 }
 
 TianmuNum &TianmuNum::operator/=(const TianmuNum &tianmu_n) {
-  DEBUG_ASSERT(!null_);
+  assert(!null_);
   if (tianmu_n.IsNull() || tianmu_n.IsNull())
     return *this;
   if (IsReal() || tianmu_n.IsReal()) {

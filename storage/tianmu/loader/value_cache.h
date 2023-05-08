@@ -45,7 +45,7 @@ class ValueCache final {
     if (expected_null_)
       null_cnt_++;
     size_ += expected_size_;
-    DEBUG_ASSERT(size_ <= capacity_);
+    assert(size_ <= capacity_);
     expected_size_ = 0;
     expected_null_ = false;
     if (expected_delete_) {
@@ -71,19 +71,19 @@ class ValueCache final {
   }
 
   void SetNull(size_t ono, bool null) {
-    DEBUG_ASSERT(ono < values_.size());
+    assert(ono < values_.size());
     nulls_[ono] = null;
     if (null)
       null_cnt_++;
   }
 
   void SetDelete(size_t ono) {
-    DEBUG_ASSERT(ono < values_.size());
+    assert(ono < values_.size());
     deletes_.emplace(ono, true);
   }
 
   void ExpectedSize(size_t expectedSize) {
-    DEBUG_ASSERT((size_ + expectedSize) <= capacity_);
+    assert((size_ + expectedSize) <= capacity_);
     expected_size_ = expectedSize;
   }
 
@@ -98,18 +98,18 @@ class ValueCache final {
 
   size_t SumarizedSize() const { return size_; }
   size_t Size(size_t ono) const {
-    DEBUG_ASSERT(ono < values_.size());
+    assert(ono < values_.size());
     auto end(ono < (values_.size() - 1) ? values_[ono + 1] : size_);
     return (end - values_[ono]);
   }
 
   char *GetDataBytesPointer(size_t ono) {
-    DEBUG_ASSERT(ono < values_.size());
+    assert(ono < values_.size());
     return (static_cast<char *>(data_) + values_[ono]);
   }
 
   char const *GetDataBytesPointer(size_t ono) const {
-    DEBUG_ASSERT(ono < values_.size());
+    assert(ono < values_.size());
     return (static_cast<char *>(data_) + values_[ono]);
   }
 

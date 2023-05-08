@@ -64,7 +64,7 @@ class IncWGraph {
     Count GetMaskTotal(Mask *mask);
     uchar EscCount() { return 3; }  // edge ? 2+nedge/4 : 1; }
     void EncodeEsc(RangeCoder *cod, Count low, Count tot) {
-      DEBUG_ASSERT(low + EscCount() == tot);
+      assert(low + EscCount() == tot);
       cod->Encode(low, EscCount(), tot);
     }
     void DecodeEsc(RangeCoder *cod, Count low, Count tot) {
@@ -112,7 +112,7 @@ class IncWGraph {
    public:
     bool Masked(uchar s) { return map_.test(s); }
     void Add(uchar s) {
-      DEBUG_ASSERT(!Masked(s));
+      assert(!Masked(s));
       map_.set(s);
       n_set_++;
     }

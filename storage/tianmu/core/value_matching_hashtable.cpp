@@ -50,7 +50,7 @@ void ValueMatching_HashTable::Init(int64_t mem_available, int64_t max_no_groups,
   total_width = _total_width;
   matching_width = _match_width;
   input_buffer_width = _input_buf_width;
-  DEBUG_ASSERT(input_buffer_width > 0);  // otherwise another class should be used
+  assert(input_buffer_width > 0);  // otherwise another class should be used
   one_pass = false;
 
   // add 4 bytes for offset
@@ -93,7 +93,7 @@ void ValueMatching_HashTable::Init(int64_t mem_available, int64_t max_no_groups,
   }
 
   // initialize structures
-  DEBUG_ASSERT(mem_available > 0);
+  assert(mem_available > 0);
   size_t min_block_len = max_no_rows * total_width;
   if (min_block_len > 1_GB && size_t(mem_available) > 256_MB)  // very large space needed (>1 GB) and
                                                                // substantial memory available
@@ -142,7 +142,7 @@ bool ValueMatching_HashTable::FindCurrentRow(unsigned char *input_buffer, int64_
         *next_pos = no_rows;
       row_no = no_rows;
     } else {
-      DEBUG_ASSERT(row_no < *next_pos);
+      assert(row_no < *next_pos);
       row_no = *next_pos;
     }
   }
@@ -184,7 +184,7 @@ bool ValueMatching_HashTable::FindCurrentRow(unsigned char *input_buffer, int64_
         *next_pos = no_rows;
       row_no = no_rows;
     } else {
-      DEBUG_ASSERT(row_no < *next_pos);
+      assert(row_no < *next_pos);
       row_no = *next_pos;
     }
   }

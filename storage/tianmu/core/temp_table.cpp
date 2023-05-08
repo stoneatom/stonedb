@@ -71,7 +71,7 @@ TempTable::Attr::Attr(const Attr &a) : PhysicalColumn(a) {
   if (term.vc)
     term.vc->ResetLocalStatistics();
   dim = a.dim;
-  // DEBUG_ASSERT(a.buffer == nullptr); // otherwise we cannot copy Attr !
+  // assert(a.buffer == nullptr); // otherwise we cannot copy Attr !
   buffer = nullptr;
   no_obj = a.no_obj;
   no_power = a.no_power;
@@ -122,7 +122,7 @@ TempTable::Attr &TempTable::Attr::operator=(const TempTable::Attr &a) {
   if (term.vc)
     term.vc->ResetLocalStatistics();
   dim = a.dim;
-  // DEBUG_ASSERT(a.buffer == nullptr); // otherwise we cannot copy Attr !
+  // assert(a.buffer == nullptr); // otherwise we cannot copy Attr !
   buffer = nullptr;
   no_obj = a.no_obj;
   no_power = a.no_power;
@@ -332,13 +332,13 @@ void TempTable::Attr::SetValueInt64(int64_t obj, int64_t val) {
         ((AttrBuffer<double> *)buffer)->Set(obj, *(double *)&val);
       break;
     default:
-      DEBUG_ASSERT(0);
+      assert(0);
       break;
   }
 }
 
 void TempTable::Attr::InvalidateRow([[maybe_unused]] int64_t obj) {
-  DEBUG_ASSERT(obj + 1 == no_materialized);
+  assert(obj + 1 == no_materialized);
   no_obj--;
   no_materialized--;
 }
@@ -380,7 +380,7 @@ void TempTable::Attr::SetNull(int64_t obj) {
       ((AttrBuffer<types::BString> *)buffer)->Set(obj, types::BString());
       break;
     default:
-      DEBUG_ASSERT(0);
+      assert(0);
       break;
   }
 }
@@ -539,7 +539,7 @@ void TempTable::Attr::GetValueString(types::BString &value, int64_t obj) {
 }
 
 int64_t TempTable::Attr::GetSum(int pack, bool &nonnegative) {
-  DEBUG_ASSERT(ATI::IsNumericType(ct.GetTypeName()));
+  assert(ATI::IsNumericType(ct.GetTypeName()));
   int64_t start = pack * (1 << no_power);
   int64_t stop = (1 << no_power);
   stop = stop > no_obj ? no_obj : stop;
@@ -669,7 +669,7 @@ int64_t TempTable::Attr::GetValueInt64(int64_t obj) const {
       break;
     case common::ColumnType::STRING:
     case common::ColumnType::VARCHAR:
-      DEBUG_ASSERT(0);
+      assert(0);
       break;
     case common::ColumnType::REAL:
     case common::ColumnType::FLOAT:
@@ -682,7 +682,7 @@ int64_t TempTable::Attr::GetValueInt64(int64_t obj) const {
     case common::ColumnType::BYTE:
     case common::ColumnType::VARBYTE:
     case common::ColumnType::LONGTEXT:
-      DEBUG_ASSERT(0);
+      assert(0);
       break;
     default:
       break;
@@ -718,7 +718,7 @@ int64_t TempTable::Attr::GetNotNullValueInt64(int64_t obj) const {
       res = *(int64_t *)&(*(AttrBuffer<double> *)buffer)[obj];
       break;
     default:
-      DEBUG_ASSERT(0);
+      assert(0);
       break;
   }
   return res;
@@ -770,7 +770,7 @@ bool TempTable::Attr::IsNull(const int64_t obj) const {
 }
 
 void TempTable::Attr::ApplyFilter(MultiIndex &mind_, int64_t offset, int64_t last_index) {
-  DEBUG_ASSERT(mind_.NumOfDimensions() == 1);
+  assert(mind_.NumOfDimensions() == 1);
 
   if (mind_.NumOfDimensions() != 1)
     throw common::NotImplementedException("MultiIndex has too many dimensions.");
@@ -791,7 +791,7 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind_, int64_t offset, int64_t las
   uint64_t idx = 0;
   for (int64_t i = 0; i < last_index - offset; i++, ++mit) {
     idx = mit[0];
-    DEBUG_ASSERT(idx != static_cast<uint64_t>(common::NULL_VALUE_64));  // null object should never appear
+    assert(idx != static_cast<uint64_t>(common::NULL_VALUE_64));  // null object should never appear
                                                                         // in a materialized temp. table
     switch (TypeName()) {
       case common::ColumnType::INT:
@@ -827,7 +827,7 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind_, int64_t offset, int64_t las
         ((AttrBuffer<double> *)buffer)->Set(i, (*(AttrBuffer<double> *)old_buffer)[idx]);
         break;
       default:
-        DEBUG_ASSERT(0);
+        assert(0);
         break;
     }
   }
@@ -866,7 +866,7 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind_, int64_t offset, int64_t las
       delete (AttrBuffer<double> *)old_buffer;
       break;
     default:
-      DEBUG_ASSERT(0);
+      assert(0);
       break;
   }
 }
@@ -1120,7 +1120,7 @@ void TempTable::MoveVC(vcolumn::VirtualColumn *vc, std::vector<vcolumn::VirtualC
 }
 
 void TempTable::ReserveVirtColumns(int no) {
-  DEBUG_ASSERT((no == 0 && virt_cols.size() == 0) || static_cast<size_t>(no) > virt_cols.size());
+  assert((no == 0 && virt_cols.size() == 0) || static_cast<size_t>(no) > virt_cols.size());
   no_global_virt_cols = -1;  // usable value only in TempTable copies and in subq
   virt_cols.resize(no);
   virt_cols_for_having.resize(no);
@@ -1150,7 +1150,7 @@ uint TempTable::GetDisplayableAttrIndex(uint attr) {
       if (idx == attr)
         break;
     }
-  DEBUG_ASSERT(i < attrs.size());
+  assert(i < attrs.size());
   return i;
 }
 
@@ -1165,13 +1165,13 @@ void TempTable::AddConds(Condition *cond, CondType type) {
 
     case CondType::HAVING_COND: {
       Descriptor &desc = cond->operator[](0);
-      DEBUG_ASSERT(desc.tree);
+      assert(desc.tree);
       having_conds.AddDescriptor(desc.tree, this, desc.left_dims.Size());
       break;
     }
 
     default:
-      DEBUG_ASSERT(0);
+      assert(0);
   }
 }
 
@@ -1204,7 +1204,7 @@ void TempTable::SetMode(TMParameter mode, int64_t mode_param1, int64_t mode_para
       this->mode.exists = true;
       break;
     default:
-      DEBUG_ASSERT(false);
+      assert(false);
       break;
   }
 }
@@ -1219,7 +1219,7 @@ int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool 
 
   // new code for vcolumn::VirtualColumn
   if (e.vc_id != common::NULL_VALUE_32) {
-    DEBUG_ASSERT(e.vc);
+    assert(e.vc);
     // enum common::ColOperation {LISTING, COUNT, SUM, MIN, MAX, AVG, GROUP_BY};
     if (mode == common::ColOperation::COUNT) {
       type = common::ColumnType::NUM;  // 64 bit, Decimal(18,0)
@@ -1279,7 +1279,7 @@ int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool 
   } else {
     // illegal execution path: neither VC is set nor mode is
     // common::ColOperation::COUNT
-    DEBUG_ASSERT(!"wrong execution path");
+    assert(!"wrong execution path");
     // throw common::NotImplementedException("Invalid column on SELECT list.");
   }
 
@@ -1312,7 +1312,7 @@ void TempTable::Union(TempTable *t, int all) {
     this->Materialize();
     return;
   }
-  DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
+  assert(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
   if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
   if (this->IsParametrized() || t->IsParametrized())
@@ -1554,7 +1554,7 @@ void TempTable::Union(TempTable *t, [[maybe_unused]] int all, ResultSender *send
                       int64_t &g_limit) {
   MEASURE_FET("TempTable::UnionSender(...)");
 
-  DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
+  assert(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
   if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
   if (this->IsParametrized() || t->IsParametrized())
@@ -1631,7 +1631,7 @@ int TempTable::GetDimension(TabID alias) {
 int64_t TempTable::GetTable64(int64_t obj, int attr) {
   if (no_obj == 0)
     return common::NULL_VALUE_64;
-  DEBUG_ASSERT(obj < no_obj && (uint)attr < attrs.size());
+  assert(obj < no_obj && (uint)attr < attrs.size());
   return attrs[attr]->GetValueInt64(obj);
 }
 
@@ -1641,14 +1641,14 @@ void TempTable::GetTable_S(types::BString &s, int64_t obj, int _attr) {
     return;
   }
   uint attr = (uint)_attr;
-  DEBUG_ASSERT(obj < no_obj && attr < attrs.size());
+  assert(obj < no_obj && attr < attrs.size());
   attrs[attr]->GetValueString(s, obj);
 }
 
 bool TempTable::IsNull(int64_t obj, int attr) {
   if (no_obj == 0)
     return true;
-  DEBUG_ASSERT(obj < no_obj && (uint)attr < attrs.size());
+  assert(obj < no_obj && (uint)attr < attrs.size());
   return attrs[attr]->IsNull(obj);
 }
 
@@ -1668,14 +1668,14 @@ uint64_t TempTable::ApproxAnswerSize([[maybe_unused]] int attr,
 void TempTable::GetTableString(types::BString &s, int64_t obj, uint attr) {
   if (no_obj == 0)
     s = types::BString();
-  DEBUG_ASSERT(obj < no_obj && (uint)attr < attrs.size());
+  assert(obj < no_obj && (uint)attr < attrs.size());
   attrs[attr]->GetValueString(s, obj);
 }
 
 types::TianmuValueObject TempTable::GetValueObject(int64_t obj, uint attr) {
   if (no_obj == 0)
     return types::TianmuValueObject();
-  DEBUG_ASSERT(obj < no_obj && (uint)attr < attrs.size());
+  assert(obj < no_obj && (uint)attr < attrs.size());
   return attrs[attr]->GetValue(obj);
 }
 
@@ -1847,7 +1847,7 @@ int TempTable::AddVirtColumn(vcolumn::VirtualColumn *vc) {
 }
 
 int TempTable::AddVirtColumn(vcolumn::VirtualColumn *vc, int no) {
-  DEBUG_ASSERT(static_cast<size_t>(no) < virt_cols.size());
+  assert(static_cast<size_t>(no) < virt_cols.size());
   virt_cols_for_having[no] = (vc->GetMultiIndex() == &output_mind);
   virt_cols[no] = vc;
   return no;
@@ -2025,7 +2025,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
   // the case when there is no grouping of attributes, check also DISTINCT
   // modifier of TT
   if (!group_by && !table_distinct) {
-    DEBUG_ASSERT(!distinct_on_materialized);  // should by false here, otherwise must be
+    assert(!distinct_on_materialized);  // should by false here, otherwise must be
                                               // added to conditions below
 
     if (limits_present) {
@@ -2202,7 +2202,7 @@ void TempTable::RecordIterator::PrepareValues() {
 }
 
 TempTable::RecordIterator &TempTable::RecordIterator::operator++() {
-  DEBUG_ASSERT(_currentRNo < uint64_t(table->NumOfObj()));
+  assert(_currentRNo < uint64_t(table->NumOfObj()));
   is_prepared = false;
   ++_currentRNo;
   return (*this);
@@ -2216,8 +2216,8 @@ TempTable::RecordIterator::RecordIterator() : table(nullptr), _currentRNo(0), _c
 
 TempTable::RecordIterator::RecordIterator(TempTable *table_, Transaction *conn_, uint64_t rowNo_)
     : table(table_), _currentRNo(rowNo_), _conn(conn_), is_prepared(false) {
-  DEBUG_ASSERT(table != 0);
-  DEBUG_ASSERT(_currentRNo <= uint64_t(table->NumOfObj()));
+  assert(table != 0);
+  assert(_currentRNo <= uint64_t(table->NumOfObj()));
   for (uint att = 0; att < table->NumOfDisplaybleAttrs(); att++) {
     common::ColumnType att_type = table->GetDisplayableAttrP(att)->TypeName();
     if (att_type == common::ColumnType::INT || att_type == common::ColumnType::MEDIUMINT ||
@@ -2244,12 +2244,12 @@ TempTable::RecordIterator::RecordIterator(RecordIterator const &it)
 }
 
 bool TempTable::RecordIterator::operator==(RecordIterator const &it) const {
-  DEBUG_ASSERT((!(table || it.table)) || (table == it.table));
+  assert((!(table || it.table)) || (table == it.table));
   return (_currentRNo == it._currentRNo);
 }
 
 bool TempTable::RecordIterator::operator!=(RecordIterator const &it) const {
-  DEBUG_ASSERT((!(table || it.table)) || (table == it.table));
+  assert((!(table || it.table)) || (table == it.table));
   return (_currentRNo != it._currentRNo);
 }
 

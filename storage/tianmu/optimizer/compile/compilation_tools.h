@@ -23,7 +23,7 @@
 namespace Tianmu {
 namespace core {
 #define ASSERT_MYSQL_STRING(x)                           \
-  DEBUG_ASSERT(!x.str[x.length] &&                       \
+  assert(!x.str[x.length] &&                       \
                "Verification that LEX_STRING ends with " \
                "nil")
 

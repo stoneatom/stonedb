@@ -32,7 +32,7 @@ class ItemSumInTianmuBase : public Item_sum_num {
   longlong val_int() override;
 
   double val_real() override {
-    DEBUG_ASSERT(fixed == 1);
+    assert(fixed == 1);
     return (double)val_int();
   }
   String *val_str(String *str) override;
