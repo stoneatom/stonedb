@@ -598,7 +598,11 @@ bool Sql_cmd_delete::delete_from_single_table(THD *thd) {
     // The loop that reads rows and delete those that qualify
 
     while (!(error = iterator->Read()) && !thd->killed) {
+#ifdef TIANMU
+// TODO(stonedb8): do not assert as it will caused unexpected behaviour, see: https://github.com/stoneatom/stonedb/issues/1664
+#else
       assert(!thd->is_error());
+#endif
       thd->inc_examined_row_count(1);
 
       if (conds != nullptr) {
