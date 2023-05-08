@@ -1,0 +1,42 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+
+CREATE DATABASE IF NOT EXISTS test_db_1599;
+
+USE test_db_1599;
+ 
+create table ttt(c1 int,c2 int);
+ 
+insert into ttt values(327266,1),(327267,1),(327268,1),(327269,1),(327270,1);
+
+select c1 from ttt union select 'aaa' c1 from (select c2 from ttt where c1 IN (327265)) x;
+
+select c1 from ttt union all select 'aaa' c1 from (select c2 from ttt where c1 IN (327265)) x;
+
+select c1 from ttt union select 111 c1 from (select c2 from ttt where c1 IN (327265)) x;
+
+select c1 from ttt union all select 111 c1 from (select c2 from ttt where c1 IN (327265)) x;
+
+select 111 c1 from ttt union select 111 c1 from (select c2 from ttt where c1 IN (327265)) x;
+
+select 111 c1 from ttt union all select 111 c1 from (select c2 from ttt where c1 IN (327265)) x;
+
+drop table ttt;
+
+create table ttt(c1 decimal(18,0),c2 decimal(18,0));
+
+insert into ttt values(3000000000027266,1),(3000000000027267,1),(3000000000027268,1),(3000000000027269,1),(3000000000027270,1);
+
+select c1 from ttt union select 'aaa' c1 from (select c2 from ttt where c1 IN (3000000000027265)) x;
+
+select c1 from ttt union select 111 c1 from (select c2 from ttt where c1 IN (3000000000027265)) x;
+
+select 'aaa' c1 from ttt union all select 111 c1 from (select c2 from ttt where c1 IN (3000000000027265)) x;
+
+select 111 c1 from ttt union all select 111 c1 from (select c2 from ttt where c1 IN (3000000000027265)) x;
+
+select c1 from ttt union all select 'aaa' c1 from (select c2 from ttt where c1 IN (3000000000027265)) x;
+
+
+drop database test_db_1599;
