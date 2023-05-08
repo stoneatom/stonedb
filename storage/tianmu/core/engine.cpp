@@ -2383,7 +2383,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Qu
       rct = current_txn_->GetTableByPathIfExists(table_path);
     }
 
-    if (unit_for_union != nullptr && !unit_for_union->is_prepared()) {
+    if ((unit_for_union != nullptr) && (lex->sql_command != SQLCOM_CREATE_TABLE)) {      // for exclude CTAS
       int res = result_output->prepare(thd, unit_for_union->item_list, unit_for_union);  // stonedb8 add thd
       if (res) {
         TIANMU_LOG(LogCtl_Level::ERROR, "Error: Unsupported UNION");
