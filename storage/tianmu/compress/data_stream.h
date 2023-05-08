@@ -199,14 +199,14 @@ inline uchar BitStream::GetByte() {
 }
 
 inline void BitStream::PutUInt(uint n, unsigned short int no_bits) {
-  DEBUG_ASSERT(no_bits <= 32);
+  assert(no_bits <= 32);
   int i = 0;  // no. of bits already stored
   for (; no_bits - i >= 8; i += 8) PutByte((uchar)(n >> i));
   for (; i < no_bits; i++) PutBit((uchar)(n >> i));
 }
 
 inline uint BitStream::GetUInt(unsigned short int no_bits) {
-  DEBUG_ASSERT(no_bits <= 32);
+  assert(no_bits <= 32);
   uint result = 0;
   int i = 0;  // no. of bits already read
   for (; no_bits - i >= 8; i += 8) result |= (((uint)GetByte()) << i);
@@ -215,14 +215,14 @@ inline uint BitStream::GetUInt(unsigned short int no_bits) {
 }
 
 inline void BitStream::PutUInt64(uint64_t n, unsigned short int no_bits) {
-  DEBUG_ASSERT(no_bits <= 64);
+  assert(no_bits <= 64);
   int i = 0;  // no. of bits already stored
   for (; no_bits - i >= 8; i += 8) PutByte((uchar)(n >> i));
   for (; i < no_bits; i++) PutBit((uchar)(n >> i));
 }
 
 inline unsigned long long BitStream::GetUInt64(unsigned short int no_bits) {
-  DEBUG_ASSERT(no_bits <= 64);
+  assert(no_bits <= 64);
   uint64_t result = 0;
   int i = 0;  // no. of bits already read
   for (; no_bits - i >= 8; i += 8) result |= (((uint64_t)GetByte()) << i);

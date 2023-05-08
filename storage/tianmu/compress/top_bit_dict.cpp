@@ -62,7 +62,7 @@ uint TopBitDict<T>::FindOptimum(DataSet<T> *dataset, uint nbit, uint &opt_bit, D
       break;
 
     // make prediction
-    DEBUG_ASSERT(nrec <= MAX_TOTAL_);
+    assert(nrec <= MAX_TOTAL_);
     double uplen = 0.0;
     short nkey;
     auto keys = dict->GetKeys(nkey);
@@ -102,7 +102,7 @@ uint TopBitDict<T>::FindOptimum(DataSet<T> *dataset, uint nbit, uint &opt_bit, D
     return INF_;
   if (opt_skip > 1) {
     bool ok = Insert(opt_dict, data, nbit, opt_bit, nrec, 1);
-    // DEBUG_ASSERT(ok);
+    // assert(ok);
     if (ok == false)
       return INF_;
     // don't recalculate prediction
@@ -115,7 +115,7 @@ inline bool TopBitDict<T>::Insert(Dictionary<T> *dict, T *data, uint nbit, uint 
   dict->InitInsert();
   if (top_bottom_ == TopBottom::tbTop) {  // top bits
     uchar bitlow = (uchar)(nbit - bit);
-    DEBUG_ASSERT(bitlow < sizeof(T) * 8);
+    assert(bitlow < sizeof(T) * 8);
     for (uint i = 0; i < nrec; i += skiprec)
       if (!dict->Insert(data[i] >> bitlow))
         return false;
@@ -140,7 +140,7 @@ bool TopBitDict<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   uint nbit = core::GetBitLen(maxval), bitdict;
   if (FindOptimum(dataset, nbit, bitdict, dict) >= 0.98 * this->PredictUni(dataset))
     return false;
-  DEBUG_ASSERT(bitdict);
+  assert(bitdict);
 
   dict->SetLows();
 
@@ -153,7 +153,7 @@ bool TopBitDict<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   coder->EncodeUniform(bitlow_, (T)64);
 
   // save dictionary
-  DEBUG_ASSERT(bitlow_ < sizeof(maxval) * 8);
+  assert(bitlow_ < sizeof(maxval) * 8);
   T maxhigh = maxval >> bitlow_, maxlow = ((T)1 _SHL_ bitlow_) - (T)1;
   T dictmax = (top_bottom_ == TopBottom::tbTop) ? maxhigh : maxlow;
   dict->Save(coder, dictmax);
@@ -165,7 +165,7 @@ bool TopBitDict<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   bool esc;
 
   // encode data
-  DEBUG_ASSERT(bitlow_ < sizeof(T) * 8);
+  assert(bitlow_ < sizeof(T) * 8);
   if (top_bottom_ == TopBottom::tbTop)
     for (uint i = 0; i < nrec; i++) {
       esc = dict->Encode(coder, data[i] >> bitlow_);
@@ -197,7 +197,7 @@ void TopBitDict<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
 
   // load dictionary
   Dictionary<T> *dict = counters_;
-  DEBUG_ASSERT(bitlow_ < sizeof(dataset->maxval) * 8);
+  assert(bitlow_ < sizeof(dataset->maxval) * 8);
   T maxhigh = dataset->maxval >> bitlow_, maxlow = ((T)1 _SHL_ bitlow_) - (T)1;
   T dictmax = (top_bottom_ == TopBottom::tbTop) ? maxhigh : maxlow;
   dict->Load(coder, dictmax);
@@ -218,7 +218,7 @@ template <class T>
 void TopBitDict<T>::Merge(DataSet<T> *dataset) {
   T *data = dataset->data;
   uint nrec = dataset->nrec;
-  DEBUG_ASSERT(bitlow_ < sizeof(T) * 8);
+  assert(bitlow_ < sizeof(T) * 8);
   if (top_bottom_ == TopBottom::tbTop)
     for (uint i = 0; i < nrec; i++) data[i] |= decoded_[i] << bitlow_;
   else

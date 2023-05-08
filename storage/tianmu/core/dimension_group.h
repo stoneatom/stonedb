@@ -150,12 +150,12 @@ class DimensionGroupFilter : public DimensionGroup {
   }
   void UpdateNumOfTuples() override { no_obj = f->NumOfOnes(); }
   Filter *GetFilter([[maybe_unused]] int dim) const override {
-    DEBUG_ASSERT(dim == base_dim || dim == -1);
+    assert(dim == base_dim || dim == -1);
     return f;
   }
   // For this type of filter: dim == -1 means the only existing one
   Filter *GetUpdatableFilter([[maybe_unused]] int dim) const override {
-    DEBUG_ASSERT(dim == base_dim || dim == -1);
+    assert(dim == base_dim || dim == -1);
     return f;
   }
   bool DimUsed(int dim) override { return base_dim == dim; }
@@ -176,7 +176,7 @@ class DimensionGroupFilter : public DimensionGroup {
     DGFilterIterator(const Iterator &sec, uint32_t power);
 
     void operator++() override {
-      DEBUG_ASSERT(valid);
+      assert(valid);
       ++fi;
       valid = fi.IsValid();
     }
@@ -194,7 +194,7 @@ class DimensionGroupFilter : public DimensionGroup {
     bool InsideOnePack() override { return fi.InsideOnePack(); }
     bool NullsExist([[maybe_unused]] int dim) override { return false; }
     void NextPackrow() override {
-      DEBUG_ASSERT(valid);
+      assert(valid);
       fi.NextPack();
       valid = fi.IsValid();
     }
@@ -240,7 +240,7 @@ class DimensionGroupFilter : public DimensionGroup {
     DGFilterOrderedIterator(const Iterator &sec, uint32_t power);
 
     void operator++() override {
-      DEBUG_ASSERT(valid);
+      assert(valid);
       ++fi;
       valid = fi.IsValid();
     }
@@ -258,7 +258,7 @@ class DimensionGroupFilter : public DimensionGroup {
     bool InsideOnePack() override { return fi.InsideOnePack(); }
     bool NullsExist([[maybe_unused]] int dim) override { return false; }
     void NextPackrow() override {
-      DEBUG_ASSERT(valid);
+      assert(valid);
       fi.NextPack();
       valid = fi.IsValid();
     }

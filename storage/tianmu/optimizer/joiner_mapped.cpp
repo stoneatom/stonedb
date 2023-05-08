@@ -75,7 +75,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
       matched_dims.Intersects(desc.right_dims))  // only traversed dimension may be outer
     return;
   int traversed_dim = traversed_dims.GetOneDim();
-  DEBUG_ASSERT(traversed_dim > -1);
+  assert(traversed_dim > -1);
 
   // Prepare mapping function
   auto map_function = GenerateFunction(vc1);

@@ -47,7 +47,7 @@ bool TempTable::OrderByAndMaterialize(
   // "limit=10; offset=20" means that the first 10 positions of sorted table will contain objects 21...30.
   MEASURE_FET("TempTable::OrderBy(...)");
   thd_proc_info(m_conn->Thd(), "order by");
-  DEBUG_ASSERT(limit >= 0 && offset >= 0);
+  assert(limit >= 0 && offset >= 0);
   no_obj = limit;
   if ((int)ord.size() == 0 || filter.mind_->NumOfTuples() < 2 || limit == 0) {
     ord.clear();
@@ -103,7 +103,7 @@ bool TempTable::OrderByAndMaterialize(
   for (auto &j : attrs) {
     if (j->alias != nullptr) {
       vcolumn::VirtualColumn *vc = j->term.vc;
-      DEBUG_ASSERT(vc);
+      assert(vc);
       sort_order = 0;
       for (uint i = 0; i < ord.size(); i++)
         if (ord[i].vc == vc) {

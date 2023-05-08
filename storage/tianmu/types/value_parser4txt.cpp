@@ -646,7 +646,7 @@ common::ErrorCode ValueParserForText::ParseBitAdapter(const BString &tianmu_s, i
   int len = tianmu_s.len_;
   // No matter null value or not, the value stored in char buffer at least one byte and up to 8 bytes.
   // calculated by len = (prec+7)/8
-  DEBUG_ASSERT(len >= 1 && len <= 8);
+  assert(len >= 1 && len <= 8);
 
   // The parse code may never go here, but we still check null value for integrity.
   if (tianmu_s.Equals("nullptr", 4)) {
@@ -1056,7 +1056,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &tianmu_s, TianmuD
         else if (hour * sign > kTianmuTimeMax.Hour())
           rcv = TianmuDateTime(kTianmuTimeMax);
         else
-          DEBUG_ASSERT(0);  // hmmm... ????
+          assert(0);  // hmmm... ????
 
         return common::ErrorCode::OUT_OF_RANGE;
       }
@@ -1201,7 +1201,7 @@ common::ErrorCode ValueParserForText::ParseYear(const BString &tianmu_s, TianmuD
 
 common::ErrorCode ValueParserForText::ParseDateTime(const BString &tianmu_s, TianmuDateTime &rcv,
                                                     common::ColumnType at) {
-  DEBUG_ASSERT(core::ATI::IsDateTimeType(at));
+  assert(core::ATI::IsDateTimeType(at));
   switch (at) {
     case common::ColumnType::TIMESTAMP:
     case common::ColumnType::DATETIME:

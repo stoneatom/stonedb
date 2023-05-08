@@ -27,7 +27,7 @@ ItemSumInTianmuBase::ItemSumInTianmuBase() : Item_sum_num() {}
 ItemSumInTianmuBase::~ItemSumInTianmuBase() {}
 
 longlong ItemSumInTianmuBase::val_int() {
-  DEBUG_ASSERT(fixed == 1);
+  assert(fixed == 1);
   return (longlong)count_;
 }
 
@@ -47,7 +47,7 @@ ItemSumSumTianmuBase::ItemSumSumTianmuBase() : Item_sum_num() { sum_ = 0; }
 ItemSumSumTianmuBase::~ItemSumSumTianmuBase() {}
 
 double ItemSumSumTianmuBase::val_real() {
-  DEBUG_ASSERT(fixed == 1);
+  assert(fixed == 1);
   if (hybrid_type_ == DECIMAL_RESULT)
     my_decimal2double(E_DEC_FATAL_ERROR, decimal_buffs_, &sum_);
   return sum_;
@@ -66,7 +66,7 @@ String *ItemSumSumTianmuBase::val_str(String *str) {
 }
 
 longlong ItemSumSumTianmuBase::val_int() {
-  DEBUG_ASSERT(fixed == 1);
+  assert(fixed == 1);
   if (hybrid_type_ == DECIMAL_RESULT) {
     longlong result;
     my_decimal2int(E_DEC_FATAL_ERROR, decimal_buffs_, unsigned_flag, &result);
@@ -123,7 +123,7 @@ void ItemSumHybridTianmuBase::clear() {
 }
 
 double ItemSumHybridTianmuBase::val_real() {
-  DEBUG_ASSERT(fixed == 1);
+  assert(fixed == 1);
   if (null_value)
     return 0.0;
   switch (hybrid_type_) {
@@ -152,7 +152,7 @@ double ItemSumHybridTianmuBase::val_real() {
 }
 
 longlong ItemSumHybridTianmuBase::val_int() {
-  DEBUG_ASSERT(fixed == 1);
+  assert(fixed == 1);
   if (null_value)
     return 0;
   switch (hybrid_type_) {
@@ -169,7 +169,7 @@ longlong ItemSumHybridTianmuBase::val_int() {
 }
 
 my_decimal *ItemSumHybridTianmuBase::val_decimal(my_decimal *val) {
-  DEBUG_ASSERT(fixed == 1);
+  assert(fixed == 1);
   if (null_value)
     return 0;
   switch (hybrid_type_) {
@@ -195,7 +195,7 @@ my_decimal *ItemSumHybridTianmuBase::val_decimal(my_decimal *val) {
 }
 
 String *ItemSumHybridTianmuBase::val_str(String *str) {
-  DEBUG_ASSERT(fixed == 1);
+  assert(fixed == 1);
   if (null_value)
     return (String *)0;
   switch (hybrid_type_) {

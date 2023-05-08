@@ -238,9 +238,9 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
 
 void MINewContents::DisableOptimized() {
   MEASURE_FET("MINewContents::DisableOptimized(...)");
-  DEBUG_ASSERT(optimized_dim_stay != -1);
+  assert(optimized_dim_stay != -1);
   if (!forget_now[optimized_dim_stay]) {
-    DEBUG_ASSERT(t_new[optimized_dim_stay] == nullptr);
+    assert(t_new[optimized_dim_stay] == nullptr);
     t_new[optimized_dim_stay] = t_opt;
     t_opt = nullptr;
     f_opt->Commit();

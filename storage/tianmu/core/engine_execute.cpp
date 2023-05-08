@@ -358,7 +358,7 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, SELECT
 QueryRouteTo handle_exceptions(THD *, Transaction *, bool with_error = false);
 
 QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union) {
-  DEBUG_ASSERT(thd->lex == lex);
+  assert(thd->lex == lex);
   SELECT_LEX *selects_list = lex->select_lex;
   SELECT_LEX *last_distinct = nullptr;
   if (unit_for_union != nullptr)
@@ -622,7 +622,7 @@ int st_select_lex_unit::optimize_for_tianmu() {
       }
       // re-enabling indexes for next subselect iteration
       if (union_distinct && table->file->ha_enable_indexes(HA_KEY_SWITCH_ALL))
-        DEBUG_ASSERT(0);
+        assert(0);
     }
     for (SELECT_LEX *sl = select_cursor; sl; sl = sl->next_select()) {
       thd->lex->set_current_select(sl);
@@ -686,7 +686,7 @@ int st_select_lex_unit::optimize_for_tianmu() {
         join = fake_select_lex->join;
       else {
         if (!(join = new JOIN(thd, fake_select_lex)))
-          DEBUG_ASSERT(0);
+          assert(0);
         // fake_select_lex->set_join(join);
       }
 

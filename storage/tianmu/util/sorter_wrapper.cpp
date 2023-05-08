@@ -55,13 +55,13 @@ void SorterWrapper::InitOrderByVector(std::vector<int> &order_by) {
     if (ord < 0)
       ord = -ord;
     if (ord != 0) {
-      DEBUG_ASSERT(order_by[ord - 1] == -1);
+      assert(order_by[ord - 1] == -1);
       order_by[ord - 1] = i;
     }
   }
   for (uint i = 0; i < input_cols.size(); i++)  // check whether all sorting columns are really needed
     if (order_by[i] != -1) {
-      DEBUG_ASSERT(i == 0 || order_by[i - 1] != -1);  // assure continuity
+      assert(i == 0 || order_by[i - 1] != -1);  // assure continuity
       if (input_cols[order_by[i]].col->IsDistinct()) {
         // do not sort by any other column:
         for (uint j = i + 1; j < input_cols.size(); j++)

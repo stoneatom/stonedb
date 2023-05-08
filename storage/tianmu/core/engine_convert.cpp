@@ -34,7 +34,7 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
 
   switch (field->type()) {
     case MYSQL_TYPE_VARCHAR: {
-      DEBUG_ASSERT(dynamic_cast<types::BString *>(&tianmu_item));
+      assert(dynamic_cast<types::BString *>(&tianmu_item));
       types::BString &str_val = (types::BString &)tianmu_item;
       if (str_val.size() > field->field_length)
         throw common::DatabaseException("Incorrect field size: " + std::to_string(str_val.size()));
@@ -52,7 +52,7 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
       }
       break;
     case MYSQL_TYPE_BLOB: {
-      DEBUG_ASSERT(dynamic_cast<types::BString *>(&tianmu_item));
+      assert(dynamic_cast<types::BString *>(&tianmu_item));
       Field_blob *blob = (Field_blob *)field;
       if (blob_buf == nullptr) {
         blob->set_ptr(((types::BString &)tianmu_item).len_, (uchar *)((types::BString &)tianmu_item).val_);
@@ -130,7 +130,7 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
               *reinterpret_cast<double *>(field->ptr) = (double)((types::TianmuNum &)(tianmu_item));
               break;
             default:
-              DEBUG_ASSERT(!"No data types conversion available!");
+              assert(!"No data types conversion available!");
               break;
           }
           break;
@@ -649,9 +649,9 @@ AttributeTypeInfo Engine::GetCorrespondingATI(Field &field) {
   common::ColumnType at = GetCorrespondingType(field);
 
   if (ATI::IsNumericType(at)) {
-    DEBUG_ASSERT(dynamic_cast<Field_num *>(&field));
+    assert(dynamic_cast<Field_num *>(&field));
     if (at == common::ColumnType::NUM) {
-      DEBUG_ASSERT(dynamic_cast<Field_new_decimal *>(&field));
+      assert(dynamic_cast<Field_new_decimal *>(&field));
       return AttributeTypeInfo(at, !field.maybe_null(), static_cast<Field_new_decimal &>(field).precision,
                                static_cast<Field_num &>(field).decimals());
     }

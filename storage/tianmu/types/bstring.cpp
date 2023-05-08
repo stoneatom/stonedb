@@ -204,19 +204,19 @@ std::string BString::ToString() const {
 }
 
 char &BString::operator[](size_t pos) const {
-  DEBUG_ASSERT(pos < len_);  // Out of BString. Note: val_ is not ended by '\0'.
+  assert(pos < len_);  // Out of BString. Note: val_ is not ended by '\0'.
   return val_[this->pos_ + pos];
 }
 
 BString &BString::operator+=(ushort pos) {
-  DEBUG_ASSERT((int)len_ - pos >= 0);
+  assert((int)len_ - pos >= 0);
   this->pos_ = this->pos_ + (ushort)pos;
   this->len_ -= pos;
   return *this;
 }
 
 BString &BString::operator-=(ushort pos) {
-  DEBUG_ASSERT(pos <= this->pos_);
+  assert(pos <= this->pos_);
   this->pos_ = this->pos_ - (ushort)pos;
   this->len_ += pos;
   return *this;
@@ -352,7 +352,7 @@ bool BString::GreaterEqThanMinUTF(const void *txt_min, DTCollation col, bool use
         if (useful_len >= len_ || chars_included == min_charlen)
           break;
         next_char_len = col.collation->cset->mbcharlen(col.collation, (uchar)val_[useful_len + pos_]);
-        DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
+        assert("wide character unrecognized" && next_char_len > 0);
         useful_len += next_char_len;
         chars_included++;
       }
@@ -391,7 +391,7 @@ bool BString::LessEqThanMaxUTF(const void *txt_max, DTCollation col, bool use_fu
         if (useful_len >= len_ || chars_included == max_charlen)
           break;
         next_char_len = col.collation->cset->mbcharlen(col.collation, (uchar)val_[useful_len + pos_]);
-        DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
+        assert("wide character unrecognized" && next_char_len > 0);
         useful_len += next_char_len;
         chars_included++;
       }
@@ -506,7 +506,7 @@ size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {
         next_char_len = 1;
       }
 
-      DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
+      assert("wide character unrecognized" && next_char_len > 0);
       if (useful_len + next_char_len > 8)
         break;
       useful_len += next_char_len;
