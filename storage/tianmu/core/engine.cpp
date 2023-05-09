@@ -758,7 +758,9 @@ void Engine::CommitTx(THD *thd, bool all) {
   // skip for first time, called in trans_commit_stmt(), thd->server_status = SERVER_STATUS_IN_TRANS and all = false
   // then called in trans_commit_implicit(), thd->server_status will be set "~SERVER_STATUS_IN_TRANS", and all = true
   // tianmu truncate table in 5.7 is ok, 8.0 has this problem.
-  if ((thd->lex->sql_command == SQLCOM_TRUNCATE) && (thd->server_status & SERVER_STATUS_IN_TRANS)) {
+  // Same problem with alter table ,see: https://github.com/stoneatom/stonedb/issues/1670
+  if ((thd->lex->sql_command == SQLCOM_TRUNCATE || thd->lex->sql_command == SQLCOM_ALTER_TABLE) &&
+      (thd->server_status & SERVER_STATUS_IN_TRANS)) {
     return;
   }
   if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT)) {
