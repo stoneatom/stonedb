@@ -1349,6 +1349,9 @@ int ha_tianmu::fill_row(uchar *buf) {
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if (iterator_->IsBase()) {
     /*
       Determine whether the current row is invalid in the base layer,
@@ -1362,7 +1365,7 @@ int ha_tianmu::fill_row(uchar *buf) {
     }
 
     for (uint col_id = 0; col_id < table->s->fields; col_id++) {
-      core::Engine::ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)), &blob_buffers_[col_id]);
+      eng->ConvertToField(table->field[col_id], *(iterator_->GetBaseData(col_id)), &blob_buffers_[col_id]);
     }
   } else {
     std::string delta_record = iterator_->GetDeltaData();
@@ -1565,7 +1568,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*cq_));
     core::CondID cond_id;
-    if (QueryRouteTo::kToMySQL == query_->BuildConditions(cond, cond_id, tmp_cq.get(), tmp_table_,
+    if (QueryRouteTo::kToMySQL == query_->BuildConditions(ha_thd(), cond, cond_id, tmp_cq.get(), tmp_table_,
                                                           core::CondType::WHERE_COND, false, core::JoinType::JO_INNER,
                                                           true)) {
       query_.reset();
@@ -2172,8 +2175,7 @@ int tianmu_init_func(void *p) {
   tianmu_hton->show_status = tianmu_show_status;
   tianmu_hton->data = nullptr;
 
-  // When mysqld runs as bootstrap mode, we do not need to initialize
-  // memmanager.
+  // When mysqld runs as bootstrap mode, we do not need to initialize memmanager.
   if (tianmu_bootstrap)
     DBUG_RETURN(0);
 
@@ -2181,9 +2183,12 @@ int tianmu_init_func(void *p) {
 
   try {
     std::string log_file = mysql_home_ptr;
-    log_setup(log_file + "/log/tianmu.log");
-    tianmu_control_.addOutput(new system::FileOut(log_file + "/log/trace.log"));
-    tianmu_querylog_.addOutput(new system::FileOut(log_file + "/log/query.log"));
+    if (log_file.length() && (log_file[log_file.length() - 1] != '/'))
+      log_file += "/";
+
+    log_setup(log_file + "log/tianmu.log");
+    tianmu_control_.addOutput(new system::FileOut(log_file + "log/trace.log"));
+    tianmu_querylog_.addOutput(new system::FileOut(log_file + "log/query.log"));
 
     struct hostent *hent = nullptr;
     hent = gethostbyname(glob_hostname);

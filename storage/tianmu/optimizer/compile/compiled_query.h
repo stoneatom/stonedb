@@ -106,7 +106,10 @@ class CompiledQuery final {
 
     CQStep(const CQStep &);
 
-    ~CQStep() { delete[] alias; }
+    ~CQStep() {
+      if (alias)
+        delete[] alias;
+    }
     CQStep &operator=(const CQStep &);
     /*! \brief Swap contents with another instance of CQStep.
      * \param s - another instance of CQStep.

@@ -23,6 +23,8 @@
 
 #include "common/assert.h"
 #include "mm/memory_block.h"
+#include "system/c.h"
+
 namespace Tianmu {
 namespace core {
 class DataCache;

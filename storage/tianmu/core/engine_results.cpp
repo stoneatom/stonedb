@@ -282,11 +282,16 @@ void ResultSender::SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>
 
   uint col_id = 0;
   int64_t value;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  DEBUG_ASSERT(eng);
 
   List_iterator_fast<Item> li(fields);
   li.rewind();
+
   while ((item = li++)) {
     int is_null = 0;
+
+    DEBUG_ASSERT(col_id < r.size());
     types::TianmuDataType &tianmu_dt(*r[col_id]);
     switch (item->type()) {
       case Item::DEFAULT_VALUE_ITEM:
@@ -302,11 +307,13 @@ void ResultSender::SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>
                (f->type() == MYSQL_TYPE_BLOB)) &&
               (Tianmu::types::ValueTypeEnum::STRING_TYPE != tianmu_dt.GetValueType())) {
             std::unique_ptr<types::TianmuDataType> tianmu_dt_unq(new types::BString(tianmu_dt.ToBString()));
+
             tianmu_dt_unq.swap(r[col_id]);
             types::TianmuDataType &tianmu_dt_new(*r[col_id]);
-            is_null = Engine::ConvertToField(f, tianmu_dt_new, nullptr);
+            is_null = eng->ConvertToField(f, tianmu_dt_new, nullptr);
           } else {
-            is_null = Engine::ConvertToField(f, tianmu_dt, nullptr);
+            // convert to mysql filed type.
+            is_null = eng->ConvertToField(f, tianmu_dt, nullptr);
           }
           SetFieldState(f, is_null);
         }
@@ -317,7 +324,7 @@ void ResultSender::SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>
         f = ifield->result_field;
         if (buf_lens[col_id] != 0) {
           bitmap_set_bit(f->table->write_set, f->field_index);
-          auto is_null = Engine::ConvertToField(f, tianmu_dt, nullptr);
+          auto is_null = eng->ConvertToField(f, tianmu_dt, nullptr);
           SetFieldState(f, is_null);
         }
         break;
@@ -328,40 +335,45 @@ void ResultSender::SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>
         // used only MIN_FUNC
         if (sum_type == Item_sum::MIN_FUNC || sum_type == Item_sum::MAX_FUNC ||
             sum_type == Item_sum::GROUP_CONCAT_FUNC) {
-          types::ItemSumHybridTianmuBase *isum_hybrid_rcbase = (types::ItemSumHybridTianmuBase *)is;
+          types::ItemSumHybridTianmuBase *isum_hybrid_rcbase = down_cast<types::ItemSumHybridTianmuBase *>(is);
+
           if (isum_hybrid_rcbase->result_type() == DECIMAL_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->dec_value(), tianmu_dt, item->decimals);
+            eng->Convert(is_null, isum_hybrid_rcbase->dec_value(), tianmu_dt, item->decimals);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == INT_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), tianmu_dt,
-                            isum_hybrid_rcbase->hybrid_field_type_, is->unsigned_flag);
+            eng->Convert(is_null, isum_hybrid_rcbase->int64_value(), tianmu_dt, isum_hybrid_rcbase->hybrid_field_type_,
+                         is->unsigned_flag);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == REAL_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->real_value(), tianmu_dt);
+            eng->Convert(is_null, isum_hybrid_rcbase->real_value(), tianmu_dt);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == STRING_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), tianmu_dt,
-                            isum_hybrid_rcbase->hybrid_field_type_);
+            eng->Convert(is_null, isum_hybrid_rcbase->string_value(), tianmu_dt,
+                         isum_hybrid_rcbase->hybrid_field_type_);
             isum_hybrid_rcbase->null_value = is_null;
           }
           break;
         }
+
         // do not check COUNT_DISTINCT_FUNC, we use only this for both types
         if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::SUM_BIT_FUNC) {
           isum_int_rcbase = (types::ItemSumInTianmuBase *)is;
-          Engine::Convert(is_null, value, tianmu_dt, is->field_type(), is->unsigned_flag);
+          eng->Convert(is_null, value, tianmu_dt, is->field_type(), is->unsigned_flag);
+
           if (is_null)
             value = 0;
+
           isum_int_rcbase->int64_value(value);
           break;
         }
+
         if (sum_type == Item_sum::SUM_FUNC || sum_type == Item_sum::STD_FUNC || sum_type == Item_sum::VARIANCE_FUNC) {
           isum_sum_rcbase = (types::ItemSumSumTianmuBase *)is;
           if (isum_sum_rcbase->result_type() == DECIMAL_RESULT) {
-            Engine::Convert(is_null, isum_sum_rcbase->dec_value(), tianmu_dt);
+            eng->Convert(is_null, isum_sum_rcbase->dec_value(), tianmu_dt);
             isum_sum_rcbase->null_value = is_null;
           } else if (isum_sum_rcbase->result_type() == REAL_RESULT) {
-            Engine::Convert(is_null, isum_sum_rcbase->real_value(), tianmu_dt);
+            eng->Convert(is_null, isum_sum_rcbase->real_value(), tianmu_dt);
             isum_sum_rcbase->null_value = is_null;
           }
           break;
@@ -373,6 +385,7 @@ void ResultSender::SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>
     }  // end switch
     col_id++;
   }  // end while
+
   res->send_data(fields);
 }
 

@@ -158,14 +158,14 @@ class Engine final {
   static AttributeTypeInfo GetAttrTypeInfo(const Field &field);
   static common::ColumnType GetCorrespondingType(const enum_field_types &eft);
   static bool IsTianmuTable(TABLE *table);
-  static bool ConvertToField(Field *field, types::TianmuDataType &tianmu_item, std::vector<uchar> *blob_buf);
-  static int Convert(int &is_null, my_decimal *value, types::TianmuDataType &tianmu_item, int output_scale = -1);
+  bool ConvertToField(Field *field, types::TianmuDataType &tianmu_item, std::vector<uchar> *blob_buf);
+  int Convert(int &is_null, my_decimal *value, types::TianmuDataType &tianmu_item, int output_scale = -1);
   // Add args unsigned_flag here is much more easier to construct TianmuNum in Convert function, another way is
   // add unsigned_flag in TianmuNum, it's more complex.
-  static int Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type,
-                     bool unsigned_flag);
-  static int Convert(int &is_null, double &value, types::TianmuDataType &tianmu_item);
-  static int Convert(int &is_null, String *value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
+  int Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_item, enum_field_types f_type,
+              bool unsigned_flag);
+  int Convert(int &is_null, double &value, types::TianmuDataType &tianmu_item);
+  int Convert(int &is_null, String *value, types::TianmuDataType &tianmu_item, enum_field_types f_type);
   static bool DecodeInsertRecordToField(const char *ptr, Field **fields);
   static void DecodeUpdateRecordToField(const char *ptr, Field **fields);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
