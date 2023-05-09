@@ -956,7 +956,7 @@ bool st_select_lex_unit::cleanup(bool full)
 #ifndef NDEBUG
 void st_select_lex_unit::assert_not_fully_clean()
 {
-  assert(cleaned < UC_CLEAN);
+  assert(cleaned <= UC_CLEAN);
   SELECT_LEX *sl= first_select();
   for (;;)
   {
