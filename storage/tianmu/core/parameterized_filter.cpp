@@ -904,8 +904,8 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
   bool false_desc = false;
 
   // descriptor preparation (normalization etc.)
-  for (uint i = 0; i < no_desc; i++) {            // Note that desc.size() may enlarge
-                                                  // when joining with BETWEEN occur
+  for (uint i = 0; i < no_desc; i++) {      // Note that desc.size() may enlarge
+                                            // when joining with BETWEEN occur
     assert(descriptors_[i].done == false);  // If not false, check it carefully.
     if (descriptors_[i].IsTrue()) {
       if (descriptors_[i].IsInner())

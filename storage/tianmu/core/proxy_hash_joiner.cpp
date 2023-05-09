@@ -82,7 +82,7 @@ class MIIteratorPoller {
       int64_t sentry_pos = slice_capability_.slices.size();
       if (slice_capability_.type == MIIterator::SliceCapability::Type::kLinear) {
         assert(tianmu_sysvar_async_join_setting.pack_per_step > 0 ||
-                     tianmu_sysvar_async_join_setting.rows_per_step > 0);
+               tianmu_sysvar_async_join_setting.rows_per_step > 0);
         // Preferred iterating by pack.
         if (tianmu_sysvar_async_join_setting.pack_per_step > 0) {
           pack_iter.reset(new MIPackStepIterator(cur_pos_, tianmu_sysvar_async_join_setting.pack_per_step, *miter_));

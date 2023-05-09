@@ -792,7 +792,7 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind_, int64_t offset, int64_t las
   for (int64_t i = 0; i < last_index - offset; i++, ++mit) {
     idx = mit[0];
     assert(idx != static_cast<uint64_t>(common::NULL_VALUE_64));  // null object should never appear
-                                                                        // in a materialized temp. table
+                                                                  // in a materialized temp. table
     switch (TypeName()) {
       case common::ColumnType::INT:
       case common::ColumnType::MEDIUMINT:
@@ -2026,7 +2026,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
   // modifier of TT
   if (!group_by && !table_distinct) {
     assert(!distinct_on_materialized);  // should by false here, otherwise must be
-                                              // added to conditions below
+                                        // added to conditions below
 
     if (limits_present) {
       if (no_rows_too_large && order_by.size() == 0)

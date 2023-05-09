@@ -44,9 +44,7 @@ class CachedBuffer : public system::CacheableItem, public mm::TraceableObject {
   uint64_t PageSize() { return page_size; }
   void SetNewPageSize(uint new_page_size);
   T &Get(uint64_t idx);
-  void Get([[maybe_unused]] types::BString &s, [[maybe_unused]] uint64_t idx) {
-    assert("use only for BString" && 0);
-  }
+  void Get([[maybe_unused]] types::BString &s, [[maybe_unused]] uint64_t idx) { assert("use only for BString" && 0); }
   void Set(uint64_t idx, const T &value);
 
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_CACHEDBUFFER; }

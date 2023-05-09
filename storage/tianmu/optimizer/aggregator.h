@@ -61,9 +61,7 @@ class TIANMUAggregator {
    * This version is used only for COUNT(*), when no value is needed
    * May be left unimplemented if not applicable for a given aggregator.
    */
-  virtual void PutAggregatedValue([[maybe_unused]] unsigned char *buf, [[maybe_unused]] int64_t factor) {
-    assert(0);
-  }
+  virtual void PutAggregatedValue([[maybe_unused]] unsigned char *buf, [[maybe_unused]] int64_t factor) { assert(0); }
   /*!
    * \brief Add the current value to counter pointed by the pointer.
    * A version for all numerical values.
