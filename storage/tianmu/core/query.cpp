@@ -856,8 +856,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         }
         case CompiledQuery::StepType::ADD_ORDER: {
-          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE && step.n1 >= 0 &&
-                 step.n1 < 2);
+          assert(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE && step.n1 >= 0 && step.n1 < 2);
           assert(step.a1.n >= 0 && step.a1.n < qu.NumOfVirtualColumns(step.t1));
           TempTable *loc_t = (TempTable *)ta[-step.t1.n - 1].get();
           loc_t->AddOrder(loc_t->GetVirtualColumn(step.a1.n),
@@ -867,7 +866,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
         case CompiledQuery::StepType::UNION:
           assert(step.t1.n < 0 && step.t2.n < 0 && step.t3.n < 0);
           assert(ta[-step.t2.n - 1]->TableType() == TType::TEMP_TABLE &&
-                       (step.t3.n == common::NULL_VALUE_32 || ta[-step.t3.n - 1]->TableType() == TType::TEMP_TABLE));
+                 (step.t3.n == common::NULL_VALUE_32 || ta[-step.t3.n - 1]->TableType() == TType::TEMP_TABLE));
           if (step.t1.n != step.t2.n)
             ta[-step.t1.n - 1] = TempTable::Create(*(TempTable *)ta[-step.t2.n - 1].get(), false);
           if (IsRoughQuery()) {
@@ -892,7 +891,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         case CompiledQuery::StepType::RESULT:
           assert(step.t1.n < 0 && static_cast<size_t>(-step.t1.n - 1) < ta.size() &&
-                       ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+                 ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           output_table = (TempTable *)ta[-step.t1.n - 1].get();
           break;
         case CompiledQuery::StepType::STEP_ERROR:
@@ -1923,7 +1922,7 @@ QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const Tab
       filter_type = CondType::ON_LEFT_FILTER;
     }
     assert(PrefixCheck(conds) != TableStatus::TABLE_YET_UNSEEN_INVOLVED &&
-                 "Table not yet seen was involved in this condition");
+           "Table not yet seen was involved in this condition");
 
     bool zero_result = conds->type() == Item::INT_ITEM && !conds->val_bool();
     if (BuildConditions(conds, cond_id, cq, tmp_table, filter_type, zero_result, join_type) == QueryRouteTo::kToMySQL)

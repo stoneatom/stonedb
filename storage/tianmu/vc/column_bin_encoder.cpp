@@ -140,7 +140,7 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
     my_encoder.reset(new ColumnBinEncoder::EncoderInt(vc, decodable, nulls_possible, descending));
   } else {
     assert(!"wrong combination of encoded columns");  // Other types not
-                                                            // implemented yet
+                                                      // implemented yet
     my_encoder.reset(new ColumnBinEncoder::EncoderText(vc, decodable, nulls_possible, descending));
   }
   if (_vc2 != nullptr) {  // multiple column encoding?
@@ -360,7 +360,7 @@ int64_t ColumnBinEncoder::EncoderInt::ValEncode(vcolumn::VirtualColumn *vc, MIIt
 
 int64_t ColumnBinEncoder::EncoderInt::ValEncodeInt64(int64_t v, bool update_stats) {
   assert(null_status < 2);  // should be used only for small values, when
-                                  // an additional byte is not needed
+                            // an additional byte is not needed
   if (v == common::NULL_VALUE_64) {
     if (descending)
       return max_code;

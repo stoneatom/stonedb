@@ -525,7 +525,7 @@ void ValueSet::Prepare(common::ColumnType at, int scale, DTCollation coll) {
             types::BString *v = static_cast<types::BString *>(it);
             int64_t vcode = easy_text->Encode(*v);
             assert(vcode != common::NULL_VALUE_64);  // should not occur, as we put this
-                                                           // value in the previous loop
+                                                     // value in the previous loop
             easy_hash->Insert(vcode);
           }
         } else {

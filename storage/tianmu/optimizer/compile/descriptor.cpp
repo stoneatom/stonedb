@@ -345,8 +345,7 @@ void Descriptor::SwitchSides()  // change "a<b" into "b>a" etc; throw error if
                                 // not possible (e.g. between)
 {
   assert(op == common::Operator::O_EQ || op == common::Operator::O_NOT_EQ || op == common::Operator::O_LESS ||
-         op == common::Operator::O_MORE || op == common::Operator::O_LESS_EQ ||
-         op == common::Operator::O_MORE_EQ);
+         op == common::Operator::O_MORE || op == common::Operator::O_LESS_EQ || op == common::Operator::O_MORE_EQ);
   SwitchOperator(op);
   CQTerm p = attr;
   attr = val1;
@@ -2185,7 +2184,7 @@ common::RoughSetValue DescTreeNode::EvaluateRoughlyPack(const MIIterator &mit) {
 }
 
 bool DescTreeNode::CheckCondition(MIIterator &mit) {
-  if (left) {             // i.e., not a leaf
+  if (left) {       // i.e., not a leaf
     assert(right);  // if left is not empty so should be right
     if (desc.lop == common::LogicalOperator::O_AND) {
       if (!left->CheckCondition(mit))
@@ -2253,7 +2252,7 @@ void DescTreeNode::EvaluatePack(MIUpdatingIterator &mit) {
   }
 
   // optimized case
-  if (left) {             // i.e., not a leaf
+  if (left) {       // i.e., not a leaf
     assert(right);  // if left is not empty so should be right
     if (desc.lop == common::LogicalOperator::O_AND) {
       if (left->desc.rv == common::RoughSetValue::RS_NONE || right->desc.rv == common::RoughSetValue::RS_NONE) {
@@ -2740,7 +2739,7 @@ void DescTreeNode::MEvaluatePack(MIUpdatingIterator &mit, int taskid) {
   }
 
   // optimized case
-  if (left) {             // i.e., not a leaf
+  if (left) {       // i.e., not a leaf
     assert(right);  // if left is not empty so should be right
     if (desc.lop == common::LogicalOperator::O_AND) {
       if (left->desc.rvs[taskid] == common::RoughSetValue::RS_NONE ||

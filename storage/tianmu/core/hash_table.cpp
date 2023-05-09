@@ -243,8 +243,8 @@ int64_t HashTable::Finder::GetNextRow() {
   if (current_row_ >= hash_table_->rows_count_)
     current_row_ = current_row_ % hash_table_->rows_count_;
   do {
-    assert(
-        *((int *)(hash_table_->buffer_ + current_row_ * hash_table_->total_width_ + hash_table_->multi_offset_)) != 0);
+    assert(*((int *)(hash_table_->buffer_ + current_row_ * hash_table_->total_width_ + hash_table_->multi_offset_)) !=
+           0);
     if (std::memcmp(hash_table_->buffer_ + current_row_ * hash_table_->total_width_, key_buffer_->data(),
                     key_buffer_->size()) == 0) {
       // i.e. identical row found - keep the current_row_

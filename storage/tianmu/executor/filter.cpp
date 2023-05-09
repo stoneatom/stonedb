@@ -713,8 +713,8 @@ void Filter::SwapPack(Filter &f2, int pack) {
   if (block_status[pack] == FB_MIXED) {
     // save block
     assert(shallow || (blocks[pack] && (blocks[pack]->Owner() == block_filter)));  // block_filter->this//shallow
-                                                                                         // copy can have the original
-                                                                                         // filter as the block owner
+                                                                                   // copy can have the original
+                                                                                   // filter as the block owner
 
     b.CopyFrom(*(blocks[pack]), block_filter);  // block_filter->this
   }

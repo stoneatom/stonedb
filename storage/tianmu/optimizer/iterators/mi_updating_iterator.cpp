@@ -24,7 +24,7 @@ MIUpdatingIterator::MIUpdatingIterator(MultiIndex *_mind, DimensionVector &dimen
   pack_power = mind->ValueOfPower();
   mind->IteratorUnlock();  // unlock a base class lock
   bool success = mind->IteratorUpdatingLock();
-  (void)success;          // FIXME: error handling
+  (void)success;    // FIXME: error handling
   assert(success);  // Multiindex was already locked for reading or updating!
   if (one_filter_dim > -1 && !(it[it_for_dim[one_filter_dim]]->InternallyUpdatable()))
     one_filter_dim = -1;

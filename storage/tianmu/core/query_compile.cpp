@@ -381,8 +381,8 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
       if (first_table) {
         left_tables.push_back(tab);
         assert(!join_ptr->join_cond() &&
-                     "It is not possible to join the first table with the LEFT "
-                     "direction");
+               "It is not possible to join the first table with the LEFT "
+               "direction");
         cq->TmpTable(tmp_table, tab, for_subq_in_where);
         first_table = false;
       } else {
