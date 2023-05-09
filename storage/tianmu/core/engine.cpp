@@ -1588,14 +1588,14 @@ void Engine::LogStat() {
     // commands we are interested in
     static const enum_sql_command cmds[] = {
         SQLCOM_SELECT,
-        // SQLCOM_CREATE_TABLE,
-        // SQLCOM_ALTER_TABLE,
+        SQLCOM_CREATE_TABLE,
+        SQLCOM_ALTER_TABLE,
         SQLCOM_UPDATE,
         SQLCOM_INSERT,
-        // SQLCOM_INSERT_SELECT,
+        SQLCOM_INSERT_SELECT,
         SQLCOM_DELETE,
         SQLCOM_TRUNCATE,
-        // SQLCOM_DROP_TABLE,
+        SQLCOM_DROP_TABLE,
         SQLCOM_LOAD,
     };
 
