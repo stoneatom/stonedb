@@ -113,7 +113,10 @@ class Engine final {
   void UnRegisterTable(const std::string &table_path);
   void GetTableIterator(const std::string &table_path, RCTable::Iterator &iter_begin, RCTable::Iterator &iter_end,
                         std::shared_ptr<RCTable> &table, const std::vector<bool> &, THD *thd);
+  // support for add primary key
   void AddTableIndex(const std::string &table_path, TABLE *table, THD *thd);
+  // support for delete primary key
+  void DeleteTableIndex(const std::string &table_path, THD *thd);
   std::shared_ptr<index::RCTableIndex> GetTableIndex(const std::string &table_path);
   bool has_pk(TABLE *table) const { return table->s->primary_key != MAX_INDEXES; }
   void RenameRdbTable(const std::string &from, const std::string &to);

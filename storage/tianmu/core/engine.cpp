@@ -780,11 +780,7 @@ void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
 }
 
 void Engine::DeleteTable(const char *table, [[maybe_unused]] const dd::Table *table_def, [[maybe_unused]] THD *thd) {
-  {
-    std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
-    index::RCTableIndex::DropIndexTable(table);
-    m_table_keys.erase(table);
-  }
+  DeleteTableIndex(table, thd);
   {
     std::unique_lock<std::shared_mutex> mem_guard(mem_table_mutex);
     RCMemTable::DropMemTable(table);
@@ -1109,6 +1105,7 @@ void Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
   system::RenameFile(tianmu_data_dir / (from + common::TIANMU_EXT), tianmu_data_dir / (to + common::TIANMU_EXT));
   RenameRdbTable(from, to);
+  DeleteTableIndex(from, thd);
   UnregisterMemTable(from, to);
   TIANMU_LOG(LogCtl_Level::INFO, "Rename table %s to %s", from.c_str(), to.c_str());
 }
@@ -1983,6 +1980,17 @@ void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_
   if (iter == m_table_keys.end()) {
     std::shared_ptr<index::RCTableIndex> tab = std::make_shared<index::RCTableIndex>(table_path, table);
     m_table_keys[table_path] = tab;
+  }
+}
+
+void Engine::DeleteTableIndex(const std::string &table_path, [[maybe_unused]] THD *thd) {
+  std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
+  if (index::RCTableIndex::FindIndexTable(table_path)) {
+    index::RCTableIndex::DropIndexTable(table_path);
+  }
+  auto iter = m_table_keys.find(table_path);
+  if (iter != m_table_keys.end()) {
+    m_table_keys.erase(table_path);
   }
 }
 
