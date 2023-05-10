@@ -980,9 +980,9 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, Query_block *selects_
 
     if (JudgeErrors(sl) == QueryRouteTo::TO_MYSQL)
       return QueryRouteTo::TO_MYSQL;
+
     SetLimit(sl, sl == selects_list ? 0 : sl->join->query_expression()->global_parameters(), offset_value, limit_value);
 
-    // Item *conds = sl->where_cond();
     Item *conds = (ifNewJoinForTianmu || !sl->join->where_cond) ? sl->where_cond() : sl->join->where_cond;
 
     ORDER *order = sl->order_list.first;
