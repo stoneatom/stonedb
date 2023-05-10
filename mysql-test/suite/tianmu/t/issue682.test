@@ -1,0 +1,134 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists issue682;
+--enable_warnings
+create database issue682;
+use issue682;
+
+set sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION';
+create table t1(a date not null);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+-- error 1048
+insert into t1 values (null);
+insert into t1 values (20221020);
+select * from t1;
+select * from t1 where a is null;
+delete from t1 where a is null;
+delete from t1 where a=0;
+select * from t1 where a is null;
+select * from t1;
+delete from t1 where a ='20221020';
+select * from t1;
+drop table t1;
+
+create table t1(a date);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+insert into t1 values (null);
+insert into t1 values (20221020);
+select * from t1;
+select * from t1 where a is null;
+delete from t1 where a is null;
+select * from t1 where a is null;
+select * from t1;
+delete from t1 where a ='20221020';
+select * from t1;
+drop table t1;
+
+create table t1(a datetime not null);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+-- error 1048
+insert into t1 values (null);
+insert into t1 values (20221020);
+select * from t1;
+select * from t1 where a is null;
+delete from t1 where a is null;
+delete from t1 where a=0;
+select * from t1 where a is null;
+select * from t1;
+delete from t1 where a ='20221020';
+select * from t1;
+drop table t1;
+
+
+create table t1(a TIME not null);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+-- error 1048
+insert into t1 values (null);
+insert into t1 values ('12:13:14');
+select * from t1;
+select * from t1 where a is null;
+delete from t1 where a is null;
+delete from t1 where a=0;
+select * from t1 where a is null;
+select * from t1;
+delete from t1 where a ='12:13:14';
+select * from t1;
+drop table t1;
+
+
+CREATE TABLE t1 (a varchar(10));
+CREATE TABLE t2 (a varchar(10), b date  not null);
+CREATE TABLE t3 (a varchar(10), b TIME  not null);
+
+INSERT INTO t1 VALUES ('test1');
+INSERT  ignore  INTO t2 VALUES
+('test1','2016-12-13'),('test1','2016-12-14'),('test1','2016-12-15'),('test1',null);
+INSERT ignore INTO t3 VALUES
+('test1','11:13:14'), ('test1','12:13:14'), ('test1','10:13:14'),('test1',null);
+
+SELECT *
+FROM t1 LEFT JOIN t2
+  ON t2.a = 'test1' AND t2.b = '20161213'
+WHERE t1.a = 'test1';
+
+SELECT *
+FROM t1 LEFT JOIN t2
+  ON t2.a = 'test1' 
+WHERE t1.a = 'test1' 
+or t2.b is null;
+
+
+SELECT *
+FROM t1 LEFT JOIN t3
+  ON t3.a = 'test1' 
+  AND t3.b = '12:13:14'
+WHERE t1.a = 'test1';
+
+SELECT *
+FROM t1 LEFT JOIN t3
+  ON t3.a = 'test1' 
+WHERE t1.a = 'test1' 
+or t3.b is null;
+
+drop table t1,t2,t3;
+
+set sql_mode='STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE,NO_ZERO_DATE';
+create table t1(a date not null);
+insert ignore into t1 values (0);
+-- error 1292
+insert into t1 values (0);
+insert ignore into t1 values (null);
+-- error 1048
+insert into t1 values (null);
+insert into t1 values (20221020);
+select * from t1;
+select * from t1 where a is null;
+-- error 1292
+delete from t1 where a is null;
+-- error 1292
+delete from t1 where a=0;
+select * from t1 where a is null;
+select * from t1;
+delete from t1 where a ='20221020';
+select * from t1;
+drop table t1;
+drop database issue682;
