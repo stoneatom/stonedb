@@ -133,7 +133,7 @@ class Engine final {
   // processing the queries which routed to Tianmu.
   QueryRouteTo Handle_Query(THD *thd, Query_expression *qe, Query_result *&result_output,
                             ulong setup_tables_done_option, int &res, int &optimize_after_tianmu, int &tianmu_free_join,
-                            int with_insert = false);
+                            bool with_insert = false);
 
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
 
@@ -192,7 +192,7 @@ class Engine final {
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
 
   static QueryRouteTo RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
-                              int &in_case_of_failure_can_go_to_mysql, int with_insert);  // stonedb8
+                              bool &in_case_of_failure_can_go_to_mysql, bool with_insert);  // stonedb8
 
   static const char *GetFilename(Query_block *selects_list, int &is_dumpfile);  // stonedb8
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
