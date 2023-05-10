@@ -114,44 +114,56 @@ CONTAINER ID        IMAGE                   COMMAND             CREATED         
 [root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb57.tar.gz /stonedb57/
 ```
 ### 2、容器中直接部署试用StoneDB
-可以参考：[StoneDB快速部署手册](https://stonedb.io/zh/docs/getting-started/quick-deployment)，
+可以参考：[StoneDB快速部署手册](https://stonedb.io/zh/docs/quick-deployment)，
 或者在容器中参考以下方法快速部署进行试用。
-```bash
-#进入编译安装的StoneDB install目录，以stonedb57为例
-[root@06f1f385d3b3 build]# cd /stonedb57/install/
-
-[root@06f1f385d3b3 install]# groupadd mysql
-
-[root@06f1f385d3b3 install]# useradd -g mysql mysql
-
-[root@06f1f385d3b3 install]# ll
-total 180
--rw-r--r--.  1 root root  17987 Jun  8 03:41 COPYING
--rw-r--r--.  1 root root 102986 Jun  8 03:41 INSTALL-BINARY
--rw-r--r--.  1 root root   2615 Jun  8 03:41 README
-drwxr-xr-x.  2 root root   4096 Jun  8 06:16 bin
-drwxr-xr-x.  3 root root     18 Jun  8 06:16 data
-drwxr-xr-x.  2 root root     55 Jun  8 06:16 docs
-drwxr-xr-x.  3 root root   4096 Jun  8 06:16 include
--rwxr-xr-x.  1 root root    267 Jun  8 03:41 install.sh
-drwxr-xr-x.  3 root root    272 Jun  8 06:16 lib
-drwxr-xr-x.  4 root root     30 Jun  8 06:16 man
-drwxr-xr-x. 10 root root   4096 Jun  8 06:16 mysql-test
--rwxr-xr-x.  1 root root  12516 Jun  8 03:41 mysql_server
--rwxr-xr-x.  1 root root    764 Jun  8 03:41 reinstall.sh
-drwxr-xr-x.  2 root root     57 Jun  8 06:16 scripts
-drwxr-xr-x. 28 root root   4096 Jun  8 06:16 share
-drwxr-xr-x.  4 root root   4096 Jun  8 06:16 sql-bench
--rw-r--r--.  1 root root   5526 Jun  8 03:41 stonedb.cnf
-drwxr-xr-x.  2 root root    136 Jun  8 06:16 support-files
-
-[root@06f1f385d3b3 install]# ll {data,binlog,log,tmp,redolog,undolog}
-[root@06f1f385d3b3 install]# mkdir -p ./{data/innodb,binlog,log,tmp,redolog,undolog}
-
-[root@06f1f385d3b3 install]# chown -R mysql:mysql *
+#### 2.1. 创建用户
+```shell
+groupadd mysql
+useradd -g mysql mysql
+passwd mysql
 ```
+#### 2.2. 手动安装
+手动创建目录、初始化和启动实例，还需要配置 my.cnf 文件，如安装目录，端口等参数。
+```shell
+###创建目录
+mkdir -p /stonedb57/install/data
+mkdir -p /stonedb57/install/binlog
+mkdir -p /stonedb57/install/log
+mkdir -p /stonedb57/install/tmp
+mkdir -p /stonedb57/install/redolog
+mkdir -p /stonedb57/install/undolog
+chown -R mysql:mysql /stonedb57
+
+###配置my.cnf
+mv my.cnf my.cnf.bak
+vim /stonedb57/install/my.cnf
+[mysqld]
+port      = 3306
+socket    = /stonedb57/install/tmp/mysql.sock
+basedir   = /stonedb57/install
+datadir   = /stonedb57/install/data
+pid_file  = /stonedb57/install/data/mysqld.pid
+log_error = /stonedb57/install/log/mysqld.log
+innodb_log_group_home_dir   = /stonedb57/install/redolog/
+innodb_undo_directory       = /stonedb57/install/undolog/
+
+chown -R mysql:mysql /stonedb57/install/my.cnf
+
+###初始化实例
+/stonedb57/install/bin/mysqld --defaults-file=/stonedb57/install/my.cnf --initialize --user=mysql
+
+###启动实例
+/stonedb57/install/bin/mysqld_safe --defaults-file=/stonedb57/install/my.cnf --user=mysql &
+```
+#### 2.3. 自动安装
+编译完成后，在安装目录下会自动生成 reinstall.sh、install.sh 和 my.cnf 文件，执行 reinstall.sh 就是创建目录、初始化实例和启动实例的过程。
+```shell
+cd /stonedb57/install
+./reinstall.sh
+```
+#### 2.4 执行登录
 StoneDB56 和StoneDB57安装部署的区别在于初始化数据和重置密码上，在初始化过程中如果遇到问题建议先自行排查log/mysqld.log ,是否有报错信息，如无法自行解决，请提供StoneDB版本信息，Docker image 版本和报错日志，StoneDB版本信息到我们社区或者github 提交issues。
-### StoneDB56参考
+##### StoneDB56参考
 ```bash
 [root@06f1f385d3b3 install]# ./scripts/mysql_install_db --defaults-file=./my.cnf --user=mysql --basedir=/stonedb56/install --datadir=/stonedb56/install/data
 To do so, start the server, then issue the following commands:
@@ -196,7 +208,7 @@ Query OK, 0 rows affected (0.00 sec)
 
 
 ```
-### StoneDB57参考
+##### StoneDB57参考
 ```bash
 
 [root@06f1f385d3b3 install]# ./bin/mysqld --defaults-file=./my.cnf --initialize --user=mysql
