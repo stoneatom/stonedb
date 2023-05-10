@@ -369,13 +369,15 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
   // pre-allocation of distinct memory
   int distinct_width = 0;
   int64_t distinct_size = 0;
-  for (int i = no_grouping_attr; i < no_attr; i++)
+  for (int i = no_grouping_attr; i < no_attr; i++) {
     if (distinct[i]) {
       desc = aggregated_desc[i - no_grouping_attr];
       distinct_width = vc[i]->MaxStringSize() + 2;
       distinct_size += desc.max_no_values * distinct_width;
     }
+  }
   distinct_size = int64_t(ceil(distinct_size * 1.3));
+
   // initialize distinct tables
   for (int i = no_grouping_attr; i < no_attr; i++)
     if (distinct[i]) {

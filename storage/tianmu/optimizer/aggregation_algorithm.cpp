@@ -56,6 +56,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     if ((just_distinct && cur_a.alias) || cur_a.mode == common::ColOperation::GROUP_BY) {
       if (cur_a.mode == common::ColOperation::GROUP_BY)
         group_by_found = true;
+
       bool already_added = false;
       for (uint j = 0; j < i; j++) {
         if (*(t->GetAttrP(j)) == cur_a) {
@@ -98,8 +99,10 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
           break;
         }
       }
+
       if (already_added)
         continue;
+
       int64_t max_no_of_distinct = mind->NumOfTuples();
       min_v = common::MINUS_INF_64;
       max_v = common::PLUS_INF_64;
@@ -108,6 +111,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
       if (cur_a.term.vc) {
         if (!has_lookup)
           has_lookup = cur_a.term.vc->Type().Lookup();
+
         max_size = cur_a.term.vc->MaxStringSize();
         min_v = cur_a.term.vc->RoughMin();
         max_v = cur_a.term.vc->RoughMax();
@@ -197,6 +201,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     // limit is -1 (off), or a positive number, 0 means nothing should be displayed.
     if (limit == -1 || (offset == 0 && limit >= 1)) {
       --limit;
+
       AggregateFillOutput(gbw, row, offset);
       if (sender) {
         sender->SetAffectRows(t->NumOfObj());

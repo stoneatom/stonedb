@@ -32,6 +32,9 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
 
   field->set_notnull();
 
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   switch (field->type()) {
     case MYSQL_TYPE_VARCHAR: {
       DEBUG_ASSERT(dynamic_cast<types::BString *>(&tianmu_item));
@@ -80,8 +83,9 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
         double2decimal((double)((types::TianmuNum &)(tianmu_item)), &md);
       } else {
         int is_null;
-        Engine::Convert(is_null, &md, tianmu_item);
+        eng->Convert(is_null, &md, tianmu_item);
       }
+
       decimal_round(&md, &md, ((Field_new_decimal *)field)->decimals(), HALF_UP);
       decimal2bin(&md, (uchar *)field->ptr, ((Field_new_decimal *)field)->precision,
                   ((Field_new_decimal *)field)->decimals());

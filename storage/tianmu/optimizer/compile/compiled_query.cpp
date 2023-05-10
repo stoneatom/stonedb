@@ -109,204 +109,47 @@ void CompiledQuery::CQStep::swap(CQStep &s) {
   }
 }
 
+std::string tianmu_op_str[] = {
+    "=",        "=ALL",       "=ANY",           "<>",      "<>ALL",        "<>ANY", "<",          "<ALL",
+    ">",        ">ALL",       ">ANY",           "<=",      "<=ALL",        "<=ANY", ">=",         ">=ALL",
+    ">=ANY",    "IS nullptr", "IS NOT nullptr", "BETWEEN", "NOT BETWEEN",  "LIKE",  "IN",         "LIKE",
+    "NOT LIKE", "IN",         "NOT IN",         "EXISTS",  "NOT EXISTS",   "FALSE", "TRUE",       "ESCAPE",
+    "OR",       "===",        "NOT()",          "NOT ALL", "UNKNOWN FUNC", "ERROR", "INVALID OPR"};
+
+std::string tianmu_cloper_str[] = {"DELAYED", "LISTING",  "COUNT",   "SUM",          "MIN",         "MAX",
+                                   "AVG",     "GROUP_BY", "STD_POP", "STD_SAMP",     "VAR_POP",     "VAR_SAMP",
+                                   "BIT_AND", "BIT_OR",   "BIT_XOR", "GROUP_CONCAT", "NOT_YET_NAME"};
+
+std::string tianmu_param_str[] = {"TM_DISTINCT", "LIMIT", "EXISTS", "???"};
+
+std::string tianmu_join_str[] = {"INNER", "LEFT", "RIGHT", "FULL", "???"};
 void CompiledQuery::CQStep::Print(Query *query) {
-  char buf[512] = "";
-  char b1[100], b2[100], b3[100];
+  char buf[512] = {0x0};
+  char b1[100] = {0x0}, b2[100] = {0x0}, b3[100] = {0x0};
   b1[0] = b2[0] = b3[0] = '\0';
 
-  char b_op[20];
-  switch (op) {
-    case common::Operator::O_EQ:
-      std::strcpy(b_op, "=");
-      break;
-    case common::Operator::O_EQ_ALL:
-      std::strcpy(b_op, "=ALL");
-      break;
-    case common::Operator::O_EQ_ANY:
-      std::strcpy(b_op, "=ANY");
-      break;
-    case common::Operator::O_NOT_EQ:
-      std::strcpy(b_op, "<>");
-      break;
-    case common::Operator::O_NOT_EQ_ALL:
-      std::strcpy(b_op, "<>ALL");
-      break;
-    case common::Operator::O_NOT_EQ_ANY:
-      std::strcpy(b_op, "<>ANY");
-      break;
-    case common::Operator::O_LESS:
-      std::strcpy(b_op, "<");
-      break;
-    case common::Operator::O_LESS_ALL:
-      std::strcpy(b_op, "<ALL");
-      break;
-    case common::Operator::O_LESS_ANY:
-      std::strcpy(b_op, "<ANY");
-      break;
-    case common::Operator::O_MORE:
-      std::strcpy(b_op, ">");
-      break;
-    case common::Operator::O_MORE_ALL:
-      std::strcpy(b_op, ">ALL");
-      break;
-    case common::Operator::O_MORE_ANY:
-      std::strcpy(b_op, ">ANY");
-      break;
-    case common::Operator::O_LESS_EQ:
-      std::strcpy(b_op, "<=");
-      break;
-    case common::Operator::O_LESS_EQ_ALL:
-      std::strcpy(b_op, "<=ALL");
-      break;
-    case common::Operator::O_LESS_EQ_ANY:
-      std::strcpy(b_op, "<=ANY");
-      break;
-    case common::Operator::O_MORE_EQ:
-      std::strcpy(b_op, ">=");
-      break;
-    case common::Operator::O_MORE_EQ_ALL:
-      std::strcpy(b_op, ">=ALL");
-      break;
-    case common::Operator::O_MORE_EQ_ANY:
-      std::strcpy(b_op, ">=ANY");
-      break;
-    case common::Operator::O_IS_NULL:
-      std::strcpy(b_op, "IS nullptr");
-      break;
-    case common::Operator::O_NOT_NULL:
-      std::strcpy(b_op, "IS NOT nullptr");
-      break;
-    case common::Operator::O_BETWEEN:
-      std::strcpy(b_op, "BETWEEN");
-      break;
-    case common::Operator::O_IN:
-      std::strcpy(b_op, "IN");
-      break;
-    case common::Operator::O_LIKE:
-      std::strcpy(b_op, "LIKE");
-      break;
-    case common::Operator::O_ESCAPE:
-      std::strcpy(b_op, "ESCAPE");
-      break;
-    case common::Operator::O_EXISTS:
-      std::strcpy(b_op, "EXISTS");
-      break;
-    case common::Operator::O_NOT_LIKE:
-      std::strcpy(b_op, "NOT LIKE");
-      break;
-    case common::Operator::O_NOT_BETWEEN:
-      std::strcpy(b_op, "NOT BETWEEN");
-      break;
-    case common::Operator::O_NOT_IN:
-      std::strcpy(b_op, "NOT IN");
-      break;
-    case common::Operator::O_NOT_EXISTS:
-      std::strcpy(b_op, "NOT EXISTS");
-      break;
-    case common::Operator::O_FALSE:
-      std::strcpy(b_op, "FALSE");
-      break;
-    case common::Operator::O_TRUE:
-      std::strcpy(b_op, "TRUE");
-      break;
-    default:
-      std::strcpy(b_op, "?");
-  }
+  // cpy the oper str.
+  char b_op[20] = {0x0};
+  int idx = static_cast<int>(op);
+  std::strcpy(b_op, tianmu_op_str[idx].c_str());
 
-  char b_cop[20];  // enum common::ColOperation {LIST, COUNT, COUNT_DISTINCT,
-                   // SUM, MIN, MAX, AVG};
+  // cpy the oper command.
+  char b_cop[20] = {0x0};  // enum common::ColOperation {LIST, COUNT, COUNT_DISTINCT,
+                           // SUM, MIN, MAX, AVG};
+  idx = static_cast<int>(cop);
+  std::strcpy(b_cop, tianmu_cloper_str[idx].c_str());
 
-  switch (cop) {
-    case common::ColOperation::LISTING:
-      std::strcpy(b_cop, "LIST");
-      break;
-    case common::ColOperation::COUNT:
-      std::strcpy(b_cop, "COUNT");
-      break;
-    case common::ColOperation::SUM:
-      std::strcpy(b_cop, "SUM");
-      break;
-    case common::ColOperation::MIN:
-      std::strcpy(b_cop, "MIN");
-      break;
-    case common::ColOperation::MAX:
-      std::strcpy(b_cop, "MAX");
-      break;
-    case common::ColOperation::AVG:
-      std::strcpy(b_cop, "AVG");
-      break;
-    case common::ColOperation::STD_POP:
-      std::strcpy(b_cop, "STD_POP");
-      break;
-    case common::ColOperation::STD_SAMP:
-      std::strcpy(b_cop, "STD_SAMP");
-      break;
-    case common::ColOperation::VAR_POP:
-      std::strcpy(b_cop, "VAR_POP");
-      break;
-    case common::ColOperation::VAR_SAMP:
-      std::strcpy(b_cop, "VAR_SAMP");
-      break;
-    case common::ColOperation::BIT_AND:
-      std::strcpy(b_cop, "BIT_AND");
-      break;
-    case common::ColOperation::BIT_OR:
-      std::strcpy(b_cop, "BIT_OR");
-      break;
-    case common::ColOperation::BIT_XOR:
-      std::strcpy(b_cop, "BIT_XOR");
-      break;
-    case common::ColOperation::GROUP_CONCAT:
-      std::strcpy(b_cop, "GROUP_CONCAT");
-      break;
-    case common::ColOperation::GROUP_BY:
-      std::strcpy(b_cop, "GROUP_BY");
-      break;
-    case common::ColOperation::DELAYED:
-      std::strcpy(b_cop, "DELAYED");
-      break;
-    default:
-      std::strcpy(b_cop, "[no name yet]");
-  }
+  // cpy th paramm str.
+  char b_tmpar[20] = {0x0};  // enum TMParameter	{	TMParameter::TM_DISTINCT, TMParameter::TM_TOP,
+                             // TMParameter::TM_EXISTS, TM_COUNT };  Table Mode
+  idx = static_cast<int>(tmpar);
+  std::strcpy(b_tmpar, tianmu_param_str[idx].c_str());
 
-  char b_tmpar[20];  // enum TMParameter	{	TMParameter::TM_DISTINCT, TMParameter::TM_TOP,
-                     // TMParameter::TM_EXISTS, TM_COUNT };
-                     // // Table Mode
-
-  switch (tmpar) {
-    case TMParameter::TM_DISTINCT:
-      std::strcpy(b_tmpar, "DISTINCT");
-      break;
-    case TMParameter::TM_TOP:
-      std::strcpy(b_tmpar, "LIMIT");
-      break;
-    case TMParameter::TM_EXISTS:
-      std::strcpy(b_tmpar, "EXISTS");
-      break;
-    default:
-      std::strcpy(b_tmpar, "???");
-  }
-
-  char b_jt[20];  // enum JoinType		{	JoinType::JO_INNER, JoinType::JO_LEFT,
-                  // JoinType::JO_RIGHT, JoinType::JO_FULL
-                  // };
-
-  switch (jt) {
-    case JoinType::JO_INNER:
-      std::strcpy(b_jt, "INNER");
-      break;
-    case JoinType::JO_LEFT:
-      std::strcpy(b_jt, "LEFT");
-      break;
-    case JoinType::JO_RIGHT:
-      std::strcpy(b_jt, "RIGHT");
-      break;
-    case JoinType::JO_FULL:
-      std::strcpy(b_jt, "FULL");
-      break;
-    default:
-      std::strcpy(b_jt, "????");
-  }
+  // cpy the join type str.
+  char b_jt[20] = {0x0};  // enum JoinType		{	JoinType::JO_INNER, JoinType::JO_LEFT,
+                          // JoinType::JO_RIGHT, JoinType::JO_FULL };
+  idx = static_cast<int>(jt);
+  std::strcpy(b_jt, tianmu_join_str[idx].c_str());
 
   switch (type) {
     case StepType::TABLE_ALIAS:
@@ -536,6 +379,7 @@ void CompiledQuery::Mode(const TabID &t1, TMParameter mode, int64_t n1, int64_t 
     std::strcpy(s.alias, "T_MODE: can't be applied to TianmuTable");
     return;
   }
+
   s.type = StepType::T_MODE;
   s.t1 = t1;
   s.tmpar = mode;
@@ -545,7 +389,7 @@ void CompiledQuery::Mode(const TabID &t1, TMParameter mode, int64_t n1, int64_t 
 }
 
 void CompiledQuery::Join(const TabID &t1, const TabID &t2) {
-  for (auto &step : steps)
+  for (auto &step : steps) {
     if (step.type == StepType::TMP_TABLE && step.t1 == t1) {
       step.tables1.push_back(t2);
       for (auto &it : steps_tmp_tables) {
@@ -556,6 +400,8 @@ void CompiledQuery::Join(const TabID &t1, const TabID &t2) {
       }
       break;
     }
+  }
+
   CompiledQuery::CQStep s;
   s.type = StepType::JOIN_T;
   s.t1 = t1;
@@ -588,6 +434,7 @@ void CompiledQuery::InnerJoinOn(const TabID &temp_table, std::vector<TabID> &lef
 void CompiledQuery::AddConds(const TabID &t1, const CondID &c1, CondType cond_type) {
   if (c1.IsNull())
     return;
+
   CompiledQuery::CQStep s;
   s.type = StepType::ADD_CONDS;
   s.t1 = t1;
@@ -614,12 +461,14 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common:
   s.cop = op;
   if (op == common::ColOperation::GROUP_CONCAT && si != nullptr)
     s.si = *si;
+
   if (alias) {
     size_t const alias_ct(std::strlen(alias) + 1);
     s.alias = new char[alias_ct];
     std::strcpy(s.alias, alias);
   } else
     s.alias = nullptr;
+
   s.n1 = distinct ? 1 : 0;
   steps.push_back(s);
   if (op == common::ColOperation::GROUP_BY)
@@ -690,6 +539,7 @@ void CompiledQuery::Union(TabID &t_out, const TabID &t2, const TabID &t3, int al
     s.t1 = t_out = NextTabID();
   else
     s.t1 = t2;
+
   s.t2 = t2;
   s.t3 = t3;
   s.n1 = all;
@@ -721,6 +571,7 @@ bool CompiledQuery::CountColumnOnly(const TabID &table) {
       break;
     }
   }
+
   return count_only;
 }
 
@@ -736,6 +587,7 @@ bool CompiledQuery::NoAggregationOrderingAndDistinct(int table) {
     if (step.type == CompiledQuery::StepType::T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_DISTINCT)
       return false;  // exclude DISTINCT
   }
+
   return true;
 }
 

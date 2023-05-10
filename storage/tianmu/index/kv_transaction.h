@@ -37,7 +37,10 @@ class KVTransaction {
   // dctor.
   virtual ~KVTransaction();
 
-  // gets a value by key and cf.
+  // it's weird to impl writing data and reading data in transaction. The transaction should be only do the following
+  // things: start_transaction, commit_transaction rollback_transaction, or savepoint, etc. The writing data and reading
+  // data is storage engine responsibilites.
+  //  gets a value by key and cf.
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key, std::string *value);
   // stores a (key-value) pair into column_family.
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,

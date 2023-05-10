@@ -466,10 +466,11 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
   CompiledQuery cqu;
 
   current_txn_->ResetDisplay();  // switch display on
+  // set rough query on.
   query.SetRoughQuery(selects_list->active_options() & SELECT_ROUGHLY);
 
   try {
-    if (QueryRouteTo::kToMySQL == query.Compile(&cqu, selects_list, last_distinct)) {
+    if (QueryRouteTo::kToMySQL == query.Compile(thd, &cqu, selects_list, last_distinct)) {
       push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                    "Query syntax not implemented in Tianmu, executed by MySQL engine.");
       return QueryRouteTo::kToMySQL;
@@ -486,12 +487,13 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
                                              std::bind(&Query::UnlockPackInfoFromUse, &query));
 
   try {
-    std::shared_ptr<TianmuTable> rct;
+    std::shared_ptr<TianmuTable> rct;  // used for indicating target table of insertion into xxx.
     if (lex->sql_command == SQLCOM_INSERT_SELECT &&
         Engine::IsTianmuTable(((Query_tables_list *)lex)->query_tables->table)) {
       std::string table_path = Engine::GetTablePath(((Query_tables_list *)lex)->query_tables->table);
       rct = current_txn_->GetTableByPathIfExists(table_path);
     }
+
     if ((unit_for_union != nullptr) && (lex->sql_command != SQLCOM_CREATE_TABLE)) {  //  for exclude CTAS
       int res = result_output->prepare(unit_for_union->item_list, unit_for_union);
       if (res) {

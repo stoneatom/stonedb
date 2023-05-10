@@ -359,8 +359,7 @@ class TempTable : public JustATable {
     return attrs[0]->page_size;
   }
 
-  void DisplayRSI();  // display info about all RSI contained in TianmuTables from
-                      // this TempTable
+  void DisplayRSI();  // display info about all RSI contained in TianmuTables from this TempTable
 
   bool HasHavingConditions() { return having_conds.Size() > 0; }
   bool CheckHavingConditions(MIIterator &it) { return having_conds[0].tree->root->CheckCondition(it); }
