@@ -159,72 +159,80 @@ After the `make` commands are successful, you can choose either to compress the 
 ### Compress compilation files to a TAR file
 ```bash
 # Compress the 'home' folder to a TAR file and mount the TAR file to a directory outside the container.
-[root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb56.tar.gz /stonedb56/
+[root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb57.tar.gz /stonedb57/
 ```
 ### Directly use StoneDB in the container
-You can refer to [Quick Deployment](.../../../../02-getting-started/quick-deployment/quick-deployment-56.md) or the following code to deploy and use StoneDB in the container.
-```bash
-[root@06f1f385d3b3 build]# cd /stonedb56/install/
+You can refer to [Quick Deployment](.../../../../02-getting-started/quick-deployment/quick-deployment-57.md) or the following code to deploy and use StoneDB in the container.
+### 1. Create an account
+```shell
+groupadd mysql
+useradd -g mysql mysql
 
-[root@06f1f385d3b3 install]# groupadd mysql
+# Here are the optional execution statements
+passwd mysql
+```
+### 2. Manually install StoneDB
+You need to manually create directories, configure the parameter file, and then initialize and start StoneDB.
+```shell
+### Create directories.
+mkdir -p /stonedb57/install/data
+mkdir -p /stonedb57/install/binlog
+mkdir -p /stonedb57/install/log
+mkdir -p /stonedb57/install/tmp
+mkdir -p /stonedb57/install/redolog
+mkdir -p /stonedb57/install/undolog
+chown -R mysql:mysql /stonedb57
 
-[root@06f1f385d3b3 install]# useradd -g mysql mysql
+### Configure my.cnf.
+mv my.cnf my.cnf.bak
+vim /stonedb57/install/my.cnf
+[mysqld]
+port      = 3306
+socket    = /stonedb57/install/tmp/mysql.sock
+basedir   = /stonedb57/install
+datadir   = /stonedb57/install/data
+pid_file  = /stonedb57/install/data/mysqld.pid
+log_error = /stonedb57/install/log/mysqld.log
+innodb_log_group_home_dir   = /stonedb57/install/redolog/
+innodb_undo_directory       = /stonedb57/install/undolog/
 
-[root@06f1f385d3b3 install]# ll
-total 180
--rw-r--r--.  1 root root  17987 Jun  8 03:41 COPYING
--rw-r--r--.  1 root root 102986 Jun  8 03:41 INSTALL-BINARY
--rw-r--r--.  1 root root   2615 Jun  8 03:41 README
-drwxr-xr-x.  2 root root   4096 Jun  8 06:16 bin
-drwxr-xr-x.  3 root root     18 Jun  8 06:16 data
-drwxr-xr-x.  2 root root     55 Jun  8 06:16 docs
-drwxr-xr-x.  3 root root   4096 Jun  8 06:16 include
--rwxr-xr-x.  1 root root    267 Jun  8 03:41 install.sh
-drwxr-xr-x.  3 root root    272 Jun  8 06:16 lib
-drwxr-xr-x.  4 root root     30 Jun  8 06:16 man
-drwxr-xr-x. 10 root root   4096 Jun  8 06:16 mysql-test
--rwxr-xr-x.  1 root root  12516 Jun  8 03:41 mysql_server
--rwxr-xr-x.  1 root root    764 Jun  8 03:41 reinstall.sh
-drwxr-xr-x.  2 root root     57 Jun  8 06:16 scripts
-drwxr-xr-x. 28 root root   4096 Jun  8 06:16 share
-drwxr-xr-x.  4 root root   4096 Jun  8 06:16 sql-bench
--rw-r--r--.  1 root root   5526 Jun  8 03:41 stonedb.cnf
-drwxr-xr-x.  2 root root    136 Jun  8 06:16 support-files
-[root@06f1f385d3b3 install]# ./reinstall.sh
+chown -R mysql:mysql /stonedb57/install/my.cnf
 
-...
+### Initialize StoneDB.
+/stonedb57/install/bin/mysqld --defaults-file=/stonedb57/install/my.cnf --initialize --user=mysql
 
-# If the following information is returned, StoneDB is started.
-+ log_success_msg
-+ /etc/redhat-lsb/lsb_log_message success
-/etc/redhat-lsb/lsb_log_message: line 3: /etc/init.d/functions: No such file or directory
-/etc/redhat-lsb/lsb_log_message: line 11: success: command not found
+### Start StoneDB.
+/stonedb57/install/bin/mysqld_safe --defaults-file=/stonedb57/install/my.cnf --user=mysql &
+```
+### 3. Automatically install StoneDB
+The process of executing the **reinstall.sh** script is to initialize and start the StoneDB.
+```shell
+cd /stonedb57/install
+./reinstall.sh
+```
+:::info
+Differences between **reinstall.sh** and **install.sh**:
 
-+ return 0
-+ return_value=0
-+ test -w /var/lock/subsys
-+ touch /var/lock/subsys/mysql
-+ exit 0
+- **reinstall.sh** is the script for automatic installation. When the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup of StoneDB. Otherwise, all directories will be deleted and StoneDB will be initialized again.
+- **install.sh** is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as reinstall.sh, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
+  :::
 
+### 4. Log in to StoneDB
+```shell
+cat /stonedb57/install/log/mysqld.log |grep password
+[Note] A temporary password is generated for root@localhost: ceMuEuj6l4+!
 
-# Reset the password of local user 'root'.
-[root@06f1f385d3b3 install]# /stonedb56/install/bin/mysqladmin flush-privileges -u root password "*******"
-Warning: Using a password on the command line interface can be insecure.
-# Create a username and password for remote connection.
-[root@06f1f385d3b3 install]# /stonedb56/install/bin/mysql -uroot -p*******
-Warning: Using a password on the command line interface can be insecure.
+/stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install/tmp/mysql.sock
+mysql: [Warning] Using a password on the command line interface can be insecure.
 Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 5
-Server version: 5.6.24-StoneDB-log build-
+Your MySQL connection id is 2
+Server version: 5.7.36-StoneDB-debug-log build-
 
-Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
+Copyright (c) 2021, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-mysql> grant all ON *.* to root@'%' identified by '********';
-Query OK, 0 rows affected (0.00 sec)
-
-mysql> flush privileges;
-Query OK, 0 rows affected (0.00 sec)
-
+mysql> alter user 'root'@'localhost' identified by 'stonedb123';
+# Allow root user to log in remotely
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'stonedb123' WITH GRANT OPTION;
+mysql> FLUSH PRIVILEGES;
 ```
-After you start StoneDB in the container, you can log in to and use StoneDB or run the `docker run -p <port mapping>` command to connect to StoneDB.
