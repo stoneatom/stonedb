@@ -85,12 +85,11 @@ RCDateTime::RCDateTime(short year, short month, short day, short hour, short min
   dt_.second = std::abs(second);
 }
 
-RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::ColumnType at) {
+RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::ColumnType at) : at_(at) {
   ASSERT(at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP || at == common::ColumnType::DATE,
          "should be 'at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP || at == "
          "common::ColumnType::DATE'");
   null_ = false;
-
   dt_.year = myt.year;
   dt_.month = myt.month;
   dt_.day = myt.day;

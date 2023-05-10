@@ -61,6 +61,8 @@ const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_ADD_D
     Alter_inplace_info::ADD_COLUMN | Alter_inplace_info::DROP_COLUMN | Alter_inplace_info::ALTER_STORED_COLUMN_ORDER;
 const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_COLUMN_NAME =
     Alter_inplace_info::ALTER_COLUMN_DEFAULT | Alter_inplace_info::ALTER_COLUMN_NAME;
+const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS =
+    Alter_inplace_info::CHANGE_CREATE_OPTION;
 /////////////////////////////////////////////////////////////////////
 //
 // NOTICE: ALL EXCEPTIONS SHOULD BE CAUGHT in the handler API!!!
@@ -1513,6 +1515,11 @@ int ha_tianmu::reset() {
 enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
                                                                       Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+  if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
+      (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
+    DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
+  }
+
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
     // support alter table column type
@@ -1538,14 +1545,18 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
                                     Alter_inplace_info *ha_alter_info [[maybe_unused]],
                                     const dd::Table *old_table_def [[maybe_unused]],
                                     dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
+    if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
+        (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
+      DBUG_RETURN(false);
+    } else if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
       std::vector<Field *> v_new(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
       ha_rcengine_->PrepareAlterTable(table_name_, v_new, v_old, ha_thd());
-      return false;
+      DBUG_RETURN(false);
     } else if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
-      return false;
+      DBUG_RETURN(false);
     }
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1555,7 +1566,7 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
 
   my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Unable to inplace alter table", MYF(0));
 
-  return true;
+  DBUG_RETURN(true);
 }
 
 bool ha_tianmu::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]],
@@ -1563,16 +1574,21 @@ bool ha_tianmu::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]]
                                            bool commit [[maybe_unused]],
                                            const dd::Table *old_table_def [[maybe_unused]],
                                            dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   if (!commit) {
     TIANMU_LOG(LogCtl_Level::INFO, "Alter table failed : %s%s", table_name_.c_str(), " rollback");
-    return true;
+    DBUG_RETURN(true);
+  }
+  if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
+      (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
+    DBUG_RETURN(false);
   }
   if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
-    return false;
+    DBUG_RETURN(false);
   }
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
     TIANMU_LOG(LogCtl_Level::INFO, "Altered table not support type %llu", ha_alter_info->handler_flags);
-    return true;
+    DBUG_RETURN(true);
   }
   fs::path tmp_dir(table_name_ + ".tmp");
   fs::path tab_dir(table_name_ + common::TIANMU_EXT);
@@ -1605,9 +1621,9 @@ bool ha_tianmu::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]]
     TIANMU_LOG(LogCtl_Level::ERROR, "file system error: %s %s|%s", e.what(), e.path1().string().c_str(),
                e.path2().string().c_str());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Failed to commit alter table", MYF(0));
-    return true;
+    DBUG_RETURN(true);
   }
-  return false;
+  DBUG_RETURN(false);
 }
 /*
  key: mysql format, may be union key, need changed to kvstore key format
