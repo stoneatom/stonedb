@@ -81,10 +81,10 @@ class Engine final {
   // The basic operations.
   int Init(uint engine_slot);
   void CreateTable(const std::string &table, TABLE *from, dd::Table *table_def);
-  void DeleteTable(const char *table, const dd::Table *table_def, THD *thd);
+  int DeleteTable(const char *table, const dd::Table *table_def, THD *thd);
   void TruncateTable(const std::string &table_path, dd::Table *table_def, THD *thd);
-  void RenameTable(Transaction *trans_, const std::string &from, const std::string &to, const dd::Table *from_table_def,
-                   dd::Table *to_table_def, THD *thd);
+  int RenameTable(Transaction *trans_, const std::string &from, const std::string &to, const dd::Table *from_table_def,
+                  dd::Table *to_table_def, THD *thd);
   void PrepareAlterTable(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                          THD *thd);
 
@@ -113,10 +113,10 @@ class Engine final {
   void UnRegisterTable(const std::string &table_path);
   void GetTableIterator(const std::string &table_path, RCTable::Iterator &iter_begin, RCTable::Iterator &iter_end,
                         std::shared_ptr<RCTable> &table, const std::vector<bool> &, THD *thd);
-  // support for add primary key
+  // add primary key
   void AddTableIndex(const std::string &table_path, TABLE *table, THD *thd);
-  // support for delete primary key
-  void DeleteTableIndex(const std::string &table_path, THD *thd);
+  // delete primary key
+  bool DeleteTableIndex(const std::string &table_path, THD *thd);
   std::shared_ptr<index::RCTableIndex> GetTableIndex(const std::string &table_path);
   bool has_pk(TABLE *table) const { return table->s->primary_key != MAX_INDEXES; }
   void RenameRdbTable(const std::string &from, const std::string &to);

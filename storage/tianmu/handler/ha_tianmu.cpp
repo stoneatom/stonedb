@@ -616,8 +616,11 @@ int ha_tianmu::rename_table(const char *from, const char *to, const dd::Table *f
                             dd::Table *to_table_def) {  // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    ha_rcengine_->RenameTable(current_txn_, from, to, from_table_def, to_table_def, ha_thd());
-    DBUG_RETURN(false);
+    if (!ha_rcengine_->RenameTable(current_txn_, from, to, from_table_def, to_table_def, ha_thd())) {
+      DBUG_RETURN(0);
+    } else {
+      DBUG_RETURN(1);
+    }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -625,7 +628,7 @@ int ha_tianmu::rename_table(const char *from, const char *to, const dd::Table *f
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
-  DBUG_RETURN(true);
+  DBUG_RETURN(1);
 }
 
 void ha_tianmu::update_create_info([[maybe_unused]] HA_CREATE_INFO *create_info) {}
@@ -1212,10 +1215,12 @@ int ha_tianmu::start_stmt(THD *thd, thr_lock_type lock_type) {
  */
 int ha_tianmu::delete_table(const char *name, const dd::Table *table_def) {  // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  int ret = 1;
   try {
-    ha_rcengine_->DeleteTable(name, table_def, ha_thd());
-    ret = 0;
+    if (!ha_rcengine_->DeleteTable(name, table_def, ha_thd())) {
+      DBUG_RETURN(0);
+    } else {
+      DBUG_RETURN(1);
+    }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1224,7 +1229,7 @@ int ha_tianmu::delete_table(const char *name, const dd::Table *table_def) {  // 
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
-  DBUG_RETURN(ret);
+  DBUG_RETURN(0);
 }
 
 /*
@@ -1537,6 +1542,12 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table: mix add/drop column、order column and other syntaxs to use
     if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table: add primary key
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ADD_PK_INDEX)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table: drop primary key
+    if (ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);
