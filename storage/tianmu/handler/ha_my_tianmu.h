@@ -30,7 +30,7 @@ enum class QueryRouteTo : unsigned int { TO_MYSQL = 0, TO_TIANMU = 1 };
 // processing the queries which routed to Tianmu Engine.
 QueryRouteTo ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *&result_output,
                                 ulong setup_tables_done_option, int &res, int &optimize_after_tianmu,
-                                int &tianmu_free_join, int with_insert = false);
+                                int &tianmu_free_join, bool with_insert = false);
 
 // update the comment for a column.
 void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,

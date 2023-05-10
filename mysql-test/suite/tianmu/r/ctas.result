@@ -1,0 +1,76 @@
+drop database if exists ctastest;
+CREATE DATABASE ctastest;
+USE ctastest;
+CREATE TABLE `ctas_test` (
+`c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint NOT NULL COMMENT 'smallint',
+`c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+`c_int` int DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
+`c_float` float DEFAULT NULL COMMENT 'float',
+`c_double` double DEFAULT NULL COMMENT 'double',
+`c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`c_date` date DEFAULT NULL COMMENT 'date',
+`c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+`c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`c_time` time DEFAULT NULL COMMENT 'time',
+`c_char` char(10) DEFAULT NULL COMMENT 'char',
+`c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`c_blob` blob COMMENT 'blob',
+`c_text` text COMMENT 'text',
+`c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO ctas_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+VALUES(1,2,3,4,5,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn'),
+(2,3,4,5,6,5.3,10.89,105.084,'2016-02-26','2016-02-26 10:20:02','2016-02-25 05:20:02','10:20:02','stoneatom2','hello2','qweqeqweqweqw'),
+(3,4,5,6,7,5.4,10.90,105.085,'2016-02-27','2016-02-27 10:20:03','2016-02-25 05:20:03','10:20:03','stoneatom3','hello3','asdfasdfsadfa');
+SHOW CREATE TABLE ctas_test;
+Table	Create Table
+ctas_test	CREATE TABLE `ctas_test` (
+  `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint NOT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+CREATE TABLE ctas_test1 AS SELECT * FROM ctas_test;
+SHOW CREATE TABLE ctas_test1;
+Table	Create Table
+ctas_test1	CREATE TABLE `ctas_test1` (
+  `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint NOT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+SELECT * FROM ctas_test1;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+1	2	3	4	5	5.2	10.88	105.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 05:20:01	10:20:01	stoneatom1	hello1	NULL	bcdefghijklmn	NULL
+2	3	4	5	6	5.3	10.89	105.08400	2016-02-26	2016-02-26 10:20:02	2016-02-25 05:20:02	10:20:02	stoneatom2	hello2	NULL	qweqeqweqweqw	NULL
+3	4	5	6	7	5.4	10.9	105.08500	2016-02-27	2016-02-27 10:20:03	2016-02-25 05:20:03	10:20:03	stoneatom3	hello3	NULL	asdfasdfsadfa	NULL
+DROP TABLE  ctas_test, ctas_test1;
+DROP DATABASE ctastest;
