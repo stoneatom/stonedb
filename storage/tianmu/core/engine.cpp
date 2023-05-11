@@ -1699,7 +1699,8 @@ int Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableSh
   uint64_t row_id = tm_table->NextRowId();
   // Insert primary key first
   int ret = tm_table->InsertIndexForDelta(table, row_id);
-
+  if (ret != 0)
+    return ret;
   // check & encode
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
