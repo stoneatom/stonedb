@@ -103,7 +103,18 @@ void TianmuTable::GetValueFromField(Field *f, Value &v, size_t col) {
       break;
     }
     case MYSQL_TYPE_TIME:
-    case MYSQL_TYPE_TIME2:
+    case MYSQL_TYPE_TIME2: {
+      MYSQL_TIME my_time;
+      std::memset(&my_time, 0, sizeof(my_time));
+      f->get_time(&my_time);
+      types::DT dt = {};
+      dt.time_hour = my_time.hour;
+      dt.minute = my_time.minute;
+      dt.second = my_time.second;
+      dt.neg = my_time.neg;
+      v.SetInt(dt.val);
+      break;
+    }
     case MYSQL_TYPE_DATE:
     case MYSQL_TYPE_DATETIME:
     case MYSQL_TYPE_NEWDATE:
@@ -879,7 +890,19 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       vc.ExpectedSize(sizeof(int64_t));
     } break;
     case MYSQL_TYPE_TIME:
-    case MYSQL_TYPE_TIME2:
+    case MYSQL_TYPE_TIME2: {
+      MYSQL_TIME my_time;
+      std::memset(&my_time, 0, sizeof(my_time));
+      f->get_time(&my_time);
+      types::DT dt = {};
+      dt.time_hour = my_time.hour;
+      dt.minute = my_time.minute;
+      dt.second = my_time.second;
+      dt.neg = my_time.neg;
+
+      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
+      vc.ExpectedSize(sizeof(int64_t));
+    } break;
     case MYSQL_TYPE_DATE:
     case MYSQL_TYPE_DATETIME:
     case MYSQL_TYPE_NEWDATE:
