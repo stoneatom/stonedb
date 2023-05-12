@@ -487,21 +487,21 @@ IF (USE_CXX11 AND CMAKE_COMPILER_IS_GNUCC AND CMAKE_COMPILER_IS_GNUCXX)
   SET(CMAKE_CXX_FLAGS_RELEASE
     "${CMAKE_CXX_FLAGS_RELEASE} -std=c++1z -fno-sized-deallocation")
   SET(CMAKE_EXE_LINKER_FLAGS_RELEASE
-    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -static-libstdc++ -static-libgcc")
+    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -lstdc++ -lgcc")
 
   SET(CMAKE_C_FLAGS_RELWITHDEBINFO
     "${CMAKE_C_FLAGS_RELWITHDEBINFO} -gdwarf-2")
   SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO
     "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -gdwarf-2 -std=c++1z -fno-sized-deallocation")
   SET(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO
-    "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} -static-libstdc++ -static-libgcc")
+    "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} -lstdc++ -lgcc")
 
   SET(CMAKE_C_FLAGS_DEBUG
           "${CMAKE_C_FLAGS_DEBUG} -gdwarf-2")
   SET(CMAKE_CXX_FLAGS_DEBUG
           "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-2 -std=c++1z -fno-sized-deallocation")
   SET(CMAKE_EXE_LINKER_FLAGS_DEBUG
-          "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -static-libstdc++ -static-libgcc")
+          "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -lstdc++ -lgcc")
 ENDIF()
 
 IF(WITH_BOOST AND WITH_ROCKSDB AND WITH_MARISA)
@@ -847,6 +847,9 @@ IF (UNIX)
  SET(STONEDB_BUILD_TIME "Date: ${ER_BUILD_TIME}")
  SET(STONEDB_TAG_NAME "${ER_TAG_NAME}")
 ENDIF()
+
+
+SET(STONEDB_TAG_NAME "V103")
 
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/my_config.h)
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/config.h)
