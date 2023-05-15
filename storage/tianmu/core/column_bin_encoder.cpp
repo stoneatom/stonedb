@@ -135,8 +135,7 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
       } else
         text_stat_encoder = true;
     }
-  } else if (vct.IsDateTime()) {  // Date/time types except special cases
-                                  // (above)
+  } else if (vct.IsDateTime() && (!_vc2 || vct2.IsDateTime())) {  // Date/time types except special cases // (above)
     my_encoder.reset(new ColumnBinEncoder::EncoderInt(vc, decodable, nulls_possible, descending));
   } else {
     DEBUG_ASSERT(!"wrong combination of encoded columns");  // Other types not
@@ -298,11 +297,8 @@ bool ColumnBinEncoder::EncoderInt::SecondColumn(vcolumn::VirtualColumn *vc) {
         << "Nontrivial comparison: date/time with non-date/time" << system::unlock;
     return false;
   }
-  bool is_timestamp1 = (this->vc_type.GetTypeName() == common::ColumnType::TIMESTAMP);
-  bool is_timestamp2 = (vc->Type().GetTypeName() == common::ColumnType::TIMESTAMP);
-  if (is_timestamp1 || (is_timestamp2 && !(is_timestamp1 && is_timestamp2)))
-    return false;  // cannot compare timestamp with anything different than
-                   // timestamp
+  if ((this->vc_type.IsDateTime()) ^ (vc->Type().IsDateTime()))  // support datetime/timestamp
+    return false;                                                // union timestamp/datetime
   // Easy case: integers/decimals with the same precision
   int64_t new_min_val = vc->RoughMin();
   int64_t max_val = max_code + min_val - (null_status == 1 ? 1 : 0);

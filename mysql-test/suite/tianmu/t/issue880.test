@@ -1,0 +1,25 @@
+--source include/have_tianmu.inc
+
+--echo # support (timestamp union timestamp)
+--echo # support (not timestamp union not timestamp)
+--echo # support (timestamp union varchar)
+--echo # support (varchar union timestamp)
+--echo # not support (timestamp union datetime)
+--echo # not support (datetime union timestamp)
+--echo # not support (timestamp union other type)
+--echo # not support (other type union timestamp)
+--echo # SELECT timestamp_type/other_type FROM tablename union SELECT timestamp_type/other_type FROM tablename
+
+--disable_warnings
+DROP DATABASE IF EXISTS test_timestamp_union;
+--enable_warnings
+
+CREATE DATABASE test_timestamp_union;
+USE test_timestamp_union;
+create table t1(a datetime);
+create table t2(b timestamp);
+insert into t1 values('2020-12-23 00:00:00');
+insert into t2 values('2022-04-18 00:00:00');
+select * from t1 union select * from t2;
+
+drop database test_timestamp_union;

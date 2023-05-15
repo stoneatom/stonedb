@@ -1,0 +1,21 @@
+# support (timestamp union timestamp)
+# support (not timestamp union not timestamp)
+# support (timestamp union varchar)
+# support (varchar union timestamp)
+# not support (timestamp union datetime)
+# not support (datetime union timestamp)
+# not support (timestamp union other type)
+# not support (other type union timestamp)
+# SELECT timestamp_type/other_type FROM tablename union SELECT timestamp_type/other_type FROM tablename
+DROP DATABASE IF EXISTS test_timestamp_union;
+CREATE DATABASE test_timestamp_union;
+USE test_timestamp_union;
+create table t1(a datetime);
+create table t2(b timestamp);
+insert into t1 values('2020-12-23 00:00:00');
+insert into t2 values('2022-04-18 00:00:00');
+select * from t1 union select * from t2;
+a
+2020-12-23 03:00:00
+2022-04-18 00:00:00
+drop database test_timestamp_union;
