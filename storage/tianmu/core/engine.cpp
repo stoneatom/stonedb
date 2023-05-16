@@ -2417,11 +2417,12 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Qu
       }
       // stonedb8 start
       if (export_file_name)
-        sender.reset(new ResultExportSender(thd, result_output, *unit_for_union->get_field_list()));
+        sender.reset(new ResultExportSender(thd, result_output, unit_for_union->item_list));
       else
-        sender.reset(new ResultSender(thd, result_output, *unit_for_union->get_field_list()));
+        sender.reset(new ResultSender(thd, result_output, unit_for_union->item_list));
     } else {
       if (export_file_name)
+        // in 5.7, selects_list->item_list, in 8.0, we use selects_list->get_fields_list()?
         sender.reset(new ResultExportSender(thd, result_output, *selects_list->get_fields_list()));
       else
         sender.reset(new ResultSender(thd, result_output, *selects_list->get_fields_list()));
