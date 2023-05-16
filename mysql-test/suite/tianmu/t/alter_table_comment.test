@@ -1,0 +1,14 @@
+-- source include/have_tianmu.inc
+
+create database alter_table_comment;
+use alter_table_comment;
+
+create table t1(a int not null,b int not null) default CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+insert into t1 values (1,2);
+show create table t1;
+alter table t1 comment 'abcd';
+show create table t1;
+alter table t1 comment '测试表';
+show create table t1;
+drop table t1;
+drop database alter_table_comment;

@@ -1,0 +1,42 @@
+--source include/have_tianmu.inc
+--disable_warnings
+DROP DATABASE IF EXISTS issue964_test;
+--enable_warnings
+CREATE DATABASE issue964_test;
+use issue964_test;
+## DDL
+
+CREATE TABLE `t1` (
+  `id` int DEFAULT NULL,
+  `name` varchar(20) DEFAULT NULL,
+  KEY `idx_n` (`name`)
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE `t2` (
+  `id` int DEFAULT NULL,
+  `name` varchar(20) DEFAULT NULL,
+  KEY `idx_n` (`name`)
+)DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+## insert data, only for table t1
+
+insert into t1 values(1,'abc');
+insert into t1 values(2,'def');
+
+## join return empty table t2
+
+SELECT
+	t1.id,
+	t1.name,
+	t2.id,
+	t2.name
+FROM
+	t1
+LEFT JOIN t2 ON
+	t1.name = t2.name
+WHERE
+	t1.name IN ('abc');
+
+## clear tables
+
+DROP DATABASE issue964_test;

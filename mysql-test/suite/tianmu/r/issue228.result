@@ -4,5 +4,6 @@ use issue228;
 create table t1 (a varchar(112) charset UTF8MB4 collate utf8mb4_bin not null,primary key (a)) select 'test' as a;
 select a from t1;
 a
+test
 drop table t1;
 drop database issue228;

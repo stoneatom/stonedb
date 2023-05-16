@@ -759,7 +759,9 @@ void Engine::CommitTx(THD *thd, bool all) {
   // then called in trans_commit_implicit(), thd->server_status will be set "~SERVER_STATUS_IN_TRANS", and all = true
   // tianmu truncate table in 5.7 is ok, 8.0 has this problem.
   // Same problem with alter table ,see: https://github.com/stoneatom/stonedb/issues/1670
-  if ((thd->lex->sql_command == SQLCOM_TRUNCATE || thd->lex->sql_command == SQLCOM_ALTER_TABLE) &&
+  // Same problem with alter table ,see: https://github.com/stoneatom/stonedb/issues/1715
+  if ((thd->lex->sql_command == SQLCOM_TRUNCATE || thd->lex->sql_command == SQLCOM_ALTER_TABLE ||
+       thd->lex->sql_command == SQLCOM_CREATE_TABLE) &&
       (thd->server_status & SERVER_STATUS_IN_TRANS)) {
     return;
   }
@@ -1605,14 +1607,14 @@ common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
 // stonedb8 Query_block
 QueryRouteTo Engine::RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
-                             int &in_case_of_failure_can_go_to_mysql, int with_insert) {
+                             bool &in_case_of_failure_can_go_to_mysql, bool with_insert) {
   in_case_of_failure_can_go_to_mysql = true;
 
   if (!table_list)
     return QueryRouteTo::TO_MYSQL;
 
-  if (with_insert && !table_list->next_global)
-    return QueryRouteTo::TO_MYSQL;
+  if (with_insert)
+    table_list = table_list->next_global ? table_list->next_global : *(table_list->prev_global);  // we skip one
 
   bool has_TianmuTable = false;
   for (TABLE_LIST *tl = table_list; tl; tl = tl->next_global) {  // we go through tables
@@ -2112,14 +2114,14 @@ and the function returns information about the error through res'. If the query 
 QueryRouteTo::TO_MYSQL is returned and MySQL engine continues query execution.
 */
 QueryRouteTo Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result *&result, ulong setup_tables_done_option,
-                                  int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+                                  int &res, int &optimize_after_tianmu, int &tianmu_free_join, bool with_insert) {
   utils::KillTimer timer(thd, tianmu_sysvar_max_execution_time);
 
   LEX *lex{thd->lex};
   if (qe->is_simple())
     lex = qe->first_query_block()->parent_lex;
 
-  int in_case_of_failure_can_go_to_mysql{1};
+  bool in_case_of_failure_can_go_to_mysql{true};
 
   optimize_after_tianmu = false;
   tianmu_free_join = 0;
@@ -2406,7 +2408,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Qu
       rct = current_txn_->GetTableByPathIfExists(table_path);
     }
 
-    if (unit_for_union != nullptr && !unit_for_union->is_prepared()) {
+    if ((unit_for_union != nullptr) && (lex->sql_command != SQLCOM_CREATE_TABLE)) {      // for exclude CTAS
       int res = result_output->prepare(thd, unit_for_union->item_list, unit_for_union);  // stonedb8 add thd
       if (res) {
         TIANMU_LOG(LogCtl_Level::ERROR, "Error: Unsupported UNION");

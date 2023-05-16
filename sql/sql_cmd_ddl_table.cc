@@ -405,7 +405,7 @@ bool Sql_cmd_create_table::execute(THD *thd) {
     int tianmu_res = 0, free_join_from_tianmu = 0, optimize_after_tianmu = 0;
     Query_result * result_tianmu = dynamic_cast<Query_result *>(result);
     if (Tianmu::handler::ha_my_tianmu_query(thd, query_expression, result_tianmu, 0, tianmu_res, optimize_after_tianmu,
-        free_join_from_tianmu, (int)true) == Tianmu::handler::QueryRouteTo::TO_MYSQL)
+        free_join_from_tianmu, true) == Tianmu::handler::QueryRouteTo::TO_MYSQL)
       res = populate_table(thd, lex);
     else
       res = tianmu_res;

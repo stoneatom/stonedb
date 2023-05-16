@@ -63,7 +63,7 @@ void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field
 }
 
 QueryRouteTo ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *&result, ulong setup_tables_done_option,
-                                int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+                                int &res, int &optimize_after_tianmu, int &tianmu_free_join, bool with_insert) {
   QueryRouteTo ret = QueryRouteTo::TO_TIANMU;
   try {
     // ret is introduced here because in case of some exceptions

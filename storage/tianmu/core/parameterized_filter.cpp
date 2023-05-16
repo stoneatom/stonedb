@@ -1021,7 +1021,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       It needs to be increased according to the number of executions.
     */
     int no_dims = 0;
-    for (int tableIndex = 0; tableIndex < rcTables.size(); ++tableIndex) {
+    for (int tableIndex = 0; tableIndex < static_cast<int>(rcTables.size()); ++tableIndex) {
       auto rcTable = rcTables[tableIndex];
       if (rcTable->TableType() == TType::TEMP_TABLE)
         continue;
@@ -1559,7 +1559,7 @@ void ParameterizedFilter::FilterDeletedForSelectAll() {
   if (table) {
     auto &rcTables = table->GetTables();
     int no_dims = 0;
-    for (int tableIndex = 0; tableIndex < rcTables.size(); ++tableIndex) {
+    for (int tableIndex = 0; tableIndex < static_cast<int>(rcTables.size()); ++tableIndex) {
       auto rcTable = rcTables[tableIndex];
       if (rcTable->TableType() == TType::TEMP_TABLE)
         continue;
