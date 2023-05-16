@@ -1,9 +1,9 @@
 ---
-id: compile-using-docker
-sidebar_position: 5.16
+id: compile-using-docker-for-56-57
+sidebar_position: 5.161
 ---
 
-# Compile StoneDB in a Docker Container
+# Compile StoneDB 5.7 in a Docker Container
 ## Introduction
 Compiling StoneDB on a physical server requires installation of third-party repositories, which is complicated. In addition, if the OS in your environment is Fedora or Ubuntu, you also need to install many dependencies. We recommend that you compile StoneDB in a Docker container. After StoneDB is compiled, you can directly run StoneDB in the container or copy the compilation files to your environment.
 ## Prerequisites
