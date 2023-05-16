@@ -1936,10 +1936,10 @@ int tianmu_init_func(void *p) {
   ha_rcengine_ = nullptr;
 
   try {
-    std::string log_file = mysql_real_data_home_ptr;
-    log_setup(log_file + "/tianmu.log");
-    rc_control_.addOutput(new system::FileOut(log_file + "/tianmu_trace.log"));
-    rc_querylog_.addOutput(new system::FileOut(log_file + "/tianmu_query.log"));
+    std::string log_file = mysql_home_ptr;
+    log_setup(log_file + "/log/tianmu.log");
+    rc_control_.addOutput(new system::FileOut(log_file + "/log/tianmu_trace.log"));
+    rc_querylog_.addOutput(new system::FileOut(log_file + "/log/tianmu_query.log"));
 
     // replace function gethostbyname,which is thread-unsafe
     addrinfo ai_hints;
