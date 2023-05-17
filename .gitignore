@@ -41,3 +41,5 @@ scalability_jobs_*
 .vs/
 *node_modules/
 .docusaurus/
+node_modules
+website/.docusaurus
