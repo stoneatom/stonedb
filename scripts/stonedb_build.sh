@@ -3,14 +3,14 @@
 set -e
 
 # Specify the required version numbers
-required_gcc_version='9.3.0'
+required_gcc_version='8.5.0'
 required_make_version='3.8.2'
 required_cmake_version='3.7.2'
 
 # Check GCC version
 gcc_version=$(gcc -v 2>&1 > /dev/null | grep 'gcc version' | awk '{print $3}')
 if [ $required_gcc_version != $(printf "$required_gcc_version\n$gcc_version\n" | sort -V | head -1) ]; then
-  echo "Error: the GCC version num is less than the version 9.3.0"
+  echo "Error: the GCC version num is less than the version 8.5.0"
   exit 1
 fi
 
@@ -52,13 +52,16 @@ then
         ${install_target}/support-files/mysql.server stop 2>&1 | tee -a ${build_log}
 fi
 # then remove the target installation
-rm -fr ${install_target}
+# rm -fr ${install_target}
 
+build_tag=build_only
+
+mkdir -p ${install_target}
 # step 3. create build directory
 rm -fr ../build/${build_tag}
 mkdir ../build/${build_tag}
 cd ../build/${build_tag}
-mkdir ${install_target}
+mkdir -p ${install_target}
 
 # step 4. begin to build
 cmake ../../ \

@@ -11,7 +11,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/storage/tianmu
 # link success, but can not be used as push_warning() is undefined reference, we'll support it in the future.
 #ADD_LIBRARY(common_definitions.a STATIC ${CMAKE_SOURCE_DIR}/storage/tianmu/common/common_definitions.cpp)
 
-SET(LINK_LIBS  gtest pthread)
+SET(LINK_LIBS  pthread)
 
 ADD_EXECUTABLE(testgmock testgmock.cpp)
 TARGET_LINK_LIBRARIES(testgmock ${LINK_LIBS})

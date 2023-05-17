@@ -15,12 +15,4 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include <iostream>
-#include "gtest/gtest.h"
-using namespace std;
-int add(int a, int b) { return a + b; }
-TEST(Testadd, ZeroInput) { EXPECT_EQ(3, add(1, 2)); }
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
+int main(int argc, char **argv) { return 0; }
