@@ -4,7 +4,7 @@
 #define MYSQLD_ERROR_INCLUDED
 
 static const int errmsg_section_start[] = { 1000, 3000 };
-static const int errmsg_section_size[] = { 889, 234 };
+static const int errmsg_section_size[] = { 889, 244 };
 
 #define ER_HASHCHK 1000
 #define ER_NISAMCHK 1001
