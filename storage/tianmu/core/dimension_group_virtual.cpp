@@ -55,11 +55,18 @@ DimensionGroupVirtual::~DimensionGroupVirtual() {
 
 DimensionGroup *DimensionGroupVirtual::Clone(bool shallow) {
   DimensionGroupVirtual *new_value = new DimensionGroupVirtual(dims_used, base_dim, f, (shallow ? 1 : 0));
-  if (shallow)
-    return new_value;
+
+  // Member t is a pointer pointer, it stores an array of index-table pointer.
+  // The index-table pointer should not be missed when shallow is true.
   for (int i = 0; i < no_dims; i++) {
-    if (t[i]) {
-      new_value->nulls_possible[i] = nulls_possible[i];
+    if (!t[i]) {
+      continue;
+    }
+
+    new_value->nulls_possible[i] = nulls_possible[i];
+    if (shallow) {
+      new_value->t[i] = t[i];
+    } else {
       t[i]->Lock();
       new_value->t[i] = new IndexTable(*t[i]);
       t[i]->Unlock();
