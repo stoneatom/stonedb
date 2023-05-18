@@ -1601,15 +1601,6 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       total_read_cnt++;
       total_read_bytes += value.size();
 
-      if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        insert_num += AsyncParseInsertRecords(&iop, &insert_records);
-      }
-      if (update_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        update_num += AsyncParseUpdateRecords(&iop, &update_records);
-      }
-      if (delete_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        delete_num += AsyncParseDeleteRecords(delete_records);
-      }
       iter->Next();
     }
   }

@@ -5,4 +5,8 @@ create table ttt(id int primary key,name varchar(10));
 insert into ttt values(1,'aaa');
 insert into ttt values(2,'bbb');
 insert ignore into ttt values(2,'ccc');
+select * from ttt;
+id	name
+1	aaa
+2	bbb
 DROP DATABASE issue1637_test;

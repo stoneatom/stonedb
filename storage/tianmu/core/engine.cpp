@@ -1586,16 +1586,8 @@ void Engine::LogStat() {
 
     // commands we are interested in
     static const enum_sql_command cmds[] = {
-        SQLCOM_SELECT,
-        // SQLCOM_CREATE_TABLE,
-        // SQLCOM_ALTER_TABLE,
-        SQLCOM_UPDATE,
-        SQLCOM_INSERT,
-        // SQLCOM_INSERT_SELECT,
-        // SQLCOM_DELETE,
-        // SQLCOM_TRUNCATE,
-        // SQLCOM_DROP_TABLE,
-        SQLCOM_LOAD,
+        SQLCOM_SELECT,        SQLCOM_CREATE_TABLE, SQLCOM_ALTER_TABLE, SQLCOM_UPDATE,     SQLCOM_INSERT,
+        SQLCOM_INSERT_SELECT, SQLCOM_DELETE,       SQLCOM_TRUNCATE,    SQLCOM_DROP_TABLE, SQLCOM_LOAD,
     };
 
     STATUS_VAR sv;
@@ -1706,7 +1698,8 @@ int Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableSh
   uint64_t row_id = tm_table->NextRowId();
   // Insert primary key first
   int ret = tm_table->InsertIndexForDelta(table, row_id);
-
+  if (ret != 0)
+    return ret;
   // check & encode
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
