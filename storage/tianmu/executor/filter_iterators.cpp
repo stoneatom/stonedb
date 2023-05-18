@@ -98,7 +98,7 @@ void FilterOnesIterator::RewindToRow(const int64_t row)  // note: if row not exi
     valid = false;
   else
     valid = true;
-  DEBUG_ASSERT(pack < f->no_blocks);
+  assert(pack < f->no_blocks);
 
   iterator_b = prev_iterator_b = pack;
   iterator_n = int(row & (pack_def - 1));
@@ -128,7 +128,7 @@ void FilterOnesIterator::RewindToRow(const int64_t row)  // note: if row not exi
 
 bool FilterOnesIterator::RewindToPack(size_t pack) {
   // if SetNoPacksToGo() has been used, then RewindToPack can be done only to
-  // the previous pack DEBUG_ASSERT(packs_to_go == -1 || pack == prev_iterator_b
+  // the previous pack assert(packs_to_go == -1 || pack == prev_iterator_b
   // || pack == iterator_b);
   if (pack >= f->no_blocks)
     valid = false;
@@ -147,7 +147,7 @@ bool FilterOnesIterator::RewindToPack(size_t pack) {
   uchar stat = f->block_status[iterator_b];
   cur_block_full = (stat == f->FB_FULL);
   cur_block_empty = (stat == f->FB_EMPTY);
-  //	DEBUG_ASSERT(buffer.Empty());			// random order - forget
+  //	assert(buffer.Empty());			// random order - forget
   // history, WARNING: may lead to omitting
   // packs!
   buffer.Reset();
@@ -176,7 +176,7 @@ int64_t FilterOnesIterator::GetPackSizeLeft()  // how many 1-s in the current bl
     return 0;
   if (cur_block_full)
     return int64_t(f->block_last_one[iterator_b]) + 1 - iterator_n;
-  DEBUG_ASSERT(f->block_status[iterator_b] != f->FB_EMPTY);
+  assert(f->block_status[iterator_b] != f->FB_EMPTY);
   return ones_left_in_block;
 }
 
@@ -268,7 +268,7 @@ bool FilterOnesIterator::NextInsidePack()  // return false if we just restarted
 bool FilterOnesIterator::FindOneInsidePack() {
   bool found = false;
   // inter-block iteration
-  DEBUG_ASSERT(f->block_status[iterator_b] == f->FB_MIXED);  // IteratorBpp() omits empty blocks
+  assert(f->block_status[iterator_b] == f->FB_MIXED);  // IteratorBpp() omits empty blocks
   Filter::Block *cur_block = f->blocks[iterator_b];
   int cb_no_obj = cur_block->no_obj;
   if (iterator_b == static_cast<unsigned int>(prev_block)) {
@@ -282,7 +282,7 @@ bool FilterOnesIterator::FindOneInsidePack() {
     prev_block = iterator_b;
     ones_left_in_block = cur_block->no_set_bits;
   }
-  DEBUG_ASSERT(iterator_n < cb_no_obj || ones_left_in_block == 0);
+  assert(iterator_n < cb_no_obj || ones_left_in_block == 0);
   if (iterator_n < cb_no_obj) {
     // else leave "found == false", which will iterate to the next block
     if (lastn + 1 == iterator_n) {

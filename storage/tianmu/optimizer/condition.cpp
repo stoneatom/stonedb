@@ -36,7 +36,7 @@ void Condition::Simplify() {
   int size = int(descriptors.size());
   for (int i = 0; i < size; i++) {
     if (descriptors[i].op == common::Operator::O_OR_TREE) {
-      DEBUG_ASSERT(descriptors[i].tree);
+      assert(descriptors[i].tree);
       Descriptor desc;
       do {
         if ((descriptors[i].op != common::Operator::O_OR_TREE))
@@ -54,7 +54,7 @@ void Condition::Simplify() {
 }
 
 void Condition::MakeSingleColsPrivate(std::vector<vcolumn::VirtualColumn *> &virt_cols) {
-  DEBUG_ASSERT(descriptors.size() == 1);
+  assert(descriptors.size() == 1);
   descriptors[0].tree->MakeSingleColsPrivate(virt_cols);
 }
 

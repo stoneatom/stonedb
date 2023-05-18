@@ -102,7 +102,7 @@ vcolumn::VirtualColumn *CreateVCCopy(vcolumn::VirtualColumn *vc) {
   } else if (dynamic_cast<vcolumn::TypeCastColumn *>(vc))
     return new vcolumn::TypeCastColumn(*static_cast<const vcolumn::TypeCastColumn *>(vc));
   else {
-    DEBUG_ASSERT(0 && "Cannot copy VC");
+    assert(0 && "Cannot copy VC");
     return vc;
   }
 }

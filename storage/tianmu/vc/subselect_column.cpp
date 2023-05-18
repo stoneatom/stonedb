@@ -125,7 +125,7 @@ SubSelectColumn::~SubSelectColumn() {
 }
 
 void SubSelectColumn::SetBufs(core::MysqlExpression::var_buf_t *bufs) {
-  DEBUG_ASSERT(bufs);
+  assert(bufs);
   for (auto &it : tianmu_items_) {
     auto buf_set = bufs->find(it.first);
     if (buf_set != bufs->end()) {
@@ -141,13 +141,13 @@ void SubSelectColumn::SetBufs(core::MysqlExpression::var_buf_t *bufs) {
 
 types::BString SubSelectColumn::GetMinStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
-  DEBUG_ASSERT(!"To be implemented.");
+  assert(!"To be implemented.");
   return s;
 }
 
 types::BString SubSelectColumn::GetMaxStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
-  DEBUG_ASSERT(!"To be implemented.");
+  assert(!"To be implemented.");
   return s;
 }
 
@@ -163,8 +163,8 @@ core::PackOntologicalStatus SubSelectColumn::GetPackOntologicalStatusImpl([
 
 void SubSelectColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
                                        [[maybe_unused]] core::Descriptor &desc) {
-  DEBUG_ASSERT(!"To be implemented.");
-  DEBUG_ASSERT(0);
+  assert(!"To be implemented.");
+  assert(0);
 }
 
 common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types::TianmuDataType const &v) {
@@ -314,7 +314,7 @@ int64_t SubSelectColumn::NumOfValuesImpl(core::MIIterator const &mit) {
 }
 
 int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit, int64_t const at_least) {
-  DEBUG_ASSERT(at_least > 0);
+  assert(at_least > 0);
   PrepareSubqResult(mit, false);
   core::ValueSet vals(multi_index_->ValueOfPower());
   vals.Prepare(expected_type_.GetTypeName(), expected_type_.GetScale(), expected_type_.GetCollation());
@@ -583,7 +583,7 @@ bool SubSelectColumn::FeedArguments(const core::MIIterator &mit, bool for_rough)
         if (ldiff)
           param_cache_for_rough_[iter.var_id] = v;
       } else {
-        DEBUG_ASSERT(cache != var_buf_for_rough_.end());
+        assert(cache != var_buf_for_rough_.end());
         diff = diff || (v != cache->second.begin()->first);
         if (diff)
           for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
@@ -602,7 +602,7 @@ bool SubSelectColumn::FeedArguments(const core::MIIterator &mit, bool for_rough)
         if (ldiff)
           param_cache_for_exact_[iter.var_id] = v;
       } else {
-        DEBUG_ASSERT(cache != var_buf_for_exact_.end());
+        assert(cache != var_buf_for_exact_.end());
         core::ValueOrNull v1 = *(cache->second.begin()->second);
         core::ValueOrNull v2 = (cache->second.begin()->first);
         diff = diff || (v != cache->second.begin()->first);
@@ -631,7 +631,7 @@ bool SubSelectColumn::MakeParallelReady() {
     return false;  // multipage Attrs - not thread safe
   // below assert doesn't take into account lazy field
   // NumOfMaterialized() tells how many rows in lazy mode are materialized
-  DEBUG_ASSERT(tmp_tab_subq_ptr_->NumOfObj() == tmp_tab_subq_ptr_->NumOfMaterialized());
+  assert(tmp_tab_subq_ptr_->NumOfObj() == tmp_tab_subq_ptr_->NumOfMaterialized());
   PrepareAndFillCache();
   return true;
 }

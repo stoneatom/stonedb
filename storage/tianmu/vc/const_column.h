@@ -103,7 +103,7 @@ class ConstColumn : public VirtualColumn {
   // comparison of a const with a const should be simplified earlier
   virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
                                                 [[maybe_unused]] int64_t limit) override {
-    DEBUG_ASSERT(0);
+    assert(0);
     return common::ErrorCode::FAILED;
   }
   core::ValueOrNull value_or_null_;

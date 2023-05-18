@@ -176,7 +176,7 @@ class GroupByWrapper final {
   void OmitColumnForPackrow(int a) { pack_not_omitted[a] = false; }
   vcolumn::VirtualColumn *SourceColumn(int a) { return virt_col[a]; }
   vcolumn::VirtualColumn *GetColumn(int i) {
-    DEBUG_ASSERT(i < no_attr);
+    assert(i < no_attr);
     return virt_col[i];
   }
   bool JustDistinct() { return just_distinct; }

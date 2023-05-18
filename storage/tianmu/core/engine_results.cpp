@@ -240,7 +240,7 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
   rows_sent++;
 }
 
-void ResultSender::SendRow(const std::vector<std::unique_ptr<types::TianmuDataType>> &record, TempTable *owner) {
+void ResultSender::SendRow(std::vector<std::unique_ptr<types::TianmuDataType>> &record, TempTable *owner) {
   if (current_txn_->Killed())
     throw common::KilledException();
 
@@ -270,7 +270,7 @@ void ResultSender::SendRow(const std::vector<std::unique_ptr<types::TianmuDataTy
   rows_sent++;
 }
 
-void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &r) {
+void ResultSender::SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>> &r) {
   Item *item;
   Field *f;
   Item_field *ifield;
@@ -297,7 +297,17 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDat
         // because it was assigned for this instance of object
         if (buf_lens[col_id] != 0) {
           bitmap_set_bit(f->table->write_set, f->field_index);
-          auto is_null = Engine::ConvertToField(f, tianmu_dt, nullptr);
+          auto is_null = false;
+          if (((f->type() == MYSQL_TYPE_VARCHAR) || (f->type() == MYSQL_TYPE_STRING) ||
+               (f->type() == MYSQL_TYPE_BLOB)) &&
+              (Tianmu::types::ValueTypeEnum::STRING_TYPE != tianmu_dt.GetValueType())) {
+            std::unique_ptr<types::TianmuDataType> tianmu_dt_unq(new types::BString(tianmu_dt.ToBString()));
+            tianmu_dt_unq.swap(r[col_id]);
+            types::TianmuDataType &tianmu_dt_new(*r[col_id]);
+            is_null = Engine::ConvertToField(f, tianmu_dt_new, nullptr);
+          } else {
+            is_null = Engine::ConvertToField(f, tianmu_dt, nullptr);
+          }
           SetFieldState(f, is_null);
         }
         break;
@@ -367,7 +377,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDat
 }
 
 void ResultSender::Send(TempTable *t) {
-  DEBUG_ASSERT(t->IsMaterialized());
+  assert(t->IsMaterialized());
   t->CreateDisplayableAttrP();
   TempTable::RecordIterator iter = t->begin();
   TempTable::RecordIterator iter_end = t->end();
@@ -405,7 +415,7 @@ ResultSender::~ResultSender() { delete[] buf_lens; }
 ResultExportSender::ResultExportSender(THD *thd, Query_result *result, List<Item> &fields)
     : ResultSender(thd, result, fields) {
   export_res_ = dynamic_cast<exporter::select_tianmu_export *>(result);
-  DEBUG_ASSERT(export_res_);
+  assert(export_res_);
 }
 
 void ResultExportSender::SendEof() {
@@ -467,7 +477,7 @@ AttributeTypeInfo create_ati(THD *&thd, TABLE &tmp_table, Item *&item) {
 void ResultExportSender::Init(TempTable *t) {
   thd->proc_info = "Exporting data";
   DBUG_PRINT("info", ("%s", thd->proc_info));
-  DEBUG_ASSERT(t);
+  assert(t);
 
   thd->lex->unit->offset_limit_cnt = 0;
 
@@ -507,7 +517,7 @@ void ResultExportSender::Init(TempTable *t) {
 }
 
 // send to Exporter
-void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &r) {
+void ResultExportSender::SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>> &r) {
   List_iterator_fast<Item> li(fields);
   Item *l_item;
   li.rewind();

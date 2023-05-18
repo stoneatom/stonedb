@@ -52,7 +52,7 @@ GroupTable::~GroupTable() {
 }
 
 GroupTable::GroupTable(const GroupTable &sec) : mm::TraceableObject(sec) {
-  DEBUG_ASSERT(sec.initialized);  // can only copy initialized GroupTables!
+  assert(sec.initialized);  // can only copy initialized GroupTables!
   // Some fields are omitted (empty vectors), as they are used only for
   // Initialize()
   initialized = true;
@@ -380,7 +380,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
   for (int i = no_grouping_attr; i < no_attr; i++)
     if (distinct[i]) {
       desc = aggregated_desc[i - no_grouping_attr];
-      DEBUG_ASSERT(distinct_size > 0);
+      assert(distinct_size > 0);
       gdistinct[i] = std::make_shared<GroupDistinctTable>(p_power);
       gdistinct[i]->InitializeVC(vm_tab->RowNumberScope(), vc[i], desc.max_no_values,
                                  distinct_size / no_columns_with_distinct,
@@ -440,7 +440,7 @@ bool GroupTable::FindCurrentRow(int64_t &row)  // a position in the current Grou
 int GroupTable::MemoryBlocksLeft() { return vm_tab->MemoryBlocksLeft(); }
 
 void GroupTable::Merge(GroupTable &sec, Transaction *m_conn) {
-  DEBUG_ASSERT(total_width == sec.total_width);
+  assert(total_width == sec.total_width);
   sec.vm_tab->Rewind(true);
   int64_t sec_row;
   int64_t row;
@@ -453,7 +453,7 @@ void GroupTable::Merge(GroupTable &sec, Transaction *m_conn) {
       std::memcpy(input_buffer.data(), sec.vm_tab->GetGroupingRow(sec_row), grouping_and_UTF_width);
     FindCurrentRow(row);  // find the value on another position or add as a new one
     if (row != common::NULL_VALUE_64) {
-      DEBUG_ASSERT(row != common::NULL_VALUE_64);
+      assert(row != common::NULL_VALUE_64);
       unsigned char *p1 = vm_tab->GetAggregationRow(row);
       unsigned char *p2 = sec.vm_tab->GetAggregationRow(sec_row);
       for (int col = no_grouping_attr; col < no_attr; col++) {
@@ -545,7 +545,7 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row,
 GDTResult GroupTable::FindDistinctValue(int col, int64_t row,
                                         int64_t v)  // for all numerical values
 {
-  DEBUG_ASSERT(gdistinct[col]);
+  assert(gdistinct[col]);
   if (v == common::NULL_VALUE_64)  // works also for double
     return GDTResult::GDT_EXISTS;  // null omitted
   return gdistinct[col]->Find(row, v);
@@ -554,7 +554,7 @@ GDTResult GroupTable::FindDistinctValue(int col, int64_t row,
 GDTResult GroupTable::AddDistinctValue(int col, int64_t row,
                                        int64_t v)  // for all numerical values
 {
-  DEBUG_ASSERT(gdistinct[col]);
+  assert(gdistinct[col]);
   if (v == common::NULL_VALUE_64)  // works also for double
     return GDTResult::GDT_EXISTS;  // null omitted
   return gdistinct[col]->Add(row, v);
@@ -563,7 +563,7 @@ GDTResult GroupTable::AddDistinctValue(int col, int64_t row,
 bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64_t factor, bool as_string) {
   if (distinct[col]) {
     // Repetition? Return without action.
-    DEBUG_ASSERT(gdistinct[col]);
+    assert(gdistinct[col]);
     if (vc[col]->IsNull(mit))
       return true;  // omit nulls
     GDTResult res = gdistinct[col]->Add(row, mit);
@@ -613,7 +613,7 @@ bool GroupTable::PutAggregatedNull(int col, int64_t row, bool as_string) {
 bool GroupTable::PutCachedValue(int col, GroupDistinctCache &cache,
                                 bool as_text)  // for all numerical values
 {
-  DEBUG_ASSERT(distinct[col]);
+  assert(distinct[col]);
   GDTResult res = gdistinct[col]->AddFromCache(cache.GetCurrentValue());
   if (res == GDTResult::GDT_EXISTS)
     return true;  // value found, do not aggregate it again

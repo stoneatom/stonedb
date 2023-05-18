@@ -138,7 +138,7 @@ FilterBlockBuilder::FilterBlockBuilder(const FilterPolicy *policy) : policy_(pol
 
 void FilterBlockBuilder::StartBlock(uint64_t block_offset) {
   uint64_t filter_index = (block_offset / kFilterBase);
-  DEBUG_ASSERT(filter_index >= filter_offsets_.size());
+  assert(filter_index >= filter_offsets_.size());
   while (filter_index > filter_offsets_.size()) {
     GenerateFilter();
   }

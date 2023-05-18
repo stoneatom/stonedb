@@ -286,11 +286,11 @@ class VirtualColumnBase : public core::Column {
    */
   inline size_t MaxStringSize() { return MaxStringSizeImpl(); }
   virtual types::BString DecodeValue_S([[maybe_unused]] int64_t code) {
-    DEBUG_ASSERT(0);
+    assert(0);
     return types::BString();
   }  // lookup (physical) only
   virtual int EncodeValue_S([[maybe_unused]] types::BString &v) {
-    DEBUG_ASSERT(0);
+    assert(0);
     return -1;
   }                                           // lookup (physical) only
   int64_t DecodeValueAsDouble(int64_t code);  // convert code to a double value
@@ -427,7 +427,7 @@ class VirtualColumnBase : public core::Column {
    *
    */
   virtual VirtualColumn *Copy() {
-    DEBUG_ASSERT(0 && "not implemented");
+    assert(0 && "not implemented");
     return nullptr;
   }
 

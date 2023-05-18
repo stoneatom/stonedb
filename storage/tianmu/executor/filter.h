@@ -124,7 +124,7 @@ class Filter final : public mm::TraceableObject {
                       int64_t n2);  // true if there are only 0 between n1 and n2, inclusively
   bool IsFull() const;
   bool IsFull(unsigned int b) const {  // block b
-    DEBUG_ASSERT(b < no_blocks);
+    assert(b < no_blocks);
     return (block_status[b] == FB_FULL &&
             block_last_one[b] == (b == no_blocks - 1 ? no_of_bits_in_last_block - 1 : (pack_def - 1)));
   }
@@ -162,16 +162,16 @@ class Filter final : public mm::TraceableObject {
   class Block;
   class BlockAllocator;
   Block *GetBlock(size_t b) const {
-    DEBUG_ASSERT(b < no_blocks);
+    assert(b < no_blocks);
     return blocks[b];
   };
   uchar GetBlockStatus(size_t i) {
-    DEBUG_ASSERT(i < no_blocks);
+    assert(i < no_blocks);
     return block_status[i];
   };
   uint32_t GetPower() { return no_power; };
   bool GetBlockChangeStatus(uint32_t n) const {
-    DEBUG_ASSERT(n < no_blocks);
+    assert(n < no_blocks);
     return block_changed[n];
   }
   static const uchar FB_FULL = 0;   // block status: full
@@ -190,8 +190,8 @@ class Filter final : public mm::TraceableObject {
   void SetBetween(size_t b1, int n1, size_t b2, int n2);  // set 1 between...
   // Delayed operations on filter
   void ResetDelayed(unsigned int b, int pos) {
-    DEBUG_ASSERT(b < no_blocks);
-    DEBUG_ASSERT(delayed_block_set == -1);  // no mixing!
+    assert(b < no_blocks);
+    assert(delayed_block_set == -1);  // no mixing!
     if (block_status[b] == FB_FULL) {
       if (static_cast<size_t>(delayed_block) != b) {
         Commit();
@@ -254,7 +254,7 @@ class Filter final : public mm::TraceableObject {
     bool Set(int n);                                // the object = 1
     bool Set(int n1, int n2);                       // set 1 between..., true => block is full
     bool Reset(int n) {
-      DEBUG_ASSERT(n < no_obj);
+      assert(n < no_obj);
       uint mask = lshift1[n & 31];
       uint &cur_bl = block_table[n >> 5];
       if (cur_bl & mask) {  // if this operation change value
@@ -339,13 +339,13 @@ class FilterOnesIterator {
                           // end. Return false if we just restarted the pack
   bool IsValid() { return valid; }
   int64_t operator*() const {
-    DEBUG_ASSERT(valid);
+    assert(valid);
     return cur_position;
   }
 
   FilterOnesIterator &operator++() {
-    DEBUG_ASSERT(valid);  // cannot iterate invalid iterator
-    DEBUG_ASSERT(packs_to_go == -1 || packs_to_go > packs_done);
+    assert(valid);  // cannot iterate invalid iterator
+    assert(packs_to_go == -1 || packs_to_go > packs_done);
 
     if (IsEndOfBlock()) {
       if (!IteratorBpp()) {
@@ -390,12 +390,12 @@ class FilterOnesIterator {
   int GetPackCount() const { return f->no_blocks; }
   bool InsideOnePack() { return inside_one_pack; }
   int GetCurrPack() {
-    DEBUG_ASSERT(valid);
+    assert(valid);
     return iterator_b;
   }
 
   int GetCurrInPack() {
-    DEBUG_ASSERT(valid);
+    assert(valid);
     return iterator_n;
   }
 

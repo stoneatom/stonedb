@@ -184,7 +184,7 @@ void IncWGraph::EncodeRec(ushort rec, bool &repeated) {
   // middle of an edge, go by suffix links, adding nodes if necessary, to obtain
   // active.proj==0
   while (restlen) {
-    DEBUG_ASSERT(proj == 0);
+    assert(proj == 0);
 
     // (1)
     while (1) {
@@ -251,7 +251,7 @@ void IncWGraph::DecodeRec(ushort rec, uint dlen, bool &repeated) {
     p_mask_->Reset();
 
   while (restlen) {
-    DEBUG_ASSERT(proj == 0);
+    assert(proj == 0);
 
     // (1)
     while (1) {
@@ -297,14 +297,14 @@ void IncWGraph::DecodeRec(ushort rec, uint dlen, bool &repeated) {
       records_[rec] = s - len;           // set correct index for repeated record
     } else if (proj < edge->GetLen()) {  // it appears that the record is not a
                                          // repetition
-      DEBUG_ASSERT(base != NIL_);
+      assert(base != NIL_);
       if (len > dlen)
         throw CprsErr::CPRS_ERR_BUF;
       declen = len - restlen;
       LabelCopy(s, edge->target->endpos - edgelen + proj - declen,
                 declen);  // copy at once all labels passed till now
       repeated = false;
-      DEBUG_ASSERT(recent_.empty());
+      assert(recent_.empty());
     }
 
     // set 'fsym' of recently created edges
@@ -316,7 +316,7 @@ void IncWGraph::DecodeRec(ushort rec, uint dlen, bool &repeated) {
   }
   if (final && !final->suf)
     final->suf = base;
-  DEBUG_ASSERT(recent_.empty());
+  assert(recent_.empty());
 }
 
 //-------------------------------------------------------------------------------------------
@@ -358,7 +358,7 @@ inline void IncWGraph::Traverse(Node *&base, Edge *&edge, ushort &proj, uchar *s
           solid = false;
         } else if (final && !final->suf) {
           final->suf = node;
-          DEBUG_ASSERT(!last);
+          assert(!last);
         }
         if (last)
           last->suf = node;  // initialize 'suf' link of the previously created node
@@ -380,7 +380,7 @@ inline void IncWGraph::Traverse(Node *&base, Edge *&edge, ushort &proj, uchar *s
 
 ushort IncWGraph::Node::AllocEdge(IncAlloc &mem) {
   ushort n = GetNEdge(), m = RoundNEdge(n), m1 = RoundNEdge(n + 1);
-  DEBUG_ASSERT((n <= 255) && (n <= m) && (m1 <= 256));
+  assert((n <= 255) && (n <= m) && (m1 <= 256));
   if (m == m1)
     return n;
 
@@ -418,12 +418,12 @@ IncWGraph::Node *IncWGraph::Node::Duplicate(Node *base, Edge *e, IncAlloc &mem) 
   e->SetSolid(true);
   ushort proj = e->GetLen();
   do {
-    DEBUG_ASSERT(proj && (proj == e->GetLen()));
+    assert(proj && (proj == e->GetLen()));
     e->target = n;
     base = Canonize(base->suf, e, proj, endpos,
                     false);  // move 'q' along suffix link, don't canonize the last edge
   } while (e->target == this);
-  DEBUG_ASSERT(e->target == n->suf);
+  assert(e->target == n->suf);
 
   return n;
 }
@@ -432,7 +432,7 @@ inline IncWGraph::Node *IncWGraph::Node::Canonize(Node *n, Edge *&e, ushort &pro
   ushort len;
   while (proj) {
     e = n->FindEdge(*(s - proj));
-    DEBUG_ASSERT(e);
+    assert(e);
     // if(canonlast) n->UpdateCount(e, 1);
     len = e->GetLen();
     if ((proj < len) || (!canonlast && (proj == len)))
@@ -469,7 +469,7 @@ IncWGraph::Node *IncWGraph::InsertNode([[maybe_unused]] Node *base, Edge *edge, 
   Node *node;
   memory_.alloc(node);
   memory_.alloc(node->edge, node->RoundNEdge(node->nedge = 1));
-  DEBUG_ASSERT(node->RoundNEdge(1) == node->RoundNEdge(2));
+  assert(node->RoundNEdge(1) == node->RoundNEdge(2));
 
   // edge from 'node' to 'edge->target'
   Node *target = edge->target;
@@ -524,7 +524,7 @@ inline bool IncWGraph::Node::FindEdge(uchar s, Edge *&e, Count &low, Mask *mask)
   return false;
 }
 inline bool IncWGraph::Node::FindEdge(Count c, Edge *&e, Count &low, Mask *mask) {
-  DEBUG_ASSERT(c < total);
+  assert(c < total);
   low = 0;
   if (!edge)
     return false;
@@ -559,7 +559,7 @@ inline IncWGraph::Edge *IncWGraph::Node::FindEdge(uchar s) {
 }
 
 inline IncWGraph::Edge *IncWGraph::Node::AddEdge(uchar s, ushort len, bool solid, Node *final, Count esc, ushort e) {
-  DEBUG_ASSERT(e <= 255);
+  assert(e <= 255);
   Count t = total;
   total -= esc;
   edge[e].Init(s, len, solid, final, init_count);
@@ -592,7 +592,7 @@ inline Count IncWGraph::Node::GetMaskTotal(Mask *mask) {
 
 inline void IncWGraph::Node::UpdateCount(Edge *&e, Count update) {
   // increase count and total, do rescaling if necessary
-  DEBUG_ASSERT((e >= edge) && (e - edge < GetNEdge()));
+  assert((e >= edge) && (e - edge < GetNEdge()));
   Count t = total + update;
   if ((t <= total)
       //  || (t > MAX_TOTAL)) FIXME: always false
@@ -624,11 +624,11 @@ inline void IncWGraph::Edge::Init(uchar fs, ushort l, bool s, Node *t, Count c) 
 }
 
 inline ushort IncWGraph::Edge::NumMatch(uchar *s, ushort maxlen) {
-  DEBUG_ASSERT(maxlen && (maxlen <= GetLen()));
+  assert(maxlen && (maxlen <= GetLen()));
   if (maxlen == 1)
     return 1;
   uchar *q = target->endpos - GetLen();
-  DEBUG_ASSERT(*s == *q);
+  assert(*s == *q);
   ushort m = 1;
   while (m < maxlen)
     if (s[m] != q[m])

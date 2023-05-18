@@ -33,7 +33,7 @@ const types::TianmuDataType &AttributeTypeInfo::ValuePrototype() const {
     return types::TianmuNum::NullValue();
   if (ATI::IsStringType(attrt_))
     return types::BString::NullValue();
-  DEBUG_ASSERT(ATI::IsDateTimeType(attrt_));
+  assert(ATI::IsDateTimeType(attrt_));
   return types::TianmuDateTime::NullValue();
 }
 }  // namespace core

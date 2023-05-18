@@ -61,9 +61,7 @@ class TIANMUAggregator {
    * This version is used only for COUNT(*), when no value is needed
    * May be left unimplemented if not applicable for a given aggregator.
    */
-  virtual void PutAggregatedValue([[maybe_unused]] unsigned char *buf, [[maybe_unused]] int64_t factor) {
-    DEBUG_ASSERT(0);
-  }
+  virtual void PutAggregatedValue([[maybe_unused]] unsigned char *buf, [[maybe_unused]] int64_t factor) { assert(0); }
   /*!
    * \brief Add the current value to counter pointed by the pointer.
    * A version for all numerical values.
@@ -71,7 +69,7 @@ class TIANMUAggregator {
    */
   virtual void PutAggregatedValue([[maybe_unused]] unsigned char *buf, [[maybe_unused]] int64_t v,
                                   [[maybe_unused]] int64_t factor) {
-    DEBUG_ASSERT(0);
+    assert(0);
   }
   /*!
    * \brief Add the current value to counter pointed by the pointer.
@@ -80,7 +78,7 @@ class TIANMUAggregator {
    */
   virtual void PutAggregatedValue([[maybe_unused]] unsigned char *buf, [[maybe_unused]] const types::BString &v,
                                   [[maybe_unused]] int64_t factor) {
-    DEBUG_ASSERT(0);
+    assert(0);
   }
   /*!
    * \brief Add the counters value represented in src_buf into buf.
@@ -93,7 +91,7 @@ class TIANMUAggregator {
    * May be left unimplemented if no numerical value is returned.
    */
   virtual int64_t GetValue64([[maybe_unused]] unsigned char *buf) {
-    DEBUG_ASSERT(0);
+    assert(0);
     return common::NULL_VALUE_64;
   }
   /*!
@@ -101,7 +99,7 @@ class TIANMUAggregator {
    * May be left unimplemented if no text value is returned.
    */
   virtual types::BString GetValueT([[maybe_unused]] unsigned char *buf) {
-    DEBUG_ASSERT(0);
+    assert(0);
     return types::BString();
   }
   /*!
@@ -109,7 +107,7 @@ class TIANMUAggregator {
    * May be left unimplemented if no floating point value is returned.
    */
   virtual double GetValueD([[maybe_unused]] unsigned char *buf) {
-    DEBUG_ASSERT(0);
+    assert(0);
     return NULL_VALUE_D;
   }
 
@@ -161,19 +159,19 @@ class TIANMUAggregator {
   virtual bool PackAggregationDistinctIrrelevant() { return false; }
   /*!  Set a parameter for the whole packrow aggregation.
    */
-  virtual void SetAggregatePackNoObj([[maybe_unused]] int64_t par1) { DEBUG_ASSERT(0); }
+  virtual void SetAggregatePackNoObj([[maybe_unused]] int64_t par1) { assert(0); }
   /*!  Set a parameter for the whole packrow aggregation.
    */
-  virtual void SetAggregatePackNotNulls([[maybe_unused]] int64_t par1) { DEBUG_ASSERT(0); }
+  virtual void SetAggregatePackNotNulls([[maybe_unused]] int64_t par1) { assert(0); }
   /*!  Set a parameter for the whole packrow aggregation.
    */
-  virtual void SetAggregatePackSum([[maybe_unused]] int64_t par1, [[maybe_unused]] int64_t factor) { DEBUG_ASSERT(0); }
+  virtual void SetAggregatePackSum([[maybe_unused]] int64_t par1, [[maybe_unused]] int64_t factor) { assert(0); }
   /*!  Set a parameter for the whole packrow aggregation.
    */
-  virtual void SetAggregatePackMin([[maybe_unused]] int64_t par1) { DEBUG_ASSERT(0); }
+  virtual void SetAggregatePackMin([[maybe_unused]] int64_t par1) { assert(0); }
   /*!  Set a parameter for the whole packrow aggregation.
    */
-  virtual void SetAggregatePackMax([[maybe_unused]] int64_t par1) { DEBUG_ASSERT(0); }
+  virtual void SetAggregatePackMax([[maybe_unused]] int64_t par1) { assert(0); }
   /*!  Aggregate the whole packrow basing on parameters set previously.
    *  Implementation depends on the actual aggregator.
    *  \return True, if the packrow was successfully aggregated.
@@ -271,7 +269,7 @@ class AggregatorCount64 : public TIANMUAggregator {
     return (cur_min_counter == 1);  // minimal value, we will not find anything better
   }
   bool PackCannotChangeAggregation() override {
-    DEBUG_ASSERT(stats_updated);
+    assert(stats_updated);
     return (cur_min_counter == max_counter);
   }
 
@@ -339,7 +337,7 @@ class AggregatorCount32 : public TIANMUAggregator {
     return (cur_min_counter == 1);  // minimal value, we will not find anything better
   }
   bool PackCannotChangeAggregation() override {
-    DEBUG_ASSERT(stats_updated);
+    assert(stats_updated);
     return (cur_min_counter == max_counter);
   }
 

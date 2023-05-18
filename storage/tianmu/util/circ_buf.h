@@ -32,14 +32,14 @@ class FixedSizeBuffer {
   }
 
   void Put(const T &v) {
-    DEBUG_ASSERT(elems_ < size_);
+    assert(elems_ < size_);
     iin_ = (iin_ + 1) % size_;
     buffer_[iin_] = v;
     ++elems_;
   }
 
   T &Get() {
-    DEBUG_ASSERT(elems_ > 0);
+    assert(elems_ > 0);
     T &v = buffer_[iout_];
     --elems_;
     iout_ = (iout_ + 1) % size_;
@@ -47,12 +47,12 @@ class FixedSizeBuffer {
   }
 
   T &GetLast() {
-    DEBUG_ASSERT(elems_ > 0);
+    assert(elems_ > 0);
     return buffer_[iin_];
   }
 
   T &Nth(int n) {
-    DEBUG_ASSERT(elems_ >= n - 1);
+    assert(elems_ >= n - 1);
     return buffer_[(iout_ + n) % size_];
   }
 

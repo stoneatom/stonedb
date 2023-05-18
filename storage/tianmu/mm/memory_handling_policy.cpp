@@ -432,7 +432,7 @@ class SimpleHist {
   const char *label;
 
   inline void update_bin(int bin, uint64_t value) {
-    DEBUG_ASSERT(bin < bins);
+    assert(bin < bins);
     bin_count[bin]++;
     bin_total[bin] += value;
   }

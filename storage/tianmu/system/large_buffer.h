@@ -47,7 +47,7 @@ class LargeBuffer final : public mm::TraceableObject {
   char *Buf(int n) {
     // Note: we allow n=buf_used, although it is out of declared limits.
     // Fortunately "buf" is one character longer.
-    DEBUG_ASSERT(n >= 0 && n <= buf_used_);
+    assert(n >= 0 && n <= buf_used_);
     return buf_ + n;
   }
 

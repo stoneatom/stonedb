@@ -446,7 +446,7 @@ class TianmuValueObject {
   TianmuDataType *Get() const { return value_.get(); }
   TianmuDataType &operator*() const;
 
-  // TianmuDataType& operator*() const	{ DEBUG_ASSERT(value_.get()); return
+  // TianmuDataType& operator*() const	{ assert(value_.get()); return
   // *value_; }
 
   operator TianmuNum &() const;
@@ -568,7 +568,7 @@ static bool conv_required_table[] = {
 };
 
 static inline bool RequiresUTFConversions(const DTCollation &coll) {
-  DEBUG_ASSERT(coll.collation->number < 256);
+  assert(coll.collation->number < 256);
   return (conv_required_table[coll.collation->number]);
 }
 
@@ -597,7 +597,7 @@ inline DTCollation ResolveCollation(DTCollation first, DTCollation sec) {
       if (IsBin(sec))
         return sec;
     }
-    DEBUG_ASSERT(!"Error: Incompatible collations!");
+    assert(!"Error: Incompatible collations!");
   }
   return first;
 }
@@ -605,7 +605,7 @@ inline DTCollation ResolveCollation(DTCollation first, DTCollation sec) {
 static inline double PowOfTen(int exponent) { return std::pow((double)10, exponent); }
 
 static inline uint64_t Uint64PowOfTen(short exponent) {
-  DEBUG_ASSERT(exponent >= 0 && exponent < 20);
+  assert(exponent >= 0 && exponent < 20);
 
   static uint64_t v[] = {1ULL,
                          10ULL,
@@ -637,7 +637,7 @@ static inline uint64_t Uint64PowOfTen(short exponent) {
 static inline int64_t Int64PowOfTen(short exponent) { return int64_t(Uint64PowOfTen(exponent)); }
 
 static inline uint64_t Uint64PowOfTenMultiply5(short exponent) {
-  DEBUG_ASSERT(exponent >= 0 && exponent < 19);
+  assert(exponent >= 0 && exponent < 19);
 
   static uint64_t v[] = {5ULL,
                          50ULL,

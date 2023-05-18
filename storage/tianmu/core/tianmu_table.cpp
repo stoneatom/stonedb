@@ -744,32 +744,32 @@ int64_t TianmuTable::NumOfValues() const { return NumOfObj(); }
 uint64_t TianmuTable::NextRowId() { return m_delta->row_id++; }
 
 void TianmuTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
-  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  assert(static_cast<size_t>(attr) <= m_attrs.size());
+  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   s = m_attrs[attr]->GetValueString(obj);
 }
 
 int64_t TianmuTable::GetTable64(int64_t obj, int attr) {
-  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  assert(static_cast<size_t>(attr) <= m_attrs.size());
+  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValueInt64(obj);
 }
 
 bool TianmuTable::IsNull(int64_t obj, int attr) {
-  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  assert(static_cast<size_t>(attr) <= m_attrs.size());
+  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return (m_attrs[attr]->IsNull(obj) ? true : false);
 }
 
 types::TianmuValueObject TianmuTable::GetValue(int64_t obj, int attr, [[maybe_unused]] Transaction *conn) {
-  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  assert(static_cast<size_t>(attr) <= m_attrs.size());
+  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValue(obj, false);
 }
 
 bool TianmuTable::IsDelete(int64_t row) const { return m_attrs[0]->IsDelete(row); }
 uint TianmuTable::MaxStringSize(int n_a, Filter *f) {
-  DEBUG_ASSERT(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
+  assert(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
   if (NumOfObj() == 0)
     return 1;
   return m_attrs[n_a]->MaxStringSize(f);
@@ -1624,15 +1624,6 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
       total_read_cnt++;
       total_read_bytes += value.size();
 
-      if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        insert_num += AsyncParseInsertRecords(&iop, &insert_records);
-      }
-      if (update_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        update_num += AsyncParseUpdateRecords(&iop, &update_records);
-      }
-      if (delete_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
-        delete_num += AsyncParseDeleteRecords(delete_records);
-      }
       iter->Next();
     }
   }
