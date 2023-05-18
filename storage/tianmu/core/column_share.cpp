@@ -236,7 +236,7 @@ int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
   // It is not portable to enlarge the file size after mmapping, but it seems to
   // work well on Linux. Otherwise we'll need to remmap the file, which in turn
   // requires locking because other threads may read simultaneously.
-  ftruncate(dn_fd, capacity * sizeof(DPN));
+  [[maybe_unused]] int tmp = ftruncate(dn_fd, capacity * sizeof(DPN));
   init_dpn(start[capacity - 1], xid, from);
   return capacity - 1;
 }

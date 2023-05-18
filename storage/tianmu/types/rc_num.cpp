@@ -246,7 +246,7 @@ BString RCNum::ToBString() const {
     static int const SIZE(24);
     char buf[SIZE];
     if (core::ATI::IsRealType(attr_type_)) {
-      gcvt(*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)), 15, buf);
+      [[maybe_unused]] char *tmp = gcvt(*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)), 15, buf);
       size_t s = std::strlen(buf);
       if (s && buf[s - 1] == '.')
         buf[s - 1] = 0;
