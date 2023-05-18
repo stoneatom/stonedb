@@ -45,7 +45,7 @@ Channel &Channel::lock(uint optional_sess_id) {
   if (time_stamp_at_lock_ && enabled_) {
     time_t curtime = time(nullptr);
     struct tm *cdt = localtime(&curtime);
-    char sdatetime[32] = "";
+    char sdatetime[64] = "";
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
     std::sprintf(sdatetime, "[%4d-%02d-%02d %02d:%02d:%02d.%06d]", cdt->tm_year + 1900, cdt->tm_mon + 1, cdt->tm_mday,
