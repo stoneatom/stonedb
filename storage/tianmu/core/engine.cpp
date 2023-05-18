@@ -1801,14 +1801,9 @@ common::TianmuError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
                                         TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
   // stonedb8 start
-  bool local_load = false;
-  uint value_list_elements = 0;
-
-  if (!for_exporter) {
-    auto cmd = down_cast<Sql_cmd_load_table *>(thd.lex->m_sql_cmd);
-    local_load = cmd->m_is_local_file;
-    value_list_elements = cmd->m_opt_set_exprs.size();
-  }
+  auto cmd = down_cast<Sql_cmd_load_table *>(thd.lex->m_sql_cmd);
+  bool local_load = for_exporter ? false : cmd->m_is_local_file;
+  uint value_list_elements = cmd->m_opt_set_exprs.size();
   // stonedb8 end
   int io_mode = -1;
   char name[FN_REFLEN] = {0};
