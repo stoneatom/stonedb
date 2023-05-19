@@ -72,7 +72,7 @@ BString::BString(const BString &tianmu_s)
 }
 
 BString::~BString() {
-  if (persistent_)
+  if (persistent_ && len_)
     delete[] val_;
 }
 
