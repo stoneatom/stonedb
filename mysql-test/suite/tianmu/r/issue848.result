@@ -54,16 +54,15 @@ hex(c_char)	hex(c_varchar)	hex(c_text)
 E4B8ADE59BBD	E6B599E6B19F	E69DADE5B79E
 ALTER TABLE t1 CHANGE c_char c_char char(10) CHARACTER SET GBK;
 ALTER TABLE t1 CHANGE c_varchar c_varchar char(10) CHARACTER SET GBK;
-ALTER TABLE t1 CHANGE c_text c_text char(10) CHARACTER SET GBK;
 select hex(c_char),hex(c_varchar),hex(c_text) from t1;
 hex(c_char)	hex(c_varchar)	hex(c_text)
-D6D0B9FA	D5E3BDAD	BABCD6DD
+D6D0B9FA	D5E3BDAD	E69DADE5B79E
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `c_char` char(10) CHARACTER SET gbk COLLATE gbk_chinese_ci DEFAULT NULL,
   `c_varchar` char(10) CHARACTER SET gbk COLLATE gbk_chinese_ci DEFAULT NULL,
-  `c_text` char(10) CHARACTER SET gbk COLLATE gbk_chinese_ci DEFAULT NULL,
+  `c_text` char(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   `ex_column` char(30) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 drop table t1;
