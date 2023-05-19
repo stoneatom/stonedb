@@ -48,14 +48,14 @@ void Dictionary<T>::SetLows() {
   for (short i = 0; i < n_keys_; i++) {
     order_[i] = &keys_[i];
     sumcnt += keys_[i].count;
-    DEBUG_ASSERT(keys_[i].count > 0);
+    assert(keys_[i].count > 0);
   }
   qsort_tianmu(order_, n_keys_, sizeof(*order_), compare);
 
   ASSERT(sumcnt <= MAX_TOTAL_, "should be 'sumcnt <= MAX_TOTAL_'");
   // set short counts
   //	if(sumcnt > MAX_TOTAL_) {
-  //		DEBUG_ASSERT(0);
+  //		assert(0);
   //		uint shift = GetShift(sumcnt, MAX_TOTAL_ - n_keys_);
   //		for(short i = 0; i < n_keys_; i++) {
   //			if((order_[i]->count _SHR_ASSIGN_ shift) == 0)

@@ -128,7 +128,7 @@ TraceableObject::TraceableObject(const TraceableObject &to)
 
 TraceableObject::~TraceableObject() {
   // Instance()->AssertNoLeak(this);
-  DEBUG_ASSERT(m_sizeAllocated == 0 /*, "TraceableObject size accounting"*/);
+  assert(m_sizeAllocated == 0 /*, "TraceableObject size accounting"*/);
   if (IsTracked())
     StopAccessTracking();
 }
@@ -188,7 +188,7 @@ void TraceableObject::Unlock() {
   m_lock_count--;
   if (m_lock_count < 0) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Internal error: An object unlocked too many times in memory manager.");
-    DEBUG_ASSERT(!"Internal error: An object unlocked too many times in memory manager.");
+    assert(!"Internal error: An object unlocked too many times in memory manager.");
     m_lock_count = 0;
   }
   if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK) {
@@ -250,7 +250,7 @@ void TraceableObject::deinitialize(bool detect_leaks) {
 int64_t TraceableObject::MemScale2BufSizeLarge(int ms)
 
 {
-  DEBUG_ASSERT(ms > 2);
+  assert(ms > 2);
   size_t max_total_size = (ms - 2) * 512_MB;
   int sc16 = ms - 5;
   // additionally add progressively more mem for each additional 16GB of free

@@ -42,13 +42,5 @@ namespace Tianmu {
 #define ASSERT(...) GET_MACRO(__VA_ARGS__, ASSERT_2, ASSERT_1)(__VA_ARGS__)
 #define TIANMU_ERROR(message) ASSERT(false, message)
 
-#ifdef DBUG_OFF
-#define DEBUG_ASSERT(condition) \
-  do {                          \
-  } while (false)
-#else
-#define DEBUG_ASSERT(...) assert(__VA_ARGS__)
-#endif
-
 }  // namespace Tianmu
 #endif  // TIANMU_COMMON_ASSERT_H_

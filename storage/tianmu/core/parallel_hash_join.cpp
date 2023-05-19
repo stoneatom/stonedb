@@ -102,7 +102,7 @@ class MILinearRowTaskIterator : public MITaskIterator {
   }
 
   bool IsValid(MIIterator *iter) const override {
-    DEBUG_ASSERT(iter->GetOneFilterDim() > -1);
+    assert(iter->GetOneFilterDim() > -1);
     int64_t cur_pos = (*iter)[iter->GetOneFilterDim()];
     // If not set rows_ended, the rows_ended_ is -1.
     // If the rows_ended_ isn't -1, here should compare with cur_pos.
@@ -189,7 +189,7 @@ void TraversedHashTable::GetColumnEncoder(std::vector<ColumnBinEncoder> *column_
 }
 
 ColumnBinEncoder *TraversedHashTable::GetColumnEncoder(size_t col) {
-  DEBUG_ASSERT(col < column_bin_encoder_.size());
+  assert(col < column_bin_encoder_.size());
   return &column_bin_encoder_[col];
 }
 
@@ -493,7 +493,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   std::vector<MITaskIterator *> task_iterators;
   MIIterator::SliceCapability slice_capability = mit.GetSliceCapability();
   if (slice_capability.type == MIIterator::SliceCapability::Type::kFixed) {
-    DEBUG_ASSERT(!slice_capability.slices.empty());
+    assert(!slice_capability.slices.empty());
     splitting_type = "fixed";
     size_t slices_size = slice_capability.slices.size();
     int64_t rows_started = 0;
@@ -706,7 +706,7 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
     }
   }
   if (slice_capability.type == MIIterator::SliceCapability::Type::kFixed) {
-    DEBUG_ASSERT(!slice_capability.slices.empty());
+    assert(!slice_capability.slices.empty());
     size_t slices_size = slice_capability.slices.size();
     int64_t rows_started = 0;
     for (size_t index = 0; index < slices_size; ++index) {
@@ -860,7 +860,7 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
 int64_t ParallelHashJoiner::AsyncMatchDim(MatchTaskParams *params) {
   MEASURE_FET("ParallelHashJoiner::AsyncMatchDim(...)");
 
-  DEBUG_ASSERT(!traversed_hash_tables_.empty());
+  assert(!traversed_hash_tables_.empty());
 
   // ftht: first_traversed_hash_table.
   auto &ftht = traversed_hash_tables_[0];
@@ -1097,7 +1097,7 @@ int64_t ParallelHashJoiner::SubmitOuterTraversed() {
   MEASURE_FET("ParallelHashJoiner::SubmitOuterTraversed(...)");
 
   std::shared_ptr<MultiIndexBuilder::BuildItem> build_item = multi_index_builder_->CreateBuildItem();
-  DEBUG_ASSERT(build_item);
+  assert(build_item);
 
   int64_t outer_added = 0;
   for (auto &it : traversed_hash_tables_) {
@@ -1168,7 +1168,7 @@ void ParallelHashJoiner::AsyncSubmitOuterMatched(OuterMatchedParams *params, Mut
 int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
   MEASURE_FET("ParallelHashJoiner::SubmitOuterMatched(...)");
   // miter - an iterator through the matched dimensions
-  DEBUG_ASSERT(outer_matched_filter_ && watch_matched_);
+  assert(outer_matched_filter_ && watch_matched_);
   if (tips.count_only)
     return outer_matched_filter_->GetOnesCount();
 

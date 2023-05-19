@@ -377,7 +377,7 @@ void ResultSender::SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>
 }
 
 void ResultSender::Send(TempTable *t) {
-  DEBUG_ASSERT(t->IsMaterialized());
+  assert(t->IsMaterialized());
   t->CreateDisplayableAttrP();
   TempTable::RecordIterator iter = t->begin();
   TempTable::RecordIterator iter_end = t->end();
@@ -415,7 +415,7 @@ ResultSender::~ResultSender() { delete[] buf_lens; }
 ResultExportSender::ResultExportSender(THD *thd, Query_result *result, List<Item> &fields)
     : ResultSender(thd, result, fields) {
   export_res_ = dynamic_cast<exporter::select_tianmu_export *>(result);
-  DEBUG_ASSERT(export_res_);
+  assert(export_res_);
 }
 
 void ResultExportSender::SendEof() {
@@ -477,7 +477,7 @@ AttributeTypeInfo create_ati(THD *&thd, TABLE &tmp_table, Item *&item) {
 void ResultExportSender::Init(TempTable *t) {
   thd->proc_info = "Exporting data";
   DBUG_PRINT("info", ("%s", thd->proc_info));
-  DEBUG_ASSERT(t);
+  assert(t);
 
   thd->lex->unit->offset_limit_cnt = 0;
 

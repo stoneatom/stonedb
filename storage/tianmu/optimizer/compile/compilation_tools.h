@@ -22,10 +22,10 @@
 
 namespace Tianmu {
 namespace core {
-#define ASSERT_MYSQL_STRING(x)                           \
-  DEBUG_ASSERT(!x.str[x.length] &&                       \
-               "Verification that LEX_STRING ends with " \
-               "nil")
+#define ASSERT_MYSQL_STRING(x)                     \
+  assert(!x.str[x.length] &&                       \
+         "Verification that LEX_STRING ends with " \
+         "nil")
 
 #define EMPTY_TABLE_CONST_INDICATOR "%%TMP_TABLE%%"
 

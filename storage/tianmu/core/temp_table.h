@@ -160,7 +160,7 @@ class TempTable : public JustATable {
     // called
     void EvaluatePack(MIUpdatingIterator &mit [[maybe_unused]], int dim [[maybe_unused]],
                       Descriptor &desc [[maybe_unused]]) override {
-      DEBUG_ASSERT(0);
+      assert(0);
     }
     common::ErrorCode EvaluateOnIndex(MIUpdatingIterator &mit [[maybe_unused]], int dim [[maybe_unused]],
                                       Descriptor &desc [[maybe_unused]], int64_t limit [[maybe_unused]]) override {
@@ -168,11 +168,11 @@ class TempTable : public JustATable {
       return common::ErrorCode::FAILED;
     }
     types::BString DecodeValue_S(int64_t code [[maybe_unused]]) override {
-      DEBUG_ASSERT(0);
+      assert(0);
       return types::BString();
     }  // TianmuAttr only
     int EncodeValue_S(types::BString &v [[maybe_unused]]) override {
-      DEBUG_ASSERT(0);
+      assert(0);
       return -1;
     }  // lookup (physical) only
   };
@@ -282,42 +282,42 @@ class TempTable : public JustATable {
   int GetDimension(TabID alias);
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   int GetAttrScale(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
+    assert(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetScale();
   }
 
   int GetAttrSize(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
+    assert(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetDisplaySize();
   }
 
   uint GetFieldSize(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
+    assert(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetInternalSize();
   }
 
   int GetNumOfDigits(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
+    assert(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetPrecision();
   }
 
   const ColumnType &GetColumnType(int a) override {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
+    assert(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type();
   }
 
   PhysicalColumn *GetColumn(int a) override {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
+    assert(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a];
   }
 
   Attr *GetAttrP(uint a) {
-    DEBUG_ASSERT(a < (uint)NumOfAttrs());
+    assert(a < (uint)NumOfAttrs());
     return attrs[a];
   }
 
   Attr *GetDisplayableAttrP(uint i) {
-    DEBUG_ASSERT(!displayable_attr.empty());
+    assert(!displayable_attr.empty());
     return displayable_attr[i];
   }
   void CreateDisplayableAttrP();
@@ -338,7 +338,7 @@ class TempTable : public JustATable {
   MultiIndex *GetOutputMultiIndexP() { return &output_mind; }
   ParameterizedFilter *GetFilterP() { return &filter; }
   JustATable *GetTableP(uint dim) {
-    DEBUG_ASSERT(dim < tables.size());
+    assert(dim < tables.size());
     return tables[dim];
   }
 
@@ -355,7 +355,7 @@ class TempTable : public JustATable {
   void SetOneOutputRecordSize(uint size) { size_of_one_record = size; }
   uint GetOneOutputRecordSize() { return size_of_one_record; }
   int64_t GetPageSize() {
-    DEBUG_ASSERT(attrs[0]);
+    assert(attrs[0]);
     return attrs[0]->page_size;
   }
 
@@ -371,7 +371,7 @@ class TempTable : public JustATable {
   uint NumOfVirtColumns() { return uint(virt_cols.size()); }
   void ReserveVirtColumns(int no);
   vcolumn::VirtualColumn *GetVirtualColumn(uint col_num) {
-    DEBUG_ASSERT(col_num < virt_cols.size());
+    assert(col_num < virt_cols.size());
     return virt_cols[col_num];
   }
   void SetVCDistinctVals(int dim, int64_t val);  // set dist. vals for all vc of this dimension

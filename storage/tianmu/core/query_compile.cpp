@@ -357,7 +357,7 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
       } else if (join_ptr->join_cond() && !join_ptr->outer_join)
         cq->InnerJoinOn(tmp_table, left_tables, right_tables, cond_id);
     } else {
-      DEBUG_ASSERT(join_ptr->table && "We require that the table is defined if it is not a nested join");
+      assert(join_ptr->table && "We require that the table is defined if it is not a nested join");
       const char *database_name = 0;
       const char *table_name = 0;
       const char *table_alias = 0;
@@ -380,9 +380,9 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
       table_alias2index_ptr.insert(std::make_pair(ext_alias, std::make_pair(tab.n, join_ptr->table)));
       if (first_table) {
         left_tables.push_back(tab);
-        DEBUG_ASSERT(!join_ptr->join_cond() &&
-                     "It is not possible to join the first table with the LEFT "
-                     "direction");
+        assert(!join_ptr->join_cond() &&
+               "It is not possible to join the first table with the LEFT "
+               "direction");
         cq->TmpTable(tmp_table, tab, for_subq_in_where);
         first_table = false;
       } else {
@@ -614,7 +614,7 @@ QueryRouteTo Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, Ta
       WrapStatus ws = WrapMysqlExpression(item, tmp_table, expr, false, false);
       if (ws == WrapStatus::FAILURE)
         return QueryRouteTo::kToMySQL;
-      DEBUG_ASSERT(!expr->IsDeterministic());
+      assert(!expr->IsDeterministic());
       int col_num = AddColumnForMysqlExpression(expr, tmp_table, nullptr, common::ColOperation::LISTING, false, true);
       vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, AttrID(-col_num - 1));
       if (vc.first == common::NULL_VALUE_32) {
@@ -636,7 +636,7 @@ QueryRouteTo Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, Ta
         WrapStatus ws = WrapMysqlExpression(item, tmp_table, expr, false, delayed);
         if (ws == WrapStatus::FAILURE)
           return QueryRouteTo::kToMySQL;
-        DEBUG_ASSERT(expr->IsDeterministic());
+        assert(expr->IsDeterministic());
         int col_num = AddColumnForMysqlExpression(
             expr, tmp_table, nullptr, delayed ? common::ColOperation::DELAYED : common::ColOperation::LISTING, false,
             true);
@@ -763,7 +763,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
           item2varid[it] = VarID(tab.n, col.n);
       } else {
         // aggregation in WHERE not possible unless it is a parameter
-        DEBUG_ASSERT(!IsAggregationItem(it));
+        assert(!IsAggregationItem(it));
         item2varid[it] = VarID(tab.n, col.n);
       }
     }
@@ -828,7 +828,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
           item2varid[it] = VarID(tab.n, col.n);
         }
       } else
-        DEBUG_ASSERT(0);  // unknown item type?
+        assert(0);  // unknown item type?
     }
   }
   gc_expressions.push_back(expr = new MysqlExpression(item, item2varid));
@@ -848,7 +848,7 @@ int Query::AddColumnForPhysColumn(Item *item, const TabID &tmp_table, TabID cons
                       // temp_table
 
   if (base_table.IsNullID()) {
-    DEBUG_ASSERT(cq->ExistsInTempTable(tab, tmp_table));
+    assert(cq->ExistsInTempTable(tab, tmp_table));
     if (item->type() == Item_tianmufield::get_tianmuitem_type() &&
         IsAggregationItem(dynamic_cast<Item_tianmufield *>(item)->OriginalItem())) {
       return ((Item_tianmufield *)item)->varID[0].col;
@@ -967,7 +967,7 @@ int Query::AddColumnForMysqlExpression(MysqlExpression *mysql_expression, const 
 }
 
 bool Query::IsLocalColumn(Item *item, const TabID &tmp_table) {
-  DEBUG_ASSERT(IsFieldItem(item) || IsAggregationItem(item));
+  assert(IsFieldItem(item) || IsAggregationItem(item));
   AttrID col;
   TabID tab;
   if (!FieldUnmysterify(item, tab, col))

@@ -88,7 +88,7 @@ void DimensionGroupVirtual::NewDimensionContent(int dim, IndexTable *tnew,
                                                 bool nulls)  // tnew will be added (as a pointer to be deleted by
                                                              // destructor) on a dimension dim
 {
-  DEBUG_ASSERT(dims_used[dim]);
+  assert(dims_used[dim]);
   delete t[dim];
   t[dim] = tnew;
   nulls_possible[dim] = nulls;
@@ -136,7 +136,7 @@ void DimensionGroupVirtual::UpdateNumOfTuples() {
   no_obj = f->NumOfOnes();
   for (int d = 0; d < no_dims; d++)
     if (t[d])
-      DEBUG_ASSERT((uint64_t)no_obj <= t[d]->N());  // N() is an upper size of buffer
+      assert((uint64_t)no_obj <= t[d]->N());  // N() is an upper size of buffer
 }
 
 bool DimensionGroupVirtual::IsOrderable() {
@@ -199,7 +199,7 @@ DimensionGroupVirtual::DGVirtualIterator::DGVirtualIterator(const Iterator &sec,
 }
 
 void DimensionGroupVirtual::DGVirtualIterator::operator++() {
-  DEBUG_ASSERT(valid);
+  assert(valid);
   ++fi;
   valid = fi.IsValid();
   dim_pos++;
@@ -217,7 +217,7 @@ bool DimensionGroupVirtual::DGVirtualIterator::NextInsidePack() {
 }
 
 void DimensionGroupVirtual::DGVirtualIterator::NextPackrow() {
-  DEBUG_ASSERT(valid);
+  assert(valid);
   dim_pos += fi.GetPackSizeLeft();
   cur_pack_start = dim_pos;
   fi.NextPack();
@@ -225,7 +225,7 @@ void DimensionGroupVirtual::DGVirtualIterator::NextPackrow() {
 }
 
 int64_t DimensionGroupVirtual::DGVirtualIterator::GetCurPos(int dim) {
-  DEBUG_ASSERT(dim_pos < no_obj);
+  assert(dim_pos < no_obj);
   if (dim == base_dim)
     return (*fi);
   int64_t res = t[dim]->Get64(dim_pos);
@@ -305,7 +305,7 @@ DimensionGroupVirtual::DGVirtualOrderedIterator::~DGVirtualOrderedIterator() {
 }
 
 void DimensionGroupVirtual::DGVirtualOrderedIterator::operator++() {
-  DEBUG_ASSERT(valid);
+  assert(valid);
   bool new_pack = (fi.GetPackSizeLeft() <= 1);
   ++fi;
   valid = fi.IsValid();
@@ -334,7 +334,7 @@ void DimensionGroupVirtual::DGVirtualOrderedIterator::Rewind() {
 }
 
 void DimensionGroupVirtual::DGVirtualOrderedIterator::NextPackrow() {
-  DEBUG_ASSERT(valid);
+  assert(valid);
   fi.NextPack();
   valid = fi.IsValid();
   if (valid)

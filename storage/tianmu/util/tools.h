@@ -117,11 +117,11 @@ class ObjectId : public U {
     return object_id_helper::range_eq<int const *>()(oid1._coord, oid1._coord + no_dims, oid2._coord);
   }
   int const &operator[](int const &idx_) const {
-    DEBUG_ASSERT(idx_ < no_dims);
+    assert(idx_ < no_dims);
     return _coord[idx_];
   }
   int &operator[](int const &idx_) {
-    DEBUG_ASSERT(idx_ < no_dims);
+    assert(idx_ < no_dims);
     return _coord[idx_];
   }
   size_t operator()(ObjectId const &oid) const { return oid.hash(); }

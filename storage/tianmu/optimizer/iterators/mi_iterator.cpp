@@ -133,7 +133,7 @@ MIIterator::MIIterator(const MIIterator &sec, bool lock)
   p_power = sec.p_power;
   if (sec.mind_created_locally) {
     mind = new MultiIndex(*sec.mind);
-    DEBUG_ASSERT(no_dims == 1);
+    assert(no_dims == 1);
     dg[0] = mind->dim_groups[0];  // assuming that the local minds are
                                   // one-dimensional
   }
@@ -168,7 +168,7 @@ MIIterator::MIIterator(const MIIterator &sec, bool lock)
 }
 
 void MIIterator::swap(MIIterator &i) {
-  DEBUG_ASSERT(po.size() == 0 && "not working due to pack orderer swap");
+  assert(po.size() == 0 && "not working due to pack orderer swap");
   std::swap(p_power, i.p_power);
   std::swap(mind, i.mind);
   std::swap(mind_created_locally, i.mind_created_locally);
@@ -221,7 +221,7 @@ void MIIterator::Init(bool lock) {
     if (po.size() > 0) {
       for (int i = 0; i < no_dims; i++)
         if (dim_group_used[mind->group_num_for_dim[i]] && mind->GetFilter(i) && po[i].Initialized()) {
-          DEBUG_ASSERT(mind->IsOrderable(i));
+          assert(mind->IsOrderable(i));
           it.push_back(mind->group_for_dim[i]->NewOrderedIterator(dimensions, &po[i], p_power));
           dg.push_back(mind->group_for_dim[i]);
           dim_group_used[mind->group_num_for_dim[i]] = false;
@@ -384,7 +384,7 @@ void MIIterator::NextPackrow() {
     valid = false;
   else
     InitNextPackrow();
-  DEBUG_ASSERT(one_filter_dim == -1 || cur_pos[one_filter_dim] >> p_power == cur_pack[one_filter_dim]);
+  assert(one_filter_dim == -1 || cur_pos[one_filter_dim] >> p_power == cur_pack[one_filter_dim]);
 }
 
 bool MIIterator::WholePack(int dim) const {
@@ -448,7 +448,7 @@ void MIDummyIterator::Combine(const MIIterator &sec)  // copy position from the 
 
 void MIDummyIterator::Set(int dim, int64_t val)  // set a position manually
 {
-  DEBUG_ASSERT(dim >= 0 && dim < no_dims);
+  assert(dim >= 0 && dim < no_dims);
   cur_pos[dim] = val;
   if (val == common::NULL_VALUE_64)
     cur_pack[dim] = -1;
@@ -458,7 +458,7 @@ void MIDummyIterator::Set(int dim, int64_t val)  // set a position manually
 
 void MIDummyIterator::SetPack(int dim, int p)  // set a position manually
 {
-  DEBUG_ASSERT(dim >= 0 && dim < no_dims);
+  assert(dim >= 0 && dim < no_dims);
   cur_pos[dim] = (int64_t(p) << p_power);
   cur_pack[dim] = p;
 }
@@ -519,7 +519,7 @@ int MIInpackIterator::GetNextPackrow([[maybe_unused]] int dim, [[maybe_unused]] 
 }
 
 void MIIterator::SetNoPacksToGo(int n) {
-  DEBUG_ASSERT(one_filter_it);
+  assert(one_filter_it);
   one_filter_it->SetNoPacksToGo(n);
 }
 
@@ -566,7 +566,7 @@ MIIterator::SliceCapability MIIterator::GetSliceCapability() const {
 }
 
 void MIIterator::RewindToRow(int64_t row) {
-  DEBUG_ASSERT(one_filter_it);
+  assert(one_filter_it);
   one_filter_it->RewindToRow(row);
   valid = one_filter_it->IsValid();
   if (valid) {

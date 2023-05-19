@@ -90,18 +90,22 @@ union DT {
 
   bool Neg() const { return neg == 1; }
   void Store(MYSQL_TIME *my_time, enum_mysql_timestamp_type t) {
-    my_time->year = year;
-    my_time->month = month;
-    my_time->day = day;
-    my_time->hour = hour;
+    if (t == MYSQL_TIMESTAMP_TIME) {
+      my_time->year = 0;
+      my_time->month = 0;
+      my_time->day = 0;
+      my_time->hour = time_hour;
+    } else {
+      my_time->year = year;
+      my_time->month = month;
+      my_time->day = day;
+      my_time->hour = hour;
+    }
     my_time->minute = minute;
     my_time->second = second;
     my_time->second_part = microsecond;
     my_time->neg = neg;
     my_time->time_type = t;
-
-    if (t == MYSQL_TIMESTAMP_TIME)
-      my_time->hour = time_hour;
   }
 
   // util functions
@@ -442,7 +446,7 @@ class TianmuValueObject {
   TianmuDataType *Get() const { return value_.get(); }
   TianmuDataType &operator*() const;
 
-  // TianmuDataType& operator*() const	{ DEBUG_ASSERT(value_.get()); return
+  // TianmuDataType& operator*() const	{ assert(value_.get()); return
   // *value_; }
 
   operator TianmuNum &() const;
@@ -564,7 +568,7 @@ static bool conv_required_table[] = {
 };
 
 static inline bool RequiresUTFConversions(const DTCollation &coll) {
-  DEBUG_ASSERT(coll.collation->number < 256);
+  assert(coll.collation->number < 256);
   return (conv_required_table[coll.collation->number]);
 }
 
@@ -593,7 +597,7 @@ inline DTCollation ResolveCollation(DTCollation first, DTCollation sec) {
       if (IsBin(sec))
         return sec;
     }
-    DEBUG_ASSERT(!"Error: Incompatible collations!");
+    assert(!"Error: Incompatible collations!");
   }
   return first;
 }
@@ -601,7 +605,7 @@ inline DTCollation ResolveCollation(DTCollation first, DTCollation sec) {
 static inline double PowOfTen(int exponent) { return std::pow((double)10, exponent); }
 
 static inline uint64_t Uint64PowOfTen(short exponent) {
-  DEBUG_ASSERT(exponent >= 0 && exponent < 20);
+  assert(exponent >= 0 && exponent < 20);
 
   static uint64_t v[] = {1ULL,
                          10ULL,
@@ -633,7 +637,7 @@ static inline uint64_t Uint64PowOfTen(short exponent) {
 static inline int64_t Int64PowOfTen(short exponent) { return int64_t(Uint64PowOfTen(exponent)); }
 
 static inline uint64_t Uint64PowOfTenMultiply5(short exponent) {
-  DEBUG_ASSERT(exponent >= 0 && exponent < 19);
+  assert(exponent >= 0 && exponent < 19);
 
   static uint64_t v[] = {5ULL,
                          50ULL,

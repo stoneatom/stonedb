@@ -1167,8 +1167,7 @@ int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
 }
 
 std::string get_parameter_name(enum tianmu_param_name vn) {
-  DEBUG_ASSERT(static_cast<int>(vn) >= 0 &&
-               static_cast<int>(vn) <= static_cast<int>(tianmu_param_name::TIANMU_VAR_LIMIT));
+  assert(static_cast<int>(vn) >= 0 && static_cast<int>(vn) <= static_cast<int>(tianmu_param_name::TIANMU_VAR_LIMIT));
   return tianmu_var_name_strings[static_cast<int>(vn)];
 }
 
@@ -1587,16 +1586,8 @@ void Engine::LogStat() {
 
     // commands we are interested in
     static const enum_sql_command cmds[] = {
-        SQLCOM_SELECT,
-        // SQLCOM_CREATE_TABLE,
-        // SQLCOM_ALTER_TABLE,
-        SQLCOM_UPDATE,
-        SQLCOM_INSERT,
-        // SQLCOM_INSERT_SELECT,
-        // SQLCOM_DELETE,
-        // SQLCOM_TRUNCATE,
-        // SQLCOM_DROP_TABLE,
-        SQLCOM_LOAD,
+        SQLCOM_SELECT,        SQLCOM_CREATE_TABLE, SQLCOM_ALTER_TABLE, SQLCOM_UPDATE,     SQLCOM_INSERT,
+        SQLCOM_INSERT_SELECT, SQLCOM_DELETE,       SQLCOM_TRUNCATE,    SQLCOM_DROP_TABLE, SQLCOM_LOAD,
     };
 
     STATUS_VAR sv;

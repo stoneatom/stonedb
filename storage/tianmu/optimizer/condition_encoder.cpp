@@ -84,7 +84,7 @@ bool ConditionEncoder::IsTransformationNeeded() {
 void ConditionEncoder::DescriptorTransformation() {
   MEASURE_FET("ConditionEncoder::DescriptorTransformation(...)");
   if (desc->op == common::Operator::O_IN || desc->op == common::Operator::O_NOT_IN) {
-    DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(desc->val1.vc));
+    assert(dynamic_cast<vcolumn::MultiValColumn *>(desc->val1.vc));
     return;
   }
   if (desc->op == common::Operator::O_EQ_ANY)
@@ -210,7 +210,7 @@ void ConditionEncoder::TransformWithRespectToNulls() {
 void ConditionEncoder::PrepareValueSet(vcolumn::MultiValColumn &mvc) { mvc.SetExpectedType(attr->Type()); }
 
 void ConditionEncoder::EncodeConditionOnStringColumn() {
-  DEBUG_ASSERT(ATI::IsStringType(AttrTypeName()));
+  assert(ATI::IsStringType(AttrTypeName()));
 
   TextTransformation();
   if (!IsTransformationNeeded())
@@ -421,7 +421,7 @@ void ConditionEncoder::TransformLIKEsPattern() {
 
 void ConditionEncoder::TransformLIKEsIntoINsOnLookup() {
   MEASURE_FET("ConditionEncoder::TransformLIKEsIntoINsOnLookup(...)");
-  DEBUG_ASSERT(attr->Type().Lookup());
+  assert(attr->Type().Lookup());
 
   if (desc->op == common::Operator::O_LIKE)
     desc->op = common::Operator::O_IN;
@@ -568,7 +568,7 @@ void ConditionEncoder::TransformIntoINsOnLookup() {
 
 void ConditionEncoder::TextTransformation() {
   MEASURE_FET("ConditionEncoder::TextTransformation(...)");
-  DEBUG_ASSERT(ATI::IsStringType(AttrTypeName()));
+  assert(ATI::IsStringType(AttrTypeName()));
 
   if (desc->attr.vc) {
     vcolumn::ExpressionColumn *vcec = dynamic_cast<vcolumn::ExpressionColumn *>(desc->attr.vc);
@@ -589,7 +589,7 @@ void ConditionEncoder::TextTransformation() {
 
 void ConditionEncoder::TransformINs() {
   MEASURE_FET("ConditionEncoder::TransformINs(...)");
-  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(desc->val1.vc));
+  assert(dynamic_cast<vcolumn::MultiValColumn *>(desc->val1.vc));
 
   static MIIterator mit(nullptr, pack_power);
 

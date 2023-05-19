@@ -41,7 +41,7 @@ class DimensionVector {
   }
 
   bool operator==(const DimensionVector &d2) const {
-    DEBUG_ASSERT(Size() == d2.Size());
+    assert(Size() == d2.Size());
     for (int i = 0; i < Size(); ++i)
       if (v[i] != d2.v[i])
         return false;
@@ -63,7 +63,7 @@ class DimensionVector {
 
   // true if any common dimension present
   bool Intersects(DimensionVector &sec) {
-    DEBUG_ASSERT(v.size() == sec.v.size());
+    assert(v.size() == sec.v.size());
     for (size_t i = 0; i < v.size(); i++)
       if (v[i] && sec.v[i])
         return true;
@@ -73,7 +73,7 @@ class DimensionVector {
 
   // true if all dimensions from sec are present in *this
   bool Includes(DimensionVector &sec) {
-    DEBUG_ASSERT(v.size() == sec.v.size());
+    assert(v.size() == sec.v.size());
     for (size_t i = 0; i < v.size(); i++)
       if (sec.v[i] && !v[i])
         return false;
@@ -83,7 +83,7 @@ class DimensionVector {
 
   // exclude from *this all dimensions present in sec
   void Minus(DimensionVector &sec) {
-    DEBUG_ASSERT(v.size() == sec.v.size());
+    assert(v.size() == sec.v.size());
     for (size_t i = 0; i < v.size(); i++)
       if (sec.v[i])
         v[i] = false;
@@ -91,7 +91,7 @@ class DimensionVector {
 
   // include in *this all dimensions present in sec
   void Plus(DimensionVector &sec) {
-    DEBUG_ASSERT(v.size() == sec.v.size());
+    assert(v.size() == sec.v.size());
     for (size_t i = 0; i < v.size(); i++)
       if (sec.v[i])
         v[i] = true;

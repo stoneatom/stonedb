@@ -36,7 +36,7 @@ CachedBuffer<T>::CachedBuffer(uint page_size, uint _elem_size, Transaction *conn
 
 CachedBuffer<types::BString>::CachedBuffer(uint page_size, uint elem_size, Transaction *conn)
     : system::CacheableItem("PS", "CB"), page_size(page_size), elem_size(elem_size), m_conn(conn) {
-  // DEBUG_ASSERT(elem_size);
+  // assert(elem_size);
   CI_SetDefaultSize(page_size * (elem_size + 4));
 
   size_t buf_size = sizeof(char) * (size_t)page_size * (elem_size + 4);
@@ -58,7 +58,7 @@ CachedBuffer<types::BString>::~CachedBuffer() { dealloc(buf); }
 
 template <class T>
 T &CachedBuffer<T>::Get(uint64_t idx) {
-  DEBUG_ASSERT(page_size > 0);
+  assert(page_size > 0);
   if (idx / page_size != loaded_page)
     LoadPage((uint)(idx / page_size));
   return buf[idx % page_size];
@@ -91,7 +91,7 @@ void CachedBuffer<T>::Set(uint64_t idx, const T &value) {
 }
 
 void CachedBuffer<types::BString>::Set(uint64_t idx, const types::BString &value) {
-  DEBUG_ASSERT(value.len_ <= elem_size);
+  assert(value.len_ <= elem_size);
   if (idx / page_size != loaded_page)
     LoadPage((uint)(idx / page_size));
   uint pos = (uint)(idx % page_size) * (elem_size + 4);

@@ -119,7 +119,7 @@ void DataFilt_RLE<T>::Merge(DataSet<T> *dataset) {
   while (nblk_ > 0) {
     T val = data[--nblk_];
     for (ushort i = lens_[nblk_]; i > 0; i--) {
-      DEBUG_ASSERT(nrec > 0);
+      assert(nrec > 0);
       data[--nrec] = val;
     }
   }
@@ -257,13 +257,13 @@ double DataFilt_Diff<T>::Measure(DataSet<T> *dataset, bool diff) {
   if (diff) {
     T maxval1 = dataset->maxval + 1;
     for (; j < nsamp; i += step, j++) {
-      DEBUG_ASSERT(i < nrec);
+      assert(i < nrec);
       if ((sample_[j] = data[i] - data[i - 1]) > data[i])
         sample_[j] += maxval1;
     }
   } else
     for (; j < nsamp; i += step, j++) {
-      DEBUG_ASSERT(i < nrec);
+      assert(i < nrec);
       sample_[j] = data[i];
     }
 
@@ -305,7 +305,7 @@ bool DataFilt_Diff<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
     data[i] = (curr = data[i]) - last;
     if (last > curr)
       data[i] += maxval1;
-    DEBUG_ASSERT(data[i] <= dataset->maxval);
+    assert(data[i] <= dataset->maxval);
     last = curr;
   }
 
@@ -332,7 +332,7 @@ void DataFilt_Diff<T>::Merge(DataSet<T> *dataset) {
     curr = last + data[i];
     if ((curr > maxval) || (curr < last))
       curr -= maxval1;
-    DEBUG_ASSERT(curr <= maxval);
+    assert(curr <= maxval);
     last = data[i] = curr;
   }
 }

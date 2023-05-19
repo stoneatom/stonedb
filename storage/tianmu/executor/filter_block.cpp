@@ -25,7 +25,7 @@ namespace core {
 
 Filter::Block::Block(Filter *owner, int _no_obj, bool all_full) {
   MEASURE_FET("Filter::Block::Block()");
-  DEBUG_ASSERT(_no_obj > 0 && _no_obj <= (1 << owner->GetPower()));
+  assert(_no_obj > 0 && _no_obj <= (1 << owner->GetPower()));
 
   this->owner = owner;
   no_obj = _no_obj;
@@ -72,7 +72,7 @@ void Filter::Block::CopyFrom(Block const &block, Filter *owner) {
 }
 
 Filter::Block *Filter::Block::MoveFromShallowCopy(Filter *new_owner) {
-  DEBUG_ASSERT(owner->GetBitBlockPool() == new_owner->GetBitBlockPool());
+  assert(owner->GetBitBlockPool() == new_owner->GetBitBlockPool());
   owner = new_owner;
   return this;
 }
@@ -114,7 +114,7 @@ void Filter::Block::Reset() {
 }
 
 bool Filter::Block::Reset(int n1, int n2) {
-  DEBUG_ASSERT(n1 <= n2 && n2 < no_obj);
+  assert(n1 <= n2 && n2 < no_obj);
   int bl1 = n1 / 32;
   int bl2 = n2 / 32;
   int off1 = (n1 & 31);
