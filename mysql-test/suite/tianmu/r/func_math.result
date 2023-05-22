@@ -1,0 +1,202 @@
+drop database if exists func_math_test;
+create database func_math_test;
+create table t1
+(f1 varchar(32) not null,
+f2 smallint unsigned not null,
+f3 int unsigned not null default '0')
+engine=tianmu default charset=UTF8MB4;
+insert into t1 values ('zombie',0,0),('gold',1,10000),('silver',2,10000);
+create table t2
+(f1 int unsigned not null,
+f2 int unsigned not null,
+f3 smallint unsigned not null)
+engine=tianmu default charset=UTF8MB4;
+insert into t2 values (16777216,16787215,1),(33554432,33564431,2);
+select format(t2.f2-t2.f1+1,0) from t1,t2
+where t1.f2 = t2.f3 order by t1.f1;
+format(t2.f2-t2.f1+1,0)
+10,000
+10,000
+drop table t1, t2;
+create table t1(a int unsigned) engine=tianmu default charset=UTF8MB4;
+insert into t1 values (11);
+select cast(-2 as unsigned), 18446744073709551614, -2 from t1;
+cast(-2 as unsigned)	18446744073709551614	-2
+18446744073709551614	18446744073709551614	-2
+select abs(cast(-2 as unsigned)), abs(18446744073709551614), abs(-2) from t1;
+abs(cast(-2 as unsigned))	abs(18446744073709551614)	abs(-2)
+18446744073709551614	18446744073709551614	2
+select ceiling(18446744073709551614) from t1;
+ceiling(18446744073709551614)
+18446744073709551614
+select ceiling(cast(-2 as unsigned)), ceiling(-2) from t1;
+ceiling(cast(-2 as unsigned))	ceiling(-2)
+18446744073709551614	-2
+select floor(18446744073709551614) from t1;
+floor(18446744073709551614)
+18446744073709551614
+select floor(cast(-2 as unsigned)), floor(-2) from t1;
+floor(cast(-2 as unsigned))	floor(-2)
+18446744073709551614	-2
+select format(cast(-2 as unsigned), 2), format(18446744073709551614, 2), format(-2, 2) from t1;
+format(cast(-2 as unsigned), 2)	format(18446744073709551614, 2)	format(-2, 2)
+18,446,744,073,709,551,614.00	18,446,744,073,709,551,614.00	-2.00
+select sqrt(cast(-2 as unsigned)), sqrt(18446744073709551614), sqrt(-2) from t1;
+sqrt(cast(-2 as unsigned))	sqrt(18446744073709551614)	sqrt(-2)
+4294967296	4294967296	NULL
+select round(cast(-2 as unsigned), 1), round(18446744073709551614, 1), round(-2, 1) from t1;
+round(cast(-2 as unsigned), 1)	round(18446744073709551614, 1)	round(-2, 1)
+18446744073709551614	18446744073709551614	-2
+select round(4, cast(-2 as unsigned)), round(4, 18446744073709551614), round(4, -2) from t1;
+round(4, cast(-2 as unsigned))	round(4, 18446744073709551614)	round(4, -2)
+4	4	0
+select truncate(cast(-2 as unsigned), 1), truncate(18446744073709551614, 1), truncate(-2, 1) from t1;
+truncate(cast(-2 as unsigned), 1)	truncate(18446744073709551614, 1)	truncate(-2, 1)
+18446744073709551614	18446744073709551614	-2
+select truncate(4, cast(-2 as unsigned)), truncate(4, 18446744073709551614), truncate(4, -2) from t1;
+truncate(4, cast(-2 as unsigned))	truncate(4, 18446744073709551614)	truncate(4, -2)
+4	4	0
+select mod(cast(-2 as unsigned), 3), mod(18446744073709551614, 3), mod(-2, 3) from t1;
+mod(cast(-2 as unsigned), 3)	mod(18446744073709551614, 3)	mod(-2, 3)
+2	2	-2
+select mod(5, cast(-2 as unsigned)), mod(5, 18446744073709551614), mod(5, -2) from t1;
+mod(5, cast(-2 as unsigned))	mod(5, 18446744073709551614)	mod(5, -2)
+5	5	1
+select pow(cast(-2 as unsigned), 5), pow(18446744073709551614, 5), pow(-2, 5) from t1;
+pow(cast(-2 as unsigned), 5)	pow(18446744073709551614, 5)	pow(-2, 5)
+2.13598703592091e96	2.13598703592091e96	-32
+SELECT 1e308 + 1e308 from t1;
+ERROR 22003: DOUBLE value is out of range in '(1e308 + 1e308)'
+SELECT -1e308 - 1e308 from t1;
+ERROR 22003: DOUBLE value is out of range in '(-(1e308) - 1e308)'
+SELECT 1e300 * 1e300 from t1;
+ERROR 22003: DOUBLE value is out of range in '(1e300 * 1e300)'
+SELECT 1e300 / 1e-300 from t1;
+ERROR 22003: DOUBLE value is out of range in '(1e300 / 1e-300)'
+SELECT EXP(750) from t1;
+ERROR 22003: DOUBLE value is out of range in 'exp(750)'
+SELECT POW(10, 309) from t1;
+ERROR 22003: DOUBLE value is out of range in 'pow(10,309)'
+SELECT -9999999999999999991 DIV -1 from t1;
+ERROR 22003: BIGINT value is out of range in '(-(9999999999999999991) DIV -(1))'
+SELECT -9223372036854775808 DIV -1 from t1;
+ERROR 22003: BIGINT value is out of range in '(-(9223372036854775808) DIV -(1))'
+SELECT -9223372036854775808 MOD -1 from t1;
+-9223372036854775808 MOD -1
+0
+SELECT -9223372036854775808999 MOD -1 from t1;
+-9223372036854775808999 MOD -1
+0
+select 123456789012345678901234567890.123456789012345678901234567890 div 1 as x from t1;
+ERROR 22003: BIGINT value is out of range in '(123456789012345678901234567890.123456789012345678901234567890 DIV 1)'
+select "123456789012345678901234567890.123456789012345678901234567890" div 1 as x from t1;
+ERROR 22003: BIGINT value is out of range in '('123456789012345678901234567890.123456789012345678901234567890' DIV 1)'
+SHOW WARNINGS;
+Level	Code	Message
+Warning	1292	Truncated incorrect DECIMAL value: '123456789012345678901234567890'
+Error	1690	BIGINT value is out of range in '('123456789012345678901234567890.123456789012345678901234567890' DIV 1)'
+Error	1105	Unknown error
+SELECT 1e308 + 1e308 from t1;
+ERROR 22003: DOUBLE value is out of range in '(1e308 + 1e308)'
+SELECT -1e308 - 1e308 from t1;
+ERROR 22003: DOUBLE value is out of range in '(-(1e308) - 1e308)'
+SELECT 1e300 * 1e300 from t1;
+ERROR 22003: DOUBLE value is out of range in '(1e300 * 1e300)'
+SELECT 1e300 / 1e-300 from t1;
+ERROR 22003: DOUBLE value is out of range in '(1e300 / 1e-300)'
+SELECT EXP(750) from t1;
+ERROR 22003: DOUBLE value is out of range in 'exp(750)'
+SELECT POW(10, 309) from t1;
+ERROR 22003: DOUBLE value is out of range in 'pow(10,309)'
+SELECT COT(0) from t1;
+ERROR 22003: DOUBLE value is out of range in 'cot(0)'
+SELECT DEGREES(1e307) from t1;
+ERROR 22003: DOUBLE value is out of range in 'degrees(1e307)'
+SELECT 9223372036854775808 + 9223372036854775808 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(9223372036854775808 + 9223372036854775808)'
+SELECT 18446744073709551615 + 1 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(18446744073709551615 + 1)'
+SELECT 1 + 18446744073709551615 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(1 + 18446744073709551615)'
+SELECT -2 + CAST(1 AS UNSIGNED) from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(-(2) + cast(1 as unsigned))'
+SELECT CAST(1 AS UNSIGNED) + -2 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(cast(1 as unsigned) + -(2))'
+SELECT -9223372036854775808 + -9223372036854775808 from t1;
+ERROR 22003: BIGINT value is out of range in '(-(9223372036854775808) + -(9223372036854775808))'
+SELECT 9223372036854775807 + 9223372036854775807 from t1;
+ERROR 22003: BIGINT value is out of range in '(9223372036854775807 + 9223372036854775807)'
+SELECT CAST(0 AS UNSIGNED) - 9223372036854775809 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(cast(0 as unsigned) - 9223372036854775809)'
+SELECT 9223372036854775808 - 9223372036854775809 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(9223372036854775808 - 9223372036854775809)'
+SELECT CAST(1 AS UNSIGNED) - 2 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(cast(1 as unsigned) - 2)'
+SELECT 18446744073709551615 - (-1) from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(18446744073709551615 - -(1))'
+SELECT -1 - 9223372036854775808 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(-(1) - 9223372036854775808)'
+SELECT -1 - CAST(1 AS UNSIGNED) from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(-(1) - cast(1 as unsigned))'
+SELECT -9223372036854775808 - 1 from t1;
+ERROR 22003: BIGINT value is out of range in '(-(9223372036854775808) - 1)'
+SELECT 9223372036854775807 - -9223372036854775808 from t1;
+ERROR 22003: BIGINT value is out of range in '(9223372036854775807 - -(9223372036854775808))'
+set SQL_MODE='NO_UNSIGNED_SUBTRACTION';
+SELECT 18446744073709551615 - 1 from t1;
+ERROR 22003: BIGINT value is out of range in '(18446744073709551615 - 1)'
+SELECT 18446744073709551615 - CAST(1 AS UNSIGNED) from t1;
+ERROR 22003: BIGINT value is out of range in '(18446744073709551615 - cast(1 as unsigned))'
+SELECT 18446744073709551614 - (-1) from t1;
+ERROR 22003: BIGINT value is out of range in '(18446744073709551614 - -(1))'
+SELECT 9223372036854775807 - -1 from t1;
+ERROR 22003: BIGINT value is out of range in '(9223372036854775807 - -(1))'
+set SQL_MODE=default;
+SELECT 4294967296 * 4294967296 from t1;
+ERROR 22003: BIGINT value is out of range in '(4294967296 * 4294967296)'
+SELECT 9223372036854775808 * 2 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(9223372036854775808 * 2)'
+SELECT 9223372036854775808 * 2 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(9223372036854775808 * 2)'
+SELECT 7158278827 * 3221225472 from t1;
+ERROR 22003: BIGINT value is out of range in '(7158278827 * 3221225472)'
+SELECT 9223372036854775807 * (-2) from t1;
+ERROR 22003: BIGINT value is out of range in '(9223372036854775807 * -(2))'
+SELECT CAST(1 as UNSIGNED) * (-1) from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(cast(1 as unsigned) * -(1))'
+SELECT 9223372036854775807 * 2 from t1;
+ERROR 22003: BIGINT value is out of range in '(9223372036854775807 * 2)'
+SELECT ABS(-9223372036854775808) from t1;
+ERROR 22003: BIGINT value is out of range in 'abs(-(9223372036854775808))'
+SELECT -9223372036854775808 DIV -1 from t1;
+ERROR 22003: BIGINT value is out of range in '(-(9223372036854775808) DIV -(1))'
+SELECT 18446744073709551615 DIV -1 from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(18446744073709551615 DIV -(1))'
+SET @a:=999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+SELECT @a + @a from t1;
+ERROR 22003: DECIMAL value is out of range in '((@`a`) + (@`a`))'
+SELECT @a * @a from t1;
+ERROR 22003: DECIMAL value is out of range in '((@`a`) * (@`a`))'
+SELECT -@a - @a from t1;
+ERROR 22003: DECIMAL value is out of range in '(-((@`a`)) - (@`a`))'
+SELECT @a / 0.5 from t1;
+ERROR 22003: DECIMAL value is out of range in '((@`a`) / 0.5)'
+drop table if exists t1, t2;
+Warnings:
+Note	1051	Unknown table 'test.t2'
+create table t1(a tinyint zerofill, b int) engine=tianmu;
+Warnings:
+Warning	1681	The ZEROFILL attribute is deprecated and will be removed in a future release. Use the LPAD function to zero-pad numbers, or store the formatted numbers in a CHAR column.
+insert into t1 values (11, 22);
+select a-b from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`t1`.`a` - `test`.`t1`.`b`)'
+select cast((a-b) as unsigned) from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`t1`.`a` - `test`.`t1`.`b`)'
+create table t2(a tinyint unsigned, b int) engine=tianmu;
+insert into t2 values (1, 22);
+select a-b from t1;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`t1`.`a` - `test`.`t1`.`b`)'
+select cast((a-b) as unsigned) from t2;
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`t2`.`a` - `test`.`t2`.`b`)'
+drop table t1, t2;
+drop database func_math_test;
