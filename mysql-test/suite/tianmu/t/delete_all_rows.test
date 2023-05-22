@@ -53,7 +53,7 @@ select sum(c_int) from column_type_test;
 --echo #
 
 --echo #
---echo # DELETE FROM column_type_test spend too much time, optimize it later (#TODO)
+--echo # DELETE FROM column_type_test spend too much time, optimize it later
 --echo #
 
 drop table column_type_test;
