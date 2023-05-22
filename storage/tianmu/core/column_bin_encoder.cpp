@@ -565,9 +565,10 @@ ColumnBinEncoder::EncoderDate::EncoderDate(vcolumn::VirtualColumn *vc, bool deco
 }
 
 bool ColumnBinEncoder::EncoderDate::SecondColumn(vcolumn::VirtualColumn *vc) {
-  // Possible conversions: only dates.
-  if (vc->Type().GetTypeName() != common::ColumnType::DATE) {
-    rc_control_.lock(vc->ConnInfo()->GetThreadID()) << "Nontrivial comparison: date with non-date" << system::unlock;
+  // Possible conversions: support datetime/date.
+  if (!vc->Type().IsDateTime()) {
+    rc_control_.lock(vc->ConnInfo()->GetThreadID())
+        << "Nontrivial comparison: date with non-datetime." << system::unlock;
     return false;
   }
   int64_t new_min_val = types::DT::DateSortEncoding(vc->RoughMin());
@@ -578,7 +579,7 @@ bool ColumnBinEncoder::EncoderDate::SecondColumn(vcolumn::VirtualColumn *vc) {
   if (max_val < new_max_val)
     max_val = new_max_val;
   max_code = uint64_t(max_val - min_val) + (null_status == 1 && max_code != UINT64_MAX ? 1 : 0);
-  ;
+
   size = CalculateByteSize(max_code);
   return true;
 }
@@ -657,7 +658,7 @@ ColumnBinEncoder::EncoderYear::EncoderYear(vcolumn::VirtualColumn *vc, bool deco
 
 bool ColumnBinEncoder::EncoderYear::SecondColumn(vcolumn::VirtualColumn *vc) {
   // Possible conversions: only years.
-  if (vc->Type().GetTypeName() != common::ColumnType::YEAR) {
+  if (!vc->Type().IsDateTime()) {
     rc_control_.lock(vc->ConnInfo()->GetThreadID()) << "Nontrivial comparison: year with non-year" << system::unlock;
     return false;
   }
