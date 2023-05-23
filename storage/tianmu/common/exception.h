@@ -217,6 +217,11 @@ class AutoIncException : public Exception {
   AutoIncException(std::string const &msg) : Exception(msg) {}
 };
 
+class OutOfRangeException : public Exception {
+ public:
+  OutOfRangeException(std::string const &msg) : Exception(msg) {}
+};
+
 }  // namespace common
 }  // namespace Tianmu
 

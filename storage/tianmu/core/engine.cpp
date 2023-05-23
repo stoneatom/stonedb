@@ -1478,11 +1478,18 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
       ret = rct->Insert(table);
     }
     return ret;
+  } catch (common::OutOfRangeException &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "inserting data out of range. %s %s", e.what(), e.trace().c_str());
+    // in strict sql_mode, we should return error no.
+    // TODO: in the future, we'll support insert success with warning in strict sql_mode, currently the data is
+    // not write into data file, refs crashed issue: https://github.com/stoneatom/stonedb/issues/1716
+    if (trans_->Thd()->is_strict_mode()) {
+      ret = 1;
+    }
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed. %s %s", e.what(), e.trace().c_str());
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed. %s", e.what());
-    ret = 1;
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed.");
   }
