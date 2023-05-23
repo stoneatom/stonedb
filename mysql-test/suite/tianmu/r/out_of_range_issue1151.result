@@ -1,5 +1,4 @@
 drop database if exists out_of_range_issue1151;
-create database test;
 create database out_of_range_issue1151;
 use out_of_range_issue1151;
 create table tiny(a tinyint, b tinyint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
