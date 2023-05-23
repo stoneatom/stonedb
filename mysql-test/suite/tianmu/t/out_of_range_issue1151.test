@@ -1,0 +1,189 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+drop database if exists out_of_range_issue1151;
+--enable_warnings
+create database out_of_range_issue1151;
+use out_of_range_issue1151;
+create table tiny(a tinyint, b tinyint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly
+insert into tiny values(-128, 0);
+insert into tiny values(127, 127);
+insert into tiny values(0, 127);
+insert into tiny values(-0, -0);
+insert into tiny values(+0, +0);
+select * from tiny;
+# test out of range, currently the max value of unsigned is equal to signed
+# column signed a out of value
+--error 1264
+insert into tiny values(-129, 0);
+--error 1264
+insert into tiny values(128, 0);
+--error 1264
+insert into tiny values(1234, 0);
+# column unsigned b out of value[128, 255], deal with tianmu
+--error 1264
+insert into tiny values(0, 128);
+--error 1264
+insert into tiny values(0, 255);
+# column unsigned b out of value(>255 || <0), deal with mysql
+--error 1264
+insert into tiny values(0, -1);
+--error 1264
+insert into tiny values(0, -127);
+--error 1264
+insert into tiny values(0, 256);
+--error 1264
+insert into tiny values(0, 1234567);
+drop table tiny;
+
+create table small(a smallint, b smallint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly
+insert into small values(-32768, 0);
+insert into small values(0, 0);
+insert into small values(122, 122);
+insert into small values(32767, 32767);
+insert into small values(-0, -0);
+insert into small values(+0, +0);
+select * from small;
+# test out of range, currently the max value of unsigned is equal to signed
+# column signed a out of value
+--error 1264
+insert into small values(-32769, 0);
+--error 1264
+insert into small values(32768, 0);
+--error 1264
+insert into small values(-3276911, 0);
+--error 1264
+insert into small values(3276811, 0);
+# column unsigned b out of value[32768, 65535], deal with tianmu
+--error 1264
+insert into small values(0, 32768);
+--error 1264
+insert into small values(0, 41234);
+--error 1264
+insert into small values(0, 65535);
+# column unsigned b out of value(>65535 || <0), deal with mysql
+--error 1264
+insert into small values(0, -1);
+--error 1264
+insert into small values(0, -32768);
+--error 1264
+insert into small values(0, 65536);
+--error 1264
+insert into small values(0, 1234567);
+drop table small;
+
+create table medium(a mediumint, b mediumint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly
+insert into medium values(-8388608, 0);
+insert into medium values(0, 0);
+insert into medium values(122, 122);
+insert into medium values(8388607, 8388607);
+insert into medium values(-0, -0);
+insert into medium values(+0, +0);
+select * from medium;
+# test out of range, currently the max value of unsigned is equal to signed
+# column signed a out of value
+--error 1264
+insert into medium values(-8388609, 0);
+--error 1264
+insert into medium values(8388608, 0);
+--error 1264
+insert into medium values(-8388608111, 0);
+--error 1264
+insert into medium values(8388608111, 0);
+# column unsigned b out of value[8388608, 16777215], deal with tianmu
+--error 1264
+insert into medium values(0, 8388608);
+--error 1264
+insert into medium values(0, 8388610);
+--error 1264
+insert into medium values(0, 16777215);
+# column unsigned b out of value(>8388607 || <0), deal with mysql
+--error 1264
+insert into medium values(0, -1);
+--error 1264
+insert into medium values(0, -8388608);
+--error 1264
+insert into medium values(0, 16777216);
+--error 1264
+insert into medium values(0, 1677721511);
+drop table medium;
+
+create table int_(a int, b int unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly, range[-2147483647, 2147483647]
+insert into int_ values(-2147483647, 0);
+insert into int_ values(0, 0);
+insert into int_ values(122, 122);
+insert into int_ values(2147483647, 2147483647);
+insert into int_ values(-0, -0);
+insert into int_ values(+0, +0);
+select * from int_;
+# test out of range, currently the max value of unsigned is equal to signed
+# column signed a out of value
+--error 1264
+insert into int_ values(-2147483649, 0);
+--error 1264
+insert into int_ values(2147483648, 0);
+--error 1264
+insert into int_ values(-214748364811, 0);
+--error 1264
+insert into int_ values(214748364811, 0);
+# column unsigned b out of value[2147483648, 4294967295], deal with tianmu, -2147483648 also deal with tianmu
+--error 1264
+insert into int_ values(-2147483648, 0);
+--error 1264
+insert into int_ values(0, 2147483648);
+--error 1264
+insert into int_ values(0, 3294967295);
+--error 1264
+insert into int_ values(0, 4294967295);
+# column unsigned b out of value(>4294967295 || <0), deal with mysql
+--error 1264
+insert into int_ values(0, -1);
+--error 1264
+insert into int_ values(0, -4294967295);
+--error 1264
+insert into int_ values(0, 4294967296);
+--error 1264
+insert into int_ values(0, 429496729611);
+drop table int_;
+
+create table bigint_(a bigint, b bigint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+# test insert correctly, range [-9223372036854775806, 9223372036854775807]
+insert into bigint_ values(-9223372036854775806, 0);
+insert into bigint_ values(0, 0);
+insert into bigint_ values(122, 122);
+insert into bigint_ values(9223372036854775807, 9223372036854775807);
+insert into bigint_ values(-0, -0);
+insert into bigint_ values(+0, +0);
+select * from bigint_;
+# test out of range, currently the max value of unsigned is equal to signed
+# column signed a out of value, -9223372036854775808 ret error and -9223372036854775807(null)
+--error 1264
+insert into bigint_ values(-9223372036854775808, 0);
+--error 1264
+insert into bigint_ values(9223372036854775808, 0);
+--error 1264
+insert into bigint_ values(-9223372036854775810, 0);
+--error 1264
+insert into bigint_ values(9223372036854775810, 0);
+# column unsigned b out of value[9223372036854775808, 18446744073709551615], deal with tianmu
+--error 1264
+insert into bigint_ values(0, 9223372036854775808);
+--error 1264
+insert into bigint_ values(0, 10223372036854775808);
+--error 1264
+insert into bigint_ values(0, 18446744073709551615);
+# column unsigned b out of value(>18446744073709551615 || <0), deal with mysql
+--error 1264
+insert into bigint_ values(0, -1);
+--error 1264
+insert into bigint_ values(0, -4294967295);
+--error 1264
+insert into bigint_ values(0, 18446744073709551616);
+--error 1264
+insert into bigint_ values(0, 1844674407370955161566);
+drop table bigint_;
+drop database out_of_range_issue1151;
