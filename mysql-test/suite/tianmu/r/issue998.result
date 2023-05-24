@@ -1,0 +1,144 @@
+drop database if exists issue998;
+create database issue998;
+use issue998;
+CREATE TABLE t1 (t1_int INT, t1_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int INT, t2_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'aaa'),(3, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, ''),(7, 'eee');
+INSERT INTO t2 VALUES (NULL, ''),(1, 'eee'),(3, 'ccc'),(5, 'jjj'),(6, ''),(7, 'lll'),(9, 'eee'),(11, 'nnn');
+SELECT t1_int FROM t1 UNION SELECT t2_char FROM t2;
+t1_int
+NULL
+1
+2
+3
+4
+5
+6
+7
+
+eee
+ccc
+jjj
+lll
+nnn
+SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
+t2_int
+NULL
+1
+3
+5
+6
+7
+9
+11
+
+aaa
+ccc
+ddd
+eee
+DROP TABLE t1,t2;
+CREATE TABLE t1 (t1_int BIGINT, t1_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int BIGINT, t2_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'aaa'),(3, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, ''),(7, 'eee');
+INSERT INTO t2 VALUES (NULL, ''),(1, 'eee'),(3, 'ccc'),(5, 'jjj'),(6, ''),(7, 'lll'),(9, 'eee'),(11, 'nnn');
+SELECT t1_int FROM t1 UNION SELECT t2_char FROM t2;
+t1_int
+NULL
+1
+2
+3
+4
+5
+6
+7
+
+eee
+ccc
+jjj
+lll
+nnn
+SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
+t2_int
+NULL
+1
+3
+5
+6
+7
+9
+11
+
+aaa
+ccc
+ddd
+eee
+DROP TABLE t1,t2;
+CREATE TABLE t1 (t1_int CHAR(1), t1_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int CHAR(1), t2_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (NULL, ''),('a', 'aaa');
+INSERT INTO t2 VALUES (NULL, ''),('b', 'eee');
+SELECT t1_int FROM t1 UNION SELECT t2_char FROM t2;
+t1_int
+NULL
+a
+
+eee
+SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
+t2_int
+NULL
+b
+
+aaa
+DROP TABLE t1,t2;
+CREATE TABLE t1 (t1_int DATETIME, t1_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int DATETIME, t2_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (NULL, ''),('2022-01-01 00:00:00', 'aaa');
+INSERT INTO t2 VALUES (NULL, ''),('2022-01-01 00:00:01', 'eee');
+SELECT t1_int FROM t1 UNION SELECT t2_char FROM t2;
+t1_int
+NULL
+2022-01-01 00:00:00
+
+eee
+SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
+t2_int
+NULL
+2022-01-01 00:00:01
+
+aaa
+DROP TABLE t1,t2;
+CREATE TABLE t1 (t1_int DATETIME(3), t1_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int DATETIME(3), t2_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (NULL, ''),('2022-01-01 00:00:00', 'aaa');
+INSERT INTO t2 VALUES (NULL, ''),('2022-01-01 00:00:01', 'eee');
+SELECT t1_int FROM t1 UNION SELECT t2_char FROM t2;
+t1_int
+NULL
+2022-01-01 00:00:00.000
+
+eee
+SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
+t2_int
+NULL
+2022-01-01 00:00:01.000
+
+aaa
+DROP TABLE t1,t2;
+CREATE TABLE t1 (t1_int DATETIME(4), t1_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int DATETIME(4), t2_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (NULL, ''),('2022-01-01 00:00:00', 'aaa');
+INSERT INTO t2 VALUES (NULL, ''),('2022-01-01 00:00:01', 'eee');
+SELECT t1_int FROM t1 UNION SELECT t2_char FROM t2;
+t1_int
+NULL
+2022-01-01 00:00:00.0000
+
+eee
+SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
+t2_int
+NULL
+2022-01-01 00:00:01.0000
+
+aaa
+DROP TABLE t1,t2;
+DROP database issue998;

@@ -474,12 +474,11 @@ types::RCValueObject TempTable::Attr::GetValue(int64_t obj, [[maybe_unused]] boo
   return ret;
 }
 
-void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
+void TempTable::Attr::GetValueString(types::BString &value, int64_t obj) {
   if (obj == common::NULL_VALUE_64) {
-    s = types::BString();
+    value = types::BString();
     return;
   }
-  double *d_p = nullptr;
   switch (TypeName()) {
     case common::ColumnType::BIN:
     case common::ColumnType::BYTE:
@@ -487,32 +486,32 @@ void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
     case common::ColumnType::STRING:
     case common::ColumnType::VARCHAR:
     case common::ColumnType::LONGTEXT:
-      (*(AttrBuffer<types::BString> *)buffer_).GetString(s, obj);
+      (*(AttrBuffer<types::BString> *)buffer_).GetString(value, obj);
       break;
     case common::ColumnType::BYTEINT: {
-      types::RCNum rcn((int64_t)(*(AttrBuffer<char> *)buffer_)[obj], -1, false, TypeName());
-      s = rcn.ToBString();
+      types::RCNum rcn(static_cast<int64_t>((*(AttrBuffer<char> *)buffer_)[obj]), -1, false, TypeName());
+      value = rcn.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : rcn.ToBString();
       break;
     }
     case common::ColumnType::SMALLINT: {
-      types::RCNum rcn((int64_t)(*(AttrBuffer<short> *)buffer_)[obj], -1, false, TypeName());
-      s = rcn.ToBString();
+      types::RCNum rcn(static_cast<int64_t>((*(AttrBuffer<short> *)buffer_)[obj]), -1, false, TypeName());
+      value = rcn.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : rcn.ToBString();
       break;
     }
     case common::ColumnType::INT:
     case common::ColumnType::MEDIUMINT: {
-      types::RCNum rcn((int)(*(AttrBuffer<int> *)buffer_)[obj], -1, false, TypeName());
-      s = rcn.ToBString();
+      types::RCNum rcn(static_cast<int>((*(AttrBuffer<int> *)buffer_)[obj]), -1, false, TypeName());
+      value = rcn.ValueInt() == common::NULL_VALUE_32 ? types::BString() : rcn.ToBString();
       break;
     }
     case common::ColumnType::BIGINT: {
-      types::RCNum rcn((int64_t)(*(AttrBuffer<int64_t> *)buffer_)[obj], -1, false, TypeName());
-      s = rcn.ToBString();
+      types::RCNum rcn(static_cast<int64_t>((*(AttrBuffer<int64_t> *)buffer_)[obj]), -1, false, TypeName());
+      value = rcn.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : rcn.ToBString();
       break;
     }
     case common::ColumnType::NUM: {
       types::RCNum rcn((*(AttrBuffer<int64_t> *)buffer_)[obj], Type().GetScale());
-      s = rcn.ToBString();
+      value = rcn.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : rcn.ToBString();
       break;
     }
     case common::ColumnType::YEAR:
@@ -524,14 +523,20 @@ void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
       if (TypeName() == common::ColumnType::TIMESTAMP) {
         types::RCDateTime::AdjustTimezone(rcdt);
       }
-      s = rcdt.ToBString();
+      if (rcdt.GetInt64() == common::NULL_VALUE_64) {
+        value = types::BString();
+      } else {
+        const types::BString &tianmu_dt_str = rcdt.ToBString();
+        size_t len = tianmu_dt_str.len_ > Type().GetPrecision() ? Type().GetPrecision() : tianmu_dt_str.len_;
+        value = types::BString(tianmu_dt_str.GetDataBytesPointer(), len, tianmu_dt_str.IsPersistent());
+      }
       break;
     }
     case common::ColumnType::REAL:
     case common::ColumnType::FLOAT: {
-      d_p = &(*(AttrBuffer<double> *)buffer_)[obj];
-      types::RCNum rcn(*(int64_t *)d_p, 0, true, TypeName());
-      s = rcn.ToBString();
+      double *d_p = &(*(AttrBuffer<double> *)buffer_)[obj];
+      types::RCNum rcn(static_cast<int64_t>(*d_p), 0, true, TypeName());
+      value = rcn.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : rcn.ToBString();
       break;
     }
     default:
