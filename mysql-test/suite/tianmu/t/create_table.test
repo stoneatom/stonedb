@@ -411,6 +411,7 @@ drop table t1;
 --echo # create table..select based on trigger fields.
 create table t1 (fld1 int, fld2 DATETIME DEFAULT '1211:1:1') ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 show create table t1;
+drop table t1;
 
 --echo # error of support type
 --error 6
