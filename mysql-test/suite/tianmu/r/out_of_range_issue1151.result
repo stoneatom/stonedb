@@ -1,0 +1,190 @@
+drop database if exists out_of_range_issue1151;
+create database out_of_range_issue1151;
+use out_of_range_issue1151;
+create table tiny(a tinyint, b tinyint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into tiny values(-128, 0);
+insert into tiny values(127, 127);
+insert into tiny values(0, 127);
+insert into tiny values(-0, -0);
+insert into tiny values(+0, +0);
+select * from tiny;
+a	b
+-128	0
+127	127
+0	127
+0	0
+0	0
+insert into tiny values(-129, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into tiny values(128, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into tiny values(1234, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into tiny values(0, 128);
+ERROR 22003: Out of range[0, 127] for column 'b' value: 128
+insert into tiny values(0, 255);
+ERROR 22003: Out of range[0, 127] for column 'b' value: 255
+insert into tiny values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into tiny values(0, -127);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into tiny values(0, 256);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into tiny values(0, 1234567);
+ERROR 22003: Out of range value for column 'b' at row 1
+drop table tiny;
+create table small(a smallint, b smallint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into small values(-32768, 0);
+insert into small values(0, 0);
+insert into small values(122, 122);
+insert into small values(32767, 32767);
+insert into small values(-0, -0);
+insert into small values(+0, +0);
+select * from small;
+a	b
+-32768	0
+0	0
+122	122
+32767	32767
+0	0
+0	0
+insert into small values(-32769, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into small values(32768, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into small values(-3276911, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into small values(3276811, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into small values(0, 32768);
+ERROR 22003: Out of range[0, 32767] for column 'b' value: 32768
+insert into small values(0, 41234);
+ERROR 22003: Out of range[0, 32767] for column 'b' value: 41234
+insert into small values(0, 65535);
+ERROR 22003: Out of range[0, 32767] for column 'b' value: 65535
+insert into small values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into small values(0, -32768);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into small values(0, 65536);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into small values(0, 1234567);
+ERROR 22003: Out of range value for column 'b' at row 1
+drop table small;
+create table medium(a mediumint, b mediumint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into medium values(-8388608, 0);
+insert into medium values(0, 0);
+insert into medium values(122, 122);
+insert into medium values(8388607, 8388607);
+insert into medium values(-0, -0);
+insert into medium values(+0, +0);
+select * from medium;
+a	b
+-8388608	0
+0	0
+122	122
+8388607	8388607
+0	0
+0	0
+insert into medium values(-8388609, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into medium values(8388608, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into medium values(-8388608111, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into medium values(8388608111, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into medium values(0, 8388608);
+ERROR 22003: Out of range[0, 8388607] for column 'b' value: 8388608
+insert into medium values(0, 8388610);
+ERROR 22003: Out of range[0, 8388607] for column 'b' value: 8388610
+insert into medium values(0, 16777215);
+ERROR 22003: Out of range[0, 8388607] for column 'b' value: 16777215
+insert into medium values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into medium values(0, -8388608);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into medium values(0, 16777216);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into medium values(0, 1677721511);
+ERROR 22003: Out of range value for column 'b' at row 1
+drop table medium;
+create table int_(a int, b int unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into int_ values(-2147483647, 0);
+insert into int_ values(0, 0);
+insert into int_ values(122, 122);
+insert into int_ values(2147483647, 2147483647);
+insert into int_ values(-0, -0);
+insert into int_ values(+0, +0);
+select * from int_;
+a	b
+-2147483647	0
+0	0
+122	122
+2147483647	2147483647
+0	0
+0	0
+insert into int_ values(-2147483649, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into int_ values(2147483648, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into int_ values(-214748364811, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into int_ values(214748364811, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into int_ values(-2147483648, 0);
+ERROR 22003: Out of range[-2147483647, 2147483647] for column 'a' value: -2147483648
+insert into int_ values(0, 2147483648);
+ERROR 22003: Out of range[0, 2147483647] for column 'b' value: 2147483648
+insert into int_ values(0, 3294967295);
+ERROR 22003: Out of range[0, 2147483647] for column 'b' value: 3294967295
+insert into int_ values(0, 4294967295);
+ERROR 22003: Out of range[0, 2147483647] for column 'b' value: 4294967295
+insert into int_ values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into int_ values(0, -4294967295);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into int_ values(0, 4294967296);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into int_ values(0, 429496729611);
+ERROR 22003: Out of range value for column 'b' at row 1
+drop table int_;
+create table bigint_(a bigint, b bigint unsigned) engine = tianmu DEFAULT CHARSET=utf8mb4;
+insert into bigint_ values(-9223372036854775806, 0);
+insert into bigint_ values(0, 0);
+insert into bigint_ values(122, 122);
+insert into bigint_ values(9223372036854775807, 9223372036854775807);
+insert into bigint_ values(-0, -0);
+insert into bigint_ values(+0, +0);
+select * from bigint_;
+a	b
+-9223372036854775806	0
+0	0
+122	122
+9223372036854775807	9223372036854775807
+0	0
+0	0
+insert into bigint_ values(-9223372036854775808, 0);
+ERROR 22003: Out of range[-9223372036854775807, 9223372036854775807] for column 'a' value: -9223372036854775808
+insert into bigint_ values(9223372036854775808, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into bigint_ values(-9223372036854775810, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into bigint_ values(9223372036854775810, 0);
+ERROR 22003: Out of range value for column 'a' at row 1
+insert into bigint_ values(0, 9223372036854775808);
+ERROR 22003: Out of range[0, 9223372036854775807] for column 'b' value: 9223372036854775808
+insert into bigint_ values(0, 10223372036854775808);
+ERROR 22003: Out of range[0, 9223372036854775807] for column 'b' value: 10223372036854775808
+insert into bigint_ values(0, 18446744073709551615);
+ERROR 22003: Out of range[0, 9223372036854775807] for column 'b' value: 18446744073709551615
+insert into bigint_ values(0, -1);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into bigint_ values(0, -4294967295);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into bigint_ values(0, 18446744073709551616);
+ERROR 22003: Out of range value for column 'b' at row 1
+insert into bigint_ values(0, 1844674407370955161566);
+ERROR 22003: Out of range value for column 'b' at row 1
+drop table bigint_;
+drop database out_of_range_issue1151;

@@ -383,7 +383,7 @@ Engine::~Engine() {
 }
 
 void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
-                          std::unique_ptr<char[]> &buf, uint32_t &size) {
+                          std::unique_ptr<char[]> &buf, uint32_t &size, THD *thd) {
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
   utils::BitSet null_mask(col);
@@ -436,49 +436,14 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
     }
 
     switch (f->type()) {
-      case MYSQL_TYPE_TINY: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_TINYINT_MAX)
-          v = TIANMU_TINYINT_MAX;
-        else if (v < TIANMU_TINYINT_MIN)
-          v = TIANMU_TINYINT_MIN;
-        *(int64_t *)ptr = v;
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_SHORT: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_SMALLINT_MAX)
-          v = TIANMU_SMALLINT_MAX;
-        else if (v < TIANMU_SMALLINT_MIN)
-          v = TIANMU_SMALLINT_MIN;
-        *(int64_t *)ptr = v;
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_LONG: {
-        int64_t v = f->val_int();
-        if (v > std::numeric_limits<int>::max())
-          v = std::numeric_limits<int>::max();
-        else if (v < TIANMU_INT_MIN)
-          v = TIANMU_INT_MIN;
-        *(int64_t *)ptr = v;
-        ptr += sizeof(int64_t);
-      } break;
-      case MYSQL_TYPE_INT24: {
-        int64_t v = f->val_int();
-        if (v > TIANMU_MEDIUMINT_MAX)
-          v = TIANMU_MEDIUMINT_MAX;
-        else if (v < TIANMU_MEDIUMINT_MIN)
-          v = TIANMU_MEDIUMINT_MIN;
-        *(int64_t *)ptr = v;
-        ptr += sizeof(int64_t);
-      } break;
+      case MYSQL_TYPE_TINY:
+      case MYSQL_TYPE_SHORT:
+      case MYSQL_TYPE_LONG:
+      case MYSQL_TYPE_INT24:
       case MYSQL_TYPE_LONGLONG: {
         int64_t v = f->val_int();
-        if (v > common::TIANMU_BIGINT_MAX)
-          v = common::TIANMU_BIGINT_MAX;
-        else if (v < common::TIANMU_BIGINT_MIN)
-          v = common::TIANMU_BIGINT_MIN;
-        *(int64_t *)ptr = v;
+        common::PushWarningIfOutOfRange(thd, std::string(f->field_name), v, f->type(), f->is_flag_set(UNSIGNED_FLAG));
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
@@ -667,9 +632,6 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE:
     case MYSQL_TYPE_LONGLONG:
-      if (field.is_flag_set(UNSIGNED_FLAG))
-        throw common::UnsupportedDataTypeException("UNSIGNED data types are not supported.");
-      [[fallthrough]];
     case MYSQL_TYPE_YEAR:
     case MYSQL_TYPE_TIMESTAMP:
     case MYSQL_TYPE_DATETIME:
@@ -711,8 +673,6 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       throw common::UnsupportedDataTypeException();
     }
     case MYSQL_TYPE_NEWDECIMAL: {
-      if (field.is_flag_set(UNSIGNED_FLAG))
-        throw common::UnsupportedDataTypeException("UNSIGNED data types are not supported.");
       const Field_new_decimal *fnd = ((const Field_new_decimal *)&field);
       if (/*fnd->precision > 0 && */ fnd->precision <= 18 /*&& fnd->dec >= 0*/
           && fnd->dec <= fnd->precision)
@@ -1470,7 +1430,7 @@ void Engine::InsertDelayed(const std::string &table_path, int table_id, TABLE *t
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  EncodeRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz, table->in_use);
 
   int failed = 0;
   while (true) {
@@ -1497,7 +1457,8 @@ void Engine::InsertMemRow(const std::string &table_path, std::shared_ptr<TableSh
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeRecord(table_path, share->TabID(), table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  EncodeRecord(table_path, share->TabID(), table->field, table->s->fields, table->s->blob_fields, buf, buf_sz,
+               table->in_use);
   auto rctable = share->GetSnapshot();
   rctable->InsertMemRow(std::move(buf), buf_sz);
 }
@@ -1519,6 +1480,14 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
       ret = rct->Insert(table);
     }
     return ret;
+  } catch (common::OutOfRangeException &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "inserting data out of range. %s %s", e.what(), e.trace().c_str());
+    // in strict sql_mode, we should return error no.
+    // TODO: in the future, we'll support insert success with warning in strict sql_mode, currently the data is
+    // not write into data file, refs crashed issue: https://github.com/stoneatom/stonedb/issues/1716
+    if (trans_->Thd()->is_strict_mode()) {
+      ret = 1;
+    }
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "delayed inserting failed. %s %s", e.what(), e.trace().c_str());
   } catch (std::exception &e) {

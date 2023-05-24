@@ -83,7 +83,7 @@ sum(c_int)
 # DELETE FROM TABLE_NAME for select/insert/Aggregate query
 #
 #
-# DELETE FROM column_type_test spend too much time, optimize it later (#TODO)
+# DELETE FROM column_type_test spend too much time, optimize it later
 #
 drop table column_type_test;
 CREATE TABLE `column_type_test` (

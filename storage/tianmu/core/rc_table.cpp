@@ -599,19 +599,26 @@ void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG: {
-      int64_t v = f->val_int();
-      if (m_attrs[col]->GetIfAutoInc() && v == 0)
+      int64_t value = f->val_int();
+      common::PushWarningIfOutOfRange(m_tx->Thd(), std::string(f->field_name), value, f->type(),
+                                      f->is_flag_set(UNSIGNED_FLAG));
+      if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
         *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = m_attrs[col]->AutoIncNext();
       else
-        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = v;
+        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
       vc.ExpectedSize(sizeof(int64_t));
       if (m_attrs[col]->GetIfAutoInc()) {
         // inc counter should be set to value of user assigned
-        if (static_cast<uint64_t>(v) > m_attrs[col]->GetAutoInc()) {
-          m_attrs[col]->SetAutoInc(v);
+        if (static_cast<uint64_t>(value) > m_attrs[col]->GetAutoInc()) {
+          m_attrs[col]->SetAutoInc(value);
         }
       }
+    } break;
+    case MYSQL_TYPE_BIT: {
+      int64_t value = f->val_int();
+      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
+      vc.ExpectedSize(sizeof(int64_t));
     } break;
     case MYSQL_TYPE_DECIMAL:
     case MYSQL_TYPE_FLOAT:
@@ -699,7 +706,6 @@ void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_GEOMETRY:
     case MYSQL_TYPE_NULL:
-    case MYSQL_TYPE_BIT:
     default:
       throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
       break;
