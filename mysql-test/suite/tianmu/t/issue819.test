@@ -1,0 +1,223 @@
+-- source include/have_tianmu.inc
+-- source include/have_binlog_format_row.inc
+--disable_warnings
+-- source include/master-slave.inc
+--enable_warnings
+--echo #
+--echo # Test the master-slave function of innodb
+--echo # 
+
+--echo [on master]
+connection master;
+use test;
+create table t_issue819(id int primary key,name varchar(5))engine=innodb;
+insert into t_issue819 values(1,'AAA');
+delete from t_issue819 where id=1;
+insert into t_issue819 values(1,'aaa');
+select * from t_issue819;
+
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+
+select * from t_issue819;
+
+--echo [on master]
+connection master;
+drop table t_issue819;
+--source include/sync_slave_sql_with_master.inc
+
+--echo [on master]
+connection master;
+CREATE TABLE t_issue819_1 (a int not null,b int not null)engine=innodb;
+CREATE TABLE t_issue819_2 (a int not null, b int not null, primary key (a,b))engine=innodb;
+CREATE TABLE t_issue819_3 (a int not null, b int not null, primary key (a,b))engine=innodb;
+insert into t_issue819_1 values (1,1),(2,1),(1,3);
+insert into t_issue819_2 values (1,1),(2,2),(3,3);
+insert into t_issue819_3 values (1,1),(2,1),(1,3);
+delete t_issue819_2.*,t_issue819_3.* from t_issue819_1,t_issue819_2,t_issue819_3 where t_issue819_1.a=t_issue819_2.a AND t_issue819_2.b=t_issue819_3.a and t_issue819_1.b=t_issue819_3.b;
+
+select * from t_issue819_1;
+select * from t_issue819_2;
+select * from t_issue819_3;
+
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+
+select * from t_issue819_1;
+select * from t_issue819_2;
+select * from t_issue819_3;
+
+--echo [on master]
+connection master;
+drop table t_issue819_1,t_issue819_2,t_issue819_3;
+--source include/sync_slave_sql_with_master.inc
+
+--echo [on master]
+connection master;
+CREATE TABLE t_issue819_1
+ (
+ place_id int,
+ shows int,
+ ishows int,
+ ushows int,
+ clicks int,
+ iclicks int,
+ uclicks int,
+ ts timestamp,
+ PRIMARY KEY (place_id,ts)
+ )engine=innodb;
+
+INSERT INTO t_issue819_1 (place_id,shows,ishows,ushows,clicks,iclicks,uclicks,ts)
+VALUES (1,0,0,0,0,0,0,20000928174434);
+UPDATE t_issue819_1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
+select place_id,shows from t_issue819_1;
+
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select place_id,shows from t_issue819_1;
+
+--echo [on master]
+connection master;
+drop table t_issue819_1;
+--source include/sync_slave_sql_with_master.inc
+
+--echo #
+--echo # Test the master-slave function of tianmu
+--echo # 
+
+--echo [on master]
+connection master;
+use test;
+create table t_issue819(id int primary key,name varchar(5))engine=tianmu;
+insert into t_issue819 values(1,'AAA');
+update t_issue819 set name='hhhh' where id=1;
+select * from t_issue819;
+
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+
+select * from t_issue819;
+
+--echo [on master]
+connection master;
+drop table t_issue819;
+--source include/sync_slave_sql_with_master.inc
+
+--echo [on master]
+connection master;
+create table t_issue819_1(id int primary key,name varchar(5))engine=tianmu;
+insert into t_issue819_1 values(1,'AAA');
+delete from t_issue819_1 where id=1;
+insert into t_issue819_1 values(1,'aaa');
+select * from t_issue819_1;
+
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from t_issue819_1;
+
+--echo [on master]
+connection master;
+drop table t_issue819_1;
+
+CREATE TABLE t_issue819_1 (a int not null,b int not null)engine=tianmu;
+CREATE TABLE t_issue819_2 (a int not null, b int not null, primary key (a,b))engine=tianmu;
+CREATE TABLE t_issue819_3 (a int not null, b int not null, primary key (a,b))engine=tianmu;
+insert into t_issue819_1 values (1,1),(2,1),(1,3);
+insert into t_issue819_2 values (1,1),(2,2),(3,3);
+insert into t_issue819_3 values (1,1),(2,1),(1,3);
+delete t_issue819_2.*,t_issue819_3.* from t_issue819_1,t_issue819_2,t_issue819_3 where t_issue819_1.a=t_issue819_2.a AND t_issue819_2.b=t_issue819_3.a and t_issue819_1.b=t_issue819_3.b;
+
+select * from t_issue819_1;
+select * from t_issue819_2;
+select * from t_issue819_3;
+
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+
+select * from t_issue819_1;
+select * from t_issue819_2;
+select * from t_issue819_3;
+
+--echo [on master]
+connection master;
+drop table t_issue819_1,t_issue819_2,t_issue819_3;
+--source include/sync_slave_sql_with_master.inc
+
+--echo [on master]
+connection master;
+CREATE TABLE t_issue819_1
+ (
+ place_id int,
+ shows int,
+ ishows int,
+ ushows int,
+ clicks int,
+ iclicks int,
+ uclicks int,
+ ts timestamp,
+ PRIMARY KEY (place_id,ts)
+ )engine=tianmu;
+
+INSERT INTO t_issue819_1 (place_id,shows,ishows,ushows,clicks,iclicks,uclicks,ts)
+VALUES (1,0,0,0,0,0,0,20000928174434);
+UPDATE t_issue819_1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
+select place_id,shows from t_issue819_1;
+
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select place_id,shows from t_issue819_1;
+
+--echo [on master]
+connection master;
+drop table t_issue819_1;
+
+#
+# VIEW built over UNION
+#
+create table t_issue819_1 (s1 int);
+create table t_issue819_2 (s2 int);
+insert into t_issue819_1 values (1), (2);
+insert into t_issue819_2 values (2), (3);
+create view v1 as select * from t_issue819_1,t_issue819_2 union all select * from t_issue819_1,t_issue819_2;
+select * from v1;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from v1;
+--echo [on master]
+connection master;
+drop view v1;
+drop tables t_issue819_1, t_issue819_2;
+
+#
+# Aggregate functions in view list
+#
+create table t_issue819_1 (col1 int);
+insert into t_issue819_1 values (1);
+create view v1 as select count(*) from t_issue819_1;
+insert into t_issue819_1 values (null);
+select * from v1;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from v1;
+--echo [on master]
+connection master;
+drop view v1;
+drop table t_issue819_1;
+
+#
+# Showing VIEW with VIEWs in subquery
+#
+create table t_issue819_1 (a int);
+create table t_issue819_2 (a int);
+create view v1 as select a from t_issue819_1;
+create view v2 as select a from t_issue819_2 where a in (select a from v1);
+show create view v2;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+show create view v2;
+--echo [on master]
+connection master;
+drop view v2, v1;
+drop table t_issue819_1, t_issue819_2;
+--source include/sync_slave_sql_with_master.inc
+stop REPLICA;

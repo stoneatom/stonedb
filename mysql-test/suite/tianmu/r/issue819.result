@@ -1,0 +1,236 @@
+include/master-slave.inc
+[connection master]
+#
+# Test the master-slave function of innodb
+# 
+[on master]
+use test;
+create table t_issue819(id int primary key,name varchar(5))engine=innodb;
+insert into t_issue819 values(1,'AAA');
+delete from t_issue819 where id=1;
+insert into t_issue819 values(1,'aaa');
+select * from t_issue819;
+id	name
+1	aaa
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue819;
+id	name
+1	aaa
+[on master]
+drop table t_issue819;
+include/sync_slave_sql_with_master.inc
+[on master]
+CREATE TABLE t_issue819_1 (a int not null,b int not null)engine=innodb;
+CREATE TABLE t_issue819_2 (a int not null, b int not null, primary key (a,b))engine=innodb;
+CREATE TABLE t_issue819_3 (a int not null, b int not null, primary key (a,b))engine=innodb;
+insert into t_issue819_1 values (1,1),(2,1),(1,3);
+insert into t_issue819_2 values (1,1),(2,2),(3,3);
+insert into t_issue819_3 values (1,1),(2,1),(1,3);
+delete t_issue819_2.*,t_issue819_3.* from t_issue819_1,t_issue819_2,t_issue819_3 where t_issue819_1.a=t_issue819_2.a AND t_issue819_2.b=t_issue819_3.a and t_issue819_1.b=t_issue819_3.b;
+select * from t_issue819_1;
+a	b
+1	1
+2	1
+1	3
+select * from t_issue819_2;
+a	b
+3	3
+select * from t_issue819_3;
+a	b
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue819_1;
+a	b
+1	1
+2	1
+1	3
+select * from t_issue819_2;
+a	b
+3	3
+select * from t_issue819_3;
+a	b
+[on master]
+drop table t_issue819_1,t_issue819_2,t_issue819_3;
+include/sync_slave_sql_with_master.inc
+[on master]
+CREATE TABLE t_issue819_1
+(
+place_id int,
+shows int,
+ishows int,
+ushows int,
+clicks int,
+iclicks int,
+uclicks int,
+ts timestamp,
+PRIMARY KEY (place_id,ts)
+)engine=innodb;
+INSERT INTO t_issue819_1 (place_id,shows,ishows,ushows,clicks,iclicks,uclicks,ts)
+VALUES (1,0,0,0,0,0,0,20000928174434);
+UPDATE t_issue819_1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
+select place_id,shows from t_issue819_1;
+place_id	shows
+1	1
+[on slave]
+include/sync_slave_sql_with_master.inc
+select place_id,shows from t_issue819_1;
+place_id	shows
+1	1
+[on master]
+drop table t_issue819_1;
+include/sync_slave_sql_with_master.inc
+#
+# Test the master-slave function of tianmu
+# 
+[on master]
+use test;
+create table t_issue819(id int primary key,name varchar(5))engine=tianmu;
+insert into t_issue819 values(1,'AAA');
+update t_issue819 set name='hhhh' where id=1;
+select * from t_issue819;
+id	name
+1	hhhh
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue819;
+id	name
+1	hhhh
+[on master]
+drop table t_issue819;
+include/sync_slave_sql_with_master.inc
+[on master]
+create table t_issue819_1(id int primary key,name varchar(5))engine=tianmu;
+insert into t_issue819_1 values(1,'AAA');
+delete from t_issue819_1 where id=1;
+insert into t_issue819_1 values(1,'aaa');
+select * from t_issue819_1;
+id	name
+1	aaa
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue819_1;
+id	name
+1	aaa
+[on master]
+drop table t_issue819_1;
+CREATE TABLE t_issue819_1 (a int not null,b int not null)engine=tianmu;
+CREATE TABLE t_issue819_2 (a int not null, b int not null, primary key (a,b))engine=tianmu;
+CREATE TABLE t_issue819_3 (a int not null, b int not null, primary key (a,b))engine=tianmu;
+insert into t_issue819_1 values (1,1),(2,1),(1,3);
+insert into t_issue819_2 values (1,1),(2,2),(3,3);
+insert into t_issue819_3 values (1,1),(2,1),(1,3);
+delete t_issue819_2.*,t_issue819_3.* from t_issue819_1,t_issue819_2,t_issue819_3 where t_issue819_1.a=t_issue819_2.a AND t_issue819_2.b=t_issue819_3.a and t_issue819_1.b=t_issue819_3.b;
+select * from t_issue819_1;
+a	b
+1	1
+2	1
+1	3
+select * from t_issue819_2;
+a	b
+3	3
+select * from t_issue819_3;
+a	b
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue819_1;
+a	b
+1	1
+2	1
+1	3
+select * from t_issue819_2;
+a	b
+3	3
+select * from t_issue819_3;
+a	b
+[on master]
+drop table t_issue819_1,t_issue819_2,t_issue819_3;
+include/sync_slave_sql_with_master.inc
+[on master]
+CREATE TABLE t_issue819_1
+(
+place_id int,
+shows int,
+ishows int,
+ushows int,
+clicks int,
+iclicks int,
+uclicks int,
+ts timestamp,
+PRIMARY KEY (place_id,ts)
+)engine=tianmu;
+INSERT INTO t_issue819_1 (place_id,shows,ishows,ushows,clicks,iclicks,uclicks,ts)
+VALUES (1,0,0,0,0,0,0,20000928174434);
+UPDATE t_issue819_1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
+select place_id,shows from t_issue819_1;
+place_id	shows
+1	1
+[on slave]
+include/sync_slave_sql_with_master.inc
+select place_id,shows from t_issue819_1;
+place_id	shows
+1	1
+[on master]
+drop table t_issue819_1;
+create table t_issue819_1 (s1 int);
+create table t_issue819_2 (s2 int);
+insert into t_issue819_1 values (1), (2);
+insert into t_issue819_2 values (2), (3);
+create view v1 as select * from t_issue819_1,t_issue819_2 union all select * from t_issue819_1,t_issue819_2;
+select * from v1;
+s1	s2
+1	2
+2	2
+1	3
+2	3
+1	2
+2	2
+1	3
+2	3
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from v1;
+s1	s2
+1	2
+2	2
+1	3
+2	3
+1	2
+2	2
+1	3
+2	3
+[on master]
+drop view v1;
+drop tables t_issue819_1, t_issue819_2;
+create table t_issue819_1 (col1 int);
+insert into t_issue819_1 values (1);
+create view v1 as select count(*) from t_issue819_1;
+insert into t_issue819_1 values (null);
+select * from v1;
+count(*)
+2
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from v1;
+count(*)
+2
+[on master]
+drop view v1;
+drop table t_issue819_1;
+create table t_issue819_1 (a int);
+create table t_issue819_2 (a int);
+create view v1 as select a from t_issue819_1;
+create view v2 as select a from t_issue819_2 where a in (select a from v1);
+show create view v2;
+View	Create View	character_set_client	collation_connection
+v2	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v2` AS select `t_issue819_2`.`a` AS `a` from `t_issue819_2` where `t_issue819_2`.`a` in (select `v1`.`a` from `v1`)	utf8mb4	utf8mb4_0900_ai_ci
+[on slave]
+include/sync_slave_sql_with_master.inc
+show create view v2;
+View	Create View	character_set_client	collation_connection
+v2	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v2` AS select `t_issue819_2`.`a` AS `a` from `t_issue819_2` where `t_issue819_2`.`a` in (select `v1`.`a` from `v1`)	utf8mb4	utf8mb4_0900_ai_ci
+[on master]
+drop view v2, v1;
+drop table t_issue819_1, t_issue819_2;
+include/sync_slave_sql_with_master.inc
+stop REPLICA;

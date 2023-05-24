@@ -8237,6 +8237,26 @@ static uint search_key_in_table(TABLE *table, MY_BITMAP *bi_cols,
   uint res = MAX_KEY;
   uint key;
 
+  /*
+    TODO(stonedb8): PK not works well in tianmu engine, return directly. We'll fix it in the future.
+  */
+  /*
+    The tianmu engine only supports primary keys, 
+    and unique constraints and secondary indexes are not supported,
+    Therefore, only scanning with primary key scenarios is allowed here.
+  */
+  bool check_if_tianmu_engine = table && table->s && 
+                      (table->s->db_type() ? (table->s->db_type()->db_type == DB_TYPE_TIANMU): false);
+  enum_sql_command sql_command = SQLCOM_END;
+  if(table->in_use && table->in_use->lex) sql_command = table->in_use->lex->sql_command;
+  if (check_if_tianmu_engine && ((sql_command == SQLCOM_DELETE) ||
+                        (sql_command == SQLCOM_DELETE_MULTI) ||
+                        (sql_command == SQLCOM_UPDATE) ||
+                        (sql_command == SQLCOM_UPDATE_MULTI))){
+    return res;
+  }
+  // stonedb8 end
+
   if (key_type & PRI_KEY_FLAG && (table->s->primary_key < MAX_KEY)) {
     DBUG_PRINT("debug", ("Searching for PK"));
     keyinfo = table->s->key_info + table->s->primary_key;

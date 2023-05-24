@@ -187,7 +187,24 @@ namespace {
 std::vector<bool> GetAttrsUseIndicator(TABLE *table) {
   int col_id = 0;
   std::vector<bool> attr_uses;
+
+  enum_sql_command sql_command = SQLCOM_END;
+  if (table->in_use && table->in_use->lex)
+    sql_command = table->in_use->lex->sql_command;
+  bool check_tianmu_delete_or_update = (sql_command == SQLCOM_DELETE) || (sql_command == SQLCOM_DELETE_MULTI) ||
+                                       (sql_command == SQLCOM_UPDATE) || (sql_command == SQLCOM_UPDATE_MULTI);
+
   for (Field **field = table->field; *field; ++field, ++col_id) {
+    /*
+      The binlog in row format will record the information in each column of the currently modified row and generate a
+      change log, The information of each column in the current row is obtained from the engine layer, so when the
+      current statement is delete or update, you need to fill in data for each column.
+      Here, should set each column to be valid.
+    */
+    if (check_tianmu_delete_or_update) {
+      attr_uses.push_back(true);
+      continue;
+    }
     if (bitmap_is_set(table->read_set, col_id) || bitmap_is_set(table->write_set, col_id))
       attr_uses.push_back(true);
     else

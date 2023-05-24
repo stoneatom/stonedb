@@ -682,6 +682,12 @@ bool Sql_cmd_insert_values::execute_inner(THD *thd) {
 
     if (!has_error ||
         thd->get_transaction()->cannot_safely_rollback(Transaction_ctx::STMT)) {
+      /*
+        In the delayed insert mode, tianmu will actively write data to the binlog cache, 
+        but there is no non delayed insert. 
+        You need to release the logic written to the binlog cache when the sql layer 
+        is in the non delayed insert mode.
+      */
       bool tianmu_engine = insert_table->s->db_type() ? insert_table->s->db_type()->db_type == DB_TYPE_TIANMU: false;
       bool if_tianmu_engine_insert_delayed = tianmu_engine ? Tianmu::handler::ha_my_tianmu_get_insert_delayed_flag(thd): false;
       if (!if_tianmu_engine_insert_delayed && mysql_bin_log.is_open()) {
