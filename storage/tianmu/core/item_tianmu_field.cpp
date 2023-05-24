@@ -189,10 +189,11 @@ bool Item_tianmufield::get_date(MYSQL_TIME *ltime, uint fuzzydate) {
 }
 
 bool Item_tianmufield::get_time(MYSQL_TIME *ltime) {
-  if ((null_value = buf->null) ||
-      ((tianmu_type.attrtype == common::ColumnType::DATETIME || tianmu_type.attrtype == common::ColumnType::DATE) &&
-       buf->x == 0))  // zero date is illegal
-    return 1;         // like in Item_field::get_time - return 1 on null value.
+  // Consider zero date is legal , not consider the sql_mode NO_ZERO_DATE/NO_ZERO_IN_DATE.
+  // Because NO_ZERO_DATE/NO_ZERO_IN_DATE is deprecated; expect it to be removed in a future
+  // release of MySQL as a separate mode name and its effect included in the effects of strict SQL mode.
+  if ((null_value = buf->null))
+    return 1;  // like in Item_field::get_time - return 1 on null value.
   FeedValue();
   return ivalue->get_time(ltime);
 }
