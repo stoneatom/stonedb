@@ -14,7 +14,9 @@ insert into ttt values(2,'bbb');
 --disable_warnings
 insert ignore into ttt values(2,'ccc');
 --enable_warnings
-sleep 1;
+
+sleep 2;
+
 select * from ttt;
 
 DROP DATABASE issue1637_test;
