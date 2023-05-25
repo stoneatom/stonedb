@@ -1,0 +1,19 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue938_test;
+--enable_warnings
+create database issue938_test;
+use issue938_test;
+
+CREATE TABLE tb (d1 DECIMAL(17)) ENGINE=TIANMU;
+
+INSERT INTO tb VALUES
+(1234),
+(1234567890123),
+(56789012);
+SELECT group_concat(d1 ORDER BY d1) FROM (SELECT d1 FROM tb) a1;
+
+SELECT group_concat(d1 ORDER BY d1) FROM tb;
+
+DROP DATABASE issue938_test;

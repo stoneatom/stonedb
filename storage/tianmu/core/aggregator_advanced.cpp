@@ -248,6 +248,9 @@ types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
   // parse and split the buf
   while (pos != std::string::npos && static_cast<int>(pos) < len) {
     pos = tmpstr.find(si.separator, start_pos);
+    if (pos == std::string::npos) {
+      pos = len;
+    }
     token = tmpstr.substr(start_pos, pos - start_pos);
     vstr.emplace_back(token);
     start_pos = pos + si.separator.length();

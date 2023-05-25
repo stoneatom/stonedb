@@ -185,7 +185,8 @@ std::pair<int, int> Query::VirtualColumnAlreadyExists(const TableID &tmp_table, 
 }
 
 bool Query::IsFieldItem(Item *item) {
-  return (item->type() == Item::FIELD_ITEM || item->type() == Item_tianmufield::get_tianmuitem_type());
+  return (item->type() == Item::FIELD_ITEM || item->type() == Item::REF_ITEM ||
+          item->type() == Item_tianmufield::get_tianmuitem_type());
 }
 
 bool Query::IsAggregationOverFieldItem(Item *item) {
@@ -193,9 +194,8 @@ bool Query::IsAggregationOverFieldItem(Item *item) {
 }
 
 bool Query::IsConstItem(Item *item) {
-  bool res = item->type() == Item::INT_ITEM || item->type() == Item::NULL_ITEM || item->type() == Item::INT_ITEM ||
-             item->type() == Item::VARBIN_ITEM || item->type() == Item::STRING_ITEM ||
-             item->type() == Item::DECIMAL_ITEM || item->type() == Item::REAL_ITEM;
+  bool res = item->type() == Item::INT_ITEM || item->type() == Item::NULL_ITEM || item->type() == Item::VARBIN_ITEM ||
+             item->type() == Item::STRING_ITEM || item->type() == Item::DECIMAL_ITEM || item->type() == Item::REAL_ITEM;
   return res;
 }
 
