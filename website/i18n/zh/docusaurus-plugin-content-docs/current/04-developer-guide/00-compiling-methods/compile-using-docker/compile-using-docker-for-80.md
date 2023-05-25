@@ -28,7 +28,12 @@ stoneatom/stonedb80_buildenv   latest    cc644347ffed   7 months ago  771MB
 # -p 端口映射，前面是宿主机端口，后面是容器端口,设置端口映射使得可以在容器外连接容器内的数据库服务端
 $ docker run -v /home/src/:/home/ -p 23306:3306 -it stoneatom/stonedb80_buildenv /bin/bash
 ```
-
+### 创建用户
+```bash
+groupadd mysql
+useradd -g mysql mysql
+passwd mysql
+```
 ### 获取 StoneDB 8.0 源码，编译安装
 ```bash
 root@71a1384e5ee3:/home# git clone -b stonedb-8.0-dev https://github.com/stoneatom/stonedb.git
@@ -59,9 +64,10 @@ root@fb0bf0c54de0:/stonedb8/install# mkdir data binlog log tmp redolog undolog
 root@fb0bf0c54de0:/stonedb8/install# cp /home/stonedb/scripts/my.cnf.sample my.cnf
 root@fb0bf0c54de0:/stonedb8/install# sed -i "s|YOUR_ABS_PATH|$(pwd)|g" my.cnf
 # 初始化
-root@fb0bf0c54de0:/stonedb8/install# ./bin/mysqld --defaults-file=./my.cnf --initialize-insecure
+root@fb0bf0c54de0:/stonedb8/install# chown -R mysql:mysql /stonedb8/install
+root@fb0bf0c54de0:/stonedb8/install# ./bin/mysqld --defaults-file=./my.cnf --initialize-insecure --user=mysql
 # 启动
-root@fb0bf0c54de0:/stonedb8/install# ./bin/mysqld --user=root &
+root@fb0bf0c54de0:/stonedb8/install# ./bin/mysqld --user=mysql &
 ```
 
 ### 登录 StoneDB
