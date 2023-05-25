@@ -2159,33 +2159,45 @@ void TempTable::RecordIterator::PrepareValues() {
         if (v == common::NULL_VALUE_32)
           dataTypes[att]->SetToNull();
         else
-          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))->Assign(v, 0, false, attrt_tmp);
       } else if (attrt_tmp == common::ColumnType::SMALLINT) {
         short &v = (*(AttrBuffer<short> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_SH)
           dataTypes[att]->SetToNull();
         else
-          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))->Assign(v, 0, false, attrt_tmp);
       } else if (attrt_tmp == common::ColumnType::BYTEINT) {
         char &v = (*(AttrBuffer<char> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_C)
           dataTypes[att]->SetToNull();
         else
-          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))->Assign(v, 0, false, attrt_tmp);
       } else if (ATI::IsRealType(attrt_tmp)) {
         double &v = (*(AttrBuffer<double> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == NULL_VALUE_D)
           dataTypes[att]->SetToNull();
         else
-          ((types::TianmuNum *)dataTypes[att].get())->Assign(v);
+          (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))->Assign(v);
       } else if (attrt_tmp == common::ColumnType::NUM || attrt_tmp == common::ColumnType::BIGINT ||
                  attrt_tmp == common::ColumnType::BIT) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)
           dataTypes[att]->SetToNull();
-        else
-          ((types::TianmuNum *)dataTypes[att].get())
-              ->Assign(v, table->GetDisplayableAttrP(att)->Type().GetScale(), false, attrt_tmp);
+        else {
+          if (dataTypes[att].get()->GetValueType() == types::ValueTypeEnum::NUMERIC_TYPE)
+            (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))
+                ->Assign(v, table->GetDisplayableAttrP(att)->Type().GetScale(), false, attrt_tmp);
+          if (dataTypes[att].get()->GetValueType() == types::ValueTypeEnum::STRING_TYPE) {
+            std::ostringstream stringStream;
+            stringStream << v;
+            std::string copyOfStr = stringStream.str();
+
+            char *vstr_p = const_cast<char *>(copyOfStr.c_str());
+            types::BString bs(vstr_p, strlen(vstr_p), true);
+            (dynamic_cast<types::BString *>(dataTypes[att].get()))->PersistentCopy(bs);
+          }
+          // process bstring type.
+        }
       } else if (ATI::IsDateTimeType(attrt_tmp)) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)
