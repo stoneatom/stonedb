@@ -597,3 +597,9 @@ t1	CREATE TABLE `t1` (
   `fld1` int DEFAULT NULL,
   `fld2` datetime DEFAULT '1211-01-01 00:00:00'
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+drop table t1;
+# error of support type
+create table t_unsupport_type (a2 bit DEFAULT NULL);
+ERROR HY000: Unsupported data type[bit]
+create table t_unsupport_type (a2 json DEFAULT NULL);
+ERROR HY000: Unsupported data type[json]

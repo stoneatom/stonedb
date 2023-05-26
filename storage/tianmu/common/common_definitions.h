@@ -75,6 +75,51 @@ enum class ColumnType : unsigned char {
   UNK = 255
 };
 
+#define MYSQL_ENUM_FIELD_TYPE                    \
+  DISPOSE(MYSQL_TYPE_DECIMAL, "decimal")         \
+  DISPOSE(MYSQL_TYPE_TINY, "tiny")               \
+  DISPOSE(MYSQL_TYPE_SHORT, "short")             \
+  DISPOSE(MYSQL_TYPE_LONG, "long")               \
+  DISPOSE(MYSQL_TYPE_FLOAT, "float")             \
+  DISPOSE(MYSQL_TYPE_DOUBLE, "double")           \
+  DISPOSE(MYSQL_TYPE_NULL, "null")               \
+  DISPOSE(MYSQL_TYPE_TIMESTAMP, "timestamp")     \
+  DISPOSE(MYSQL_TYPE_LONGLONG, "longlong")       \
+  DISPOSE(MYSQL_TYPE_INT24, "int24")             \
+  DISPOSE(MYSQL_TYPE_DATE, "date")               \
+  DISPOSE(MYSQL_TYPE_TIME, "time")               \
+  DISPOSE(MYSQL_TYPE_DATETIME, "datetime")       \
+  DISPOSE(MYSQL_TYPE_YEAR, "year")               \
+  DISPOSE(MYSQL_TYPE_NEWDATE, "newdate")         \
+  DISPOSE(MYSQL_TYPE_VARCHAR, "varchar")         \
+  DISPOSE(MYSQL_TYPE_BIT, "bit")                 \
+  DISPOSE(MYSQL_TYPE_TIMESTAMP2, "timestamp2")   \
+  DISPOSE(MYSQL_TYPE_DATETIME2, "datetime2")     \
+  DISPOSE(MYSQL_TYPE_TIME2, "time2")             \
+  DISPOSE(MYSQL_TYPE_JSON, "json")               \
+  DISPOSE(MYSQL_TYPE_NEWDECIMAL, "newdecimal")   \
+  DISPOSE(MYSQL_TYPE_ENUM, "enum")               \
+  DISPOSE(MYSQL_TYPE_SET, "set")                 \
+  DISPOSE(MYSQL_TYPE_TINY_BLOB, "tiny_blob")     \
+  DISPOSE(MYSQL_TYPE_MEDIUM_BLOB, "medium_blob") \
+  DISPOSE(MYSQL_TYPE_LONG_BLOB, "long_blob")     \
+  DISPOSE(MYSQL_TYPE_BLOB, "blob")               \
+  DISPOSE(MYSQL_TYPE_VAR_STRING, "var_string")   \
+  DISPOSE(MYSQL_TYPE_STRING, "string")           \
+  DISPOSE(MYSQL_TYPE_GEOMETRY, "geometry")
+
+#define DISPOSE(mark, name) {mark, name},
+constexpr std::pair<int, const char *> enum_field_types_name[] = {MYSQL_ENUM_FIELD_TYPE};
+#undef DISPOSE
+
+constexpr const char *get_enum_field_types_name(int type) {
+  for (auto type_name : enum_field_types_name) {
+    if (type_name.first == type)
+      return type_name.second;
+  }
+  return "unkonwn type";
+}
+
 enum class PackType { INT, STR };
 
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_LARGE = 3072;
