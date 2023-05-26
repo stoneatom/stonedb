@@ -1601,6 +1601,10 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
+  fs::path tmp_dir = table_name_ + ".tmp";
+  if (fs::exists(tmp_dir))
+    fs::remove_all(tmp_dir);
+
   my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Unable to inplace alter table", MYF(0));
 
   DBUG_RETURN(true);

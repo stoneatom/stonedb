@@ -1,0 +1,26 @@
+DROP DATABASE IF EXISTS alter_column;
+CREATE DATABASE alter_column;
+USE alter_column;
+CREATE TABLE st1 (
+task_id INT NOT NULL,
+subject VARCHAR(45) NULL,
+start_date DATE NULL,
+end_date DATE NULL,
+description VARCHAR(200) NULL,
+PRIMARY KEY (task_id)
+);
+ALTER TABLE st1 ADD COLUMN test numeric(20,10);
+ERROR HY000: Unable to inplace alter table
+ALTER TABLE st1 ADD COLUMN test1 numeric(8,2);
+SHOW CREATE TABLE st1;
+Table	Create Table
+st1	CREATE TABLE `st1` (
+  `task_id` int NOT NULL,
+  `subject` varchar(45) DEFAULT NULL,
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `description` varchar(200) DEFAULT NULL,
+  `test1` decimal(8,2) DEFAULT NULL,
+  PRIMARY KEY (`task_id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+DROP DATABASE alter_column;

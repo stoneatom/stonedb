@@ -1,0 +1,31 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS alter_column;
+--enable_warnings
+
+CREATE DATABASE alter_column;
+USE alter_column;
+
+#################
+# ADD COLUMN BEFORE THE FIRST ADDING COLUMN IS WRONG
+#################
+
+CREATE TABLE st1 (
+    task_id INT NOT NULL,
+    subject VARCHAR(45) NULL,
+    start_date DATE NULL,
+    end_date DATE NULL,
+    description VARCHAR(200) NULL,
+    PRIMARY KEY (task_id)
+);
+
+--ERROR 6
+ALTER TABLE st1 ADD COLUMN test numeric(20,10);
+
+ALTER TABLE st1 ADD COLUMN test1 numeric(8,2);
+
+SHOW CREATE TABLE st1;
+
+# Clean UP
+DROP DATABASE alter_column;
