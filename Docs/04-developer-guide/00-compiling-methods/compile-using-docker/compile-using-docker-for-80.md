@@ -30,7 +30,12 @@ stoneatom/stonedb80_buildenv   latest    cc644347ffed   7 months ago  771MB
 #    from outside the container.
 $ docker run -v /home/src/:/home/ -p 23306:3306 -it stoneatom/stonedb80_buildenv /bin/bash
 ```
-
+### Create an account
+```bash
+groupadd mysql
+useradd -g mysql mysql
+passwd mysql
+```
 ### Download source code & Compile and Install
 ```bash
 root@71a1384e5ee3:/home# git clone -b stonedb-8.0-dev https://github.com/stoneatom/stonedb.git
@@ -61,9 +66,10 @@ root@fb0bf0c54de0:/stonedb8/install# mkdir data binlog log tmp redolog undolog
 root@fb0bf0c54de0:/stonedb8/install# cp /home/stonedb/scripts/my.cnf.sample my.cnf
 root@fb0bf0c54de0:/stonedb8/install# sed -i "s|YOUR_ABS_PATH|$(pwd)|g" my.cnf
 # Initialize StoneDB.
-root@fb0bf0c54de0:/stonedb8/install# ./bin/mysqld --defaults-file=./my.cnf --initialize-insecure
+root@fb0bf0c54de0:/stonedb8/install# chown -R mysql:mysql /stonedb8/install
+root@fb0bf0c54de0:/stonedb8/install# ./bin/mysqld --defaults-file=./my.cnf --initialize-insecure --user=mysql
 # Start StoneDB
-root@fb0bf0c54de0:/stonedb8/install# ./bin/mysqld --user=root &
+root@fb0bf0c54de0:/stonedb8/install# ./bin/mysqld --user=mysql &
 ```
 
 ### Login StoneDB
