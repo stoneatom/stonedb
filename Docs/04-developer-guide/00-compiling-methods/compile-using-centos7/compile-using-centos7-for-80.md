@@ -24,6 +24,10 @@ Ensure that the tools and third-party libraries used in your environment meet th
 Permission issues may occur when executing the following commands. You are advised to run the commands with the administrator permission
 :::
 
+:::tip
+All commands in this article are run under root privileges by default
+:::
+
 ### Step 1. Install the dependencies
 
 ```bash
@@ -67,6 +71,13 @@ yum install -y libicu-devel
 yum install -y jemalloc-devel
 ```
 
+:::info
+If your current yum source cannot find the required package, configure another epel source, the command is as follows:
+```bash
+yum install -y epel-release
+```
+:::
+
 ### Step 2. Install GCC 11.2.0
 
 Before performing the follow-up steps, you must ensure the GCC version is 11.2.0.You can run the following command to check the GCC version.
@@ -107,7 +118,13 @@ StoneDB is dependent on marisa, rocksdb, and boost. You are advised to specify p
 
 #### 1. Install cmake
 
-Check your CMake version first. If your cmake version < 3.72, install cmake
+Check if the current cmake version meets the installation requirements.
+
+```bash
+cmake --version
+```
+
+If your cmake version >= 3.7.2, you don’t need to install cmake, otherwise follow the steps below to compile and install the appropriate version of cmake.
 
 ```bash
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
@@ -115,13 +132,13 @@ tar -zxvf cmake-3.7.2.tar.gz
 cd cmake-3.7.2
 ./bootstrap && make && make install
 /usr/local/bin/cmake --version
-apt remove cmake -y
-ln -s /usr/local/bin/cmake /usr/bin/
+rm -rf /usr/bin/cmake
+ln -s /usr/local/bin/cmake /usr/bin/cmake
 cmake --version
 ```
 
 :::info
-If your gcc version too high, it may cause the compilation to fail. You can add `#include <limits>` in the beginning of `cmake-3.72/Source/cmServerProtocal.cxx` to solve it.
+GCC11 will report a compilation error when compiling cmake-3.7.2. You can add `#include <limits>` in the beginning of `cmake-3.7.2/Source/cmServerProtocol.cxx` to solve it.
 ```c++
 #include <algorithm>
 #include <string>
@@ -132,16 +149,23 @@ If your gcc version too high, it may cause the compilation to fail. You can add 
 
 #### 2. Install make
 
-If your make version < 3.82, install make
+Check if the current make version meets the installation requirements.
 
 ```bash
-wget http://mirrors.ustc.edu.cn/gnu/make/make-3.82.tar.gz
-tar -zxvf make-3.82.tar.gz
-cd make-3.82
+make --version
+```
+
+If your make version >= 3.82, you don’t need to install make, otherwise follow the steps below to compile and install the appropriate version of make.
+
+```bash
+wget http://mirrors.ustc.edu.cn/gnu/make/make-4.3.tar.gz
+tar -zxvf make-4.3.tar.gz
+cd make-4.3
 ./configure  --prefix=/usr/local/make
 make && make install
-rm -rf /usr/local/bin/make
-ln -s /usr/local/make/bin/make /usr/local/bin/make
+/usr/local/make/bin/make --version
+rm -rf /usr/bin/make
+ln -s /usr/local/make/bin/make /usr/bin/make
 make --version
 ```
 
@@ -155,7 +179,7 @@ autoreconf -i
 sudo make && make install 
 ```
 
-The installation directory of marisa in the example is `/usr/local/stonedb-marisa`. You can change it based on your actual conditions. In this step, the following directories and files are generated in `/usr/local/stonedb-marisa/lib`.
+The installation directory of marisa in the example is `/usr/local/stonedb-marisa`. You can change it based on your actual conditions. After compiling and installing, the following directories and files are generated in `/usr/local/stonedb-marisa/lib`.
 
 ```bash
 [root@localhost /usr/local/stonedb-marisa/lib]#ll
@@ -195,20 +219,7 @@ make -j`nproc`
 make install -j`nproc`
 ```
 
-:::info
-Your gcc version may too high, modify your CMakeLists.txt row#310-317 like this.
-```shell
-if(FAIL_ON_WARNINGS)
-  if(MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
-  else() # assume GCC
-	  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-  endif()
-endif()
-```
-:::
-
-The installation directory of rocksdb in the example is `/usr/local/stonedb-gcc-rocksdb`. You can change it based on your actual conditions. In this step, the following directories and files are generated in `/usr/local/stonedb-gcc-rocksdb`.
+The installation directory of rocksdb in the example is `/usr/local/stonedb-gcc-rocksdb`. You can change it based on your actual conditions. After compiling and installing, the following directories and files are generated in `/usr/local/stonedb-gcc-rocksdb`.
 
 ```bash
 [root@localhost /usr/local/stonedb-gcc-rocksdb]#ll
@@ -231,7 +242,7 @@ cd boost_1_77_0
 ./b2 install --with=all
 ```
 
-The installation directory of boost in the example is `/usr/local/stonedb-boost177`. You can change it based on your actual conditions. In this step, the following directories and files are generated in `/usr/local/stonedb-boost177/lib`.
+The installation directory of boost in the example is `/usr/local/stonedb-boost177`. You can change it based on your actual conditions. After compiling and installing, the following directories and files are generated in `/usr/local/stonedb-boost177/lib`.
 
 ```bash
 [root@localhost /usr/local/stonedb-boost177/lib]#ll
@@ -355,13 +366,13 @@ lrwxrwxrwx.  1 root root      33 May  5 08:33 libboost_wserialization.so -> libb
 #### 6. Install gtest
 
 ```bash
-sudo git clone https://github.com/google/googletest.git -b release-1.12.0
+git clone https://github.com/google/googletest.git -b release-1.12.0
 cd googletest
-sudo mkdir build
+mkdir build
 cd build
-sudo cmake .. -DBUILD_GMOCK=OFF
-sudo make
-sudo make install
+cmake .. -DBUILD_GMOCK=OFF
+make
+make install
 ```
 
 Install in `/usr/local/` by default.
@@ -380,7 +391,7 @@ Currently, StoneDB has three branches: StoneDB-5.6 (for MySQL 5.6)、 StoneDB-5.
 
 ```bash
 cd /
-git clone https://github.com/stoneatom/stonedb.git
+git clone -b stonedb-8.0-dev https://github.com/stoneatom/stonedb.git
 ```
 
 Before compilation, modify the compilation script as follows:
@@ -391,7 +402,6 @@ You cna change the installation directory of StoneDB based on your actual condit
 
 ```bash
 cd stonedb
-git checkout -b 8.0 origin/stonedb-8.0-dev
 mkdir build
 cd build
 mkdir install8 mysql8
@@ -416,18 +426,22 @@ You need to manually create directories, and then initialize and start StoneDB. 
 
 ```bash
 cd ../install8
+
 ### Create directories.
-sudo mkdir data binlog log tmp redolog undolog
+mkdir data binlog log tmp redolog undolog
 
 ### Configure parameters in my.cnf.
-sudo cp ../../scripts/my.cnf.sample my.cnf
-sudo sed -i "s|YOUR_ABS_PATH|$(pwd)|g" my.cnf
+cp ../../scripts/my.cnf.sample my.cnf
+sed -i "s|YOUR_ABS_PATH|$(pwd)|g" my.cnf
 
 ### Initialize StoneDB.
-sudo ./bin/mysqld --defaults-file=./my.cnf --initialize-insecure
+./bin/mysqld --defaults-file=./my.cnf --initialize-insecure
 
 ### Start StoneDB.
-sudo ./bin/mysqld --user=root &
+./bin/mysqld --user=root &
+
+### Stop StoneDB
+./bin/mysqladmin -uroot shutdown
 ```
 
 ### Step 6. Login to StoneDB
