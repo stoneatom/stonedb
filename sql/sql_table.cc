@@ -6514,7 +6514,10 @@ static bool prepare_foreign_key(THD *thd, HA_CREATE_INFO *create_info,
   // the FK has been made, it is enough to check it for new FKs.
   if (fk_key->validate(thd, table_name, alter_info->create_list)) return true;
 
-  if (!se_supports_fks) return false;
+  if (!se_supports_fks) {
+    my_error(ER_TIANMU_NOT_SUPPORTED_FOREIGN_KEY, MYF(0));
+    return true;
+  }
 
   if (fk_key->has_explicit_name) {
     assert(fk_key->name.str);
