@@ -343,7 +343,8 @@ void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
   auto &path(opt->path);
   uint32_t no_attrs = opt->atis.size();
   uint64_t auto_inc_value = opt->create_info->auto_increment_value;
-  fs::create_directory(path);
+  if (!fs::create_directory(path))
+    throw common::DatabaseException("Create Directory " + path.string() + " failed!");
 
   TABLE_META meta{common::FILE_MAGIC, common::TABLE_DATA_VERSION, tid, opt->pss};
 

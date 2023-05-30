@@ -901,6 +901,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           tianmu_control_.lock(m_conn->GetThreadID())
               << "ERROR: unsupported type of CQStep (" << static_cast<int>(step.type) << ")" << system::unlock;
       }
+
     } catch (...) {
       for (auto &c : conds) delete c;
       throw;
