@@ -711,8 +711,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
     auto function = types::ValueParserForText::GetParsingFuntion(ati);
     if (function(tmp_string, *reinterpret_cast<int64_t *>(buffer.Prepare(sizeof(int64_t)))) ==
         common::ErrorCode::FAILED)
-      throw common::FormatException(0,
-                                    col);  // TODO: throw appropriate exception
+      throw common::FormatException(0, col);  // TODO: throw appropriate exception
     buffer.ExpectedSize(sizeof(int64_t));
   }
 }
