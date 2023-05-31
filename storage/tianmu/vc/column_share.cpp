@@ -139,7 +139,7 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
   fv.OpenReadOnly(m_path / common::COL_VERSION_DIR / xid.ToString());
   fv.ReadExact(&hdr, sizeof(hdr));
 
-  ASSERT(hdr.numOfPacks <= capacity, "bad dpn index");
+  ASSERT(hdr.numOfPacks <= capacity, "bad dpn index, txnid:" + xid.ToString());
 
   // get column saved auto inc
   auto_inc_.store(hdr.auto_inc);
@@ -160,7 +160,7 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
     if (found == end) {
       start[i].reset();
     } else {
-      start[i].SetPackPtr(0);
+      start[i].SetRefCount(0);
       start[i].used = 1;
       start[i].base = common::INVALID_PACK_INDEX;
       start[i].synced = 1;
@@ -169,7 +169,7 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
         TIANMU_LOG(LogCtl_Level::WARN, "uncommited pack found: %s %d", m_path.c_str(), i);
         start[i].local = 0;
       }
-      if (start[i].dataAddress != DPN_INVALID_ADDR) {
+      if (start[i].dataAddress != DPN_INVALID_ADDR && !start[i].delete_compressed) {
         segs.push_back({start[i].dataAddress, start[i].dataLength, i});
       } else {
       }
@@ -187,7 +187,7 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
         TIANMU_LOG(LogCtl_Level::ERROR, "     %u  [%ld, %ld]", it.idx, it.offset, it.len);
       }
       TIANMU_LOG(LogCtl_Level::ERROR, "sorted end: -------------------");
-      throw common::DatabaseException("bad DPN index file: " + m_path.string());
+      throw common::DatabaseException("bad DPN index file: " + m_path.string() + " txn:" + xid.ToString());
     }
   }
 }
@@ -216,7 +216,7 @@ void ColumnShare::init_dpn(DPN &dpn, const common::TX_ID xid, const DPN *from) {
     dpn.base = common::INVALID_PACK_INDEX;
   dpn.xmin = xid;
   dpn.xmax = common::MAX_XID;
-  dpn.SetPackPtr(0);
+  dpn.SetRefCount(0);
 }
 /*
 When creating a dpn structure, logic to free up wasted space is triggered.
@@ -275,5 +275,6 @@ void ColumnShare::sync_dpns() {
   if (ret != 0)
     throw std::system_error(errno, std::system_category(), "msync() " + m_path.string());
 }
+
 }  // namespace core
 }  // namespace Tianmu

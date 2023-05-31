@@ -18,6 +18,7 @@
 #define TIANMU_CORE_ENGINE_H_
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <list>
 #include <mutex>
@@ -243,6 +244,8 @@ class Engine final {
   system::ResourceManager *m_resourceManager = nullptr;
 
   uint m_slot = 0;
+  //?????
+  // atomic_uint32_t tableID_;
 
   struct TrxCmp {
     bool operator()(Transaction *l, Transaction *r) const;

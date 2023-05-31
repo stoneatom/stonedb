@@ -742,7 +742,16 @@ void PackInt::Save() {
 
   col_share_->alloc_seg(dpn_);
   system::TianmuFile f;
-  f.OpenCreate(col_share_->DataFile());
+  bool need_sync = false;
+  if (!f.Exists(col_share_->DataFile())) {
+    need_sync = true;
+  }
+
+  if (f.OpenCreate(col_share_->DataFile()) == -1)
+    return;
+  if (need_sync && f.Flush() == -1)
+    return;
+
   f.Seek(dpn_->dataAddress, SEEK_SET);
   if (ShouldNotCompress())
     SaveUncompressed(&f);
