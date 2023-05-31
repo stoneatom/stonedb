@@ -56,7 +56,7 @@ MINewContentsRSorter::~MINewContentsRSorter() {
 }
 
 void MINewContentsRSorter::AddColumn(IndexTable *t, int dim) {
-  assert(t == nullptr || tall[dim] == nullptr);  // else already added - something is wrong!
+  DEBUG_ASSERT(t == nullptr || tall[dim] == nullptr);  // else already added - something is wrong!
   tall[dim] = t;
   tcheck[dim] = false;
   if (t) {

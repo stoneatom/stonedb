@@ -126,7 +126,7 @@ common::RoughSetValue And(common::RoughSetValue f, common::RoughSetValue s) {
 int64_t MonotonicDouble2Int64(int64_t d)  // encode double value (bitwise stored as int64_t) into
                                           // int64_t to prevent comparison directions
 {
-  assert(!(std::isnan)(*(double *)&d));
+  DEBUG_ASSERT(!(std::isnan)(*(double *)&d));
   if (*((double *)(&d)) < 0)
     return ~d;  // for negative - reverse all bits (including the sign 1)
   else

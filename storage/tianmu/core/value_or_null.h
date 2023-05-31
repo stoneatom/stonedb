@@ -30,7 +30,7 @@ class ValueOrNull final {
 
  public:
   ValueOrNull() : x(common::NULL_VALUE_64), null(true) {}
-  explicit ValueOrNull(int64_t x) : x(x), null(false) { assert(x != common::NULL_VALUE_64); }
+  explicit ValueOrNull(int64_t x) : x(x), null(false) { DEBUG_ASSERT(x != common::NULL_VALUE_64); }
   ValueOrNull(types::TianmuNum const &tianmu_n);
   ValueOrNull(types::TianmuDateTime const &tianmu_dt);
   ValueOrNull(types::BString const &tianmu_s);

@@ -61,7 +61,7 @@ void AggregatorSum64::SetAggregatePackSum(int64_t par1, int64_t factor) {
 }
 
 bool AggregatorSum64::AggregatePack(unsigned char *buf) {
-  assert(pack_sum != common::NULL_VALUE_64);
+  DEBUG_ASSERT(pack_sum != common::NULL_VALUE_64);
   PutAggregatedValue(buf, pack_sum, 1);
   return true;
 }
@@ -245,13 +245,13 @@ void AggregatorMin64::Merge(unsigned char *buf, unsigned char *src_buf) {
 }
 
 bool AggregatorMin64::AggregatePack(unsigned char *buf) {
-  assert(pack_min != common::NULL_VALUE_64);
+  DEBUG_ASSERT(pack_min != common::NULL_VALUE_64);
   PutAggregatedValue(buf, pack_min, 1);
   return true;
 }
 
 bool AggregatorMinD::AggregatePack(unsigned char *buf) {
-  assert(pack_min != common::NULL_VALUE_64);
+  DEBUG_ASSERT(pack_min != common::NULL_VALUE_64);
   int64_t pack_min_64 = *(int64_t *)&pack_min;  // pack_min is double, so it needs conversion into
                                                 // int64_t-encoded-double
   PutAggregatedValue(buf, pack_min_64, 1);
@@ -259,13 +259,13 @@ bool AggregatorMinD::AggregatePack(unsigned char *buf) {
 }
 
 bool AggregatorMax64::AggregatePack(unsigned char *buf) {
-  assert(pack_max != common::NULL_VALUE_64);
+  DEBUG_ASSERT(pack_max != common::NULL_VALUE_64);
   PutAggregatedValue(buf, pack_max, 1);
   return true;
 }
 
 bool AggregatorMaxD::AggregatePack(unsigned char *buf) {
-  assert(pack_max != NULL_VALUE_D);
+  DEBUG_ASSERT(pack_max != NULL_VALUE_D);
   int64_t pack_max_64 = *(int64_t *)&pack_max;  // pack_max is double, so it needs conversion into
                                                 // int64_t-encoded-double
   PutAggregatedValue(buf, pack_max_64, 1);
@@ -289,7 +289,7 @@ void AggregatorMinD::Merge(unsigned char *buf, unsigned char *src_buf) {
 }
 
 void AggregatorMinT::PutAggregatedValue(unsigned char *buf, const types::BString &v, [[maybe_unused]] int64_t factor) {
-  assert((uint)val_len >= v.len_);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
     std::memset(buf + 2, 0, val_len);
@@ -344,7 +344,7 @@ AggregatorMinT_UTF::AggregatorMinT_UTF(int max_len, DTCollation coll) : Aggregat
 
 void AggregatorMinT_UTF::PutAggregatedValue(unsigned char *buf, const types::BString &v,
                                             [[maybe_unused]] int64_t factor) {
-  assert((uint)val_len >= v.len_);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
     std::memset(buf + 2, 0, val_len);
@@ -441,7 +441,7 @@ AggregatorMaxT_UTF::AggregatorMaxT_UTF(int max_len, DTCollation coll) : Aggregat
 
 void AggregatorMaxT::PutAggregatedValue(unsigned char *buf, const types::BString &v, [[maybe_unused]] int64_t factor) {
   stats_updated = false;
-  assert((uint)val_len >= v.len_);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     std::memset(buf + 2, 0, val_len);
     *((unsigned short *)buf) = v.len_;
@@ -493,7 +493,7 @@ types::BString AggregatorMaxT::GetValueT(unsigned char *buf) {
 void AggregatorMaxT_UTF::PutAggregatedValue(unsigned char *buf, const types::BString &v,
                                             [[maybe_unused]] int64_t factor) {
   stats_updated = false;
-  assert((uint)val_len >= v.len_);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     std::memset(buf + 2, 0, val_len);
     *((unsigned short *)buf) = v.len_;
@@ -537,7 +537,7 @@ int64_t AggregatorList32::GetValue64(unsigned char *buf) {
 }
 
 void AggregatorListT::PutAggregatedValue(unsigned char *buf, const types::BString &v, [[maybe_unused]] int64_t factor) {
-  assert((uint)val_len >= v.len_);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*(reinterpret_cast<unsigned short *>(buf)) == 0 && buf[AggregatedValue_LEN_SIZE] == 0) {  // still null
     stats_updated = false;
     *(reinterpret_cast<unsigned short *>(buf)) = v.len_;

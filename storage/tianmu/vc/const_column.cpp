@@ -77,14 +77,14 @@ ConstColumn::ConstColumn(const types::TianmuValueObject &v, const core::ColumnTy
     else
       throw common::DataTypeConversionException(common::ErrorCode::DATACONVERSION);
   } else {
-    assert(v.GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE);
+    DEBUG_ASSERT(v.GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE);
     // TODO: if it is non-date-time a proper conversion should be done here
     value_or_null_ = core::ValueOrNull(static_cast<types::TianmuDateTime &>(v));
   }
 }
 
 double ConstColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) {
-  assert(core::ATI::IsNumericType(TypeName()));
+  DEBUG_ASSERT(core::ATI::IsNumericType(TypeName()));
   double val = 0;
   if (value_or_null_.IsNull())
     val = NULL_VALUE_D;
@@ -110,7 +110,7 @@ double ConstColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &
     if (vs)
       val = std::stod(*vs);
   } else
-    assert(0 && "conversion to double not implemented");
+    DEBUG_ASSERT(0 && "conversion to double not implemented");
   return val;
 }
 
@@ -131,14 +131,14 @@ types::TianmuValueObject ConstColumn::GetValueImpl([[maybe_unused]] const core::
     return types::TianmuNum(value_or_null_.Get64(), 0, true, TypeName());
   if (lookup_to_num || TypeName() == common::ColumnType::NUM || TypeName() == common::ColumnType::BIT)
     return types::TianmuNum((int64_t)value_or_null_.Get64(), Type().GetScale());
-  assert(!"Illegal execution path");
+  DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();
 }
 
 void ConstColumn::GetValueStringImpl(types::BString &s, const core::MIIterator &mit) { s = GetValue(mit).ToBString(); }
 
 int64_t ConstColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
-  assert(!core::ATI::IsStringType(TypeName()));
+  DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   nonnegative = true;
   if (value_or_null_.IsNull())
     return common::NULL_VALUE_64;  // note that this is a bit ambiguous: the
@@ -183,7 +183,7 @@ core::PackOntologicalStatus ConstColumn::GetPackOntologicalStatusImpl([[maybe_un
 
 void ConstColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
                                    [[maybe_unused]] core::Descriptor &desc) {
-  assert(0);  // comparison of a const with a const should be simplified earlier
+  DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
 
 char *ConstColumn::ToString(char p_buf[], size_t buf_ct) const {

@@ -97,14 +97,14 @@ bool DoesFileExist(std::string const &file) {
 }
 
 void RenameFile(std::string const &OldPath, std::string const &NewPath) {
-  assert(OldPath.length() && NewPath.length());
+  DEBUG_ASSERT(OldPath.length() && NewPath.length());
   if (rename(OldPath.c_str(), NewPath.c_str())) {
     throw common::DatabaseException(std::strerror(errno));
   }
 };
 
 void RemoveFile(std::string const &path, int throwerror) {
-  assert(path.length());
+  DEBUG_ASSERT(path.length());
   if (remove(path.c_str())) {
     if (DoesFileExist(path) && throwerror) {
       throw common::DatabaseException(std::strerror(errno));

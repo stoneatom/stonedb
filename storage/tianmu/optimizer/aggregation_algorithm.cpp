@@ -570,7 +570,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
 
   gbw.ResetPackrow();
   int64_t rows_in_pack = gbw.TuplesLeftBetween(cur_tuple, cur_tuple + packrow_length - 1);
-  assert(rows_in_pack > 0);
+  DEBUG_ASSERT(rows_in_pack > 0);
 
   skip_packrow = AggregateRough(gbw, *mit, packrow_done, part_omitted, aggregations_not_changeable, stop_all,
                                 uniform_pos, rows_in_pack, factor);
@@ -813,7 +813,7 @@ bool AggregationAlgorithm::AggregateRough(GroupByWrapper &gbw, MIIterator &mit, 
       return true;  // no space to add uniform values in this pass, omit it for
                     // now
   }
-  assert(!packrow_done);
+  DEBUG_ASSERT(!packrow_done);
 
   // the next step: check if anything may be changed (when no new groups can be
   // added))

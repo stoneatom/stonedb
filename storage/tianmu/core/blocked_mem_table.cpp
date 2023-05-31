@@ -26,7 +26,7 @@ MemBlockManager::~MemBlockManager() {
 }
 
 void *MemBlockManager::GetBlock() {
-  assert(block_size != -1);
+  DEBUG_ASSERT(block_size != -1);
 
   if (hard_size_limit != -1 && hard_size_limit <= current_size)
     return nullptr;
@@ -89,7 +89,7 @@ void MemBlockManager::FreeBlock(void *b) {
 
 void BlockedRowMemStorage::Init(int rowl, std::shared_ptr<MemBlockManager> mbm, uint64_t initial_size,
                                 int min_block_len) {
-  assert(no_rows == 0);
+  DEBUG_ASSERT(no_rows == 0);
   CalculateBlockSize(rowl, min_block_len);
   bman = mbm;
   bman->SetBlockSize(block_size);
@@ -159,7 +159,7 @@ int64_t BlockedRowMemStorage::AddEmptyRow() {
 }
 
 void BlockedRowMemStorage::Rewind(bool rel) {
-  assert(!release);
+  DEBUG_ASSERT(!release);
   release = rel;
   if (no_rows == 0) {
     current = -1;

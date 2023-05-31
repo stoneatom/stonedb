@@ -36,7 +36,7 @@ Sorter3 *Sorter3::CreateSorter(int64_t size, uint key_bytes, uint total_bytes, i
 
   int64_t max_no_rows = max_mem_size / total_bytes;
   if (limit != -1 && limit < max_no_rows / 3 && limit < size / 3) {
-    assert(limit >= 0);
+    DEBUG_ASSERT(limit >= 0);
     return new SorterLimit((uint)limit, key_bytes, total_bytes);
   }
   if (max_no_rows > size) {        // matching the memory
@@ -86,7 +86,7 @@ SorterOnePass::~SorterOnePass() {
 }
 
 bool SorterOnePass::PutValue(unsigned char *b) {
-  assert(buf_input_pos < buf_end);
+  DEBUG_ASSERT(buf_input_pos < buf_end);
   already_sorted = false;
   std::memcpy(buf_input_pos, b, total_bytes);
   buf_input_pos += total_bytes;
@@ -97,7 +97,7 @@ bool SorterOnePass::PutValue(unsigned char *b) {
 
 bool SorterOnePass::PutValue(Sorter3 *s) {
   TIANMU_LOG(LogCtl_Level::WARN, "SorterOnePass PutValue merger, never verified.");
-  assert(buf_input_pos < buf_end);
+  DEBUG_ASSERT(buf_input_pos < buf_end);
   already_sorted = false;
   SorterOnePass *sp = (SorterOnePass *)s;
   int tmpobj = sp->GetObjNo();
@@ -348,7 +348,7 @@ SorterCounting::SorterCounting(uint _size, uint _key_bytes, uint _total_bytes)
     throw common::OutOfMemoryException();
   }
 
-  assert(key_bytes <= 2);
+  DEBUG_ASSERT(key_bytes <= 2);
   already_sorted = false;
   distrib_min = 65536;
   distrib_max = 0;
@@ -366,7 +366,7 @@ SorterCounting::~SorterCounting() {
 }
 
 bool SorterCounting::PutValue(unsigned char *b) {
-  assert(buf_input_pos < buf_end);
+  DEBUG_ASSERT(buf_input_pos < buf_end);
   std::memcpy(buf_input_pos, b, total_bytes);
   int pos = Position(b);
   if (pos > distrib_max)
@@ -395,7 +395,7 @@ unsigned char *SorterCounting::GetNextValue() {
 }
 
 void SorterCounting::CountingSort() {
-  assert(distrib_min <= distrib_max);
+  DEBUG_ASSERT(distrib_min <= distrib_max);
   int distrib_size = distrib_max - distrib_min + 1;
 
   std::vector<int> distrib(distrib_size);

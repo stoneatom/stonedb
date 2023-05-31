@@ -54,7 +54,7 @@ GroupDistinctTable::~GroupDistinctTable() {
 
 void GroupDistinctTable::InitializeVC(int64_t max_no_groups, vcolumn::VirtualColumn *vc, int64_t max_no_rows,
                                       int64_t max_bytes, bool decodable) {
-  assert(!initialized);
+  DEBUG_ASSERT(!initialized);
   if (max_bytes > 0)
     max_total_size = max_bytes;
   if (max_bytes > static_cast<int64_t>(2_GB))  // possible for large aggregation settings, but
@@ -98,7 +98,7 @@ void GroupDistinctTable::InitializeVC(int64_t max_no_groups, vcolumn::VirtualCol
 
 void GroupDistinctTable::InitializeB(int max_len, int64_t max_no_rows)  // char* initialization
 {
-  assert(!initialized);
+  DEBUG_ASSERT(!initialized);
   input_length = max_len;
   group_bytes = 1;
   if (max_len > HASH_FUNCTION_BYTE_SIZE) {
@@ -150,7 +150,7 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
 
 int64_t GroupDistinctTable::BytesTaken()  // actual size of structures
 {
-  assert(initialized);
+  DEBUG_ASSERT(initialized);
   if (filter_implementation)
     return f->NumOfObj() / 8;
   return total_width * no_rows;
@@ -207,7 +207,7 @@ GDTResult GroupDistinctTable::Add(int64_t group, int64_t val)  // numeric values
 
 GDTResult GroupDistinctTable::Add(unsigned char *v)  // arbitrary vector of bytes
 {
-  assert(!filter_implementation);
+  DEBUG_ASSERT(!filter_implementation);
   input_buffer[0] = 1;
   if (use_CRC) {
     std::memset(input_buffer + group_bytes, 0, HASH_FUNCTION_BYTE_SIZE);
@@ -219,7 +219,7 @@ GDTResult GroupDistinctTable::Add(unsigned char *v)  // arbitrary vector of byte
 
 GDTResult GroupDistinctTable::AddFromCache(unsigned char *input_vector)  // input vector from cache
 {
-  assert(!filter_implementation);
+  DEBUG_ASSERT(!filter_implementation);
   std::memcpy(input_buffer, input_vector, total_width);
   return FindCurrentRow();
 }
@@ -262,7 +262,7 @@ GDTResult GroupDistinctTable::FindCurrentRowByVMTable() {
 
 GDTResult GroupDistinctTable::FindCurrentRow(bool find_only)  // find / insert the current buffer
 {
-  assert(!filter_implementation);
+  DEBUG_ASSERT(!filter_implementation);
   unsigned int crc_code = HashValue(input_buffer, total_width);
   int64_t row = crc_code % no_rows;
   int64_t step = 3 + crc_code % 8;

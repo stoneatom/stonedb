@@ -91,9 +91,9 @@ void SuffixTree<Symb, NSymb>::Create() {
           last_leaf = NIL_;
         }
         do {
-          assert(*(s - 1) == '\0');
-          assert(IsLeaf(active.n));
-          assert(active.proj == 0);
+          DEBUG_ASSERT(*(s - 1) == '\0');
+          DEBUG_ASSERT(IsLeaf(active.n));
+          DEBUG_ASSERT(active.proj == 0);
           GetNode(active.n).count++;
           MoveSuffix(active, s);
         } while (active.n != ROOT_);  // TODO: time - optimize the leaf counting
@@ -115,7 +115,7 @@ void SuffixTree<Symb, NSymb>::Create() {
 
 template <class Symb, int NSymb>
 void SuffixTree<Symb, NSymb>::MoveDown(Point &p, const uchar *&s) {
-  assert(p.proj == 0);
+  DEBUG_ASSERT(p.proj == 0);
   uchar *lbl;
   uint len;
   uint &proj = p.proj;
@@ -132,7 +132,7 @@ void SuffixTree<Symb, NSymb>::MoveDown(Point &p, const uchar *&s) {
     //	s++;
     //	p.n = p.next;
     //	p.proj = 0;
-    //	assert(GetNode(p.n).len == 1);
+    //	DEBUG_ASSERT(GetNode(p.n).len == 1);
     //	return true;
     //}
     // s++;
@@ -228,7 +228,7 @@ void SuffixTree<Symb, NSymb>::Canonize(Point &p, const uchar *s) {
   int len;
   while (p.proj > 0) {
     ch = GetChild(p.n, *(s - p.proj));
-    assert(ch != NIL_);
+    DEBUG_ASSERT(ch != NIL_);
     len = GetNode(ch).len;
     if (p.proj < (uint)len) {
       p.next = ch;
@@ -452,7 +452,7 @@ bool SuffixTree<Symb, NSymb>::IsValid(PNode n) {
   // count children
   int num = 0;
   PNode ch = GetNode(n).child;
-  assert(ch != NIL_);
+  DEBUG_ASSERT(ch != NIL_);
   do {
     num++;
     ch = NxtChild(ch);
@@ -487,12 +487,12 @@ void SuffixTree<Symb, NSymb>::SetSums() {
       Node &child = GetNode(ch);
       cnt = child.count;       // real count, wide-represented
       scnt = cnt _SHR_ shift;  // short count, reduced
-      assert(cnt > 0);
+      DEBUG_ASSERT(cnt > 0);
       if (scnt == 0)
         scnt = 1;
 
-      assert(scnt <= COUNT_MAX);
-      assert(sum <= sum + (Count)scnt);
+      DEBUG_ASSERT(scnt <= COUNT_MAX);
+      DEBUG_ASSERT(sum <= sum + (Count)scnt);
       sum += (Count)scnt;
       child.sum = sum;
 
@@ -505,18 +505,18 @@ void SuffixTree<Symb, NSymb>::SetSums() {
 // template <class Symb, int NSymb>
 // Count SuffixTree<Symb,NSymb>::SetSums(PNode n, Count prev, int shift)
 //{
-//	assert(n != NIL);
+//	DEBUG_ASSERT(n != NIL);
 //
 //	// set 'sum' of this node
 //	Node& node = GetNode(n);
 //	int cnt = node.count;			// real count, wide-represented
 //	int scnt = cnt >> shift;		// short count, reduced
-//	assert(cnt > 0);
+//	DEBUG_ASSERT(cnt > 0);
 //	if(scnt == 0) scnt = 1;
 //
-//	assert(scnt <= COUNT_MAX);
+//	DEBUG_ASSERT(scnt <= COUNT_MAX);
 //	node.sum = prev + (Count)scnt;
-//	assert(prev <= node.sum);
+//	DEBUG_ASSERT(prev <= node.sum);
 //
 //	// recursively set 'sum' of descendants
 //	PNode ch = node.child;
@@ -554,7 +554,7 @@ void SuffixTree<Symb, NSymb>::SetSuffix() {
     n = stack.back();
     stack.pop_back();
     Node &node = GetNode(n);
-    assert(n != NIL_);
+    DEBUG_ASSERT(n != NIL_);
 
     // put children on stack
     for (ch = node.child; ch != NIL_; ch = NxtChild(ch)) stack.push_back(ch);
@@ -578,7 +578,7 @@ void SuffixTree<Symb, NSymb>::SetSuffix() {
 // void SuffixTree<Symb,NSymb>::SetSuffix(PNode n)
 //{
 //	// TODO: more sophisticated choose of long suffix link
-//	assert(n != NIL);
+//	DEBUG_ASSERT(n != NIL);
 //	Node& node = GetNode(n);
 //
 //	// recursion
@@ -631,7 +631,7 @@ void SuffixTree<Symb, NSymb>::FindEdge(Edge &e, Symb *str, int len) {
 template <class Symb, int NSymb>
 void SuffixTree<Symb, NSymb>::FindEdge(Edge &e, Count c) {
   if (state_ == NIL_) {
-    assert(c < NSymb);
+    DEBUG_ASSERT(c < NSymb);
     e.n = ROOT_;
     e.s = (Symb)c;
     return;
@@ -646,7 +646,7 @@ void SuffixTree<Symb, NSymb>::FindEdge(Edge &e, Count c) {
   // count
   PNode ch = GetNode(state_).child;
   for (;;) {
-    assert(ch != NIL_);
+    DEBUG_ASSERT(ch != NIL_);
     if (c < GetNode(ch).sum) {
       e.n = ch;
       return;
@@ -696,7 +696,7 @@ void SuffixTree<Symb, NSymb>::GetRange(PNode stt, Edge e, Range &r) {
     r.low = GetNode(PrvChild(e.n)).sum;
   r.high = GetNode(e.n).sum;
 
-  assert(r.low < r.high);
+  DEBUG_ASSERT(r.low < r.high);
 }
 
 template <class Symb, int NSymb>
@@ -706,7 +706,7 @@ void SuffixTree<Symb, NSymb>::Move(Symb *str, int &len, Range &rng, Count &total
   len = GetLen(e);
   GetRange(state_, e, rng);
   total = GetTotal(state_);
-  assert(rng.high <= total);
+  DEBUG_ASSERT(rng.high <= total);
   Move(e);
 }
 

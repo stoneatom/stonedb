@@ -32,7 +32,7 @@ WordGraph::WordGraph(const Symb *data, int dlen, bool insatend) {
     dlen_ = (int)std::strlen((const char *)data) + 1;
   else
     dlen_ = dlen;
-  assert(dlen_ > 0);
+  DEBUG_ASSERT(dlen_ > 0);
 
   data_ = data;  // the data_ are NOT copied!
   insatend_ = insatend;
@@ -108,7 +108,7 @@ void WordGraph::Create() {
         last = NIL_;
       }
     }
-    assert(last == NIL_);
+    DEBUG_ASSERT(last == NIL_);
   }
 }
 
@@ -124,8 +124,8 @@ WordGraph::PNode WordGraph::NewFinal(int endpos) {
 }
 
 void WordGraph::MoveDown(Point &p, const uchar *&s, const uchar *sstop) {
-  assert(p.proj == 0);
-  assert(s != sstop);
+  DEBUG_ASSERT(p.proj == 0);
+  DEBUG_ASSERT(s != sstop);
   const uchar *lbl;
   uint len;
   uint &proj = p.proj;
@@ -194,8 +194,8 @@ void WordGraph::Duplicate(Point &p) {
   const Symb *s = data_ + n1.endpos;
   Point q = p;
   do {
-    assert(q.proj == GE(q.edge).GetLen());
-    assert(q.proj > 0);
+    DEBUG_ASSERT(q.proj == GE(q.edge).GetLen());
+    DEBUG_ASSERT(q.proj > 0);
     GE(q.edge).n = pn2;
     MoveSuffix(q, s,
                false);  // move 'q' along suffix link, don't canonize the last edge
@@ -209,7 +209,7 @@ void WordGraph::MoveSuffix(Point &p, const uchar *s, bool canonlast) {
   uint len;
   while (p.proj > 0) {
     e = FindEdge(p.n, *(s - p.proj));
-    assert(e != ENIL_);
+    DEBUG_ASSERT(e != ENIL_);
 
     len = GE(e).GetLen();
     if ((p.proj < len) || (!canonlast && (p.proj == len))) {
@@ -523,12 +523,12 @@ void WordGraph::SetSums() {
 
       cnt = GN(e.n).count;     // real count, wide-represented
       scnt = cnt _SHR_ shift;  // short count, reduced
-      assert(cnt > 0);
+      DEBUG_ASSERT(cnt > 0);
       if (scnt == 0)
         scnt = 1;
 
-      assert(scnt <= COUNT_MAX / 4);
-      assert(sum <= sum + (Count)scnt);
+      DEBUG_ASSERT(scnt <= COUNT_MAX / 4);
+      DEBUG_ASSERT(sum <= sum + (Count)scnt);
       sum += (Count)scnt;
 
       stack.push_back(e.n);
@@ -550,7 +550,7 @@ void WordGraph::SetShadow([[maybe_unused]] PNode pn) {
     return;  // don't make shadow edges_ for leaves
 
   // fill in the 'shlen_' array of edge lengths
-  assert(sizeof(shlen_) == N_Symb_ * sizeof(*shlen_));
+  DEBUG_ASSERT(sizeof(shlen_) == N_Symb_ * sizeof(*shlen_));
   std::memset(shlen_, 0, sizeof(shlen_));  // isn't it faster to clear only the
                                            // used cells of 'shlen_' at the end?
   do {
@@ -563,7 +563,7 @@ void WordGraph::SetShadow([[maybe_unused]] PNode pn) {
   // TODO: try to do it approximately but faster
   Node &n2 = GN(n1.suf);
   pe = n2.edge;
-  assert(pe != ENIL_);
+  DEBUG_ASSERT(pe != ENIL_);
   int totcnt = 0;
   do {
     Edge &e = GE(pe);
@@ -585,7 +585,7 @@ void WordGraph::SetShadow([[maybe_unused]] PNode pn) {
   do {
     Edge &e = GE(pe);
     if (shlen_[e.fsym] != e.GetLen()) {
-      assert((shlen_[e.fsym] == 0) || (shlen_[e.fsym] > e.GetLen()));
+      DEBUG_ASSERT((shlen_[e.fsym] == 0) || (shlen_[e.fsym] > e.GetLen()));
       sedges_.resize(n1.sedge + ++n1.nshadow);
       SEdge &se = sedges_.back();
       se.fsym = e.fsym;
@@ -593,12 +593,12 @@ void WordGraph::SetShadow([[maybe_unused]] PNode pn) {
 
       cnt = GN(e.n).count;     // real count, wide-represented
       scnt = cnt _SHR_ shift;  // short count, reduced
-      assert(cnt > 0);
+      DEBUG_ASSERT(cnt > 0);
       if (scnt == 0)
         scnt = 1;
 
-      assert(scnt <= COUNT_MAX / 4);
-      assert(stotal <= stotal + (Count)scnt);
+      DEBUG_ASSERT(scnt <= COUNT_MAX / 4);
+      DEBUG_ASSERT(stotal <= stotal + (Count)scnt);
       stotal += (Count)scnt;
     }
     pe = e.next;
@@ -624,7 +624,7 @@ int WordGraph::Shift(int c) {
 
 void WordGraph::FindEdge(PEdge &e, PSEdge &se, Symb *str, int len) {
   // find the edge beginning with symbol str[0]
-  assert(len > 0);
+  DEBUG_ASSERT(len > 0);
   if (state_.prev == NIL_) {  // the last transition was forward
     se = SENIL_;
     e = FindEdge(state_.n, str[0]);
@@ -638,7 +638,7 @@ void WordGraph::FindEdge(PEdge &e, PSEdge &se, Symb *str, int len) {
     }
     e = FindEdge(state_.n, str[0]);
   }
-  assert(e != ENIL_);
+  DEBUG_ASSERT(e != ENIL_);
 
   // check if the rest of the edge label is the same as 'str'
   PNode n = GE(e).n;
@@ -672,7 +672,7 @@ void WordGraph::FindEdge(PEdge &e, PSEdge &se, Count c) {
       e = ENIL_;
     } else {
       e = FindEdge(state_.n, GSE(se).fsym);
-      assert(e != ENIL_);
+      DEBUG_ASSERT(e != ENIL_);
     }
 
 #else
@@ -728,7 +728,7 @@ void WordGraph::GetRange(PEdge e, [[maybe_unused]] PSEdge se, Range &r) {
 #endif
   }
 
-  assert(r.low < r.high);
+  DEBUG_ASSERT(r.low < r.high);
 }
 
 void WordGraph::Move(PEdge e) {
@@ -781,7 +781,7 @@ void WordGraph::Move(Symb *str, int &len, Range &rng, Count &total) {
   len = (e == ENIL_ ? 0 : GE(e).GetLen());
   GetRange(e, se, rng);
   total = GetTotal_();
-  assert(rng.high <= total);
+  DEBUG_ASSERT(rng.high <= total);
 
 #ifdef MAKELOG
   MakeLog(state_.n, e);
@@ -886,7 +886,7 @@ WordGraph::PEdge WordGraph::AddEdge(PNode n, Symb s, int len, bool solid, PNode 
 //}
 
 Count WordGraph::GetEscCount([[maybe_unused]] PNode n, [[maybe_unused]] int c) {
-  assert(c >= 0);
+  DEBUG_ASSERT(c >= 0);
 #ifdef EXP_ESC_COUNT
   return (int)(param_.esc_coef * pow(c, param_.esc_exp)) + param_.esc_count;
 #else
@@ -895,7 +895,7 @@ Count WordGraph::GetEscCount([[maybe_unused]] PNode n, [[maybe_unused]] int c) {
 }
 
 Count WordGraph::GetShEscCount([[maybe_unused]] PNode n, [[maybe_unused]] int c) {
-  assert(c >= 0);
+  DEBUG_ASSERT(c >= 0);
 #ifdef EXP_ESC_COUNT
   return (int)(param_.esc_coef * pow(c, param_.esc_exp)) + param_.esc_count;
 #else

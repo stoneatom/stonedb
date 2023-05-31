@@ -117,7 +117,7 @@ void HashTable::Initialize(int64_t max_table_size, [[maybe_unused]] bool easy_ro
 }
 
 int64_t HashTable::AddKeyValue(const std::string &key_buffer, bool *too_many_conflicts) {
-  assert(key_buffer.size() == key_buf_width_);
+  DEBUG_ASSERT(key_buffer.size() == key_buf_width_);
 
   if (rows_of_occupied_ >= rows_limit_)  // no more space
     return common::NULL_VALUE_64;
@@ -136,7 +136,7 @@ int64_t HashTable::AddKeyValue(const std::string &key_buffer, bool *too_many_con
       if (std::memcmp(cur_t, key_buffer.c_str(), key_buf_width_) == 0) {
         // i.e. identical row found
         int64_t last_multiplier = *multiplier;
-        assert(last_multiplier > 0);
+        DEBUG_ASSERT(last_multiplier > 0);
         (*multiplier)++;
         if (for_count_only_)
           return row;
@@ -160,7 +160,7 @@ int64_t HashTable::AddKeyValue(const std::string &key_buffer, bool *too_many_con
       return row;
     }
   } while (row != startrow);
-  assert("Never reach here!");
+  DEBUG_ASSERT("Never reach here!");
   return common::NULL_VALUE_64;  // search deadlock (we returned to the same
                                  // position)
 }
@@ -195,7 +195,7 @@ int64_t HashTable::GetTupleValue(int col, int64_t row) {
 
 HashTable::Finder::Finder(HashTable *hash_table, std::string *key_buffer)
     : hash_table_(hash_table), key_buffer_(key_buffer) {
-  assert(key_buffer_->size() == hash_table_->key_buf_width_);
+  DEBUG_ASSERT(key_buffer_->size() == hash_table_->key_buf_width_);
   LocateMatchedPosition();
 }
 
@@ -243,8 +243,8 @@ int64_t HashTable::Finder::GetNextRow() {
   if (current_row_ >= hash_table_->rows_count_)
     current_row_ = current_row_ % hash_table_->rows_count_;
   do {
-    assert(*((int *)(hash_table_->buffer_ + current_row_ * hash_table_->total_width_ + hash_table_->multi_offset_)) !=
-           0);
+    DEBUG_ASSERT(
+        *((int *)(hash_table_->buffer_ + current_row_ * hash_table_->total_width_ + hash_table_->multi_offset_)) != 0);
     if (std::memcmp(hash_table_->buffer_ + current_row_ * hash_table_->total_width_, key_buffer_->data(),
                     key_buffer_->size()) == 0) {
       // i.e. identical row found - keep the current_row_

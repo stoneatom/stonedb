@@ -61,15 +61,15 @@ CprsErr ArithCoder::ScaleRange(BitStream *dest, BaseT s_low, BaseT s_high, BaseT
 
 template <class T>
 CprsErr ArithCoder::EncodeUniform(BitStream *dest, T val, T maxval, uint bitmax) {
-  assert((val <= maxval) && (val >= 0));
+  DEBUG_ASSERT((val <= maxval) && (val >= 0));
   if (maxval == 0)
     return CprsErr::CPRS_SUCCESS;
-  assert((maxval _SHR_ bitmax) == 0);
+  DEBUG_ASSERT((maxval _SHR_ bitmax) == 0);
 
   // encode groups of 'uni_nbit' bits, from the least significant
   BaseT v;
   CprsErr err;
-  assert(uni_total_ <= MAX_TOTAL_);
+  DEBUG_ASSERT(uni_total_ <= MAX_TOTAL_);
   while (bitmax > uni_nbit_) {
     v = (BaseT)(val & uni_mask_);
     err = ScaleRange(dest, v, v + (BaseT)1, uni_total_);
@@ -80,7 +80,7 @@ CprsErr ArithCoder::EncodeUniform(BitStream *dest, T val, T maxval, uint bitmax)
     bitmax -= uni_nbit_;
   }
   // encode the most significant group
-  assert(maxval < MAX_TOTAL_);
+  DEBUG_ASSERT(maxval < MAX_TOTAL_);
   err = ScaleRange(dest, (BaseT)val, (BaseT)val + (BaseT)1, (BaseT)maxval + (BaseT)1);
   if (static_cast<int>(err))
     return err;
@@ -185,33 +185,33 @@ CprsErr ArithCoder::DecodeUniform(BitStream *src, T &val, T maxval, uint bitmax)
   val = 0;
   if (maxval == 0)
     return CprsErr::CPRS_SUCCESS;
-  assert((maxval _SHR_ bitmax) == 0);
+  DEBUG_ASSERT((maxval _SHR_ bitmax) == 0);
 
   // decode groups of 'uni_nbit' bits, from the least significant
   BaseT v;
   CprsErr err;
-  assert(uni_total_ <= MAX_TOTAL_);
+  DEBUG_ASSERT(uni_total_ <= MAX_TOTAL_);
   uint shift = 0;
   while (shift + uni_nbit_ < bitmax) {
     v = GetCount(uni_total_);
     err = RemoveSymbol(src, v, v + (BaseT)1, uni_total_);
     if (static_cast<int>(err))
       return err;
-    assert(shift < 64);
+    DEBUG_ASSERT(shift < 64);
     val |= (uint64_t)v << shift;
     shift += uni_nbit_;
   }
 
   // decode the most significant group
   BaseT total = (BaseT)(maxval _SHR_ shift) + (BaseT)1;
-  assert(total <= MAX_TOTAL_);
+  DEBUG_ASSERT(total <= MAX_TOTAL_);
   v = GetCount(total);
   err = RemoveSymbol(src, v, v + (BaseT)1, total);
   if (static_cast<int>(err))
     return err;
-  assert(shift < 64);
+  DEBUG_ASSERT(shift < 64);
   val |= (uint64_t)v << shift;
-  assert(val <= maxval);
+  DEBUG_ASSERT(val <= maxval);
 
   return CprsErr::CPRS_SUCCESS;
 }

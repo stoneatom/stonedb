@@ -85,7 +85,7 @@ class MIIterator {
    * at the end of MultiIndex (check IsValid() first).
    */
   const int64_t *operator*() const {
-    assert(valid);
+    DEBUG_ASSERT(valid);
     return cur_pos;
   }
 
@@ -98,7 +98,7 @@ class MIIterator {
    * IsValid() first).
    */
   int64_t operator[](int n) const {
-    assert(valid && n >= 0 && n < no_dims);
+    DEBUG_ASSERT(valid && n >= 0 && n < no_dims);
     return cur_pos[n];
   }
 
@@ -113,7 +113,7 @@ class MIIterator {
   virtual MIIterator &Increment() { return this->operator++(); }
   //! move to the next row position within an associated MultiIndex
   inline MIIterator &operator++() {
-    assert(valid);
+    DEBUG_ASSERT(valid);
     next_pack_started = false;
     if (one_filter_dim > -1) {  // Optimized (one-dimensional filter) part:
       ++(*one_filter_it);
@@ -135,7 +135,7 @@ class MIIterator {
           InitNextPackrow();
       }
     }
-    assert(one_filter_dim == -1 || cur_pos[one_filter_dim] >> p_power == cur_pack[one_filter_dim]);
+    DEBUG_ASSERT(one_filter_dim == -1 || cur_pos[one_filter_dim] >> p_power == cur_pack[one_filter_dim]);
     return *this;
   }
 
@@ -209,7 +209,7 @@ class MIIterator {
   virtual int GetNextPackrow(int dim, int ahead = 1) const;
 
   int GetCurInpack(int dim) const {
-    assert(valid && dim >= 0 && dim < no_dims);
+    DEBUG_ASSERT(valid && dim >= 0 && dim < no_dims);
     return int(cur_pos[dim] & ((1 << p_power) - 1));
   }
 
@@ -317,20 +317,20 @@ class MIDummyIterator : public MIIterator {
   int64_t GetPackSizeLeft() const override { return 1; }
   // These functions are illegal for MIDummyIterator
   MIIterator &Increment() override {
-    assert(0);
+    DEBUG_ASSERT(0);
     return *this;
   }
   MIIterator &operator++() {
-    assert(0);
+    DEBUG_ASSERT(0);
     return *this;
   }
   int64_t Factor() const {
-    assert(0);
+    DEBUG_ASSERT(0);
     return omitted_factor;
   }
-  void NextPackrow() override { assert(0); }
+  void NextPackrow() override { DEBUG_ASSERT(0); }
   bool DimUsed([[maybe_unused]] int dim) const override {
-    assert(0);
+    DEBUG_ASSERT(0);
     return true;
   }
 };
@@ -367,12 +367,12 @@ class MIInpackIterator : public MIIterator {
   // These functions have special meaning for MIInpackIterator:
   void NextPackrow() override { valid = false; }
   int GetNextPackrow(int dim, int ahead = 1) const override;
-  void Rewind() { assert(0); }  // do not use
+  void Rewind() { DEBUG_ASSERT(0); }  // do not use
   MIIterator &Increment() override { return this->operator++(); }
   // Special version of iterator (use Increment() if the iterator should be
   // virtual)
   inline MIIterator &operator++() {
-    assert(valid);
+    DEBUG_ASSERT(valid);
     next_pack_started = false;
     if (one_filter_dim > -1) {
       valid = one_filter_it->NextInsidePack();

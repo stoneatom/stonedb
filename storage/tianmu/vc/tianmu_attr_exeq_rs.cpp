@@ -85,7 +85,7 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
       return common::RoughSetValue::RS_SOME;
     } else if ((d.op == common::Operator::O_LIKE || d.op == common::Operator::O_NOT_LIKE) &&
                GetPackType() == common::PackType::STR) {
-      assert(vc1->IsConst());
+      DEBUG_ASSERT(vc1->IsConst());
       types::BString pat;
       vc1->GetValueString(pat, mit);
       common::RoughSetValue res = common::RoughSetValue::RS_SOME;
@@ -172,7 +172,7 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
       return res;
     } else if ((d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) &&
                GetPackType() == common::PackType::STR) {
-      assert(dynamic_cast<vcolumn::MultiValColumn *>(vc1));
+      DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(vc1));
       vcolumn::MultiValColumn *mvc(static_cast<vcolumn::MultiValColumn *>(vc1));
       uint pack_prefix = GetPrefixLength(pack);
       common::RoughSetValue res = common::RoughSetValue::RS_SOME;
@@ -224,7 +224,7 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
     } else if ((d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) &&
                (GetPackType() == common::PackType::INT)) {
       if (vc1->IsConst()) {
-        assert(dynamic_cast<vcolumn::MultiValColumn *>(vc1));
+        DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(vc1));
         vcolumn::MultiValColumn *mvc(static_cast<vcolumn::MultiValColumn *>(vc1));
         int64_t v1, v2;
         types::TianmuNum rcn_min = mvc->GetSetMin(mit);
@@ -296,7 +296,7 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
                                                           // common::PackType::INT calculated as
                                                           // IN or below
 
-      assert(d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN);
+      DEBUG_ASSERT(d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN);
       vcolumn::VirtualColumn *vc2 = d.val2.vc;
       common::RoughSetValue res = common::RoughSetValue::RS_SOME;
       uint pack_prefix = GetPrefixLength(pack);
@@ -361,7 +361,7 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
       }
       return res;
     } else if (GetPackType() == common::PackType::INT) {
-      assert(d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN);
+      DEBUG_ASSERT(d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN);
       // common::Operator::O_BETWEEN or common::Operator::O_NOT_BETWEEN
       int64_t v1 = d.val1.vc->GetValueInt64(mit);  // 1-level values; note that these
                                                    // values were already transformed in

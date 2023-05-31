@@ -101,7 +101,7 @@ class JoinerHashTable : public mm::TraceableObject {
   // columns have common numbering, both key and tuple ones
   void PutTupleValue(int col, int64_t row,
                      int64_t v) {  // common::NULL_VALUE_64 stored as 0
-    assert(col >= no_key_attr);
+    DEBUG_ASSERT(col >= no_key_attr);
     if (size[col] == 4) {
       if (v == common::NULL_VALUE_64)
         *((int *)(t + row * total_width + column_offset[col])) = 0;
@@ -119,7 +119,7 @@ class JoinerHashTable : public mm::TraceableObject {
   int64_t NoRows() { return no_rows; }  // buffer size (max. number of rows)
   int64_t GetTupleValue(int col,
                         int64_t row) {  // columns have common numbering
-    assert(col >= no_key_attr);
+    DEBUG_ASSERT(col >= no_key_attr);
     if (size[col] == 4) {
       int v = *((int *)(t + row * total_width + column_offset[col]));
       if (v == 0)

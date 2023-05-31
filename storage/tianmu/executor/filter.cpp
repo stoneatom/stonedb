@@ -37,7 +37,7 @@ Filter::Filter(int64_t no_obj, uint32_t power, bool all_ones, bool shallow)
       delayed_stats_set(-1),
       no_power(power) {
   MEASURE_FET("Filter::Filter(int, bool, bool)");
-  assert(no_obj >= 0);
+  DEBUG_ASSERT(no_obj >= 0);
   pack_def = 1 << no_power;
   if (no_obj > common::MAX_ROW_NUMBER)
     throw common::OutOfMemoryException("Too many tuples.    (48)");
@@ -65,7 +65,7 @@ Filter::Filter(Filter *f, int64_t no_obj, uint32_t power, bool all_ones, bool sh
       delayed_stats_set(-1),
       no_power(power) {
   MEASURE_FET("Filter::Filter(int, bool, bool)");
-  assert(no_obj >= 0);
+  DEBUG_ASSERT(no_obj >= 0);
   pack_def = 1 << no_power;
   if (no_obj > common::MAX_ROW_NUMBER)
     throw common::OutOfMemoryException("Too many tuples.    (48)");
@@ -185,8 +185,8 @@ std::unique_ptr<Filter> Filter::Clone() const {
 }
 
 void Filter::SetDelayed(size_t b, int pos) {
-  assert(b < no_blocks);
-  assert(delayed_block == -1);  // no mixing!
+  DEBUG_ASSERT(b < no_blocks);
+  DEBUG_ASSERT(delayed_block == -1);  // no mixing!
   if (block_status[b] == FB_MIXED) {
     Set(b, pos);
     return;
@@ -241,7 +241,7 @@ void Filter::Set() {
 
 void Filter::SetBlock(size_t b) {
   MEASURE_FET("Filter::SetBlock(int)");
-  assert(b < no_blocks);
+  DEBUG_ASSERT(b < no_blocks);
   block_status[b] = FB_FULL;  // set the filter to all full
   block_last_one[b] = (b == no_blocks - 1 ? no_of_bits_in_last_block - 1 : pack_def - 1);
   if (blocks[b])
@@ -249,7 +249,7 @@ void Filter::SetBlock(size_t b) {
 }
 
 void Filter::Set(size_t b, int n) {
-  assert(b < no_blocks);
+  DEBUG_ASSERT(b < no_blocks);
   bool make_mixed = false;
   block_changed[b] = true;
   if (block_status[b] == FB_FULL) {
@@ -290,7 +290,7 @@ void Filter::SetBetween(int64_t n1, int64_t n2) {
 
 void Filter::SetBetween(size_t b1, int n1, size_t b2, int n2) {
   MEASURE_FET("Filter::SetBetween(...)");
-  assert(b2 < no_blocks);
+  DEBUG_ASSERT(b2 < no_blocks);
   if (b1 == b2) {
     if (block_status[b1] == FB_FULL && n1 <= int(block_last_one[b1]) + 1) {
       block_last_one[b1] = std::max(block_last_one[b1], ushort(n2));
@@ -344,7 +344,7 @@ void Filter::Reset() {
 
 void Filter::ResetBlock(size_t b) {
   MEASURE_FET("Filter::ResetBlock(int)");
-  assert(b < no_blocks);
+  DEBUG_ASSERT(b < no_blocks);
   block_status[b] = FB_EMPTY;
   if (blocks[b])
     DeleteBlock(b);
@@ -358,7 +358,7 @@ void Filter::ResetBetween(int64_t n1, int64_t n2) {
 }
 
 void Filter::ResetBetween(size_t b1, int n1, size_t b2, int n2) {
-  assert(b2 <= no_blocks);
+  DEBUG_ASSERT(b2 <= no_blocks);
   if (b1 == b2) {
     if (block_status[b1] == FB_FULL) {
       // if full block
@@ -427,7 +427,7 @@ void Filter::Reset(Filter &f2) {
 }
 
 bool Filter::Get(size_t b, int n) {
-  assert(b < no_blocks);
+  DEBUG_ASSERT(b < no_blocks);
   if (block_status[b] == FB_EMPTY)
     return false;
   if (block_status[b] == FB_FULL)
@@ -443,14 +443,14 @@ bool Filter::IsEmpty() {
 }
 
 bool Filter::IsEmpty(size_t b) const {
-  assert(b < no_blocks);
+  DEBUG_ASSERT(b < no_blocks);
   return (block_status[b] == FB_EMPTY);
 }
 
 bool Filter::IsEmptyBetween(int64_t n1,
                             int64_t n2)  // true if there are only 0 between n1 and n2, inclusively
 {
-  assert((n1 >= 0) && (n1 <= n2));
+  DEBUG_ASSERT((n1 >= 0) && (n1 <= n2));
   if (n1 == n2)
     return !Get(n1);
   size_t b1 = int(n1 >> no_power);
@@ -493,7 +493,7 @@ bool Filter::IsEmptyBetween(int64_t n1,
 bool Filter::IsFullBetween(int64_t n1,
                            int64_t n2)  // true if there are only 1 between n1 and n2, inclusively
 {
-  assert((n1 >= 0) && (n1 <= n2));
+  DEBUG_ASSERT((n1 >= 0) && (n1 <= n2));
   if (n1 == n2)
     return Get(n1);
   size_t b1 = int(n1 >> no_power);
@@ -540,8 +540,8 @@ bool Filter::IsFull() const {
 }
 
 void Filter::CopyBlock(Filter &f, size_t block) {
-  assert(block < no_blocks);
-  assert(!f.shallow || bit_block_pool == f.bit_block_pool);
+  DEBUG_ASSERT(block < no_blocks);
+  DEBUG_ASSERT(!f.shallow || bit_block_pool == f.bit_block_pool);
 
   block_status[block] = f.block_status[block];
   block_last_one[block] = f.block_last_one[block];
@@ -567,7 +567,7 @@ void Filter::CopyBlock(Filter &f, size_t block) {
       DeleteBlock(block);
   }
 
-  assert(!blocks[block] || blocks[block]->Owner() == block_filter);  // block_filter->this
+  DEBUG_ASSERT(!blocks[block] || blocks[block]->Owner() == block_filter);  // block_filter->this
 }
 
 void Filter::DeleteBlock(int pack) {
@@ -712,14 +712,14 @@ void Filter::SwapPack(Filter &f2, int pack) {
 
   if (block_status[pack] == FB_MIXED) {
     // save block
-    assert(shallow || (blocks[pack] && (blocks[pack]->Owner() == block_filter)));  // block_filter->this//shallow
-                                                                                   // copy can have the original
-                                                                                   // filter as the block owner
+    DEBUG_ASSERT(shallow || (blocks[pack] && (blocks[pack]->Owner() == block_filter)));  // block_filter->this//shallow
+                                                                                         // copy can have the original
+                                                                                         // filter as the block owner
 
     b.CopyFrom(*(blocks[pack]), block_filter);  // block_filter->this
   }
   if (f2.block_status[pack] == FB_MIXED) {
-    assert(f2.blocks[pack] && f2.blocks[pack]->Owner() == &f2);
+    DEBUG_ASSERT(f2.blocks[pack] && f2.blocks[pack]->Owner() == &f2);
     if (!blocks[pack]) {
       blocks[pack] = block_allocator->Alloc();
       new (blocks[pack]) Block(*(f2.blocks[pack]), block_filter);  // block_filter->this
@@ -744,9 +744,9 @@ void Filter::SwapPack(Filter &f2, int pack) {
   std::swap(block_last_one[pack], f2.block_last_one[pack]);
   std::swap(block_changed[pack], f2.block_changed[pack]);
   if (block_status[pack] == FB_MIXED)
-    assert(blocks[pack]->Owner() == block_filter);  // block_filter->this
+    DEBUG_ASSERT(blocks[pack]->Owner() == block_filter);  // block_filter->this
   if (f2.block_status[pack] == FB_MIXED)
-    assert(f2.blocks[pack]->Owner() == &f2);
+    DEBUG_ASSERT(f2.blocks[pack]->Owner() == &f2);
 }
 
 int64_t Filter::NumOfOnes() const {
@@ -787,7 +787,7 @@ uint Filter::NumOfOnesUncommited(int b) {
 
 int64_t Filter::NumOfOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 and n2, inclusively
 {
-  assert((n1 >= 0) && (n1 <= n2));
+  DEBUG_ASSERT((n1 >= 0) && (n1 <= n2));
   if (n1 == n2)
     return (Get(n1) ? 1 : 0);
   size_t b1 = int(n1 >> no_power);

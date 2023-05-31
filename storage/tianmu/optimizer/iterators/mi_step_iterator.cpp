@@ -52,7 +52,7 @@ MIRowsStepIterator::MIRowsStepIterator(int64_t start, int step, int64_t origin_s
 MIIterator &MIRowsStepIterator::Increment() {
   MIIterator &iter = this->operator++();
   if (iter.IsValid()) {
-    assert(GetOneFilterDim() > -1);
+    DEBUG_ASSERT(GetOneFilterDim() > -1);
     int64_t cur_pos = iter[iter.GetOneFilterDim()];
     if (cur_pos >= rows_finish_) {
       valid = false;

@@ -48,8 +48,8 @@ namespace compress {
 TextCompressor::TextCompressor() : BLD_START_(0), BLD_RATIO_(0.0), graph_() {}
 
 void TextCompressor::SetSplit(int len) {
-  assert(len > 0);
-  assert(BLD_RATIO_ > 1.01);
+  DEBUG_ASSERT(len > 0);
+  DEBUG_ASSERT(BLD_RATIO_ > 1.01);
   double ratio = len / (double)BLD_START_;
   if (ratio < 1.0)
     ratio = 1.0;
@@ -67,11 +67,11 @@ void TextCompressor::SetSplit(int len) {
   double next = BLD_START_;
   for (int i = 1; i < n; i++) {
     split_[i] = (int)next;
-    assert(split_[i] > split_[i - 1]);
+    DEBUG_ASSERT(split_[i] > split_[i - 1]);
     next *= bld_ratio;
   }
   split_[n] = len;
-  assert(split_[n] > split_[n - 1]);
+  DEBUG_ASSERT(split_[n] > split_[n - 1]);
 }
 
 void TextCompressor::SetParams(PPMParam &p, int ver, [[maybe_unused]] int lev, int len) {
@@ -305,8 +305,8 @@ CprsErr TextCompressor::CompressVer2(char *dest, int &dlen, char **index, const 
     }
     PermNext(i, nrec);
   }
-  assert(sdata == mem);
-  assert(i == PermFirst(nrec));
+  DEBUG_ASSERT(sdata == mem);
+  DEBUG_ASSERT(i == PermFirst(nrec));
 
   // header
   dest[0] = 1;                 // data is encoded

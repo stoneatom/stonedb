@@ -64,16 +64,16 @@ class InSetColumn : public MultiValColumn {
       return std::unique_ptr<LazyValueInterface>(new LazyValueImpl(value));
     }
     types::BString DoGetString() const override {
-      assert(dynamic_cast<types::BString const *>(value));
+      DEBUG_ASSERT(dynamic_cast<types::BString const *>(value));
       return *static_cast<types::BString const *>(value);
     }
     types::TianmuNum DoGetRCNum() const override {
-      assert(dynamic_cast<types::TianmuNum const *>(value));
+      DEBUG_ASSERT(dynamic_cast<types::TianmuNum const *>(value));
       return *static_cast<types::TianmuNum const *>(value);
     }
     types::TianmuValueObject DoGetValue() const override { return *value; }
     int64_t DoGetInt64() const override {
-      assert(dynamic_cast<types::TianmuNum const *>(value));
+      DEBUG_ASSERT(dynamic_cast<types::TianmuNum const *>(value));
       return static_cast<types::TianmuNum const *>(value)->ValueInt();
     }
     bool DoIsNull() const override { return value->IsNull(); }
@@ -122,27 +122,27 @@ class InSetColumn : public MultiValColumn {
   bool IsEmptyImpl(const core::MIIterator &) override;
 
   bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override {
-    assert(!"To be implemented.");
+    DEBUG_ASSERT(!"To be implemented.");
     return true;
   }
 
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return common::MINUS_INF_64;
   }
 
   int64_t GetMaxInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return common::PLUS_INF_64;
   }
 
   int64_t RoughMinImpl() override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return common::MINUS_INF_64;
   }
 
   int64_t RoughMaxImpl() override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return common::PLUS_INF_64;
   }
 
@@ -150,7 +150,7 @@ class InSetColumn : public MultiValColumn {
   types::BString GetMinStringImpl(const core::MIIterator &mit) override;
 
   bool IsDistinctImpl() override {
-    assert(!"To be implemented.");
+    DEBUG_ASSERT(!"To be implemented.");
     return (false);
   }
 

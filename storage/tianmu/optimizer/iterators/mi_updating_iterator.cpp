@@ -24,8 +24,8 @@ MIUpdatingIterator::MIUpdatingIterator(MultiIndex *_mind, DimensionVector &dimen
   pack_power = mind->ValueOfPower();
   mind->IteratorUnlock();  // unlock a base class lock
   bool success = mind->IteratorUpdatingLock();
-  (void)success;    // FIXME: error handling
-  assert(success);  // Multiindex was already locked for reading or updating!
+  (void)success;          // FIXME: error handling
+  DEBUG_ASSERT(success);  // Multiindex was already locked for reading or updating!
   if (one_filter_dim > -1 && !(it[it_for_dim[one_filter_dim]]->InternallyUpdatable()))
     one_filter_dim = -1;
   if (one_filter_dim == -1) {
@@ -90,7 +90,7 @@ void MIUpdatingIterator::NextPackrow() {
 }
 
 int MIUpdatingIterator::NumOfOnesUncommited(uint pack) {
-  assert(one_filter_it);
+  DEBUG_ASSERT(one_filter_it);
   if (one_filter_dim > -1)
     return one_filter_it->NumOfOnesUncommited(pack);
   else
@@ -100,13 +100,13 @@ int MIUpdatingIterator::NumOfOnesUncommited(uint pack) {
 /*
 void MIUpdatingIterator::SetNoPacksToGo(int n)
 {
-    assert(one_filter_it);
+    DEBUG_ASSERT(one_filter_it);
     one_filter_it->SetNoPacksToGo(n);
 }
 */
 
 void MIUpdatingIterator::RewindToRow(const int64_t row) {
-  assert(one_filter_it);
+  DEBUG_ASSERT(one_filter_it);
   one_filter_it->RewindToRow(row);
   valid = one_filter_it->IsValid();
   if (valid) {
@@ -119,7 +119,7 @@ void MIUpdatingIterator::RewindToRow(const int64_t row) {
 bool MIUpdatingIterator::RewindToPack(const int pack) {
   // if SetNoPacksToGo() has been used, then RewindToPack can be done only to
   // the previous pack
-  assert(one_filter_it);
+  DEBUG_ASSERT(one_filter_it);
   Commit(false);
   bool res = one_filter_it->RewindToPack(pack);
   valid = one_filter_it->IsValid();
@@ -134,7 +134,7 @@ bool MIUpdatingIterator::RewindToPack(const int pack) {
 
 Filter *MIUpdatingIterator::NewPackFilter(int pack)  // create a new filter for the snapshot and initialize it
 {
-  assert(one_filter_it);
+  DEBUG_ASSERT(one_filter_it);
   Filter *f_old = mind->GetFilter(one_filter_dim);
   Filter *new_f = new Filter(f_old->NumOfObj(), pack_power);
   new_f->Or(*f_old, pack);
@@ -145,7 +145,7 @@ bool MIUpdatingIterator::SwapPackFilter(int pack, Filter *f)  // swap the conten
                                                               // pack; return false without swapping
                                                               // if the current pack is full
 {
-  assert(one_filter_it);
+  DEBUG_ASSERT(one_filter_it);
   Commit(false);
   Filter *f_old = mind->GetFilter(one_filter_dim);
   if (f_old->IsFull(pack))
@@ -156,7 +156,7 @@ bool MIUpdatingIterator::SwapPackFilter(int pack, Filter *f)  // swap the conten
 
 void MIUpdatingIterator::OrPackFilter(int pack, Filter *f)  // make OR
 {
-  assert(one_filter_it);
+  DEBUG_ASSERT(one_filter_it);
   Commit(false);
   Filter *f_old = mind->GetFilter(one_filter_dim);
   f_old->Or(*f, pack);

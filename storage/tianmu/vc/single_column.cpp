@@ -76,7 +76,7 @@ double SingleColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
     vs[vrcbs.len_] = '\0';
     val = std::atof(vs.get());
   } else
-    assert(0 && "conversion to double not implemented");
+    DEBUG_ASSERT(0 && "conversion to double not implemented");
 
   return val;
 }
@@ -86,7 +86,7 @@ types::TianmuValueObject SingleColumn::GetValueImpl(const core::MIIterator &mit,
 }
 
 int64_t SingleColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
-  // assert(!core::ATI::IsStringType(TypeName()));
+  // DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   if (mit.WholePack(dim_) && mit.GetCurPackrow(dim_) >= 0)
     return col_->GetSum(mit.GetCurPackrow(dim_), nonnegative);
 
@@ -95,7 +95,7 @@ int64_t SingleColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative)
 }
 
 int64_t SingleColumn::GetApproxSumImpl(const core::MIIterator &mit, bool &nonnegative) {
-  // assert(!core::ATI::IsStringType(TypeName()));
+  // DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   if (mit.GetCurPackrow(dim_) >= 0)
     return col_->GetSum(mit.GetCurPackrow(dim_), nonnegative);
 

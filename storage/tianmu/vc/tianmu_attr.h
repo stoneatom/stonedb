@@ -107,20 +107,20 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
       return types::TianmuNum::NullValue();
     if (ATI::IsStringType(TypeName()))
       return types::BString::NullValue();
-    assert(ATI::IsDateTimeType(TypeName()));
+    DEBUG_ASSERT(ATI::IsDateTimeType(TypeName()));
     return types::TianmuDateTime::NullValue();
   }
 
   int64_t GetValueInt64(int64_t obj) const override {
     if (obj == common::NULL_VALUE_64)
       return common::NULL_VALUE_64;
-    assert(hdr.numOfRecords >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
     auto p = get_packN(pack);
     if (!dpn.Trivial()) {
-      assert(pack_type == common::PackType::INT);
-      assert(p->IsLocked());  // assuming it is already loaded and locked
+      DEBUG_ASSERT(pack_type == common::PackType::INT);
+      DEBUG_ASSERT(p->IsLocked());  // assuming it is already loaded and locked
       int inpack = row2offset(obj);
       if (p->IsNull(inpack))
         return common::NULL_VALUE_64;
@@ -143,7 +143,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
     int pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
     if (!dpn.Trivial()) {
-      assert(get_pack(pack)->IsLocked());
+      DEBUG_ASSERT(get_pack(pack)->IsLocked());
 
       int64_t res = get_packN(pack)->GetValInt(row2offset(obj));  // 2-level encoding
       // Natural encoding
@@ -159,7 +159,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   bool IsNull(int64_t obj) const override {
     if (obj == common::NULL_VALUE_64)
       return true;
-    assert(hdr.numOfRecords >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
 
@@ -167,7 +167,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
       return false;
 
     if (!dpn.Trivial()) {
-      assert(get_pack(pack)->IsLocked());  // assuming the pack is already loaded and locked
+      DEBUG_ASSERT(get_pack(pack)->IsLocked());  // assuming the pack is already loaded and locked
       return get_pack(pack)->IsNull(row2offset(obj));
     }
 
@@ -175,7 +175,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
       return true;
 
     if ((pack_type == common::PackType::STR) && !dpn.Trivial()) {
-      assert(0);
+      DEBUG_ASSERT(0);
       return true;
     }
     return true;

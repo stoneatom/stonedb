@@ -409,7 +409,7 @@ types::BString TianmuAttr::GetValueString(const int64_t obj) {
     auto const &dpn(get_dpn(pack));
     if (dpn.Trivial())  // no pack data
       return types::BString();
-    assert(get_pack(pack)->IsLocked());
+    DEBUG_ASSERT(get_pack(pack)->IsLocked());
     auto cur_pack = get_packS(pack);
 
     return cur_pack->GetValueBinary(offset);
@@ -438,7 +438,7 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
     return;
   common::ColumnType a_type = TypeName();
   size = 0;
-  assert(NumOfObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   LoadPackInfo();
   int pack = row2pack(obj);
   int offset = row2offset(obj);
@@ -457,7 +457,7 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
       if (dpn.Trivial())
         return;
       auto p = get_packS(pack);
-      assert(p->IsLocked());
+      DEBUG_ASSERT(p->IsLocked());
       types::BString v(p->GetValueBinary(offset));
       size = v.size();
       v.CopyTo(val_buf, size);
@@ -488,7 +488,7 @@ types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
   if (obj == common::NULL_VALUE_64)
     return types::TianmuValueObject();
   common::ColumnType a_type = TypeName();
-  assert(NumOfObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   types::TianmuValueObject ret;
   if (!IsNull(obj)) {
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
@@ -524,7 +524,7 @@ types::TianmuDataType &TianmuAttr::GetValueData(size_t obj, types::TianmuDataTyp
     value = ValuePrototype(lookup_to_num);
   else {
     common::ColumnType a_type = TypeName();
-    assert(NumOfObj() >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
       ((types::BString &)value) = GetNotNullValueString(obj);
     else if (ATI::IsBinType(a_type)) {
@@ -615,7 +615,7 @@ types::BString TianmuAttr::GetMinString(int pack) {
 
 // size of original 0-level value (text/binary, not null-terminated)
 size_t TianmuAttr::GetLength(int64_t obj) {
-  assert(NumOfObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   LoadPackInfo();
   int pack = row2pack(obj);
   auto const &dpn(get_dpn(pack));
@@ -632,7 +632,7 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
     return types::BString();
   }
   if (Type().Lookup()) {
-    assert(GetPackType() == common::PackType::INT);
+    DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     return m_dict->GetRealValue((int)code);
   }
   common::ColumnType a_type = TypeName();
@@ -673,7 +673,7 @@ int TianmuAttr::EncodeValue_T(const types::BString &tianmu_s, bool new_val, comm
     return common::NULL_VALUE_32;
 
   if (ATI::IsStringType(TypeName())) {
-    assert(GetPackType() == common::PackType::INT);
+    DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     LoadPackInfo();
 
     int vs = m_dict->GetEncodedValue(tianmu_s.val_, tianmu_s.len_);
@@ -1187,7 +1187,7 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx,
 bool TianmuAttr::IsDelete(int64_t row) {
   if (row == common::NULL_VALUE_64)
     return true;
-  assert(hdr.numOfRecords >= static_cast<uint64_t>(row));
+  DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(row));
   auto pack = row2pack(row);
   const auto &dpn = get_dpn(pack);
 

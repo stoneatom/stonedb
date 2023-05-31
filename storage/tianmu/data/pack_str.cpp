@@ -485,7 +485,7 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
 }
 
 void PackStr::CompressTrie() {
-  assert(pack_str_state_ == PackStrtate::kPackArray);
+  DEBUG_ASSERT(pack_str_state_ == PackStrtate::kPackArray);
   marisa::Keyset keyset;
   std::size_t sum_len = 0;
   for (uint row = 0; row < dpn_->numOfRecords; row++) {
@@ -514,7 +514,7 @@ void PackStr::CompressTrie() {
       ids[row] = 0xffff;
     } else {
       auto id = keyset[idx].id();
-      assert(id < (dpn_->numOfRecords - dpn_->numOfNulls));
+      DEBUG_ASSERT(id < (dpn_->numOfRecords - dpn_->numOfNulls));
       ids[row] = id;
       idx++;
     }
@@ -753,7 +753,7 @@ types::BString PackStr::GetStringValueTrie(int locationInPack) const {
 types::BString PackStr::GetValueBinary(int locationInPack) const {
   if (IsNull(locationInPack))
     return types::BString();
-  assert(locationInPack <= (int)dpn_->numOfRecords);
+  DEBUG_ASSERT(locationInPack <= (int)dpn_->numOfRecords);
   // if (pack_str_state_ == PackStrtate::kPackTrie)
   // return GetStringValueTrie(locationInPack);
   size_t str_size;
