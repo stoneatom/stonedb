@@ -2195,10 +2195,10 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
     if (ex.field.escaped->alloced_length() != 0)
       io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
 
-    if (ex.field.field_term->alloced_length() != 0)
+    if (ex.field.field_term->ptr() && strlen(ex.field.field_term->ptr()))
       io_params->SetDelimiter(ex.field.field_term->ptr());
 
-    if (ex.line.line_term->alloced_length() != 0)
+    if (ex.line.line_term->ptr() && strlen(ex.line.line_term->ptr()))
       io_params->SetLineTerminator(ex.line.line_term->ptr());
 
     if (ex.field.enclosed->length()) {
