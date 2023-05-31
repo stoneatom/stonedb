@@ -82,8 +82,8 @@ void MultiIndexTable::Iterator::Increment() {
 }
 
 int64_t MultiIndexTable::Iterator::GetCurPos() {
-  assert(table_index_ < index_table_->table_items_.size());
-  assert(cur_pos_ >= 0);
+  DEBUG_ASSERT(table_index_ < index_table_->table_items_.size());
+  DEBUG_ASSERT(cur_pos_ >= 0);
   IndexTableItem &table(index_table_->table_items_[table_index_]);
   if (cur_pos_ >= table.GetCount())
     return common::NULL_VALUE_64;
@@ -91,7 +91,7 @@ int64_t MultiIndexTable::Iterator::GetCurPos() {
 }
 
 void MultiIndexTable::Iterator::Skip(int64_t offset) {
-  assert(offset <= pack_size_left_);
+  DEBUG_ASSERT(offset <= pack_size_left_);
 
   cur_pos_ += offset;
   pack_size_left_ -= offset;
@@ -119,7 +119,7 @@ bool MultiIndexTable::Iterator::BarrierAfterPackrow() {
 }
 
 void MultiIndexTable::Iterator::SetFixedBlockIndex(size_t index) {
-  assert(index < index_table_->table_items_.size());
+  DEBUG_ASSERT(index < index_table_->table_items_.size());
   valid_ = true;
   table_index_ = index;
   cur_pos_ = 0;
@@ -150,7 +150,7 @@ void MultiIndexTable::Iterator::InitPackrow() {
   pack_size_left_ = next_pack_pos - cur_pos_;
   cur_pack_start_ = cur_pos_;
 
-  assert(pack_size_left_ > 0);
+  DEBUG_ASSERT(pack_size_left_ > 0);
 }
 
 //-------------------------------MultiIndexTable------------------------------------------
@@ -231,7 +231,7 @@ void DimensionGroupMultiMaterialized::Empty() {
 }
 
 void DimensionGroupMultiMaterialized::AddDimensionContent(int dim, IndexTable *table, int count, bool nulls) {
-  assert(dims_used_[dim]);
+  DEBUG_ASSERT(dims_used_[dim]);
 
   MultiIndexTable *tables = dim_tables_[dim];
   if (!tables) {
@@ -269,7 +269,7 @@ int DimensionGroupMultiMaterialized::NumOfLocks(int dim) {
 }
 
 DimensionGroup::Iterator *DimensionGroupMultiMaterialized::NewIterator(DimensionVector &dim, uint32_t power) {
-  assert(dims_count_ == dim.Size());  // Otherwise incompatible dimensions.
+  DEBUG_ASSERT(dims_count_ == dim.Size());  // Otherwise incompatible dimensions.
   return new DGIterator(no_obj, dim, dim_tables_, power);
 }
 

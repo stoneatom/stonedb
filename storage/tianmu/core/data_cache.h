@@ -251,7 +251,7 @@ class DataCache final {
         obj->TrackAccess();
       }
       m_packLoadInProgress--;
-      assert(c.find(coord_) == c.end());
+      DEBUG_ASSERT(c.find(coord_) == c.end());
       c.insert(std::make_pair(coord_, obj));
       w.erase(coord_);
     }

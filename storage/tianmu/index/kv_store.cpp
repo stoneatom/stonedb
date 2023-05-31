@@ -148,7 +148,7 @@ void KVStore::AsyncDropData() {
       rocksdb::Range range = rocksdb::Range({reinterpret_cast<const char *>(buf_begin), INDEX_NUMBER_SIZE},
                                             {reinterpret_cast<const char *>(buf_end), INDEX_NUMBER_SIZE});
       rocksdb::ColumnFamilyHandle *cfh = cf_manager_.get_cf_by_id(id.cf_id);
-      assert(cfh);
+      DEBUG_ASSERT(cfh);
       // delete files by range, [start_index, end_index]
       // for more info: http://rocksdb.org/blog/2018/11/21/delete-range.html
       rocksdb::Status status = rocksdb::DeleteFilesInRange(txn_db_->GetBaseDB(), cfh, &range.start, &range.limit);

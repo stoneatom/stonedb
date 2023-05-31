@@ -443,7 +443,7 @@ void CompiledQuery::TmpTable(TabID &t_out, const TabID &t1, bool for_subq_in_whe
     s.n1 = 1;
   else
     s.n1 = 0;
-  assert(t1.n < 0 && NumOfTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   s.type = StepType::TMP_TABLE;
   s.t1 = t_out = NextTabID();  // was s.t2!!!
   s.tables1.push_back(t1);
@@ -605,7 +605,7 @@ void CompiledQuery::ApplyConds(const TabID &t1) {
 
 void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common::ColOperation op, char const alias[],
                               bool distinct, SI *si) {
-  assert(t1.n < 0 && NumOfTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::ADD_COLUMN;
   s.a1 = a_out = NextAttrID(t1);
@@ -627,7 +627,7 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common:
 }
 
 void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, MysqlExpression *expr, const TabID &src_tab) {
-  assert(t1.n < 0 && NumOfTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
@@ -638,7 +638,7 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, MysqlExp
 }
 
 void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, const TabID &subquery, bool on_result) {
-  assert(t1.n < 0 && NumOfTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
@@ -649,7 +649,7 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, const Ta
 }
 
 void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, std::vector<int> &vcs, const AttrID &vc_id) {
-  assert(t1.n < 0 && NumOfTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
@@ -661,7 +661,7 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, std::vec
 
 void CompiledQuery::CreateVirtualColumn(int &a_out, const TabID &t1, const TabID &table_alias,
                                         const AttrID &col_number) {
-  assert(t1.n < 0 && NumOfTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_VC;
   s.a1 = NextVCID(t1);
@@ -831,7 +831,7 @@ bool CompiledQuery::ExistsInTempTable(const TabID &tab_id, const TabID &tmp_tabl
 }
 
 TabID CompiledQuery::FindSourceOfParameter(const TabID &tab_id, const TabID &tmp_table, bool &is_group_by) {
-  assert(tmp_table.n < 0);
+  DEBUG_ASSERT(tmp_table.n < 0);
   is_group_by = false;
   for (int x = tmp_table.n + 1; x < 0; x++) {
     if (IsTempTable(TabID(x)) && ExistsInTempTable(tab_id, TabID(x))) {
@@ -840,7 +840,7 @@ TabID CompiledQuery::FindSourceOfParameter(const TabID &tab_id, const TabID &tmp
       return TabID(x);
     }
   }
-  assert(!"Invalid parameter");
+  DEBUG_ASSERT(!"Invalid parameter");
   return TabID(0);
 }
 
@@ -853,7 +853,7 @@ bool CompiledQuery::IsTempTable(const TabID &t) {
 }
 
 int CompiledQuery::FindRootTempTable(int tab_id) {
-  assert(tab_id < 0);
+  DEBUG_ASSERT(tab_id < 0);
   for (int x = tab_id + 1; x < 0; x++) {
     if (IsTempTable(TabID(x)) && ExistsInTempTable(TabID(tab_id), TabID(x)))
       return FindRootTempTable(x);
@@ -889,7 +889,7 @@ std::pair<int64_t, int64_t> CompiledQuery::GetGlobalLimit() {
       break;
     }
   }
-  assert(i < NumOfSteps());
+  DEBUG_ASSERT(i < NumOfSteps());
   TabID res = Step(i).t1;
   if (i > 0 && Step(i - 1).type == CompiledQuery::StepType::T_MODE && Step(i - 1).t1 == res) {
     return std::pair<int64_t, int64_t>(Step(i - 1).n1, Step(i - 1).n2);

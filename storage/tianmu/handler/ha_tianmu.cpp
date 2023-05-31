@@ -2395,7 +2395,7 @@ int tianmu_throw_error_func([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] str
   int buffer_length = 512;
   char buff[512] = {0};
 
-  assert(value->value_type(value) == MYSQL_VALUE_TYPE_STRING);
+  DEBUG_ASSERT(value->value_type(value) == MYSQL_VALUE_TYPE_STRING);
 
   my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), value->val_str(value, buff, &buffer_length), MYF(0));
   return -1;

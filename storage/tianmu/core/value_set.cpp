@@ -196,8 +196,8 @@ bool ValueSet::isContains(const types::TianmuDataType &v, DTCollation coll) {
 }
 
 bool ValueSet::Contains(int64_t v) {
-  assert(prepared);
-  assert(v != common::NULL_VALUE_64);
+  DEBUG_ASSERT(prepared);
+  DEBUG_ASSERT(v != common::NULL_VALUE_64);
 
   if (use_easy_table) {
     for (int i = 0; i < no_obj; i++)
@@ -216,7 +216,7 @@ bool ValueSet::Contains(int64_t v) {
 }
 
 bool ValueSet::Contains(types::BString &v) {
-  assert(prepared);  // it implies a trivial collation
+  DEBUG_ASSERT(prepared);  // it implies a trivial collation
 
   if (v.IsNull())
     return false;
@@ -524,8 +524,8 @@ void ValueSet::Prepare(common::ColumnType at, int scale, DTCollation coll) {
           for (const auto &it : values) {
             types::BString *v = static_cast<types::BString *>(it);
             int64_t vcode = easy_text->Encode(*v);
-            assert(vcode != common::NULL_VALUE_64);  // should not occur, as we put this
-                                                     // value in the previous loop
+            DEBUG_ASSERT(vcode != common::NULL_VALUE_64);  // should not occur, as we put this
+                                                           // value in the previous loop
             easy_hash->Insert(vcode);
           }
         } else {

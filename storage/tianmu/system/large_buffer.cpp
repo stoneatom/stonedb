@@ -116,7 +116,7 @@ void LargeBuffer::BufClose()  // close the buffer; warning: does not flush data
   buf_used_ = 0;
   if (buf_[size_ + 1] != D_OVERRUN_GUARDIAN) {
     TIANMU_LOG(LogCtl_Level::WARN, "buffer overrun detected in LargeBuffer::BufClose.");
-    assert(0);
+    DEBUG_ASSERT(0);
   }
 }
 
@@ -145,7 +145,7 @@ char *LargeBuffer::BufAppend(unsigned int len) {
 }
 
 char *LargeBuffer::SeekBack(uint len) {
-  assert((uint)buf_used_ >= len);
+  DEBUG_ASSERT((uint)buf_used_ >= len);
   buf_used_ -= len;
   return this->Buf(buf_used_);
 }

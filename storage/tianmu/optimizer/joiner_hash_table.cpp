@@ -161,7 +161,7 @@ int64_t JoinerHashTable::FindAndAddCurrentRow()  // a position in the current Jo
       if (std::memcmp(cur_t, input_buffer.get(), key_buf_width) == 0) {
         // i.e. identical row found
         int64_t last_multiplier = *multiplier;
-        assert(last_multiplier > 0);
+        DEBUG_ASSERT(last_multiplier > 0);
         (*multiplier)++;
         if (for_count_only)
           return row;
@@ -237,7 +237,7 @@ int64_t JoinerHashTable::GetNextRow() {
   if (current_row >= no_rows)
     current_row = current_row % no_rows;
   do {
-    assert(*((int *)(t + current_row * total_width + mult_offset)) != 0);
+    DEBUG_ASSERT(*((int *)(t + current_row * total_width + mult_offset)) != 0);
     if (std::memcmp(t + current_row * total_width, input_buffer.get(), key_buf_width) == 0) {
       // i.e. identical row found - keep the current_row
       return row_to_return;

@@ -77,7 +77,7 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
     // if (status == VC_EXPR && var_map_.size() == 0 )
     //	status = VC_CONST;
   } else {
-    assert(!"unexpected!!");
+    DEBUG_ASSERT(!"unexpected!!");
   }
 }
 
@@ -105,7 +105,7 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
     core::ValueOrNull v(it.just_a_table_ptr->GetComplexValue(mit[it.dim], it.col_ndx));
     v.MakeStringOwner();
     auto cache = var_buf_.find(it.var_id);
-    assert(cache != var_buf_.end());
+    DEBUG_ASSERT(cache != var_buf_.end());
     diff = diff || (v != cache->second.begin()->first);
     if (diff)
       for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
@@ -179,7 +179,7 @@ double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
     if (str)
       val = std::stod(*str);
   } else
-    assert(0 && "conversion to double not implemented");
+    DEBUG_ASSERT(0 && "conversion to double not implemented");
 
   return val;
 }
@@ -198,7 +198,7 @@ types::TianmuValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &
     return types::TianmuNum(GetValueInt64(mit), 0, true, TypeName());
   if (lookup_to_num || TypeName() == common::ColumnType::NUM || TypeName() == common::ColumnType::BIT)
     return types::TianmuNum(GetValueInt64(mit), Type().GetScale());
-  assert(!"Illegal execution path");
+  DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();
 }
 
@@ -254,7 +254,7 @@ core::PackOntologicalStatus ExpressionColumn::GetPackOntologicalStatusImpl(const
 
 void ExpressionColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
                                         [[maybe_unused]] core::Descriptor &d) {
-  assert(!"Common path shall be used in case of ExpressionColumn.");
+  DEBUG_ASSERT(!"Common path shall be used in case of ExpressionColumn.");
 }
 
 int64_t ExpressionColumn::RoughMinImpl() {

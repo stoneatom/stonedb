@@ -73,7 +73,7 @@ class IOParameters {
         lock_option_ = value;
         break;
       default:
-        assert(0 && "unexpected value");
+        DEBUG_ASSERT(0 && "unexpected value");
         break;
     }
   }
@@ -91,7 +91,7 @@ class IOParameters {
         charsets_dir_ = value;
         break;
       default:
-        assert(0 && "unexpected value");
+        DEBUG_ASSERT(0 && "unexpected value");
         break;
     }
   }
@@ -108,7 +108,7 @@ class IOParameters {
         table_id_ = value;
         break;
       default:
-        assert(0 && "unexpected value");
+        DEBUG_ASSERT(0 && "unexpected value");
         break;
     }
   }

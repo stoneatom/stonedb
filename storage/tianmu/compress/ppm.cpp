@@ -72,7 +72,7 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
   if (wg)
     ASSERT(wg->insatend_ == false, "should be 'wg->insatend_ == false'");
 
-  // assert(src[slen-1] == 0);
+  // DEBUG_ASSERT(src[slen-1] == 0);
   ArithCoder coder;
   BitStream bs_dest(dest, dlen * 8);
   bool overflow = false;
@@ -106,7 +106,7 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
       // model_->FindEdgeS(stt, edge, src + i, slen - i);
       // model_->GetRange(stt, edge, rng);
       // total = model_->GetTotal(stt);
-      // assert(rng.high <= total);
+      // DEBUG_ASSERT(rng.high <= total);
       // len = model_->GetLen(stt, edge);
 
       // encode 'rng'
@@ -211,7 +211,7 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
 
       // remove the decoded data from the source
       // model_->GetRange(stt, edge, rng);
-      // assert(rng.high <= total);
+      // DEBUG_ASSERT(rng.high <= total);
       coder.RemoveSymbol(&bs_src, rng.low, rng.high, total);
 
       // get label of the edge, put it into 'dest'

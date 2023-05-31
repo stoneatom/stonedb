@@ -164,26 +164,26 @@ class SubSelectColumn : public MultiValColumn {
 
   bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override { return true; }
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return common::MINUS_INF_64;
   }
   int64_t GetMaxInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return common::PLUS_INF_64;
   }
   int64_t RoughMinImpl() override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return common::MINUS_INF_64;
   }
   int64_t RoughMaxImpl() override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return common::PLUS_INF_64;
   }
   types::BString GetMaxStringImpl(const core::MIIterator &mit) override;
   types::BString GetMinStringImpl(const core::MIIterator &mit) override;
 
   bool IsDistinctImpl() override {
-    // assert( !"To be implemented." );
+    // DEBUG_ASSERT( !"To be implemented." );
     return (false);
   }
 

@@ -107,7 +107,7 @@ GroupByWrapper::GroupByWrapper(const GroupByWrapper &sec)
 void GroupByWrapper::AddGroupingColumn(int attr_no, int orig_attr_no, TempTable::Attr &a) {
   virt_col[attr_no] = a.term.vc;
 
-  assert(virt_col[attr_no]);
+  DEBUG_ASSERT(virt_col[attr_no]);
 
   // Not used for grouping columns:
   is_lookup[attr_no] = false;
@@ -137,7 +137,7 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
 
   virt_col[attr_no] = a.term.vc;
 
-  assert(virt_col[attr_no] || a.term.IsNull());  // the second possibility is count(*)
+  DEBUG_ASSERT(virt_col[attr_no] || a.term.IsNull());  // the second possibility is count(*)
 
   is_lookup[attr_no] = false;
   dist_vals[attr_no] = max_no_vals;
@@ -434,7 +434,7 @@ bool GroupByWrapper::AttrMayBeUpdatedByPack(int i, MIIterator &mit)  // false, i
 bool GroupByWrapper::PackWillNotUpdateAggregation(int i, MIIterator &mit)  // false, if counters can be changed
 {
   // MEASURE_FET("GroupByWrapper::PackWillNotUpdateAggregation(...)");
-  assert(input_mode[i] != GBInputMode::GBIMODE_NOT_SET);
+  DEBUG_ASSERT(input_mode[i] != GBInputMode::GBIMODE_NOT_SET);
   if (((is_lookup[i] || input_mode[i] == GBInputMode::GBIMODE_AS_TEXT) &&
        (gt.AttrOper(i) == GT_Aggregation::GT_MIN || gt.AttrOper(i) == GT_Aggregation::GT_MAX)) ||
       virt_col[i] == nullptr)
@@ -467,7 +467,7 @@ bool GroupByWrapper::PackWillNotUpdateAggregation(int i, MIIterator &mit)  // fa
 bool GroupByWrapper::DataWillNotUpdateAggregation(int i)  // false, if counters can be changed
 {
   // Identical with PackWillNot...(), but calculated for global statistics
-  assert(input_mode[i] != GBInputMode::GBIMODE_NOT_SET);
+  DEBUG_ASSERT(input_mode[i] != GBInputMode::GBIMODE_NOT_SET);
   if (((is_lookup[i] || input_mode[i] == GBInputMode::GBIMODE_AS_TEXT) &&
        (gt.AttrOper(i) == GT_Aggregation::GT_MIN || gt.AttrOper(i) == GT_Aggregation::GT_MAX)) ||
       virt_col[i] == nullptr)
@@ -498,23 +498,23 @@ bool GroupByWrapper::DataWillNotUpdateAggregation(int i)  // false, if counters 
 }
 
 bool GroupByWrapper::PutAggregatedValueForCount(int gr_a, int64_t pos, int64_t factor) {
-  assert(gt.AttrOper(gr_a) == GT_Aggregation::GT_COUNT || gt.AttrOper(gr_a) == GT_Aggregation::GT_COUNT_NOT_NULL);
+  DEBUG_ASSERT(gt.AttrOper(gr_a) == GT_Aggregation::GT_COUNT || gt.AttrOper(gr_a) == GT_Aggregation::GT_COUNT_NOT_NULL);
   return gt.PutAggregatedValue(gr_a, pos, factor);
 }
 
 bool GroupByWrapper::PutAggregatedValueForMinMax(int gr_a, int64_t pos, int64_t factor) {
-  assert(gt.AttrOper(gr_a) == GT_Aggregation::GT_MIN || gt.AttrOper(gr_a) == GT_Aggregation::GT_MAX);
+  DEBUG_ASSERT(gt.AttrOper(gr_a) == GT_Aggregation::GT_MIN || gt.AttrOper(gr_a) == GT_Aggregation::GT_MAX);
   return gt.PutAggregatedValue(gr_a, pos, factor);
 }
 
 bool GroupByWrapper::PutAggregatedNull(int gr_a, int64_t pos) {
-  assert(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
+  DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
   return gt.PutAggregatedNull(gr_a, pos, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
   return false;
 }
 
 bool GroupByWrapper::PutAggregatedValue(int gr_a, int64_t pos, MIIterator &mit, int64_t factor) {
-  assert(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
+  DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
   if (input_mode[gr_a] == GBInputMode::GBIMODE_NO_VALUE)
     return gt.PutAggregatedValue(gr_a, pos, factor);
   return gt.PutAggregatedValue(gr_a, pos, mit, factor, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
@@ -575,7 +575,7 @@ void GroupByWrapper::ClearDistinctBuffers() {
 
 bool GroupByWrapper::PutCachedValue(int gr_a)  // current value from distinct cache
 {
-  assert(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
+  DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
   bool added =
       gt.PutCachedValue(gr_a, distinct_watch.gd_cache[gr_a], (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
   if (!added)
@@ -654,7 +654,7 @@ void GroupByWrapper::InitTupleLeft(int64_t n) {
     delete tuple_left;
     tuple_left = nullptr;
   }
-  assert(tuple_left == nullptr);
+  DEBUG_ASSERT(tuple_left == nullptr);
   tuple_left = new Filter(n, p_power);
   tuple_left->Set();
 }
@@ -710,7 +710,7 @@ void DistinctWrapper::InitTuples(int64_t n_obj, const GroupTable &gt) {
       // for now - init cache with a number of objects decreased (will cache on
       // disk if more is needed)
       gd_cache[i].SetNumOfObj(n_obj);
-      assert(f[i] == nullptr);
+      DEBUG_ASSERT(f[i] == nullptr);
       f[i].reset(new Filter(n_obj, p_power));
       gd_cache[i].SetWidth(gt.GetCachedWidth(i));
     }

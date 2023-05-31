@@ -44,13 +44,13 @@ DimensionGroupFilter::DimensionGroupFilter(int dim, Filter *f_source, int copy_m
 DimensionGroupFilter::~DimensionGroupFilter() { delete f; }
 
 DimensionGroup::Iterator *DimensionGroupFilter::NewIterator([[maybe_unused]] DimensionVector &dim, uint32_t power) {
-  assert(dim[base_dim]);
+  DEBUG_ASSERT(dim[base_dim]);
   return new DGFilterIterator(f, power);
 }
 
 DimensionGroup::Iterator *DimensionGroupFilter::NewOrderedIterator([[maybe_unused]] DimensionVector &dim,
                                                                    PackOrderer *po, uint32_t power) {
-  assert(dim[base_dim]);
+  DEBUG_ASSERT(dim[base_dim]);
   return new DGFilterOrderedIterator(f, po, power);
 }
 
@@ -125,7 +125,7 @@ void DimensionGroupMaterialized::NewDimensionContent(int dim, IndexTable *tnew,
                                                      bool nulls)  // tnew will be added (as a pointer to be deleted by
                                                                   // destructor) on a dimension dim
 {
-  assert(dims_used[dim]);
+  DEBUG_ASSERT(dims_used[dim]);
   delete t[dim];
   t[dim] = tnew;
   nulls_possible[dim] = nulls;
@@ -141,7 +141,7 @@ void DimensionGroupMaterialized::FillCurrentPos(DimensionGroup::Iterator *it, in
 }
 
 DimensionGroup::Iterator *DimensionGroupMaterialized::NewIterator(DimensionVector &dim, uint32_t power) {
-  assert(no_dims == dim.Size());  // otherwise incompatible dimensions
+  DEBUG_ASSERT(no_dims == dim.Size());  // otherwise incompatible dimensions
   return new DGMaterializedIterator(no_obj, dim, t, nulls_possible, power);
 }
 
@@ -257,7 +257,7 @@ void DimensionGroupMaterialized::DGMaterializedIterator::InitPackrow() {
   cur_pack_start = cur_pos;
   if (cur_pos == 0 && pack_size_left == no_obj)
     inside_one_pack = true;
-  assert(pack_size_left > 0);
+  DEBUG_ASSERT(pack_size_left > 0);
 }
 
 bool DimensionGroupMaterialized::DGMaterializedIterator::NextInsidePack() {
@@ -339,7 +339,7 @@ void DimensionGroupMaterialized::DGMaterializedIterator::FindPackEnd(int dim) {
     cur_pack[dim] = loc_pack;
     next_pack[dim] = loc_iterator;
   }
-  assert(next_pack[dim] > cur_pos);
+  DEBUG_ASSERT(next_pack[dim] > cur_pos);
 }
 
 int DimensionGroupMaterialized::DGMaterializedIterator::GetNextPackrow(int dim, int ahead) {

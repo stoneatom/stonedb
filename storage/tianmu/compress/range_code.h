@@ -78,8 +78,8 @@ class RangeCoder {
   }
 
   void Encode(uint cumFreq, uint freq, uint total) {
-    assert(freq && cumFreq + freq <= total && total <= MAX_TOTAL_);
-    assert(range_ >= BOT_ && low_ + range_ - 1 >= low_);
+    DEBUG_ASSERT(freq && cumFreq + freq <= total && total <= MAX_TOTAL_);
+    DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= low_);
     low_ += (range_ /= total) * cumFreq;
     range_ *= freq;
     while (((low_ ^ (low_ + range_)) < TOP_) || ((range_ < BOT_) && ((range_ = -low_ & (BOT_ - 1)), 1)))
@@ -90,16 +90,16 @@ class RangeCoder {
 #if defined(_DEBUG) || !defined(NDEBUG)
     _tot_ = total;
 #endif
-    assert(range_ >= BOT_ && low_ + range_ - 1 >= code_ && code_ >= low_);
+    DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= code_ && code_ >= low_);
     uint tmp = (code_ - low_) / (range_ /= total);
-    assert(tmp < total);
+    DEBUG_ASSERT(tmp < total);
     if (tmp >= total)
       throw CprsErr::CPRS_ERR_COR;
     return tmp;
   }
 
   void Decode(uint cumFreq, uint freq, [[maybe_unused]] uint total) {
-    assert(_tot_ == total && freq && cumFreq + freq <= total && total <= MAX_TOTAL_);
+    DEBUG_ASSERT(_tot_ == total && freq && cumFreq + freq <= total && total <= MAX_TOTAL_);
     low_ += range_ * cumFreq;
     range_ *= freq;
     while (((low_ ^ (low_ + range_)) < TOP_) || ((range_ < BOT_) && ((range_ = -low_ & (BOT_ - 1)), 1)))
@@ -108,8 +108,8 @@ class RangeCoder {
   }
 
   void EncodeShift(uint cumFreq, uint freq, uint shift) {
-    assert(cumFreq + freq <= (1u _SHL_ shift) && freq && (1u _SHL_ shift) <= MAX_TOTAL_);
-    assert(range_ >= BOT_ && low_ + range_ - 1 >= low_);
+    DEBUG_ASSERT(cumFreq + freq <= (1u _SHL_ shift) && freq && (1u _SHL_ shift) <= MAX_TOTAL_);
+    DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= low_);
     low_ += (range_ _SHR_ASSIGN_ shift)*cumFreq;
     range_ *= freq;
     while ((low_ ^ (low_ + range_)) < TOP_ || (range_ < BOT_ && ((range_ = -low_ & (BOT_ - 1)), 1)))
@@ -120,7 +120,7 @@ class RangeCoder {
 #if defined(_DEBUG) || !defined(NDEBUG)
     _sh_ = shift;
 #endif
-    assert(range_ >= BOT_ && low_ + range_ - 1 >= code_ && code_ >= low_);
+    DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= code_ && code_ >= low_);
     uint tmp = (code_ - low_) / (range_ _SHR_ASSIGN_ shift);
     if (tmp >= (1u << shift))
       throw CprsErr::CPRS_ERR_COR;
@@ -128,7 +128,7 @@ class RangeCoder {
   }
 
   void DecodeShift(uint cumFreq, uint freq, [[maybe_unused]] uint shift) {
-    assert(_sh_ == shift && cumFreq + freq <= (1u _SHL_ shift) && freq && (1u _SHL_ shift) <= MAX_TOTAL_);
+    DEBUG_ASSERT(_sh_ == shift && cumFreq + freq <= (1u _SHL_ shift) && freq && (1u _SHL_ shift) <= MAX_TOTAL_);
     low_ += range_ * cumFreq;
     range_ *= freq;
     while (((low_ ^ (low_ + range_)) < TOP_) || ((range_ < BOT_) && ((range_ = -low_ & (BOT_ - 1)), 1)))
@@ -138,16 +138,16 @@ class RangeCoder {
   // uniform compression and decompression (must be: val <= maxval)
   template <class T>
   void EncodeUniform(T val, T maxval, uint bitmax) {
-    assert((val <= maxval));
-    assert((((uint64_t)maxval >> bitmax) == 0) || bitmax >= 64);
+    DEBUG_ASSERT((val <= maxval));
+    DEBUG_ASSERT((((uint64_t)maxval >> bitmax) == 0) || bitmax >= 64);
     if (maxval == 0)
       return;
 
     // encode groups of 'uni_nbit_' bits, from the least significant
-    assert(uni_total_ <= MAX_TOTAL_);
+    DEBUG_ASSERT(uni_total_ <= MAX_TOTAL_);
     while (bitmax > uni_nbit_) {
       EncodeShift((uint)(val & uni_mask_), 1, uni_nbit_);
-      assert(uni_nbit_ < sizeof(T) * 8);
+      DEBUG_ASSERT(uni_nbit_ < sizeof(T) * 8);
       val >>= uni_nbit_;
       maxval >>= uni_nbit_;
       bitmax -= uni_nbit_;
@@ -169,27 +169,27 @@ class RangeCoder {
     val = 0;
     if (maxval == 0)
       return;
-    assert((((uint64_t)maxval >> bitmax) == 0) || bitmax >= 64);
+    DEBUG_ASSERT((((uint64_t)maxval >> bitmax) == 0) || bitmax >= 64);
 
     // decode groups of 'uni_nbit_' bits, from the least significant
-    assert(uni_total_ <= MAX_TOTAL_);
+    DEBUG_ASSERT(uni_total_ <= MAX_TOTAL_);
     uint v, shift = 0;
     while (shift + uni_nbit_ < bitmax) {
       v = GetCountShift(uni_nbit_);
       DecodeShift(v, 1, uni_nbit_);
-      assert(shift < 64);
+      DEBUG_ASSERT(shift < 64);
       val |= (uint64_t)v << shift;
       shift += uni_nbit_;
     }
 
     // decode the most significant group
-    assert(shift < sizeof(maxval) * 8);
+    DEBUG_ASSERT(shift < sizeof(maxval) * 8);
     uint total = (uint)(maxval >> shift) + 1;
-    assert(total <= MAX_TOTAL_);
+    DEBUG_ASSERT(total <= MAX_TOTAL_);
     v = GetCount(total);
     Decode(v, 1, total);
     val |= (uint64_t)v << shift;
-    assert(val <= maxval);
+    DEBUG_ASSERT(val <= maxval);
   }
 
   template <class T>
@@ -217,7 +217,7 @@ class RangeCoder {
       uint tmp = GetCountShift(uni_nbit_);
       DecodeShift(tmp, 1, uni_nbit_);
       DecodeUniShift(x, shift - uni_nbit_);
-      assert(uni_nbit_ < sizeof(x) * 8);
+      DEBUG_ASSERT(uni_nbit_ < sizeof(x) * 8);
       x = (x << uni_nbit_) | (T)tmp;
     }
   }
@@ -225,13 +225,13 @@ class RangeCoder {
 
 template <>
 inline void RangeCoder::EncodeUniShift<uchar>(uchar x, uint shift) {
-  assert(shift <= uni_nbit_);
+  DEBUG_ASSERT(shift <= uni_nbit_);
   EncodeShift((uint)x, 1, shift);
 }
 
 template <>
 inline void RangeCoder::EncodeUniShift<ushort>(ushort x, uint shift) {
-  assert(shift <= uni_nbit_);
+  DEBUG_ASSERT(shift <= uni_nbit_);
   EncodeShift((uint)x, 1, shift);
 }
 
