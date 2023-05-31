@@ -725,6 +725,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   rounded = false;
   if (tianmu_err_code)
     *tianmu_err_code = common::ErrorCode::SUCCESS;
+
   if (!v || v->IsNull())
     return common::NULL_VALUE_64;
 
@@ -733,6 +734,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   } else if (ATI::IsDateTimeType(TypeName()) || ATI::IsDateTimeNType(TypeName())) {
     return ((types::TianmuDateTime *)v)->GetInt64();
   }
+
   ASSERT(GetPackType() == common::PackType::INT, "Pack type must be numeric!");
 
   int64_t vv = ((types::TianmuNum *)v)->ValueInt();
@@ -745,6 +747,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
     // for(int i=0;i<vp;i++) res*=10;
     return *(int64_t *)(&res);  // encode
   }
+
   if (((types::TianmuNum *)v)->IsReal()) {  // v is double
     double vd = *(double *)(&vv);
     vd *= types::Uint64PowOfTen(Type().GetScale());  // translate into int64_t of proper precision
@@ -754,10 +757,10 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
       return common::MINUS_INF_64;
     int64_t res = int64_t(vd);
     if (fabs(vd - double(res)) > 0.01)
-      rounded = true;  // ignore errors which are 2 digits less than declared
-                       // precision
+      rounded = true;  // ignore errors which are 2 digits less than declared precision
     return res;
   }
+
   unsigned char dplaces = Type().GetScale();
   while (vp < dplaces) {
     if (vv < common::MINUS_INF_64 / 10)
@@ -767,9 +770,11 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
     vv *= 10;
     vp++;
   }
+
   while (vp > dplaces) {
     if (vv % 10 != 0)
       rounded = true;
+
     vv /= 10;
     vp--;
   }
@@ -937,7 +942,8 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   }
 
   DPN &dpn = get_dpn(pi);
-  if (current_txn_->LoadSource() == common::LoadSource::LS_File || dpn.numOfRecords == (1U << pss)) {
+  if (current_txn_->LoadSource() == common::LoadSource::LS_Direct ||
+      current_txn_->LoadSource() == common::LoadSource::LS_File || dpn.numOfRecords == (1U << pss)) {
     Pack *pack = get_pack(pi);
     if (!dpn.Trivial()) {
       pack->Save();
