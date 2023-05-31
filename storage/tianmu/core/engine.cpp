@@ -773,9 +773,11 @@ uint32_t Engine::GetNextTableId() {
     if (!seq_file) {
       throw common::FileException("Failed to write to table id file");
     }
+
+    return 0;  // fast return if it's a new-created tianmu.tid file.
   }
 
-  uint32_t seq;
+  uint32_t seq{0};
   std::fstream seq_file(p.string());
   if (seq_file)
     seq_file >> seq;
