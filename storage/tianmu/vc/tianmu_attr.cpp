@@ -952,7 +952,7 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   }
 
   DPN &dpn = get_dpn(pi);
-  if (current_txn_->LoadSource() == common::LoadSource::LS_Direct ||
+  if (/*current_txn_->LoadSource() == common::LoadSource::LS_Direct ||*/
       current_txn_->LoadSource() == common::LoadSource::LS_File || dpn.numOfRecords == (1U << pss)) {
     Pack *pack = get_pack(pi);
     if (!dpn.Trivial()) {
