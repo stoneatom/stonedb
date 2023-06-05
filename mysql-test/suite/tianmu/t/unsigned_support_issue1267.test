@@ -272,7 +272,7 @@ select * from load_unsigned;
 eval select * into outfile "$MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt" from load_unsigned;
 truncate table load_unsigned;
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
-eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt' INTO TABLE load_unsigned FIELDS TERMINATED BY ';';
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt' INTO TABLE load_unsigned;
 select * from load_unsigned;
 drop table load_unsigned;
 

@@ -103,9 +103,9 @@ CREATE TABLE `issue880_t3` (
 `union_order_flag` smallint(1) DEFAULT '0' COMMENT '是否合成订单0不是，1是; Size[MB]: 0.1; Ratio: 2.12',
 PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
-LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
-LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;
-LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2;
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1 FIELDS TERMINATED BY ';';
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3 FIELDS TERMINATED BY ';';
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2 FIELDS TERMINATED BY ';';
 select b.create_time AS create_time
 from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
