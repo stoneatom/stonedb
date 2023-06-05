@@ -1,0 +1,56 @@
+DROP DATABASE IF EXISTS test_replace_db;
+CREATE DATABASE test_replace_db;
+use test_replace_db;
+CREATE TABLE test1 (
+id INT NOT NULL AUTO_INCREMENT,
+data VARCHAR(64) DEFAULT NULL,
+ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+PRIMARY KEY (id)
+)  engine=tianmu;
+REPLACE INTO test1 VALUES (1, 'Old', '2014-08-20 18:47:00');
+REPLACE INTO test1 VALUES (1, 'New', '2014-08-20 18:47:42');
+SELECT * FROM test1;
+id	data	ts
+1	New	2014-08-20 18:47:42
+drop table test1;
+CREATE TABLE test2 (
+id INT NOT NULL AUTO_INCREMENT,
+data VARCHAR(64) DEFAULT NULL,
+ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+PRIMARY KEY (id, ts)
+)  engine=tianmu;
+REPLACE INTO test2 VALUES (1, 'Old', '2014-08-20 18:47:00');
+REPLACE INTO test2 VALUES (1, 'New', '2014-08-20 18:47:42');
+select * from test2;
+id	data	ts
+1	Old	2014-08-20 18:47:00
+1	New	2014-08-20 18:47:42
+drop table test2;
+CREATE TABLE test1 (
+id INT NOT NULL AUTO_INCREMENT,
+data VARCHAR(64) DEFAULT NULL,
+ts TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+PRIMARY KEY (id)
+)  engine=tianmu;
+insert into test1 values (1,'Old', '2014-08-20 18:47:00');
+insert into test1 values (2, 'Old', '2014-08-20 18:47:00');
+REPLACE INTO test1 VALUES (1, 'New', '2014-08-20 18:47:42');
+SELECT * FROM test1;
+id	data	ts
+1	New	2014-08-20 18:47:42
+2	Old	2014-08-20 18:47:00
+delete from test1 where id =1;
+SELECT * FROM test1;
+id	data	ts
+2	Old	2014-08-20 18:47:00
+REPLACE INTO test1 VALUES (1, 'NewNew', '2014-08-20 18:47:55');
+SELECT * FROM test1;
+id	data	ts
+2	Old	2014-08-20 18:47:00
+1	NewNew	2014-08-20 18:47:55
+REPLACE INTO test1 VALUES (1, 'NewNewNew', '2014-08-20 18:55:55');
+SELECT * FROM test1;
+id	data	ts
+2	Old	2014-08-20 18:47:00
+1	NewNewNew	2014-08-20 18:55:55
+drop database test_replace_db;
