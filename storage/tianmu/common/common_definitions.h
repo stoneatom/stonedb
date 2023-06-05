@@ -59,8 +59,7 @@ enum class ColumnType : unsigned char {
   BIN,      // free binary (BLOB), no encoding
   BYTE,     // free binary, fixed size, no encoding
   VARBYTE,  // free binary, variable size, no encoding
-  REAL,     // double (stored as non-interpreted int64_t, null value is
-            // NULL_VALUE_64)
+  REAL,     // double (stored as non-interpreted int64_t, null value is NULL_VALUE_64)
   DATETIME,
   TIMESTAMP,
   DATETIME_N,

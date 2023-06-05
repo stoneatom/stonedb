@@ -88,7 +88,8 @@ TempTable::Attr::Attr(const Attr &a) : PhysicalColumn(a) {
 }
 
 TempTable::Attr::Attr(CQTerm t, common::ColOperation m, uint32_t power, bool dis, char *a, int dim,
-                      common::ColumnType type, uint scale, uint no_digits, bool notnull, DTCollation collation, SI *si1)
+                      common::ColumnType type, uint scale, uint no_digits, bool notnull, DTCollation collation,
+                      SpecialInstruction *si1)
     : mode(m), distinct(dis), term(t), dim(dim), not_complete(true) {
   ct.Initialize(type, notnull, common::PackFmt::DEFAULT, no_digits, scale, collation);
   orig_precision = no_digits;
@@ -1209,7 +1210,7 @@ void TempTable::SetMode(TMParameter mode, int64_t mode_param1, int64_t mode_para
   }
 }
 
-int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool distinct, SI si) {
+int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool distinct, SpecialInstruction &si) {
   if (alias)
     no_cols++;
   common::ColumnType type = common::ColumnType::UNK;  // type of column

@@ -47,8 +47,7 @@ void AggregatorStat64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t
 }
 
 void AggregatorStatD::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) {
-  // efficient implementation from WIKI
-  // http://en.wikipedia.org/wiki/Standard_deviation
+  // efficient implementation from WIKI  http://en.wikipedia.org/wiki/Standard_deviation
   stats_updated = false;
   if (v != common::NULL_VALUE_64) {
     if (NumOfObj(buf) == 0) {
@@ -188,40 +187,54 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
                                                [[maybe_unused]] int64_t factor) {
   stats_updated = false;
 
-  auto it = lenmap.find(buf);
-  if (it == lenmap.end()) {
-    auto copylen = (v.len_ > gconcat_maxlen) ? gconcat_maxlen : v.len_;
+  auto it = lenmap_.find(buf);
+  if (it == lenmap_.end()) {
+    auto copylen = (v.len_ > gconcat_maxlen_) ? gconcat_maxlen_ : v.len_;
     std::memcpy(buf, v.val_, copylen);
-    lenmap.emplace(buf, copylen);
+    lenmap_.emplace(buf, copylen);
   } else {
     auto pos = it->second;
 
-    if (pos == gconcat_maxlen)
+    if (pos == gconcat_maxlen_)
       return;
 
-    if (pos < gconcat_maxlen) {
-      std::string src = si.separator + v.ToString();  // combine the delimeter and value
-      auto copylen = (pos + v.len_ + si.separator.length()) >= gconcat_maxlen ? (gconcat_maxlen - pos)
-                                                                              : (v.len_ + si.separator.length());
+    if (pos < gconcat_maxlen_) {
+      std::string src = si_.separator + v.ToString();  // combine the delimeter and value
+      auto copylen = (pos + v.len_ + si_.separator.length()) >= gconcat_maxlen_ ? (gconcat_maxlen_ - pos)
+                                                                                : (v.len_ + si_.separator.length());
       std::memcpy(buf + pos, src.c_str(), copylen);  // append the separator
       it->second = it->second + copylen;             // update the length of the buffer
     } else {
       TIANMU_LOG(LogCtl_Level::ERROR,
                  "Internal error for AggregatorGroupConcat: buffer length is "
                  "%d, which beyond threshold %d.",
-                 pos, gconcat_maxlen);
+                 pos, gconcat_maxlen_);
     }
   }
 }
 
+// puts the group concat value into group_concator.
+void AggregatorGroupConcat::PutAggregatedValue([[maybe_unused]] unsigned char *buf, [[maybe_unused]] int64_t v,
+                                               [[maybe_unused]] int64_t factor) {
+  return;
+}
+
+// od the merge operations.
+void AggregatorGroupConcat::Merge([[maybe_unused]] unsigned char *buf, [[maybe_unused]] unsigned char *src_buf) {
+  return;
+}
+
+// the the values from group concator.
+int64_t AggregatorGroupConcat::GetValue64([[maybe_unused]] unsigned char *buf) { return -1; }
+
 types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
-  auto it = lenmap.find(buf);
-  if (it == lenmap.end()) {
+  auto it = lenmap_.find(buf);
+  if (it == lenmap_.end()) {
     // cases that grouping value is nullptr
     return types::BString();
   }
 
-  int len = (it->second < gconcat_maxlen) ? it->second : gconcat_maxlen;
+  int len = (it->second < gconcat_maxlen_) ? it->second : gconcat_maxlen_;
   // TIANMU_LOG(LogCtl_Level::INFO, "GetValueT: buf %s, buf addr  %x, len %d", buf, buf,
   // len);
   if (len == 0) {
@@ -229,7 +242,7 @@ types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
     return res;
   }
 
-  if (si.order == ORDER::ORDER_NOT_RELEVANT)  // NO order by logic
+  if (si_.order == ORDER::ORDER_NOT_RELEVANT)  // NO order by logic
   {
     char *p = (char *)buf;
     types::BString res(p, len);
@@ -246,32 +259,33 @@ types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
 
   // parse and split the buf
   while (pos != std::string::npos && static_cast<int>(pos) < len) {
-    pos = tmpstr.find(si.separator, start_pos);
+    pos = tmpstr.find(si_.separator, start_pos);
     token = tmpstr.substr(start_pos, pos - start_pos);
     vstr.emplace_back(token);
-    start_pos = pos + si.separator.length();
+    start_pos = pos + si_.separator.length();
   }
 
-  if (si.order == ORDER::ORDER_DESC) {
-    if (ATI::IsStringType(attrtype))
+  if (si_.order == ORDER::ORDER_DESC) {
+    if (ATI::IsStringType(attrtype_))
       std::sort(vstr.begin(), vstr.end(), std::greater<std::string>());
     else  // numeric
       std::sort(vstr.begin(), vstr.end(), [](const auto &a, const auto &b) { return std::stold(a) > std::stold(b); });
 
   } else {
-    if (ATI::IsStringType(attrtype))
+    if (ATI::IsStringType(attrtype_))
       std::sort(vstr.begin(), vstr.end());
     else  // numeric
       std::sort(vstr.begin(), vstr.end(), [](const auto &a, const auto &b) { return std::stold(a) < std::stold(b); });
   }
 
   std::ostringstream outbuf_stream;
-  std::copy(vstr.begin(), vstr.end(), std::ostream_iterator<std::string>(outbuf_stream, si.separator.c_str()));
+  std::copy(vstr.begin(), vstr.end(), std::ostream_iterator<std::string>(outbuf_stream, si_.separator.c_str()));
   // TIANMU_LOG(LogCtl_Level::DEBUG, "buf %s, tmpbuf1 %s, pos %d, len %d \n", buf,
   // outbuf_stream.str().c_str(), pos, len);
 
   types::BString res(outbuf_stream.str().c_str(), len, true);
   return res;
 }
+
 }  // namespace core
 }  // namespace Tianmu

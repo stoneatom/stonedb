@@ -109,7 +109,7 @@ void GroupTable::AddGroupingColumn(vcolumn::VirtualColumn *vc) {
 
 void GroupTable::AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation operation, bool distinct,
                                      common::ColumnType type, int size, int precision, DTCollation in_collation,
-                                     SI si) {
+                                     SpecialInstruction si) {
   GroupTable::ColTempDesc desc;
   desc.type = type;  // put defaults first, then check in Initialize() what will
                      // be actual result definition
@@ -134,6 +134,7 @@ void GroupTable::AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation 
     default:
       size = 8;
   }
+
   desc.vc = vc;
   desc.size = size;
   desc.precision = precision;
@@ -448,9 +449,11 @@ void GroupTable::Merge(GroupTable &sec, Transaction *m_conn) {
   while (sec.vm_tab->RowValid()) {
     if (m_conn->Killed())
       throw common::KilledException();
+
     sec_row = sec.vm_tab->GetCurrentRow();
     if (grouping_and_UTF_width > 0)
       std::memcpy(input_buffer.data(), sec.vm_tab->GetGroupingRow(sec_row), grouping_and_UTF_width);
+
     FindCurrentRow(row);  // find the value on another position or add as a new one
     if (row != common::NULL_VALUE_64) {
       DEBUG_ASSERT(row != common::NULL_VALUE_64);
@@ -578,19 +581,21 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64
     }
     factor = 1;  // ignore repetitions for distinct
   }
+
   TIANMUAggregator *cur_aggr = aggregator[col];
   if (factor == common::NULL_VALUE_64 && cur_aggr->FactorNeeded())
     throw common::NotImplementedException("Aggregation overflow.");
+
   if (as_string) {
     types::BString v;
     vc[col]->GetValueString(v, mit);
     cur_aggr->PutAggregatedValue(vm_tab->GetAggregationRow(row) + aggregated_col_offset[col], v, factor);
   } else {
-    // note: it is too costly to check nulls separately (e.g. for complex
-    // expressions)
+    // note: it is too costly to check nulls separately (e.g. for complex expressions)
     int64_t v = vc[col]->GetValueInt64(mit);
     if (v == common::NULL_VALUE_64 && cur_aggr->IgnoreNulls())
       return true;
+
     cur_aggr->PutAggregatedValue(vm_tab->GetAggregationRow(row) + aggregated_col_offset[col], v, factor);
   }
   return true;
@@ -619,12 +624,12 @@ bool GroupTable::PutCachedValue(int col, GroupDistinctCache &cache,
     return true;  // value found, do not aggregate it again
   if (res == GDTResult::GDT_FULL) {
     if (gdistinct[col]->AlreadyFull())
-      not_full = false;  // disable also the main grouping table (if it is a
-                         // persistent rejection)
+      not_full = false;  // disable also the main grouping table (if it is a persistent rejection)
     return false;        // value not found in DISTINCT buffer, which is already full
   }
   int64_t row = gdistinct[col]->GroupNoFromInput();  // restore group number
   unsigned char *p = vm_tab->GetAggregationRow(row) + aggregated_col_offset[col];
+
   if (operation[col] == GT_Aggregation::GT_COUNT_NOT_NULL)
     aggregator[col]->PutAggregatedValue(p, 1);  // factor = 1, because we are just after distinct
   else {
@@ -635,6 +640,7 @@ bool GroupTable::PutCachedValue(int col, GroupDistinctCache &cache,
       } else {
         v = vc[col]->DecodeValue_S(gdistinct[col]->ValueFromInput());
       }
+
       aggregator[col]->PutAggregatedValue(p, v, 1);
     } else {
       int64_t v = gdistinct[col]->ValueFromInput();
@@ -649,6 +655,7 @@ void GroupTable::UpdateAttrStats(int col)  // update the current statistics for 
   MEASURE_FET("GroupTable::UpdateAttrStats(...)");
   if (!aggregator[col]->StatisticsNeedsUpdate())
     return;
+
   bool stop_updating = false;
   aggregator[col]->ResetStatistics();
   vm_tab->Rewind();
@@ -663,12 +670,13 @@ void GroupTable::UpdateAttrStats(int col)  // update the current statistics for 
 bool GroupTable::AttrMayBeUpdatedByPack(int col, MIIterator &mit)  // get the current statistics for a column
 {
   if (vc[col]->Type().IsFloat() || vc[col]->Type().IsString())
-    return true;  // min/max not calculated properly for these types, see Mojo
-                  // 782681
+    return true;  // min/max not calculated properly for these types, see Mojo  782681
+
   int64_t local_min = vc[col]->GetMinInt64(mit);
   int64_t local_max = vc[col]->GetMaxInt64(mit);
   if (encoder[col]->ImpossibleValues(local_min, local_max))
     return false;
+
   return true;
 }
 
@@ -677,5 +685,6 @@ void GroupTable::InvalidateAggregationStatistics() {
     aggregator[i]->ResetStatistics();
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu
