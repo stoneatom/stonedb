@@ -604,7 +604,7 @@ void CompiledQuery::ApplyConds(const TabID &t1) {
 }
 
 void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common::ColOperation op, char const alias[],
-                              bool distinct, SI *si) {
+                              bool distinct, SpecialInstruction *si) {
   DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::ADD_COLUMN;
@@ -614,14 +614,17 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common:
   s.cop = op;
   if (op == common::ColOperation::GROUP_CONCAT && si != nullptr)
     s.si = *si;
+
   if (alias) {
     size_t const alias_ct(std::strlen(alias) + 1);
     s.alias = new char[alias_ct];
     std::strcpy(s.alias, alias);
   } else
     s.alias = nullptr;
+
   s.n1 = distinct ? 1 : 0;
   steps.push_back(s);
+
   if (op == common::ColOperation::GROUP_BY)
     steps_group_by_cols.push_back(s);
 }

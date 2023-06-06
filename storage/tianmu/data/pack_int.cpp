@@ -840,8 +840,7 @@ std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
   }
 
   if (maxv != 0) {
-    // ASSERT(last_set + 1 == dpn_->numOfRecords - dpn_->numOfNulls, "Expression evaluation
-    // failed!");
+    // ASSERT(last_set + 1 == dpn_->numOfRecords - dpn_->numOfNulls, "Expression evaluation failed!");
     if (data_.value_type_ == 1) {
       compress::NumCompressor<uchar> nc;
       tmp_cb_len = (dpn_->numOfRecords - dpn_->numOfNulls) * sizeof(uchar) + 20;

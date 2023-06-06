@@ -768,8 +768,11 @@ uint32_t Engine::GetNextTableId() {
   if (!fs::exists(p)) {
     TIANMU_LOG(LogCtl_Level::INFO, "Creating table id file");
     std::ofstream seq_file(p.string());
-    if (seq_file)
+    if (seq_file) {
       seq_file << 0;
+      seq_file.flush();  // sync to disk mandatory.
+    }
+
     if (!seq_file) {
       throw common::FileException("Failed to write to table id file");
     }
@@ -787,6 +790,7 @@ uint32_t Engine::GetNextTableId() {
   seq++;
   seq_file.seekg(0);
   seq_file << seq;
+  seq_file.flush();  // sync to disk mandatory.
   if (!seq_file) {
     throw common::FileException("Failed to write to table id file");
   }
@@ -978,15 +982,20 @@ void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
 }
 
 int Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
+  DBUG_ENTER("Engine::DeleteTable");
+
   {
     std::unique_lock<std::shared_mutex> mem_guard(mem_table_mutex);
     DeltaTable::DropDeltaTable(table);
     m_table_deltas.erase(table);
   }
+
   if (DeleteTableIndex(table, thd)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "DeleteTable  failed");
-    return 1;
+    DBUG_RETURN(1);
   }
+  DBUG_EXECUTE_IF("TIANMU_DELETE_TABLE_AFTER_INDEX", { DBUG_RETURN(1); });
+
   UnRegisterTable(table);
   std::string p = table;
   p += common::TIANMU_EXT;
@@ -1001,20 +1010,25 @@ int Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   system::DeleteDirectory(p);
   TIANMU_LOG(LogCtl_Level::INFO, "Drop table %s, ID = %u", table, id);
 
-  return 0;
+  DBUG_RETURN(0);
 }
 
 void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *thd) {
+  DBUG_ENTER("Engine::TruncateTable");
+
   auto indextab = GetTableIndex(table_path);
   if (indextab != nullptr) {
     indextab->TruncateIndexTable();
   }
+
   auto tab = current_txn_->GetTableByPath(table_path);
   tab->Truncate();
   auto id = tab->GetID();
   cache.ReleaseTable(id);
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
   TIANMU_LOG(LogCtl_Level::INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
+
+  DBUG_VOID_RETURN;
 }
 
 std::shared_ptr<TianmuTable> Engine::GetTableRD(const std::string &table_path) {
@@ -2286,6 +2300,8 @@ std::shared_ptr<TableShare> Engine::GetTableShare(const TABLE_SHARE *table_share
     }
 
     return it->second;
+  } catch (common::DatabaseException &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create table share: %s", e.getExceptionMsg());
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create table share: %s", e.what());
   } catch (std::exception &e) {

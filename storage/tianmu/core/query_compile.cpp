@@ -913,7 +913,7 @@ int Query::AddColumnForPhysColumn(Item *item, const TabID &tmp_table, TabID cons
     if (item->type() == Item::SUM_FUNC_ITEM && ((Item_sum *)item)->sum_func() == Item_sum::GROUP_CONCAT_FUNC) {
       // pass the seprator to construct the special instruction
       char *ptr = ((Item_func_group_concat *)item)->get_separator()->c_ptr();
-      SI si;
+      SpecialInstruction si;
       si.separator.assign(ptr, std::strlen(ptr));
       si.order = ((Item_func_group_concat *)item)->direction();
       cq->AddColumn(at, tmp_table, CQTerm(vc.second), oper, group_by ? nullptr : item->item_name.ptr(), distinct, &si);

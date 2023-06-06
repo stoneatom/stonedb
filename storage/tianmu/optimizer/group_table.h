@@ -61,7 +61,7 @@ class GroupTable : public mm::TraceableObject {
 
   void AddGroupingColumn(vcolumn::VirtualColumn *vc);
   void AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation operation, bool distinct, common::ColumnType type,
-                           int b_size, int precision, DTCollation in_collation, SI si);
+                           int b_size, int precision, DTCollation in_collation, SpecialInstruction si);
   void AggregatedColumnStatistics(int ag_col, int64_t max_no_vals, int64_t min_v = common::MINUS_INF_64,
                                   int64_t max_v = common::PLUS_INF_64) {
     aggregated_desc[ag_col].max_no_values = max_no_vals;
@@ -206,7 +206,7 @@ class GroupTable : public mm::TraceableObject {
     int64_t max_no_values;  // upper approximation of a number of distinct
                             // values (without null), 0 - don't know
     DTCollation collation;
-    SI si;
+    SpecialInstruction si;
   };
   std::vector<ColTempDesc> grouping_desc;  // input fields description
   std::vector<ColTempDesc> aggregated_desc;

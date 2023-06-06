@@ -77,9 +77,8 @@ class CompiledQuery final {
     std::vector<int> virt_cols;
     std::vector<TabID> tables1;
     std::vector<TabID> tables2;
-    int64_t n1, n2;  // additional parameter (e.g. descending order, TOP n,
-                     // LIMIT n1..n2)
-    SI si;
+    int64_t n1, n2;  // additional parameter (e.g. descending order, TOP n,  LIMIT n1..n2)
+    SpecialInstruction si;
 
     CQStep()
         : type(StepType::TABLE_ALIAS),
@@ -151,7 +150,7 @@ class CompiledQuery final {
   void AddConds(const TabID &t1, const CondID &c1, CondType cond_type);
   void ApplyConds(const TabID &t1);
   void AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common::ColOperation op, char const alias[] = 0,
-                 bool distinct = false, SI *si = nullptr);
+                 bool distinct = false, SpecialInstruction *si = nullptr);
 
   /*! \brief Create compilation step CREATE_VC for mysql expression
    * \param a_out - id of created virtual column

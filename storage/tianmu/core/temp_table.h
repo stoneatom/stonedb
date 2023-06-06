@@ -46,7 +46,7 @@ class SortDescriptor;
 class Transaction;
 
 // Sepecial Instruction
-struct SI {
+struct SpecialInstruction {
   std::string separator;  // group_concat separator
   ORDER::enum_order order;
 };
@@ -57,7 +57,7 @@ class TempTable : public JustATable {
  public:
   class Attr final : public PhysicalColumn {
    public:
-    SI si;
+    SpecialInstruction si;
     void *buffer;             // buffer to values of attribute, if materialized
     int64_t no_obj;           // number of objects in the buffer
     uint32_t no_power;        // number of objects in the buffer
@@ -75,7 +75,7 @@ class TempTable : public JustATable {
 
     Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = nullptr, int dim = -1,
          common::ColumnType type = common::ColumnType::INT, uint scale = 0, uint precision = 10, bool notnull = true,
-         DTCollation collation = DTCollation(), SI *si1 = nullptr);
+         DTCollation collation = DTCollation(), SpecialInstruction *si1 = nullptr);
     Attr(const Attr &);
     Attr &operator=(const Attr &);
     int operator==(const Attr &);
@@ -209,7 +209,7 @@ class TempTable : public JustATable {
   void AddLeftConds(Condition *cond, std::vector<TabID> &dims1, std::vector<TabID> &dims2);
   void SetMode(TMParameter mode, int64_t mode_param1 = 0, int64_t mode_param2 = -1);
   void JoinT(JustATable *t, int alias, JoinType jt);
-  int AddColumn(CQTerm, common::ColOperation, char *alias, bool distinct, SI si);
+  int AddColumn(CQTerm, common::ColOperation, char *alias, bool distinct, SpecialInstruction &si);
   void AddOrder(vcolumn::VirtualColumn *vc, int direction);
   void Union(TempTable *, int);
   void Union(TempTable *, int, ResultSender *sender, int64_t &g_offset, int64_t &g_limit);
