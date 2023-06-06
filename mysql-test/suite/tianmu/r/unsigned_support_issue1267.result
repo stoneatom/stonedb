@@ -425,7 +425,7 @@ ut	us	um	ui
 255	65535	16777215	4294967295
 select * into outfile "MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt" from load_unsigned;
 truncate table load_unsigned;
-LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt' INTO TABLE load_unsigned FIELDS TERMINATED BY ';';
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/tmp/unsigned_outfile-test.txt' INTO TABLE load_unsigned;
 select * from load_unsigned;
 ut	us	um	ui
 0	0	0	0
