@@ -123,6 +123,11 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
 }
 
 int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
+  if (!mit.IsValid()) {
+    last_val_ = expr_->Evaluate();
+    return last_val_->Get64();
+  }
+
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
   if (last_val_->IsNull())
@@ -144,6 +149,12 @@ bool ExpressionColumn::IsNullImpl(const core::MIIterator &mit) {
 }
 
 void ExpressionColumn::GetValueStringImpl(types::BString &s, const core::MIIterator &mit) {
+  if (!mit.IsValid()) {
+    last_val_ = expr_->Evaluate();
+    last_val_->GetBString(s);
+    return;
+  }
+
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
   if (core::ATI::IsDateTimeType(TypeName())) {
