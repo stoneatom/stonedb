@@ -35,6 +35,8 @@ PackInt::PackInt(DPN *dpn, PackCoordinate pc, ColumnShare *s) : Pack(dpn, pc, s)
   if (dpn_->NotTrivial()) {
     system::TianmuFile f;
     f.OpenReadOnly(s->DataFile());
+
+    ASSERT(dpn_->dataAddress != DPN_INVALID_ADDR);
     f.Seek(dpn_->dataAddress, SEEK_SET);
     LoadDataFromFile(&f);
   }

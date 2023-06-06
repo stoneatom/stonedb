@@ -1,0 +1,34 @@
+-- source include/have_tianmu.inc
+
+--disable_warnings
+
+--disable_query_log
+
+DROP DATABASE IF EXISTS issue1855_test_db;
+CREATE DATABASE issue1855_test_db;
+
+USE issue1855_test_db;
+
+DROP TABLE IF EXISTS squence;
+
+CREATE TABLE ttt (
+  p_id varchar(50) NOT NULL
+) ENGINE=TIANMU AUTO_INCREMENT=3000000004910127 DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `ttt` 
+VALUES("THIS IS"), 
+("A TEST"),
+("FOR SUM LENGTH");
+--enable_query_log
+
+SELECT SUM(LENGTH(p_id)) FROM ttt;
+
+SELECT SUM(LENGTH(p_id)/2) FROM ttt;
+
+--disable_query_log
+DROP TABLE ttt;
+
+DROP DATABASE issue1855_test_db;
+--enable_query_log
+
+--enable_warnings
