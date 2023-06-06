@@ -43,6 +43,7 @@ void ValueOrNull::SetBString(const types::BString &tianmu_s) {
 void ValueOrNull::MakeStringOwner() {
   if (!sp || string_owner)
     return;
+
   char *tmp = new char[len + 1];
   std::memcpy(tmp, sp, len);
   tmp[len] = 0;
@@ -74,9 +75,11 @@ void ValueOrNull::GetBString(types::BString &tianmu_s) const {
 ValueOrNull::ValueOrNull(ValueOrNull const &von)
     : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null) {
   if (string_owner) {
-    sp = new char[len + 1];
-    std::memcpy(sp, von.sp, len);
-    sp[len] = 0;
+    sp = new (std::nothrow) char[len + 1];
+    if (sp) {
+      std::memcpy(sp, von.sp, len);
+      sp[len] = 0;
+    }
   } else {
     sp = von.sp;
   }
@@ -87,6 +90,7 @@ ValueOrNull &ValueOrNull::operator=(ValueOrNull const &von) {
     ValueOrNull tmp(von);
     Swap(tmp);
   }
+
   return (*this);
 }
 

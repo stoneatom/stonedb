@@ -105,10 +105,13 @@ class ValueOrNull final {
 
   void Swap(ValueOrNull &von);
   void Clear() {
-    if (string_owner)
+    if (string_owner && sp) {
       delete[] sp;
-    sp = nullptr;
-    string_owner = false;
+      sp = nullptr;
+
+      string_owner = false;
+    }
+
     null = true;
     x = common::NULL_VALUE_64;
     len = 0;
