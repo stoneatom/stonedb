@@ -224,8 +224,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
                                                        [[maybe_unused]] bool limit_less_than_no_groups) {
   MEASURE_FET("TempTable::MultiDimensionalGroupByScan(...)");
   bool first_pass = true;
-  // tuples are numbered according to tuple_left filter (not used, if tuple_left
-  // is null)
+  // tuples are numbered according to tuple_left filter (not used, if tuple_left is null)
   int64_t cur_tuple = 0;
   int64_t displayed_no_groups = 0;
 
@@ -286,8 +285,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
       gbw.AddAllGroupingConstants(mit);
       ag_worker.Init(mit);
       if (rewind_needed)
-        mit.Rewind();  // aggregated rows will be massively omitted packrow by
-                       // packrow
+        mit.Rewind();  // aggregated rows will be massively omitted packrow by packrow
       rewind_needed = true;
       for (uint i = 0; i < t->NumOfAttrs(); i++) {  // left as uninitialized (nullptr or 0)
         if (t->GetAttrP(i)->mode == common::ColOperation::DELAYED) {
@@ -309,9 +307,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         ag_worker.DistributeAggreTaskAverage(mit, &mem_used);
       } else {
         thread_type = "sin";
-        while (mit.IsValid()) {  // need muti thread
-                                 // First stage -
-                                 //  some distincts may be delayed
+        while (mit.IsValid()) {  // need muti thread First stage - some distincts may be delayed
           if (m_conn->Killed())
             throw common::KilledException();
 
@@ -359,8 +355,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
                                                                         // all other possible rows (if any)
         t->CalculatePageSize(upper_groups);
         if (upper_groups > gbw.UpperApproxOfGroups())
-          upper_groups = gbw.UpperApproxOfGroups();  // another upper limitation: not more
-                                                     // than theoretical number of
+          upper_groups = gbw.UpperApproxOfGroups();  // another upper limitation: not more  than theoretical number of
                                                      // combinations
 
         MIDummyIterator m(1);
@@ -570,7 +565,7 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
 
   gbw.ResetPackrow();
   int64_t rows_in_pack = gbw.TuplesLeftBetween(cur_tuple, cur_tuple + packrow_length - 1);
-  assert(rows_in_pack > 0);
+  DEBUG_ASSERT(rows_in_pack > 0);
 
   skip_packrow = AggregateRough(gbw, *mit, packrow_done, part_omitted, aggregations_not_changeable, stop_all,
                                 uniform_pos, rows_in_pack, factor);
@@ -813,7 +808,7 @@ bool AggregationAlgorithm::AggregateRough(GroupByWrapper &gbw, MIIterator &mit, 
       return true;  // no space to add uniform values in this pass, omit it for
                     // now
   }
-  assert(!packrow_done);
+  DEBUG_ASSERT(!packrow_done);
 
   // the next step: check if anything may be changed (when no new groups can be
   // added))

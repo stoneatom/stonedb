@@ -336,23 +336,30 @@ uint32_t TianmuTable::GetTableId(const fs::path &dir) {
 }
 
 void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
+  DBUG_ENTER("TianmuTable::CreateNew");
   core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
-  assert(eng);
+  ASSERT(eng);
 
+  // phase 1: Get the Next table id from tianmu.id file.
   uint32_t tid = eng->GetNextTableId();
   auto &path(opt->path);
   uint32_t no_attrs = opt->atis.size();
   uint64_t auto_inc_value = opt->create_info->auto_increment_value;
-  fs::create_directory(path);
+  if (!fs::create_directory(path))
+    throw common::DatabaseException("Create Directory " + path.string() + " failed!");
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE1", { DBUG_VOID_RETURN; });
 
   TABLE_META meta{common::FILE_MAGIC, common::TABLE_DATA_VERSION, tid, opt->pss};
 
+  // phase 2: create "TABLE_DESC" file.
   system::TianmuFile ftbl;
   ftbl.OpenCreateEmpty(path / common::TABLE_DESC_FILE);
   ftbl.WriteExact(&meta, sizeof(meta));
   ftbl.Flush();
   ftbl.Close();
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE2_FAILED", { DBUG_VOID_RETURN; });
 
+  // phase 3: create version file. "V.trxid"
   auto zero = common::TABLE_VERSION_PREFIX + common::TX_ID(0).ToString();
   std::ofstream ofs(path / zero);
   common::TX_ID zid(0);
@@ -360,12 +367,18 @@ void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
     ofs.write(reinterpret_cast<char *>(&zid), sizeof(zid));
   }
   ofs.flush();
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE3_FAILED", { DBUG_VOID_RETURN; });
 
+  // phase 4: create the symbol link of `VERSION`.
   fs::create_symlink(zero, path / common::TABLE_VERSION_FILE);
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE4_FAILED", { DBUG_VOID_RETURN; });
 
+  // phase 5: create  'columns' directories.
   auto column_path = path / common::COLUMN_DIR;
   fs::create_directories(column_path);
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE5_FAILED", { DBUG_VOID_RETURN; });
 
+  // phase 6: create all columns directories with col id.
   for (size_t idx = 0; idx < no_attrs; idx++) {
     auto dir = Engine::GetNextDataDir();
     dir /= std::to_string(tid) + "." + std::to_string(idx);
@@ -380,6 +393,8 @@ void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
     // TIANMU_LOG(LogCtl_Level::INFO, "Column %zu at %s", idx, dir.c_str());
   }
   TIANMU_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);
+
+  DBUG_VOID_RETURN;
 }
 
 void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
@@ -744,32 +759,32 @@ int64_t TianmuTable::NumOfValues() const { return NumOfObj(); }
 uint64_t TianmuTable::NextRowId() { return m_delta->row_id++; }
 
 void TianmuTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
-  assert(static_cast<size_t>(attr) <= m_attrs.size());
-  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   s = m_attrs[attr]->GetValueString(obj);
 }
 
 int64_t TianmuTable::GetTable64(int64_t obj, int attr) {
-  assert(static_cast<size_t>(attr) <= m_attrs.size());
-  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValueInt64(obj);
 }
 
 bool TianmuTable::IsNull(int64_t obj, int attr) {
-  assert(static_cast<size_t>(attr) <= m_attrs.size());
-  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return (m_attrs[attr]->IsNull(obj) ? true : false);
 }
 
 types::TianmuValueObject TianmuTable::GetValue(int64_t obj, int attr, [[maybe_unused]] Transaction *conn) {
-  assert(static_cast<size_t>(attr) <= m_attrs.size());
-  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValue(obj, false);
 }
 
 bool TianmuTable::IsDelete(int64_t row) const { return m_attrs[0]->IsDelete(row); }
 uint TianmuTable::MaxStringSize(int n_a, Filter *f) {
-  assert(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
+  DEBUG_ASSERT(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
   if (NumOfObj() == 0)
     return 1;
   return m_attrs[n_a]->MaxStringSize(f);

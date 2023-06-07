@@ -42,7 +42,7 @@ GroupDistinctCache::~GroupDistinctCache() {
 }
 
 void GroupDistinctCache::Initialize() {
-  assert(no_obj > 0 && width > 0);
+  DEBUG_ASSERT(no_obj > 0 && width > 0);
   upper_byte_limit = tianmu_sysvar_distcache_size * 1_MB;  // Default 64 MB - max size of buffer
   buf_size = no_obj;
   if (no_obj > 32_GB)
@@ -128,7 +128,7 @@ bool GroupDistinctCache::NextWrite()  // go to the next position, return false
 }
 
 void GroupDistinctCache::MarkCurrentAsPreserved() {
-  assert(cur_obj >= cur_write_obj);
+  DEBUG_ASSERT(cur_obj >= cur_write_obj);
   if (t_write == nullptr) {
     t_write = (unsigned char *)alloc(upper_byte_limit,
                                      mm::BLOCK_TYPE::BLOCK_TEMPORARY);  // switch writing to the new buffer

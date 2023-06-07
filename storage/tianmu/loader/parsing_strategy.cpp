@@ -435,7 +435,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
 
       str = new (thd_->mem_root) String(MAX_FIELD_WIDTH);
       String *res = field->val_str(str);
-      assert(res);
+      DEBUG_ASSERT(res);
       vec_field_Str_list_.push_back(str);
       vec_field_num_to_index_.push_back(0);
       map_field_name_to_index_[field_name] = i;
@@ -555,13 +555,13 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
   // step3,field in the set clause
   while ((fld = f++)) {
     Item_field *const field = fld->field_for_view_update();
-    assert(field != NULL);
+    DEBUG_ASSERT(field != NULL);
     Field *const rfield = field->field;
 
     Item *const value = v++;
 
     if (value->save_in_field(rfield, false) < 0) {
-      assert(0);
+      DEBUG_ASSERT(0);
     }
 
     rfield->check_constraints(ER_BAD_NULL_ERROR);
@@ -711,8 +711,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
     auto function = types::ValueParserForText::GetParsingFuntion(ati);
     if (function(tmp_string, *reinterpret_cast<int64_t *>(buffer.Prepare(sizeof(int64_t)))) ==
         common::ErrorCode::FAILED)
-      throw common::FormatException(0,
-                                    col);  // TODO: throw appropriate exception
+      throw common::FormatException(0, col);  // TODO: throw appropriate exception
     buffer.ExpectedSize(sizeof(int64_t));
   }
 }

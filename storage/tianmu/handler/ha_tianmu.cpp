@@ -703,6 +703,7 @@ int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]
 
     eng->AddTableDelta(table, share_);
     ret = 0;
+
   } catch (common::Exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Error from Tianmu engine", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "A tianmu exception is caught: %s", e.what());
@@ -1238,6 +1239,14 @@ int ha_tianmu::delete_table(const char *name) {
     } else {
       DBUG_RETURN(1);
     }
+  } catch (common::TianmuError &e) {
+    std::string errmsg = "TianmuError exception error caught. err:" + e.Message();
+    my_message(static_cast<int>(common::ErrorCode::FAILED), errmsg.c_str(), MYF(0));
+    TIANMU_LOG(LogCtl_Level::ERROR, "TianmuError exception error caught. err." + e.Message());
+  } catch (common::DatabaseException &e) {
+    std::string errmsg = "Database exception error caught. err:" + e.getExceptionMsg();
+    my_message(static_cast<int>(common::ErrorCode::FAILED), errmsg.c_str(), MYF(0));
+    TIANMU_LOG(LogCtl_Level::ERROR, "Database exception error caught. err." + e.getExceptionMsg());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -2395,7 +2404,7 @@ int tianmu_throw_error_func([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] str
   int buffer_length = 512;
   char buff[512] = {0};
 
-  assert(value->value_type(value) == MYSQL_VALUE_TYPE_STRING);
+  DEBUG_ASSERT(value->value_type(value) == MYSQL_VALUE_TYPE_STRING);
 
   my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), value->val_str(value, buff, &buffer_length), MYF(0));
   return -1;

@@ -35,6 +35,8 @@ PackInt::PackInt(DPN *dpn, PackCoordinate pc, ColumnShare *s) : Pack(dpn, pc, s)
   if (dpn_->NotTrivial()) {
     system::TianmuFile f;
     f.OpenReadOnly(s->DataFile());
+
+    ASSERT(dpn_->dataAddress != DPN_INVALID_ADDR);
     f.Seek(dpn_->dataAddress, SEEK_SET);
     LoadDataFromFile(&f);
   }
@@ -742,7 +744,16 @@ void PackInt::Save() {
 
   col_share_->alloc_seg(dpn_);
   system::TianmuFile f;
-  f.OpenCreate(col_share_->DataFile());
+  bool need_sync = false;
+  if (!f.Exists(col_share_->DataFile())) {
+    need_sync = true;
+  }
+
+  if (f.OpenCreate(col_share_->DataFile()) == -1)
+    return;
+  if (need_sync && f.Flush() == -1)
+    return;
+
   f.Seek(dpn_->dataAddress, SEEK_SET);
   if (ShouldNotCompress())
     SaveUncompressed(&f);
@@ -831,8 +842,7 @@ std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
   }
 
   if (maxv != 0) {
-    // ASSERT(last_set + 1 == dpn_->numOfRecords - dpn_->numOfNulls, "Expression evaluation
-    // failed!");
+    // ASSERT(last_set + 1 == dpn_->numOfRecords - dpn_->numOfNulls, "Expression evaluation failed!");
     if (data_.value_type_ == 1) {
       compress::NumCompressor<uchar> nc;
       tmp_cb_len = (dpn_->numOfRecords - dpn_->numOfNulls) * sizeof(uchar) + 20;

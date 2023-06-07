@@ -163,7 +163,7 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
 
 Item_tianmufield *MysqlExpression::GetTianmufieldItem(Item_field *ifield) {
   auto key = item2varid->find(ifield);
-  assert(key != item2varid->end());
+  DEBUG_ASSERT(key != item2varid->end());
   auto it = tianmu_fields_cache.find(key->second);
   Item_tianmufield *tianmufield = nullptr;
   if (it != tianmu_fields_cache.end()) {
@@ -353,7 +353,7 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
 MysqlExpression::SetOfVars &MysqlExpression::GetVars() { return vars; }
 
 void MysqlExpression::SetBufsOrParams(var_buf_t *bufs) {
-  assert(bufs);
+  DEBUG_ASSERT(bufs);
   for (auto &it : tianmu_fields_cache) {
     auto buf_set = bufs->find(it.first);
     if (buf_set != bufs->end()) {
@@ -435,7 +435,7 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
       // the bug inside common::TxtDataFormat::StaticExtrnalSize.
       break;
     case ROW_RESULT:
-      assert(0 && "unexpected type: ROW_RESULT");
+      DEBUG_ASSERT(0 && "unexpected type: ROW_RESULT");
       break;
   }
   return type;
@@ -464,7 +464,7 @@ std::shared_ptr<ValueOrNull> MysqlExpression::Evaluate() {
     case STRING_RESULT:
       return ItemString2ValueOrNull(item, type.precision, type.attrtype);
     default:
-      assert(0 && "unexpected value");
+      DEBUG_ASSERT(0 && "unexpected value");
   }
   return std::make_shared<ValueOrNull>();
 }
@@ -540,7 +540,7 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item,
       }
     } else {
       uint len = ret->length();
-      assert(p[len] == 0);
+      DEBUG_ASSERT(p[len] == 0);
       if (maxstrlen >= 0 && len > uint(maxstrlen)) {
         len = maxstrlen;
         p[len] = 0;

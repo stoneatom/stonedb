@@ -213,34 +213,28 @@ class AggregatorGroupConcat : public TIANMUAggregator {
  public:
   using TIANMUAggregator::PutAggregatedValue;
   AggregatorGroupConcat() = delete;
-  AggregatorGroupConcat(SI si, common::ColumnType type) : si(si), attrtype(type) {}
+  AggregatorGroupConcat(SpecialInstruction si, common::ColumnType type) : si_(si), attrtype_(type) {}
   AggregatorGroupConcat(const AggregatorGroupConcat &sec)
-      : TIANMUAggregator(sec), si(sec.si), gconcat_maxlen(sec.gconcat_maxlen), attrtype(sec.attrtype) {}
+      : TIANMUAggregator(sec), si_(sec.si_), gconcat_maxlen_(sec.gconcat_maxlen_), attrtype_(sec.attrtype_) {}
 
   TIANMUAggregator *Copy() override { return new AggregatorGroupConcat(*this); }
-  int BufferByteSize() override { return gconcat_maxlen; }
+  int BufferByteSize() override { return gconcat_maxlen_; }
   void Reset(unsigned char *buf) override { *((int64_t *)buf) = 0; }
+
   void PutAggregatedValue([[maybe_unused]] unsigned char *buf, [[maybe_unused]] int64_t v,
-                          [[maybe_unused]] int64_t factor) override {
-    TIANMU_ERROR("Internal error: invalid call for AggregatorGroupConcat");
-    return;
-  }
-  void Merge([[maybe_unused]] unsigned char *buf, [[maybe_unused]] unsigned char *src_buf) override {
-    TIANMU_ERROR("Internal error: invalid call for AggregatorGroupConcat");
-    return;
-  }
+                          [[maybe_unused]] int64_t factor) override;
   void PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) override;
-  int64_t GetValue64([[maybe_unused]] unsigned char *buf) override {
-    TIANMU_ERROR("Internal error: invalid call for AggregatorGroupConcat");
-    return -1;
-  }
+
+  void Merge([[maybe_unused]] unsigned char *buf, [[maybe_unused]] unsigned char *src_buf) override;
+
+  int64_t GetValue64([[maybe_unused]] unsigned char *buf) override;
   types::BString GetValueT(unsigned char *buf) override;
 
  private:
-  const SI si{",", ORDER::ORDER_NOT_RELEVANT};
-  const uint gconcat_maxlen = tianmu_group_concat_max_len;
-  std::map<unsigned char *, unsigned int> lenmap;  // store aggregation column length
-  common::ColumnType attrtype = common::ColumnType::STRING;
+  const SpecialInstruction si_{",", ORDER::ORDER_NOT_RELEVANT};
+  const uint gconcat_maxlen_ = tianmu_group_concat_max_len;
+  std::map<unsigned char *, unsigned int> lenmap_;  // store aggregation column length
+  common::ColumnType attrtype_ = common::ColumnType::STRING;
 };
 }  // namespace core
 }  // namespace Tianmu

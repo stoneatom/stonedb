@@ -73,14 +73,13 @@ struct DPN final {
 
  private:
   // a tagged pointer, 16 bits as ref count.
-  // Only read-only dpn uses it for ref counting; local dpn is managed only by
-  // one write session
+  // Only read-only dpn uses it for ref counting; local dpn is managed only by one write session
   std::atomic_ulong tagged_ptr;
 
  public:
   bool CAS(uint64_t &expected, uint64_t desired) { return tagged_ptr.compare_exchange_weak(expected, desired); }
-  uint64_t GetPackPtr() const { return tagged_ptr.load(); }
-  void SetPackPtr(uint64_t v) { tagged_ptr.store(v); }
+  uint64_t GetRefCount() const { return tagged_ptr.load(); }
+  void SetRefCount(uint64_t v) { tagged_ptr.store(v); }
   /*
     Because the delete bitmap is in the pack,
     when there are deleted records in the pack,

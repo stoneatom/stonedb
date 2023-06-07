@@ -110,7 +110,7 @@ void MultiIndex::Clear() {
       dim_groups[i] = nullptr;
     }
   } catch (...) {
-    assert(!"exception from destructor");
+    DEBUG_ASSERT(!"exception from destructor");
   }
   delete[] dim_size;
   delete[] group_for_dim;

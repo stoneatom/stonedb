@@ -284,14 +284,14 @@ bool TianmuAttr::SaveVersion() {
         if (auto p = get_pack(i); p != nullptr) {
           p->Unlock();
           eng->cache.DropObject(get_pc(i));
-          dpn.SetPackPtr(0);
+          dpn.SetRefCount(0);
         }
         continue;
       }
 
       get_pack(i)->Save();
       get_pack(i)->Unlock();  // now it can be released by MM
-      dpn.SetPackPtr(0);
+      dpn.SetRefCount(0);
     }
   }
 
@@ -409,7 +409,7 @@ types::BString TianmuAttr::GetValueString(const int64_t obj) {
     auto const &dpn(get_dpn(pack));
     if (dpn.Trivial())  // no pack data
       return types::BString();
-    assert(get_pack(pack)->IsLocked());
+    DEBUG_ASSERT(get_pack(pack)->IsLocked());
     auto cur_pack = get_packS(pack);
 
     return cur_pack->GetValueBinary(offset);
@@ -438,7 +438,7 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
     return;
   common::ColumnType a_type = TypeName();
   size = 0;
-  assert(NumOfObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   LoadPackInfo();
   int pack = row2pack(obj);
   int offset = row2offset(obj);
@@ -457,7 +457,7 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
       if (dpn.Trivial())
         return;
       auto p = get_packS(pack);
-      assert(p->IsLocked());
+      DEBUG_ASSERT(p->IsLocked());
       types::BString v(p->GetValueBinary(offset));
       size = v.size();
       v.CopyTo(val_buf, size);
@@ -488,7 +488,7 @@ types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
   if (obj == common::NULL_VALUE_64)
     return types::TianmuValueObject();
   common::ColumnType a_type = TypeName();
-  assert(NumOfObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   types::TianmuValueObject ret;
   if (!IsNull(obj)) {
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
@@ -524,7 +524,7 @@ types::TianmuDataType &TianmuAttr::GetValueData(size_t obj, types::TianmuDataTyp
     value = ValuePrototype(lookup_to_num);
   else {
     common::ColumnType a_type = TypeName();
-    assert(NumOfObj() >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
       ((types::BString &)value) = GetNotNullValueString(obj);
     else if (ATI::IsBinType(a_type)) {
@@ -615,7 +615,7 @@ types::BString TianmuAttr::GetMinString(int pack) {
 
 // size of original 0-level value (text/binary, not null-terminated)
 size_t TianmuAttr::GetLength(int64_t obj) {
-  assert(NumOfObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   LoadPackInfo();
   int pack = row2pack(obj);
   auto const &dpn(get_dpn(pack));
@@ -632,7 +632,7 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
     return types::BString();
   }
   if (Type().Lookup()) {
-    assert(GetPackType() == common::PackType::INT);
+    DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     return m_dict->GetRealValue((int)code);
   }
   common::ColumnType a_type = TypeName();
@@ -673,7 +673,7 @@ int TianmuAttr::EncodeValue_T(const types::BString &tianmu_s, bool new_val, comm
     return common::NULL_VALUE_32;
 
   if (ATI::IsStringType(TypeName())) {
-    assert(GetPackType() == common::PackType::INT);
+    DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     LoadPackInfo();
 
     int vs = m_dict->GetEncodedValue(tianmu_s.val_, tianmu_s.len_);
@@ -725,6 +725,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   rounded = false;
   if (tianmu_err_code)
     *tianmu_err_code = common::ErrorCode::SUCCESS;
+
   if (!v || v->IsNull())
     return common::NULL_VALUE_64;
 
@@ -733,6 +734,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   } else if (ATI::IsDateTimeType(TypeName()) || ATI::IsDateTimeNType(TypeName())) {
     return ((types::TianmuDateTime *)v)->GetInt64();
   }
+
   ASSERT(GetPackType() == common::PackType::INT, "Pack type must be numeric!");
 
   int64_t vv = ((types::TianmuNum *)v)->ValueInt();
@@ -745,6 +747,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
     // for(int i=0;i<vp;i++) res*=10;
     return *(int64_t *)(&res);  // encode
   }
+
   if (((types::TianmuNum *)v)->IsReal()) {  // v is double
     double vd = *(double *)(&vv);
     vd *= types::Uint64PowOfTen(Type().GetScale());  // translate into int64_t of proper precision
@@ -754,10 +757,10 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
       return common::MINUS_INF_64;
     int64_t res = int64_t(vd);
     if (fabs(vd - double(res)) > 0.01)
-      rounded = true;  // ignore errors which are 2 digits less than declared
-                       // precision
+      rounded = true;  // ignore errors which are 2 digits less than declared precision
     return res;
   }
+
   unsigned char dplaces = Type().GetScale();
   while (vp < dplaces) {
     if (vv < common::MINUS_INF_64 / 10)
@@ -767,9 +770,11 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
     vv *= 10;
     vp++;
   }
+
   while (vp > dplaces) {
     if (vv % 10 != 0)
       rounded = true;
+
     vv /= 10;
     vp--;
   }
@@ -822,12 +827,22 @@ void TianmuAttr::LockPackForUse(common::PACK_INDEX pn) {
       std::shared_ptr<Pack> sp;
       try {
         sp = eng->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+      } catch (Tianmu::common::TianmuError &e) {
+        dpn->SetRefCount(0);
+        TIANMU_LOG(LogCtl_Level::ERROR, "An TianmuError exception is caught: %s", e.Message().c_str());
+
+        throw e;
+      } catch (Tianmu::common::Exception &e) {
+        dpn->SetRefCount(0);
+        TIANMU_LOG(LogCtl_Level::ERROR, "An common::Exception is caught: %s", e.getExceptionMsg().c_str());
+
+        throw e;
       } catch (std::exception &e) {
-        dpn->SetPackPtr(0);
+        dpn->SetRefCount(0);
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
         throw e;
       } catch (...) {
-        dpn->SetPackPtr(0);
+        dpn->SetRefCount(0);
         TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
         throw;
       }
@@ -859,7 +874,7 @@ void TianmuAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
   if (dpn->Trivial())
     return;
 
-  auto v = dpn->GetPackPtr();
+  auto v = dpn->GetRefCount();
   unsigned long newv;
 
   do {
@@ -937,7 +952,8 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   }
 
   DPN &dpn = get_dpn(pi);
-  if (current_txn_->LoadSource() == common::LoadSource::LS_File || dpn.numOfRecords == (1U << pss)) {
+  if (/*current_txn_->LoadSource() == common::LoadSource::LS_Direct ||*/
+      current_txn_->LoadSource() == common::LoadSource::LS_File || dpn.numOfRecords == (1U << pss)) {
     Pack *pack = get_pack(pi);
     if (!dpn.Trivial()) {
       pack->Save();
@@ -950,7 +966,7 @@ void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
     assert(eng);
 
     eng->cache.DropObject(get_pc(pi));
-    dpn.SetPackPtr(0);
+    dpn.SetRefCount(0);
   }
 
   hdr.numOfRecords += nvs->NumOfValues();
@@ -1020,7 +1036,7 @@ void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
       auto sp = eng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
 
       // we don't need any synchronization here because the dpn is local!
-      dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
+      dpn.SetRefCount(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
     }
 
     get_packN(pi)->LoadValues(nvs, nv);
@@ -1068,7 +1084,7 @@ void TianmuAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   // new package or expanding so-far-null package
   if (dpn.numOfRecords == 0 || dpn.NullOnly()) {
     auto sp = eng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
-    dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
+    dpn.SetRefCount(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
   }
 
   get_packS(pi)->LoadValues(nvs);
@@ -1187,7 +1203,7 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx,
 bool TianmuAttr::IsDelete(int64_t row) {
   if (row == common::NULL_VALUE_64)
     return true;
-  assert(hdr.numOfRecords >= static_cast<uint64_t>(row));
+  DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(row));
   auto pack = row2pack(row);
   const auto &dpn = get_dpn(pack);
 
@@ -1314,7 +1330,7 @@ void TianmuAttr::CopyPackForWrite(common::PACK_INDEX pi) {
   } else {
     new_pack = eng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
   }
-  dpn.SetPackPtr(reinterpret_cast<unsigned long>(new_pack.get()) + tag_one);
+  dpn.SetRefCount(reinterpret_cast<unsigned long>(new_pack.get()) + tag_one);
 }
 
 void TianmuAttr::CompareAndSetCurrentMin(const types::BString &tstmp, types::BString &min, bool set) {
@@ -1458,9 +1474,9 @@ void TianmuAttr::RefreshFilter(common::PACK_INDEX pi) {
   UpdateRSI_Hist(pi);
 }
 
-Pack *TianmuAttr::get_pack(size_t i) { return reinterpret_cast<Pack *>(get_dpn(i).GetPackPtr() & tag_mask); }
+Pack *TianmuAttr::get_pack(size_t i) { return reinterpret_cast<Pack *>(get_dpn(i).GetRefCount() & tag_mask); }
 
-Pack *TianmuAttr::get_pack(size_t i) const { return reinterpret_cast<Pack *>(get_dpn(i).GetPackPtr() & tag_mask); }
+Pack *TianmuAttr::get_pack(size_t i) const { return reinterpret_cast<Pack *>(get_dpn(i).GetRefCount() & tag_mask); }
 
 std::shared_ptr<RSIndex_Hist> TianmuAttr::GetFilter_Hist() {
   if (!tianmu_sysvar_enable_histogram_cmap_bloom) {

@@ -56,7 +56,7 @@ void TianmuAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
       else
         EvaluatePack_AttrAttr(mit, dim, d);
     } else
-      assert(0);  // case not implemented
+      DEBUG_ASSERT(0);  // case not implemented
   } else if (GetPackType() == common::PackType::INT &&
              (d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN)) {
     if (!ATI::IsRealType(TypeName()))
@@ -86,7 +86,7 @@ void TianmuAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
   else if (d.op == common::Operator::O_EQ_ALL)
     EvaluatePack_IsNoDelete(mit, dim);
   else
-    assert(0);  // case not implemented!
+    DEBUG_ASSERT(0);  // case not implemented!
 }
 
 // TODO: op (common::Operator::O_LIKE common::Operator::O_IN)
@@ -564,7 +564,7 @@ void TianmuAttr::EvaluatePack_InString(MIUpdatingIterator &mit, int dim, Descrip
     mit.NextPackrow();
     return;
   }
-  assert(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
+  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   bool encoded_set = multival_column->IsSetEncoded(TypeName(), ct.GetScale());
   do {
@@ -606,7 +606,7 @@ void TianmuAttr::EvaluatePack_InString_UTF(MIUpdatingIterator &mit, int dim, Des
     return;
   }
 
-  assert(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
+  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   DTCollation coll = d.GetCollation();
   int arraysize = d.val1.cond_value.size();
@@ -661,7 +661,7 @@ void TianmuAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor
   int64_t local_min = dpn.min_i;
   int64_t local_max = dpn.max_i;
 
-  assert(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
+  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   bool lookup_to_num = ATI::IsStringType(TypeName());
   bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::ColumnType::NUM, 0)
@@ -1095,7 +1095,7 @@ void TianmuAttr::EvaluatePack_AttrAttr(MIUpdatingIterator &mit, int dim, Descrip
           res = (v1 >= v2);
           break;
         default:
-          assert(0);
+          DEBUG_ASSERT(0);
       }
       if (!res)
         mit.ResetCurrent();
@@ -1159,7 +1159,7 @@ void TianmuAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Des
           res = (v1 >= v2);
           break;
         default:
-          assert(0);
+          DEBUG_ASSERT(0);
       }
       if (!res)
         mit.ResetCurrent();

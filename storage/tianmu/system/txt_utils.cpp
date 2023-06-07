@@ -28,7 +28,7 @@ inline char Convert2Hex(int index) {
 };
 
 void Convert2Hex(const unsigned char *src, int src_size, char *dest, int dest_size, bool zero_term) {
-  assert(dest_size > 1 && "At least 2 bytes needed for hexadecimal representation");
+  DEBUG_ASSERT(dest_size > 1 && "At least 2 bytes needed for hexadecimal representation");
 
   dest_size = std::min(src_size * 2 + 1, dest_size);
   if (zero_term) {

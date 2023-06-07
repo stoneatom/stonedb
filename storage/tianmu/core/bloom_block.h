@@ -53,7 +53,7 @@ class Slice {
   // Return the ith byte in the referenced data.
   // REQUIRES: n < size()
   char operator[](size_t n) const {
-    assert(n < size());
+    DEBUG_ASSERT(n < size());
     return data_[n];
   }
 
@@ -65,7 +65,7 @@ class Slice {
 
   // Drop the first "n" bytes from this slice.
   void remove_prefix(size_t n) {
-    assert(n <= size());
+    DEBUG_ASSERT(n <= size());
     data_ += n;
     size_ -= n;
   }

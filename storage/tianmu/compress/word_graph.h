@@ -187,9 +187,9 @@ class WordGraph : public PPMModel {
 
   Count GetEscCount(PNode n, int c = 0);
   Count GetShEscCount(PNode n, int c = 0);
-  // Count GetEscCount(PNode n)	{ assert(n != NIL_); return
+  // Count GetEscCount(PNode n)	{ DEBUG_ASSERT(n != NIL_); return
   // param_.esc_count; }
-  // Count GetShEscCount(PNode n)	{ assert(n != NIL_); return
+  // Count GetShEscCount(PNode n)	{ DEBUG_ASSERT(n != NIL_); return
   // param_.esc_count; }
 
   //-------------------------------------------------------------------------

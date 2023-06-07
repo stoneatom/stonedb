@@ -23,18 +23,18 @@ namespace Tianmu {
 namespace system {
 
 int TianmuFile::Open(std::string const &file, int flags, mode_t mode) {
-  assert(file.length());
+  DEBUG_ASSERT(file.length());
   name_ = file;
 
   fd_ = open(file.c_str(), flags, mode);
   if (fd_ == -1)
     throw common::TianmuError(common::ErrorCode::FAILED,
-                              "ErrorCode: " + std::to_string(errno) + " - " + strerror(errno));
+                              "ErrorCode: " + std::to_string(errno) + " - " + strerror(errno) + "[" + file + "]");
   return fd_;
 }
 
 size_t TianmuFile::Read(void *buf, size_t count) {
-  assert(fd_ != -1);
+  DEBUG_ASSERT(fd_ != -1);
   auto read_bytes = read(fd_, buf, count);
   if (read_bytes == -1)
     ThrowError(errno);
@@ -86,7 +86,7 @@ void TianmuFile::ReadExact(void *buf, size_t count) {
 }
 
 void TianmuFile::WriteExact(const void *buf, size_t count) {
-  assert(fd_ != -1);
+  DEBUG_ASSERT(fd_ != -1);
   size_t total_writen_bytes = 0;
   while (total_writen_bytes < count) {
     auto writen_bytes = write(fd_, ((char *)buf) + total_writen_bytes, count - total_writen_bytes);
@@ -98,7 +98,7 @@ void TianmuFile::WriteExact(const void *buf, size_t count) {
 
 off_t TianmuFile::Seek(off_t pos, int whence) {
   off_t new_pos = -1;
-  assert(fd_ != -1);
+  DEBUG_ASSERT(fd_ != -1);
 
   new_pos = lseek(fd_, pos, whence);
 
@@ -109,7 +109,7 @@ off_t TianmuFile::Seek(off_t pos, int whence) {
 
 off_t TianmuFile::Tell() {
   off_t pos;
-  assert(fd_ != -1);
+  DEBUG_ASSERT(fd_ != -1);
   pos = lseek(fd_, 0, SEEK_CUR);
   if (pos == (off_t)-1)
     ThrowError(errno);

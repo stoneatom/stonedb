@@ -1,0 +1,6 @@
+SELECT SUM(LENGTH(p_id)) FROM ttt;
+SUM(LENGTH(p_id))
+27
+SELECT SUM(LENGTH(p_id)/2) FROM ttt;
+SUM(LENGTH(p_id)/2)
+13.5000

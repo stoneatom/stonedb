@@ -770,7 +770,7 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
     return;
   }
 
-  assert(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
+  DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
 
   if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
