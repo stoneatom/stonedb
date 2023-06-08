@@ -95,14 +95,17 @@ class ValueOrNull final {
    */
   void GetBString(types::BString &tianmu_s) const;
   std::optional<std::string> ToString() const;
+  void Clear_SP() {
+    if (string_owner && sp) {
+      delete[] sp;
+      sp = nullptr;
+
+      string_owner = false;
+      null = true;
+    }
+  }
 
  private:
-  int64_t x;                  // 8-byte value of an expression; interpreted as int64_t or double
-  char *sp = nullptr;         // != 0 if string value assigned
-  uint len = 0;               // string length; used only for ValueType::VT_STRING
-  bool string_owner = false;  // if true, destructor must deallocate sp
-  bool null;
-
   void Swap(ValueOrNull &von);
   void Clear() {
     if (string_owner && sp) {
@@ -116,6 +119,13 @@ class ValueOrNull final {
     x = common::NULL_VALUE_64;
     len = 0;
   }
+
+ private:
+  int64_t x;                  // 8-byte value of an expression; interpreted as int64_t or double
+  char *sp = nullptr;         // != 0 if string value assigned
+  uint len = 0;               // string length; used only for ValueType::VT_STRING
+  bool string_owner = false;  // if true, destructor must deallocate sp
+  bool null;
 };
 }  // namespace core
 }  // namespace Tianmu
