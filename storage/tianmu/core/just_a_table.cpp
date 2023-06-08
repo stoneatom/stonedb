@@ -39,8 +39,10 @@ ValueOrNull JustATable::GetComplexValue(const int64_t obj, const int attr) {
     str_to_datetime(s.GetDataBytesPointer(), s.len_, &myt, TIME_DATETIME_ONLY, &not_used);
     return ValueOrNull(types::TianmuDateTime(myt, common::ColumnType::TIMESTAMP).GetInt64());
   }
+
   if (ct.IsFixed() || ct.IsFloat() || ct.IsDateTime())
     return ValueOrNull(GetTable64(obj, attr));
+
   if (ct.IsString()) {
     ValueOrNull val;
     types::BString s;
@@ -48,6 +50,7 @@ ValueOrNull JustATable::GetComplexValue(const int64_t obj, const int attr) {
     val.SetBString(s);
     return val;
   }
+
   throw common::Exception("Unrecognized data type in JustATable::GetComplexValue");
 }
 }  // namespace core

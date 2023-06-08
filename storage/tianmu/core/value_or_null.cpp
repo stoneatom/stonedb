@@ -29,13 +29,16 @@ void ValueOrNull::SetBString(const types::BString &tianmu_s) {
     null = false;
     if (tianmu_s.IsPersistent()) {
       string_owner = true;
-      sp = new char[tianmu_s.len_ + 1];
-      std::memcpy(sp, tianmu_s.val_, tianmu_s.len_);
-      sp[tianmu_s.len_] = 0;
+      sp = new (std::nothrow) char[tianmu_s.len_ + 1];
+      if (sp) {
+        std::memset(sp, '\0', tianmu_s.len_ + 1);
+        std::memcpy(sp, tianmu_s.val_, tianmu_s.len_);
+      }
     } else {
       sp = tianmu_s.val_;
       string_owner = false;
     }
+
     len = tianmu_s.len_;
   }
 }
@@ -44,11 +47,14 @@ void ValueOrNull::MakeStringOwner() {
   if (!sp || string_owner)
     return;
 
-  char *tmp = new char[len + 1];
-  std::memcpy(tmp, sp, len);
-  tmp[len] = 0;
-  sp = tmp;
-  string_owner = true;
+  char *tmp = new (std::nothrow) char[len + 1];
+  if (tmp) {
+    std::memset(tmp, '\0', len + 1);
+    std::memcpy(tmp, sp, len);
+
+    sp = tmp;
+    string_owner = true;
+  }
 }
 
 std::optional<std::string> ValueOrNull::ToString() const {
@@ -76,9 +82,13 @@ ValueOrNull::ValueOrNull(ValueOrNull const &von)
     : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null) {
   if (string_owner) {
     sp = new (std::nothrow) char[len + 1];
+
     if (sp) {
+      std::memset(sp, '\0', len + 1);
       std::memcpy(sp, von.sp, len);
-      sp[len] = 0;
+    } else {
+      string_owner = false;
+      sp = von.sp;
     }
   } else {
     sp = von.sp;
@@ -86,10 +96,23 @@ ValueOrNull::ValueOrNull(ValueOrNull const &von)
 }
 
 ValueOrNull &ValueOrNull::operator=(ValueOrNull const &von) {
-  if (&von != this) {
-    ValueOrNull tmp(von);
-    Swap(tmp);
+  if (this == &von)
+    return *this;
+
+  if (von.string_owner) {
+    sp = new (std::nothrow) char[von.len + 1];
+    if (sp) {
+      std::memset(sp, '\0', von.len + 1);
+      std::memcpy(sp, von.sp, von.len);
+      len = von.len;
+    }
+  } else {
+    sp = von.sp;
   }
+
+  string_owner = von.string_owner;
+  null = von.null;
+  x = von.x;
 
   return (*this);
 }

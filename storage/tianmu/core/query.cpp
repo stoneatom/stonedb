@@ -1728,7 +1728,15 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
     if (cond_removed->type() == Item::FUNC_ITEM &&
         down_cast<Item_func *>(cond_removed)->functype() == Item_func::TRIG_COND_FUNC) {
       // Condition was wrapped into trigger
-      cond_removed = down_cast<Item_cond *>(down_cast<Item_func *>(cond_removed)->arguments()[0]);
+      Item_func_trig_cond *trig_cond = down_cast<Item_func_trig_cond *>(cond_removed);
+      Item *arg = trig_cond->arguments()[0];
+
+      if ((arg->type() == Item::FUNC_ITEM) && (down_cast<Item_func *>(arg)->functype() == Item_func::EQ_FUNC)) {
+        cond_removed = down_cast<Item_func_eq *>(arg);
+      } else
+        cond_removed = down_cast<Item_cond *>(arg);
+
+      // cond_removed = down_cast<Item_cond *>(down_cast<Item_func *>(cond_removed)->arguments()[0]);
     }
     if (cond_removed->type() == Item::COND_ITEM &&
         down_cast<Item_func *>(cond_removed)->functype() == Item_func::COND_OR_FUNC) {
