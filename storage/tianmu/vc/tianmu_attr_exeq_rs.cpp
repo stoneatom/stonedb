@@ -367,10 +367,20 @@ common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool addit
                                                    // values were already transformed in
                                                    // EncodeCondition
       int64_t v2 = d.val2.vc->GetValueInt64(mit);
+      bool is_v1_unsigned = d.val1.vc->GetUnsignedFlag();
+      bool is_v2_unsigned = d.val2.vc->GetUnsignedFlag();
       if (!ATI::IsRealType(TypeName())) {
+        // Currently the max value in tianmu is common::PLUS_INF_64, so v1(left boundary) should never GE PLUS_INF_64.
+        // only when v1 > common::PLUS_INF_64 it will be set "is_unsigned" in item and then passed to  ValueOrNull.
+        if (is_v1_unsigned && (static_cast<uint64_t>(v1) > common::PLUS_INF_64)) {
+          if (common::Operator::O_NOT_BETWEEN == d.op)
+            return common::RoughSetValue::RS_ALL;
+          else  // all other cases
+            return common::RoughSetValue::RS_NONE;
+        }
         if (v1 == common::MINUS_INF_64)
           v1 = dpn.min_i;
-        if (v2 == common::PLUS_INF_64)
+        if (v2 == common::PLUS_INF_64 || (is_v2_unsigned && (static_cast<uint64_t>(v2) > common::PLUS_INF_64)))
           v2 = dpn.max_i;
       } else {
         if (v1 == *(int64_t *)&common::MINUS_INF_DBL)

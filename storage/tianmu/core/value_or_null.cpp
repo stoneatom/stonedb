@@ -79,7 +79,7 @@ void ValueOrNull::GetBString(types::BString &tianmu_s) const {
 }
 
 ValueOrNull::ValueOrNull(ValueOrNull const &von)
-    : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null) {
+    : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null), unsigned_flag_(von.unsigned_flag_) {
   if (string_owner) {
     sp = new (std::nothrow) char[len + 1];
 
@@ -117,9 +117,11 @@ ValueOrNull &ValueOrNull::operator=(ValueOrNull const &von) {
   return (*this);
 }
 
-ValueOrNull::ValueOrNull(types::TianmuNum const &tianmu_n) : x(tianmu_n.GetValueInt64()), null(tianmu_n.IsNull()) {}
+ValueOrNull::ValueOrNull(types::TianmuNum const &tianmu_n)
+    : x(tianmu_n.GetValueInt64()), null(tianmu_n.IsNull()), unsigned_flag_(tianmu_n.GetUnsignedFlag()) {}
 
-ValueOrNull::ValueOrNull(types::TianmuDateTime const &tianmu_dt) : x(tianmu_dt.GetInt64()), null(tianmu_dt.IsNull()) {}
+ValueOrNull::ValueOrNull(types::TianmuDateTime const &tianmu_dt)
+    : x(tianmu_dt.GetInt64()), null(tianmu_dt.IsNull()), unsigned_flag_(true) {}
 
 ValueOrNull::ValueOrNull(types::BString const &tianmu_s)
     : x(common::NULL_VALUE_64),
@@ -138,6 +140,7 @@ void ValueOrNull::Swap(ValueOrNull &von) {
     std::swap(sp, von.sp);
     std::swap(len, von.len);
     std::swap(string_owner, von.string_owner);
+    std::swap(unsigned_flag_, von.unsigned_flag_);
   }
 }
 }  // namespace core
