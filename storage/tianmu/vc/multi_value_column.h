@@ -194,6 +194,10 @@ class MultiValColumn : public VirtualColumn {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
   }
+  bool GetUnsignedFlagImpl() override {
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
+    return (false);
+  }
   double GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
