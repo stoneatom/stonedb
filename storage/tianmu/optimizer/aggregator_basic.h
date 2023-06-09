@@ -18,6 +18,7 @@
 #define TIANMU_CORE_AGGREGATOR_BASIC_H_
 #pragma once
 
+#include <mutex>
 #include "optimizer/aggregator.h"
 
 namespace Tianmu {
@@ -87,6 +88,7 @@ class AggregatorSum64 : public TIANMUAggregator {
   }
 
  private:
+  std::mutex aggr_mtx;
   int64_t pack_sum;
   int64_t pack_min;  // min and max are used to check whether a pack may update
                      // sum (i.e. both 0 means "no change")

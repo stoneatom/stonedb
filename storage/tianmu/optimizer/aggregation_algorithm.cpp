@@ -1072,6 +1072,7 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit, uint64_t 
   for (uint i = 0; i < vTask.size(); ++i) {
     if (dims.NoDimsUsed() == 0)
       dims.SetAll();
+
     auto &mii = taskIterator.emplace_back(mit, true);
     mii.SetTaskNum(vTask.size());
     mii.SetTaskId(i);

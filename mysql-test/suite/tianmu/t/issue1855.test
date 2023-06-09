@@ -32,8 +32,56 @@ SELECT SUM(LENGTH(p_val)) FROM ttt;
 SELECT SUM(LENGTH(p_val)/2) FROM ttt;
 
 --disable_query_log
-DROP TABLE ttt;
 
+--DELIMITER //
+CREATE PROCEDURE insert_data()
+wholeblock:BEGIN
+  DECLARE x INT;
+  DECLARE str VARCHAR(50);
+  DECLARE str1 VARCHAR(50);
+  SET x = 0;
+  SET str = 'this is ';
+  SET str1 = '';
+  
+  loop_label: LOOP
+    IF x > 10000 THEN
+      LEAVE loop_label;
+    END IF;
+   
+    SET str1 = substring(md5(rand()), 1, 10);
+    SET str = CONCAT(str,str1,',');
+    SET str = CONCAT(str,x,',');
+     
+    INSERT INTO ttt VALUES (str, x);
+    SET str ='';
+    SET x = x + 1;
+    ITERATE loop_label;
+  END LOOP;
+END//
+
+--DELIMITER ;
+
+CALL insert_data();
+
+DROP PROCEDURE insert_data;
+
+SHOW VARIABLES LIKE "%tianmu_groupby_parallel%";
+
+SET GLOBAL tianmu_groupby_parallel_rows_minimum = 100;
+SET GLOBAL tianmu_groupby_parallel_degree = 4;
+
+SHOW VARIABLES LIKE "%tianmu_groupby_parallel%";
+
+SELECT SUM(LENGTH(p_id)) FROM ttt;
+
+SELECT SUM(LENGTH(p_id)/2) FROM ttt;
+
+SELECT SUM(LENGTH(p_val)) FROM ttt;
+
+SELECT SUM(LENGTH(p_val)/2) FROM ttt;
+
+
+DROP TABLE ttt;
 DROP DATABASE issue1855_test_db;
 --enable_query_log
 
