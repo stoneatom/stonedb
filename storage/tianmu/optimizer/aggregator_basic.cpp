@@ -24,15 +24,23 @@
 namespace Tianmu {
 namespace core {
 void AggregatorSum64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) {
+  std::scoped_lock scp_lk(aggr_mtx);
+
   stats_updated = false;
   int64_t *p = (int64_t *)buf;
   if (*p == common::NULL_VALUE_64) {
     *p = 0;
   }
-  double overflow_check = double(*p) + double(v) * factor;
+
+  long double overflow_check = double(*p) + double(v) * factor;
   if (overflow_check > std::numeric_limits<std::streamsize>::max() ||
-      overflow_check < std::numeric_limits<std::streamsize>::min())
-    throw common::NotImplementedException("Aggregation overflow.");
+      overflow_check < std::numeric_limits<std::streamsize>::min()) {
+    char str_buff[1024] = {'\0'};
+    sprintf(str_buff, "Aggregation overflow for long double. over_check: %Lf", overflow_check);
+
+    throw common::InternalException(str_buff);
+  }
+
   *p += v * factor;
 }
 

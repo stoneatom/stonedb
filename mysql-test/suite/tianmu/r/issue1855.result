@@ -10,3 +10,17 @@ SUM(LENGTH(p_val))
 SELECT SUM(LENGTH(p_val)/2) FROM ttt;
 SUM(LENGTH(p_val)/2)
 3.0000
+Variable_name	Value
+tianmu_groupby_parallel_degree	0
+tianmu_groupby_parallel_rows_minimum	655360
+Variable_name	Value
+tianmu_groupby_parallel_degree	4
+tianmu_groupby_parallel_rows_minimum	100
+SUM(LENGTH(p_id))
+158949
+SUM(LENGTH(p_id)/2)
+79474.5000
+SUM(LENGTH(p_val))
+38901
+SUM(LENGTH(p_val)/2)
+19450.5000
