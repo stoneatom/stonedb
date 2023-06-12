@@ -5,7 +5,7 @@ sidebar_position: 5.121
 
 # CentOS 7 下编译 StoneDB for MySQL 8.0
 
-本文说明了如何在CentOS 7.9 的环境下编译StoneDB for MySQL 8.0
+本文说明了如何在CentOS 7.9 的环境下编译StoneDB for MySQL 8.0。
 
 编译工具以及第三方库的版本要求如下：
 
@@ -17,7 +17,11 @@ sidebar_position: 5.121
  * boost 1.77
 
 :::info 
-以下命令的执行可能会遇到权限问题，建议在管理员权限下运行
+以下命令的执行可能会遇到权限问题，建议在root权限下运行
+:::
+
+:::tip
+本文中所有命令默认是在root权限下运行
 :::
 
 ## 第一步：安装依赖包
@@ -62,18 +66,24 @@ yum install -y libicu
 yum install -y libicu-devel
 yum install -y jemalloc-devel
 ```
+:::info
+如果您当前的yum源找不到所需包，再配置一个epel源即可，命令如下：
+```bash
+yum install -y epel-release
+```
+:::
 
 ## 第二步：安装gcc 11.2.0
 
-通过执行以下语句，检查当前 gcc 版本是否符合安装要求
+通过执行以下语句，检查当前 gcc 版本是否符合安装要求。
 
 ```bash
 gcc --version
 ```
 
-如果版本不符合要求，按照以下步骤将 gcc 切换为正确版本
+如果版本不符合要求，按照以下步骤将 gcc 切换为正确版本。
 
-### 1.安装scl源
+### 1.配置scl源
 
 ```bash
 yum install centos-release-scl scl-utils-build -y
@@ -99,11 +109,17 @@ gcc --version
 
 ## 第三步：安装第三方库
 
-StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径. 示例中我们指定了 marisa、rocksdb、boost 的安装路径，你可以根据自己的需求更改安装路径
+StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径，您可以根据自己的需求更改安装路径。
 
 ### 1.安装cmake
 
-注意检查你的 cmake 版本，如果你的cmake 版本 < 3.72，安装 cmake
+检查当前cmake版本是否符合安装要求。
+
+```bash
+cmake --version
+```
+
+如果您的cmake版本 >= 3.7.2，则不用再安装cmake，否则按照以下步骤编译安装合适版本的cmake。
 
 ```bash
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
@@ -111,14 +127,13 @@ tar -zxvf cmake-3.7.2.tar.gz
 cd cmake-3.7.2
 ./bootstrap && make && make install
 /usr/local/bin/cmake --version
-apt remove cmake -y
-ln -s /usr/local/bin/cmake /usr/bin/
+rm -rf /usr/bin/cmake
+ln -s /usr/local/bin/cmake /usr/bin/cmake
 cmake --version
 ```
 
 :::info 
-如果你的gcc版本过高，可能导致编译失败. 你可以在`cmake-3.72/Source/cmServerProtocal.cxx`的文件开头加上`#include <limits>`来解决这个问题
-
+gcc11在编译cmake-3.7.2的时候会出现编译报错。您可以在`cmake-3.7.2/Source/cmServerProtocol.cxx`文件开头加上`#include <limits>`来解决这个问题
 ```c++
 #include <algorithm>
 #include <string>
@@ -126,18 +141,26 @@ cmake --version
 #include <limits>
 ```
 :::
+
 ### 2.安装make
 
-注意检查你的Make版本，如果你的make版本 < 3.82，安装 make
+检查当前make版本是否符合安装要求。
 
 ```bash
-wget http://mirrors.ustc.edu.cn/gnu/make/make-3.82.tar.gz
-tar -zxvf make-3.82.tar.gz
-cd make-3.82
+make --version
+```
+
+如果您的make版本 >= 3.82，则不用再安装make，否则按照以下步骤编译安装合适版本的make。
+
+```bash
+wget http://mirrors.ustc.edu.cn/gnu/make/make-4.3.tar.gz
+tar -zxvf make-4.3.tar.gz
+cd make-4.3
 ./configure  --prefix=/usr/local/make
 make && make install
-rm -rf /usr/local/bin/make
-ln -s /usr/local/make/bin/make /usr/local/bin/make
+/usr/local/make/bin/make --version
+rm -rf /usr/bin/make
+ln -s /usr/local/make/bin/make /usr/bin/make
 make --version
 ```
 
@@ -151,7 +174,7 @@ autoreconf -i
 sudo make && make install 
 ```
 
-marisa 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-marisa. 在这一步中，usr/local/stonedb-marisa/lib目录中的内容如下:
+marisa 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-marisa。在编译安装后，usr/local/stonedb-marisa/lib目录中的内容如下:
 
 ```bash
 [root@localhost /usr/local/stonedb-marisa/lib]#ll
@@ -190,21 +213,8 @@ cmake ./ \
 make -j`nproc`
 make install -j`nproc`
 ```
-:::info
-你的gcc版本可能过高，可以将你的CMakeLists.txt的310-317行改成下方这样
-:::
 
-```bash
-if(FAIL_ON_WARNINGS)
-  if(MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX")
-  else() # assume GCC
-      # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-  endif()
-endif()
-```
-
-rocksdb 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-gcc-rocksdb. 在这一步中，/usr/local/stonedb-gcc-rocksdb目录中文件如下:
+rocksdb 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-gcc-rocksdb。在编译安装后，/usr/local/stonedb-gcc-rocksdb目录中文件如下:
 
 ```bash
 [root@localhost /usr/local/stonedb-gcc-rocksdb]#ll
@@ -227,7 +237,7 @@ cd boost_1_77_0
 ./b2 install --with=all
 ```
 
-boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost177. 在这一步中，/usr/local/stonedb-boost177/lib目录中内容如下:
+boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost177。在编译安装后，/usr/local/stonedb-boost177/lib目录中内容如下:
 
 ```bash
 [root@localhost /usr/local/stonedb-boost177/lib]#ll
@@ -351,16 +361,16 @@ lrwxrwxrwx.  1 root root      33 May  5 08:33 libboost_wserialization.so -> libb
 ### 6.安装gtest
 
 ```bash
-sudo git clone https://github.com/google/googletest.git -b release-1.12.0
+git clone https://github.com/google/googletest.git -b release-1.12.0
 cd googletest
-sudo mkdir build
+mkdir build
 cd build
-sudo cmake .. -DBUILD_GMOCK=OFF
-sudo make
-sudo make install
+cmake .. -DBUILD_GMOCK=OFF
+make
+make install
 ```
 
-默认安装路径为 /usr/local
+默认安装路径为 /usr/local/
 
 ```bash
 ls /usr/local/include/
@@ -372,22 +382,21 @@ ls /usr/local/lib64/ # 64-bit os
 
 ## 第四步：编译StoneDB
 
-现在StoneDB有三个分支: StoneDB-5.6 (for MySQL 5.6)、 StoneDB-5.7 (for MySQL 5.7) and StoneDB-8.0 (for MySQL 8.0). 本文安装的是StoneDB-8.0. 在本例中源代码保存在/目录中.
+现在StoneDB有三个分支: StoneDB-5.6 (for MySQL 5.6)、 StoneDB-5.7 (for MySQL 5.7) and StoneDB-8.0 (for MySQL 8.0)。本文安装的是StoneDB-8.0，在本例中源代码保存在 / 目录中。
 
 ```bash
 cd /
-git clone https://github.com/stoneatom/stonedb.git
+git clone -b stonedb-8.0-dev https://github.com/stoneatom/stonedb.git
 ```
 
 在编译前，像下文一样更改编译脚本：
 
 :::info
-你可以根据自己的需求将安装目录更改为你的实际安装目录， 本例中用的是/stonedb/，记得将marisa, rocksdb, 和 boost的路径改为你的这三个库的实际安装路径
+您可以根据自己的需求将安装目录更改为您的实际安装目录，本例中用的是/stonedb/，记得将marisa, rocksdb, 和 boost的路径改为您的这三个库的实际安装路径
 :::
 
 ```bash
 cd stonedb
-git checkout -b 8.0 origin/stonedb-8.0-dev
 mkdir build
 cd build
 mkdir install8 mysql8
@@ -408,22 +417,26 @@ make install -j`nproc`
 
 ## 第五步：启动StoneDB
 
-你需要手动创建几个目录, 然后初始化并启动StoneDB. 你还需要填写你的配置文件my.cnf, 包括安装目录和端口.
+您需要手动创建几个目录, 然后初始化并启动StoneDB。您还需要填写您的配置文件my.cnf, 包括安装目录和端口。
 
 ```bash
 cd ../install8
+
 ### 新建目录
-sudo mkdir data binlog log tmp redolog undolog
+mkdir data binlog log tmp redolog undolog
 
 ### 配置my.cnf
-sudo cp ../../scripts/my.cnf.sample my.cnf
-sudo sed -i "s|YOUR_ABS_PATH|$(pwd)|g" my.cnf
+cp ../../scripts/my.cnf.sample my.cnf
+sed -i "s|YOUR_ABS_PATH|$(pwd)|g" my.cnf
 
 ### 初始化StoneDB
-sudo ./bin/mysqld --defaults-file=./my.cnf --initialize-insecure
+./bin/mysqld --defaults-file=./my.cnf --initialize-insecure
 
 ### 启动StoneDB
-sudo ./bin/mysqld --user=root &
+./bin/mysqld --user=root &
+
+### 关闭StoneDB
+./bin/mysqladmin -uroot shutdown
 ```
 
 ## 第六步：登录StoneDB
