@@ -126,14 +126,21 @@ Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' 
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 INSERT INTO t_latin1 values(x'f242', x'f242', x'f242');
 UPDATE t_latin1 SET a=x'f343' where a=x'f242';
+select * from t_latin1;
+a	b	c
+ÛC	ÚB	ÚB
 INSERT INTO t_gb2312 values(x'e5ac', x'e5ac', x'e5ac');
 UPDATE t_gb2312 SET a=x'e6af' where a=x'e5ac';
+select * from t_gb2312;
+a	b	c
+?	?	?
 INSERT INTO t_utf8 values(x'e4b8ad', x'e4b8ad', x'e4b8ad');
 INSERT INTO t_utf8 values(x'f4b8ad', x'f4b8ad', x'f4b8ad');
 ERROR HY000: Incorrect string value: '\xF4\xB8\xAD' for column 'a' at row 1
 UPDATE t_utf8 SET a=x'e69687' where a=x'e4b8ad';
-UPDATE t_utf8 SET a=x'f69687' where a=x'e69687';
 select * from t_utf8;
 a	b	c
 ?	?	?
+UPDATE t_utf8 SET a=x'f69687' where a=x'e69687';
+ERROR HY000: Incorrect string value: '\xF6\x96\x87' for column 'a' at row 1
 DROP DATABASE insert_update_db;
