@@ -1016,7 +1016,6 @@ int TianmuTable::Insert(TABLE *table) {
 }
 
 int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data) {
-  // todo(dfx): move to before for loop, need test
   my_bitmap_map *org_bitmap2 = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [org_bitmap2, table](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap2); });
@@ -1025,6 +1024,9 @@ int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uc
   core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
   assert(eng);
 
+  // uinsg check_unique_constraint(table) to check whether it has unique constr on this table;
+  // now, tianmu only support PK, the unique constraint is not supported now.
+  // the vfield is not in our consideration. and should not has any triggers on it.
   for (uint col_id = 0; col_id < table->s->fields; col_id++) {
     if (!bitmap_is_set(table->write_set, col_id)) {
       continue;
