@@ -430,7 +430,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
 
   if (!exec_direct) {
     for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
-      if (sl->join->m_select_limit == 0) {
+      if ((!sl->join->m_select_limit) && (!sl->join->where_cond)) {
         exec_direct = true;
         break;
       }

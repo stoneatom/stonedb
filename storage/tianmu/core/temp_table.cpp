@@ -1912,15 +1912,6 @@ ColumnType TempTable::GetUnionType(ColumnType type1, ColumnType type2) {
     return t;
   }
   if (type1.IsFixed() && type2.IsFixed() && type1.GetScale() != type2.GetScale()) {
-    uint max_scale = type1.GetScale() > type2.GetScale() ? type1.GetScale() : type2.GetScale();
-    uint max_ints = (type1.GetPrecision() - type1.GetScale()) > (type2.GetPrecision() - type2.GetScale())
-                        ? (type1.GetPrecision() - type1.GetScale())
-                        : (type2.GetPrecision() - type2.GetScale());
-    if (max_ints + max_scale > 18) {
-      std::stringstream ss;
-      ss << "UNION of non-matching columns (column no " << 0 << ") .";
-      throw common::NotImplementedException(ss.str());
-    }
     return type1.GetScale() > type2.GetScale() ? type1 : type2;
   }
   if (type1.GetInternalSize() < type2.GetInternalSize())
