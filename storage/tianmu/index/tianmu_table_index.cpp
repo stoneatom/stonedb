@@ -27,6 +27,8 @@
 namespace Tianmu {
 namespace index {
 
+// Here, In future, tianmu maybe has uniquekey, secondary key, fulltext, etc. Therefore, a type of index should be
+// added. But, now. we only have only one index: PK.
 TianmuTableIndex::TianmuTableIndex(const std::string &name, TABLE *table) {
   std::string fullname;
   // normalize the table name.
@@ -168,16 +170,12 @@ common::ErrorCode TianmuTableIndex::CheckUniqueness(core::Transaction *tx, const
     s = tx->KVTrans().Get(rocksdb_key_->get_cf(), pk_slice, &retrieved_value);
   }
 
-  if (!s.ok() && !s.IsNotFound()) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.getState());
-    return common::ErrorCode::FAILED;
-  }
-
-  if (s.ok()) {
+  if (s.ok()) {  // means that there's  another key existed.
     return common::ErrorCode::DUPP_KEY;
-  }
-
-  return common::ErrorCode::SUCCESS;
+  } else if (s.IsNotFound()) {  // not exist a key.
+    return common::ErrorCode::NOT_FOUND_KEY;
+  } else  // failed.
+    return common::ErrorCode::FAILED;
 }
 
 common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string> &fields, uint64_t row) {
@@ -185,9 +183,13 @@ common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vect
 
   rocksdb_key_->pack_key(key, fields, value);
 
+  // 1)inserts into a PK; 2) insert into without a PK. the return value of `CheckUniqueness` is as following:
+  // 1: common::ErrorCode::DUPP_KEY; 2: common::ErrorCode::NOT_FOUND_KEY; 3:common::ErrorCode::FAILED
   common::ErrorCode err_code = CheckUniqueness(tx, {(const char *)key.ptr(), key.length()});
-  if (err_code != common::ErrorCode::SUCCESS)
+  if (idx_type_ == IndexType::INDEX_TYPE_PRIMARY && err_code == common::ErrorCode::DUPP_KEY) {  // PK
     return err_code;
+  } else if (idx_type_ == IndexType::INDEX_TYPE_SECONDARY) {  // do not need uniqueness constrain
+  }
 
   value.write_uint64(row);
   const auto cf = rocksdb_key_->get_cf();
@@ -196,27 +198,37 @@ common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vect
   if (!s.ok()) {
     TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: insert key fail!");
     err_code = common::ErrorCode::FAILED;
-  }
+  } else if (s.ok())
+    err_code = common::ErrorCode::SUCCESS;
+
   return err_code;
 }
 
 common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::string &nkey, std::string &okey,
                                                 uint64_t row) {
-  StringWriter value, packkey;
-  std::vector<std::string> ofields, nfields;
+  StringWriter new_value, old_value, new_packke, old_packkey;
+  std::vector<std::string> old_fields, new_fields;
 
-  ofields.emplace_back(okey);
-  nfields.emplace_back(nkey);
+  old_fields.emplace_back(okey);
+  new_fields.emplace_back(nkey);
 
-  rocksdb_key_->pack_key(packkey, ofields, value);
-  common::ErrorCode err_code = CheckUniqueness(tx, {(const char *)packkey.ptr(), packkey.length()});
+  rocksdb_key_->pack_key(new_packke, new_fields, new_value);
+  rocksdb_key_->pack_key(old_packkey, old_fields, old_value);
+
+  common::ErrorCode err_code = CheckUniqueness(tx, {(const char *)new_packke.ptr(), new_packke.length()});
+
   if (err_code == common::ErrorCode::DUPP_KEY) {
-    const auto cf = rocksdb_key_->get_cf();
-    tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
-  } else {
-    TIANMU_LOG(LogCtl_Level::WARN, "RockDb: don't have the key for update!");
+  } else if (err_code == common::ErrorCode::NOT_FOUND_KEY || err_code == common::ErrorCode::SUCCESS) {
+    // gets the old index. then update it.
+    common::ErrorCode code = CheckUniqueness(tx, {(const char *)old_packkey.ptr(), old_packkey.length()});
+    if (code != common::ErrorCode::SUCCESS) {
+      const auto cf = rocksdb_key_->get_cf();
+      // delete old index then insert a new one.
+      rocksdb::Status ret_del = tx->KVTrans().Delete(cf, {(const char *)old_packkey.ptr(), old_packkey.length()});
+      err_code = InsertIndex(tx, new_fields, row);
+    }
   }
-  err_code = InsertIndex(tx, nfields, row);
+
   return err_code;
 }
 

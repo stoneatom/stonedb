@@ -419,7 +419,7 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
  Called from sql_select.cc, sql_acl.cc, sql_update.cc, and sql_insert.cc.
  */
 int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
-  DBUG_ENTER(__PRETTY_FUNCTION__);
+  DBUG_ENTER("ha_tianmu::update_row");
 
   core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
   assert(eng);
@@ -1176,6 +1176,15 @@ int ha_tianmu::extra(enum ha_extra_function operation) {
     cq_.reset();
     query_.reset();
   }
+
+  extra_info = operation;
+  if (operation == HA_EXTRA_IGNORE_DUP_KEY || operation == HA_EXTRA_NO_IGNORE_DUP_KEY) {
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    ASSERT(eng);
+    if (eng)
+      eng->setExtra(extra_info);
+  }
+
   DBUG_RETURN(0);
 }
 

@@ -155,6 +155,9 @@ class ha_tianmu final : public handler {
   int fill_row_by_id(uchar *buf, uint64_t rowid);
   void key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string> &keys);
 
+  void setExtra(ha_extra_function extra) { extra_info = extra; }
+  ha_extra_function getExtra() { return extra_info; }
+
  public:
   static const Alter_inplace_info::HA_ALTER_FLAGS TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER;
   static const Alter_inplace_info::HA_ALTER_FLAGS TIANMU_SUPPORTED_ALTER_COLUMN_NAME;
@@ -182,6 +185,8 @@ class ha_tianmu final : public handler {
   std::unique_ptr<core::CompiledQuery> cq_;
   bool result_ = false;
   std::vector<std::vector<uchar>> blob_buffers_;
+
+  ha_extra_function extra_info; /*!< TRX_DUP_IGNORE | TRX_DUP_REPLACE */
 };
 
 }  // namespace DBHandler

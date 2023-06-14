@@ -26,6 +26,7 @@ namespace Tianmu {
 namespace core {
 TableShare::TableShare(const fs::path &table_path, const TABLE_SHARE *table_share)
     : no_cols(table_share->fields), table_path(table_path) {
+  s = const_cast<TABLE_SHARE *>(table_share);
   try {
     system::TianmuFile ftbl;
     ftbl.OpenReadOnly(table_path / common::TABLE_DESC_FILE);

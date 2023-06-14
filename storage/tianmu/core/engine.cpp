@@ -1826,7 +1826,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
 
 int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
                       const uchar *old_data, uchar *new_data) {
-  DBUG_ENTER("Engine::UpdateRow");
+  // DBUG_ENTER("Engine::UpdateRow");
   int ret = 0;
   if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
     UpdateToDelta(table_path, share, table, row_id, old_data, new_data);
@@ -1835,13 +1835,13 @@ int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_p
     auto tm_table = current_txn_->GetTableByPath(table_path);
     ret = tm_table->Update(table, row_id, old_data, new_data);
   }
-
-  DBUG_RETURN(ret);
+  return ret;
+  // DBUG_RETURN(ret);
 }
 
 int Engine::DeleteRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share,
                       uint64_t row_id) {
-  DBUG_ENTER("Engine::UpdateRow");
+  DBUG_ENTER("Engine::DeleteRow");
   int ret = 0;
   if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
     DeleteToDelta(share, table, row_id);
