@@ -30,6 +30,7 @@ low-level mechanisms
 #include "optimizer/iterators/mi_iterator.h"
 #include "system/fet.h"
 #include "system/tianmu_system.h"
+#include "vc/expr_column.h"
 
 namespace Tianmu {
 namespace core {
@@ -165,6 +166,19 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     gbw.AddAllAggregatedConstants(mit);
     gbw.AddAllCountStar(row, mit, mind->NumOfTuples());
     all_done_in_one_row = true;
+
+    {
+      for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++) {
+        TempTable::Attr &cur_a = *(t->GetAttrP(gr_a));
+
+        if (cur_a.term.vc && dynamic_cast<Tianmu::vcolumn::ExpressionColumn *>(cur_a.term.vc)) {
+          bool value_successfully_aggregated = gbw.PutAggregatedValue(gr_a, 0, mit, mit.Factor());
+          if (!value_successfully_aggregated) {
+            gbw.DistinctlyOmitted(gr_a, 0);
+          }
+        }
+      }
+    }
   }  // Special case 2, if applicable: SELECT COUNT(DISTINCT col) FROM .....;
   else if (gbw.IsCountDistinctOnly()) {
     int64_t count_distinct = t->GetAttrP(0)->term.vc->GetExactDistVals();  // multiindex checked inside

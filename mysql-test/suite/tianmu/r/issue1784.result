@@ -1,0 +1,144 @@
+DROP DATABASE IF EXISTS issue1784_test;
+CREATE DATABASE issue1784_test;
+USE issue1784_test;
+create table t1 (age int) engine=tianmu;
+select * from t1;
+age
+select age from t1;
+age
+select age, sum(age) from t1 group by age;
+age	sum(age)
+select age, sum(age) from (select * from t1) ta group by age;
+age	sum(age)
+select case when age is not null then age else 33 end, sum(age) from t1 group by age;
+case when age is not null then age else 33 end	sum(age)
+select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta group by age;
+case when age is not null then age else 33 end	sum(age)
+insert into t1 values(1);
+select * from t1;
+age
+1
+select age from t1;
+age
+1
+select age, sum(age) from t1 group by age;
+age	sum(age)
+1	1
+select age, sum(age) from (select * from t1) ta group by age;
+age	sum(age)
+1	1
+select case when age is not null then age else 33 end, sum(age) from t1 group by age;
+case when age is not null then age else 33 end	sum(age)
+1	1
+select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta group by age;
+case when age is not null then age else 33 end	sum(age)
+1	1
+drop table t1;
+create table t1 (age int) engine=innodb;
+select * from t1;
+age
+select age from t1;
+age
+select age, sum(age) from t1 group by age;
+age	sum(age)
+select age, sum(age) from (select * from t1) ta group by age;
+age	sum(age)
+select case when age is not null then age else 33 end, sum(age) from t1 group by age;
+case when age is not null then age else 33 end	sum(age)
+select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta group by age;
+case when age is not null then age else 33 end	sum(age)
+insert into t1 values(1);
+select * from t1;
+age
+1
+select age from t1;
+age
+1
+select age, sum(age) from t1 group by age;
+age	sum(age)
+1	1
+select age, sum(age) from (select * from t1) ta group by age;
+age	sum(age)
+1	1
+select case when age is not null then age else 33 end, sum(age) from t1 group by age;
+case when age is not null then age else 33 end	sum(age)
+1	1
+select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta group by age;
+case when age is not null then age else 33 end	sum(age)
+1	1
+drop table t1;
+SET sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+create table t1 (age int) engine=tianmu;
+select * from t1;
+age
+select age from t1;
+age
+select age, sum(age) from t1;
+age	sum(age)
+NULL	NULL
+select age, sum(age) from (select * from t1) ta;
+age	sum(age)
+NULL	NULL
+select case when age is not null then age else 33 end, sum(age) from t1;
+case when age is not null then age else 33 end	sum(age)
+33	NULL
+select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta;
+case when age is not null then age else 33 end	sum(age)
+33	NULL
+insert into t1 values(1);
+select * from t1;
+age
+1
+select age from t1;
+age
+1
+select age, sum(age) from t1;
+age	sum(age)
+1	1
+select age, sum(age) from (select * from t1) ta;
+age	sum(age)
+1	1
+select case when age is not null then age else 33 end, sum(age) from t1;
+case when age is not null then age else 33 end	sum(age)
+1	1
+select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta;
+case when age is not null then age else 33 end	sum(age)
+1	1
+drop table t1;
+create table t1 (age int) engine=innodb;
+select * from t1;
+age
+select age from t1;
+age
+select age, sum(age) from t1;
+age	sum(age)
+NULL	NULL
+select age, sum(age) from (select * from t1) ta;
+age	sum(age)
+NULL	NULL
+select case when age is not null then age else 33 end, sum(age) from t1;
+case when age is not null then age else 33 end	sum(age)
+33	NULL
+select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta;
+case when age is not null then age else 33 end	sum(age)
+33	NULL
+insert into t1 values(1);
+select * from t1;
+age
+1
+select age from t1;
+age
+1
+select age, sum(age) from t1;
+age	sum(age)
+1	1
+select age, sum(age) from (select * from t1) ta;
+age	sum(age)
+1	1
+select case when age is not null then age else 33 end, sum(age) from t1;
+case when age is not null then age else 33 end	sum(age)
+1	1
+select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta;
+case when age is not null then age else 33 end	sum(age)
+1	1
+DROP DATABASE issue1784_test;

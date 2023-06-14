@@ -1,0 +1,32 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1864_test;
+
+CREATE DATABASE issue1864_test;
+
+USE issue1864_test;
+
+create table t1(c1 decimal(5,2)) engine=tianmu;
+insert into t1 values(111.22);
+ 
+create table t2(id int) engine=tianmu;
+insert into t2 values(11122);
+
+select xxx.x from (select c1 as x from t1 union all select 1 as x from t2) xxx;
+
+select xxx.x from ( select t1.c1 as x from t1 inner join t2 on t1.c1 != t2.id ) xxx;
+
+CREATE TABLE cs1 (d1 DECIMAL(17), d2 DECIMAL(17,10), d3 DECIMAL(17,17)) engine=tianmu;
+
+INSERT INTO cs1 VALUES (125, 1.25, 0.125);
+
+INSERT INTO cs1 VALUES (-125, -1.25, -0.125);
+
+select * from cs1;
+
+select * from cs1 union select * from cs1;
+
+SELECT d1, d1, d2 FROM cs1 UNION SELECT d2, d3, d3 FROM cs1;
+
+DROP DATABASE issue1864_test;
