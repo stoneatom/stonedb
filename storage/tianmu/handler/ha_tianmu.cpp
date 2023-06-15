@@ -1550,7 +1550,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
       query_->AddTable(rctp);
       core::TabID t_out;
       cq_->TableAlias(t_out, core::TabID(0));  // we apply it to the only table in this query
-      cq_->TmpTable(tmp_table_, t_out);
+      cq_->TmpTable(tmp_table_, t_out, core::TableSubType::NORMAL);
 
       std::string ext_alias;
       if (table->pos_in_table_list->referencing_view)

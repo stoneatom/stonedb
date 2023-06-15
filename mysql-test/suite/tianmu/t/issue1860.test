@@ -1,0 +1,43 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1860_test;
+
+CREATE DATABASE issue1860_test;
+USE issue1860_test;
+--enable_warnings
+
+
+CREATE TABLE tt(id decimal(18,0), dt datetime) ENGINE =TIANMU;
+INSERT INTO  tt VALUES(1111.0, '2023-01-01');
+
+SELECT id FROM tt UNION SELECT 2222 c1 FROM dual;
+
+INSERT INTO tt VALUES(2222.0, '2023-02-02');
+
+SELECT id FROM tt UNION SELECT 2222 c1 FROM dual;
+SELECT id FROM tt UNION ALL SELECT 2222 c1 FROM dual;
+
+SELECT id FROM tt UNION SELECT 2222 ;
+sELECT id FROM tt UNION ALL SELECT 2222;
+
+SELECT id, dt FROM tt UNION SELECT 2222, '2022-01-01';
+SELECT id, dt FROM tt UNION SELECT 2222, str_to_date('2022-02-03', '%Y-%m-%d');
+SELECT id, dt FROM tt UNION SELECT 2222, str_to_date('2023-02-02', '%Y-%m-%d');
+
+#ERROR 1105 (HY000): wrong types of columns
+--error 1105
+SELECT dt FROM tt UNION SELECT 2222;
+SELECT dt FROM tt UNION SELECT '2222';
+
+#ERROR 1222 (21000): The used SELECT statements have a different number of columns
+--error 1222
+SELECT * FROM tt UNION SELECT 222;
+--error 1222
+SELECT * FROM tt UNION ALL SELECT 222;
+
+
+DROP TABLE tt;
+
+DROP DATABASE issue1860_test;
+
