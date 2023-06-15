@@ -1,0 +1,80 @@
+#
+# tests updates that sets invalid range when we set value at max boundary that is less than max.
+#
+DROP DATABASE IF EXISTS empty_string_not_null;
+CREATE DATABASE empty_string_not_null;
+USE empty_string_not_null;
+CREATE TABLE t(s text);
+INSERT INTO t(s) VALUES (''), (NULL);
+SELECT COUNT(*) FROM t WHERE s IS NULL;
+COUNT(*)
+1
+SELECT COUNT(*) FROM t WHERE s IS NOT NULL;
+COUNT(*)
+1
+SELECT * FROM t;
+s
+
+NULL
+DROP TABLE t;
+CREATE TABLE t(s text);
+INSERT INTO t(s) VALUES ('');
+INSERT INTO t(s) VALUES (NULL);
+SELECT * FROM t;
+s
+
+NULL
+SELECT COUNT(*) FROM t WHERE s IS NULL;
+COUNT(*)
+1
+DROP TABLE t;
+CREATE TABLE t(s text) ;
+INSERT INTO t(s) VALUES ('_CpNuLl_'),(''), (NULL);
+SELECT * FROM t;
+s
+_CpNuLl_
+
+NULL
+SELECT COUNT(*) FROM t WHERE s IS NULL;
+COUNT(*)
+1
+DROP TABLE t;
+CREATE TABLE t(c6 CHAR(6)) ;
+INSERT INTO t(c6) VALUES ('a'), ('b'), ('c');
+SELECT 2, COUNT(*) FROM t WHERE (c6 <= 'b' OR c6 <= '');
+2	COUNT(*)
+2	2
+SELECT 2, COUNT(*) FROM t WHERE (c6 <= 'b');
+2	COUNT(*)
+2	2
+SELECT 0, COUNT(*) FROM t WHERE (c6 <= '');
+0	COUNT(*)
+0	0
+SELECT 0, COUNT(*) FROM t WHERE (c6 <= ' ');
+0	COUNT(*)
+0	0
+SELECT 2, COUNT(*) FROM t WHERE (c6 <= 'b' OR c6 <= ' ');
+2	COUNT(*)
+2	2
+SELECT 0, COUNT(*) FROM t WHERE (c6 < '');
+0	COUNT(*)
+0	0
+SELECT 0, COUNT(*) FROM t WHERE (c6 < ' ');
+0	COUNT(*)
+0	0
+DROP TABLE IF EXISTS t;
+CREATE TABLE t(a CHAR(10));
+INSERT INTO t(a) VALUES (''), (NULL), ('   '), (' a ');
+SELECT LTRIM(a) FROM t;
+LTRIM(a)
+
+NULL
+
+a
+SELECT RTRIM(a) FROM t;
+RTRIM(a)
+
+NULL
+
+ a
+DROP DATABASE empty_string_not_null;
