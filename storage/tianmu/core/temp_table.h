@@ -187,7 +187,7 @@ class TempTable : public JustATable {
 
  protected:
   TempTable(const TempTable &, bool is_vc_owner);
-  TempTable(JustATable *const, int alias, Query *q);
+  TempTable(JustATable *const, int alias, Query *q, TableSubType subtype = TableSubType::NORMAL);
 
   std::shared_ptr<TempTable> CreateMaterializedCopy(bool translate_order,
                                                     bool in_subq);  // move all buffers to a newly created
@@ -253,6 +253,7 @@ class TempTable : public JustATable {
     no_materialized = n;
   }
   TType TableType() const override { return TType::TEMP_TABLE; }  // type of JustATable - TempTable
+  TableSubType getSubType() { return sub_type; }                  // the sub type of TempTable
   uint NumOfAttrs() const override { return (uint)attrs.size(); }
   uint NumOfDisplaybleAttrs() const override { return no_cols; }  // no. of columns with defined alias
   bool IsDisplayAttr(int i) { return attrs[i]->alias != nullptr; }
@@ -393,9 +394,10 @@ class TempTable : public JustATable {
   bool CanCondPushDown() { return can_cond_push_down; };
 
  protected:
-  int64_t no_obj;
+  int64_t no_obj;                        // no. of objs.(or rows.)
   uint32_t p_power;                      // pack power
   uint no_cols;                          // no. of output columns, i.e., with defined alias
+  TableSubType sub_type;                 // table sub type.
   TableMode mode;                        // based on { TM_DISTINCT, TM_TOP, TM_EXISTS }
   std::vector<Attr *> attrs;             // vector of output columns, each column contains
                                          // a buffer with values
@@ -456,7 +458,8 @@ class TempTable : public JustATable {
 
   void Display(std::ostream &out = std::cout);  // output to console
   static std::shared_ptr<TempTable> Create(const TempTable &, bool in_subq);
-  static std::shared_ptr<TempTable> Create(JustATable *const, int alias, Query *q, bool for_subquery = false);
+  static std::shared_ptr<TempTable> Create(JustATable *const, int alias, Query *q, TableSubType sub_type,
+                                           bool for_subquery = false);
   bool IsSent() { return is_sent; }
   void SetIsSent() { is_sent = true; }
   common::Tribool RoughIsEmpty() { return rough_is_empty; }
