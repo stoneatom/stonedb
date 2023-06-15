@@ -1,0 +1,30 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # DROP TABLE RESTRICT
+--echo # The RESTRICT clause limits the table to being dropped in the front end only.
+--echo # This could be useful when the table has been dropped on one user module,
+--echo # and needs to be synced to others.
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS drop_restric_test;
+--enable_warnings
+
+CREATE DATABASE drop_restric_test;
+USE drop_restric_test;
+
+CREATE TABLE t1 (id INT, name CHAR(25));
+INSERT INTO t1 VALUES (1, 'one'), (2, 'two'), (3, 'three'), (4, 'four'), (5, 'five');
+
+SELECT * FROM t1 ORDER BY id;
+SELECT COUNT(*) FROM t1;
+
+DROP TABLE IF EXISTS t1 RESTRICT;
+--error 1051
+DROP TABLE t1;
+
+# Clean up
+--disable_warnings
+DROP DATABASE IF EXISTS drop_restric_test;
+--enable_warnings
