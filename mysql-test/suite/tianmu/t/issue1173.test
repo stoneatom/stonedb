@@ -1,0 +1,26 @@
+--source include/have_tianmu.inc
+--disable_warnings
+
+DROP DATABASE IF EXISTS issue1173;
+CREATE DATABASE issue1173;
+USE issue1173;
+
+CREATE TABLE t1 (a TIME(1) NOT NULL);
+INSERT INTO t1 VALUES ('00:00:02.9');
+SELECT a, a & a, a | a, a^0, a<<1, a<<0, a>>1, bit_count(a) FROM t1;
+
+CREATE TABLE t2 (a DATETIME(1) NOT NULL);
+INSERT INTO t2 VALUES ('2001-01-01 00:00:02.9');
+INSERT INTO t2 VALUES ('2001-01-01 23:59:59.9');
+INSERT INTO t2 VALUES ('9999-12-31 23:59:59.9');
+SELECT a, a & a, a | a, a^0, a<<1, a<<0, a>>1, bit_count(a) FROM t2;
+
+CREATE TABLE t3 (a VARCHAR(30) NOT NULL);
+INSERT INTO t3 VALUES ('18446744073709551610');
+SELECT a, a & a, a | a, a^0, a<<1, a<<0, a>>1, bit_count(a) FROM t3;
+
+DROP TABLE t1;
+DROP TABLE t2;
+DROP TABLE t3;
+
+DROP DATABASE issue1173;
