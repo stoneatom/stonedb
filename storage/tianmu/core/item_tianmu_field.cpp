@@ -266,8 +266,10 @@ bool Item_tianmudatetime_base::get_time(MYSQL_TIME *ltime) {
 }
 
 longlong Item_tianmudatetime::val_int() {
-  return dt.year * 10000000000LL + dt.month * 100000000 + dt.day * 1000000 + dt.hour * 10000 + dt.minute * 100 +
-         dt.second;
+  MYSQL_TIME ltime;
+  dt.Store(&ltime, MYSQL_TIMESTAMP_DATETIME);
+  longlong tmp = (longlong)TIME_to_ulonglong_datetime_round(&ltime);
+  return dt.Neg() ? -tmp : tmp;
 }
 
 String *Item_tianmudatetime::val_str(String *s) {
@@ -317,7 +319,12 @@ bool Item_tianmudate::get_time(MYSQL_TIME *ltime) {
   return false;
 }
 
-longlong Item_tianmutime::val_int() { return dt.hour * 10000 + dt.minute * 100 + dt.second; }
+longlong Item_tianmutime::val_int() {
+  MYSQL_TIME ltime;
+  dt.Store(&ltime, MYSQL_TIMESTAMP_TIME);
+  longlong tmp = (longlong)TIME_to_ulonglong_time_round(&ltime);
+  return dt.Neg() ? -tmp : tmp;
+}
 String *Item_tianmutime::val_str(String *s) {
   MYSQL_TIME ltime;
   get_time(&ltime);
