@@ -893,13 +893,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
         my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
         common::GMTSec2GMTTime(&my_time, secs_utc);
       }
-      types::DT dt = {};
-      dt.year = my_time.year;
-      dt.month = my_time.month;
-      dt.day = my_time.day;
-      dt.hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
@@ -909,11 +903,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       MYSQL_TIME my_time;
       std::memset(&my_time, 0, sizeof(my_time));
       f->get_time(&my_time);
-      types::DT dt = {};
-      dt.time_hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
-      dt.neg = my_time.neg;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
@@ -926,13 +916,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       MYSQL_TIME my_time;
       std::memset(&my_time, 0, sizeof(my_time));
       f->get_time(&my_time);
-      types::DT dt = {};
-      dt.year = my_time.year;
-      dt.month = my_time.month;
-      dt.day = my_time.day;
-      dt.hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
