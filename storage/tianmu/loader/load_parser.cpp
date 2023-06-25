@@ -73,10 +73,25 @@ uint LoadParser::GetPackrow(uint no_of_rows, std::vector<ValueCache> &value_buff
     value_buffers.emplace_back(pack_size_, init_capacity);
   }
 
+  THD *thd = io_param_.GetTHD();
+  TABLE *table = io_param_.GetTable();
+  bool is_transactional = table->file->has_transactions();
+  bool need_rows_binlog = false;
+  if (mysql_bin_log.is_open() && thd->is_current_stmt_binlog_format_row()) {
+    need_rows_binlog = true;
+    const bool has_trans = thd->lex->sql_command == SQLCOM_CREATE_TABLE || is_transactional;
+    bool need_binlog_rows_query = thd->variables.binlog_rows_query_log_events;
+    /* write table map event */
+    [[maybe_unused]] int err = thd->binlog_write_table_map(table, has_trans, need_binlog_rows_query);
+  }
+
   uint no_of_rows_returned;
   for (no_of_rows_returned = 0; no_of_rows_returned < no_of_rows; no_of_rows_returned++) {
     if (!MakeRow(value_buffers))
       break;
+    /* write row after one row is ready */
+    if (need_rows_binlog)
+      [[maybe_unused]] int err = thd->binlog_write_row(table, is_transactional, table->record[0], NULL);
   }
 
   last_pack_size_.clear();

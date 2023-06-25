@@ -8802,12 +8802,14 @@ TC_LOG::enum_result MYSQL_BIN_LOG::commit(THD *thd, bool all)
         DBUG_RETURN(RESULT_ABORTED);
       }
     }
-    else if (real_trans && xid && trn_ctx->rw_ha_count(trx_scope) > 1 &&
-             !trn_ctx->no_2pc(trx_scope))
+    else if (thd->tianmu_need_xid || (real_trans && xid && trn_ctx->rw_ha_count(trx_scope) > 1 &&
+             !trn_ctx->no_2pc(trx_scope)))
     {
       Xid_log_event end_evt(thd, xid);
       if (cache_mngr->trx_cache.finalize(thd, &end_evt))
         DBUG_RETURN(RESULT_ABORTED);
+      // used for tianmu only
+      thd->tianmu_need_xid= false;
     }
     else
     {

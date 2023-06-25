@@ -159,6 +159,7 @@ class TianmuTable final : public JustATable {
   uint64_t ProceedNormal(system::IOParameters &iop);
   uint64_t ProcessDelayed(system::IOParameters &iop);
   void Field2VC(Field *f, loader::ValueCache &vc, size_t col);
+  int binlog_flush_pending_rows_event(system::IOParameters &iop, bool stmt_end, bool is_transactional);
   int binlog_load_query_log_event(system::IOParameters &iop);
   int binlog_insert2load_log_event(system::IOParameters &iop);
   int binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint load_obj, system::IOParameters &iop);
