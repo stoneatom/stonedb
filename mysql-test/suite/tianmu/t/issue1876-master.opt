@@ -1,0 +1,5 @@
+--testcase-timeout=40
+--secure-file-priv=""
+--tianmu_insert_delayed=off
+--log-bin=bin
+--binlog_format=row
