@@ -7,7 +7,7 @@ sidebar_position: 1.1
 
 StoneDB 是由石原子科技公司自主设计、研发的国内首款基于 MySQL 内核打造的开源 HTAP（Hybrid Transactional and Analytical Processing）融合型数据库，可实现与 MySQL 的无缝切换。StoneDB 具备超高性能、实时分析等特点，为用户提供一站式 HTAP 解决方案。
 
-StoneDB 100% 兼容 MySQL 5.6、5.7 协议和 MySQL 生态等重要特性，支持 MySQL 常用的功能及语法，支持 MySQL 生态中的系统工具和客户端，如 Navicat、Workbench、mysqldump、mydumper。由于 100% 兼容 MySQL，因此 StoneDB 的所有工作负载都可以继续使用 MySQL 数据库体系运行。
+StoneDB 100% 兼容 MySQL 5.6、5.7、8.0 协议和 MySQL 生态等重要特性，支持 MySQL 常用的功能及语法，支持 MySQL 生态中的系统工具和客户端，如 Navicat、Workbench、mysqldump、mydumper。由于 100% 兼容 MySQL，因此 StoneDB 的所有工作负载都可以继续使用 MySQL 数据库体系运行。
 
 StoneDB 专门针对 OLAP 应用程序进行了设计和优化，支持百亿数据场景下进行高性能、多维度字段组合的复杂查询，相对比社区版的 MySQL，其查询速度提升了十倍以上。
 

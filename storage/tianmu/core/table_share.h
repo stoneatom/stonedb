@@ -67,6 +67,9 @@ class TableShare final {
   // MySQL lock
   THR_LOCK thr_lock;
 
+  // TABLE share in sql.
+  TABLE_SHARE *s;
+
  private:
   TABLE_META meta;
   size_t no_cols;
