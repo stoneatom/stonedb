@@ -1145,13 +1145,6 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
       }
     }
 
-    // partial optimization of LOJ conditions, JOIN::optimize(part=3) necessary due to already done basic transformation
-    // of conditions see comments in sql_select.cc:JOIN::optimize()
-    if (IsLOJ(join_list) &&
-        ((!sl->join->where_cond) || (sl->join->where_cond && (uint64_t)sl->join->where_cond != 0x01))) {
-      sl->join->optimize(OptimizePhase::Finish_LOJ_Transform);
-    }
-
     Item *field_for_subselect;
     Item *cond_to_reinsert = nullptr;
     List<Item> *list_to_reinsert = nullptr;

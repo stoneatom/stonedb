@@ -1,5 +1,6 @@
 DROP DATABASE IF EXISTS issue1865_test_db;
 CREATE DATABASE issue1865_test_db;
+USE issue1865_test_db;
 create table t1 (a int default 100, b int, c varchar(60))engine=tianmu;
 load data infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1865.dat' into table t1 (a, c);
 select * from t1;
