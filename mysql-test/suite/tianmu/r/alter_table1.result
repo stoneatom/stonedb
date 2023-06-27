@@ -9,7 +9,7 @@ CREATE TABLE st1
 name VARCHAR(25),
 deptId INT(11),
 salary FLOAT
-);
+) engine=tianmu;
 alter table st1 add column test varchar(4);
 alter table st1 add column test1 varchar(4) after test;
 alter table st1 add column test3 varchar(4);
@@ -36,7 +36,7 @@ CREATE TABLE st2
 name VARCHAR(25),
 deptId INT(11),
 salary FLOAT
-);
+) engine=tianmu;
 insert into st2 values(3,'haha1',45,4.5);
 insert into st2 values(1,'haha2',12,1.2);
 insert into st2 values(4,'haha3',31,3.2);
@@ -68,7 +68,7 @@ name VARCHAR(25),
 deptId INT(11),
 salary FLOAT,
 PRIMARY KEY(id)
-);
+) engine=tianmu;
 ALTER TABLE st3 RENAME to st4 ;
 ALTER TABLE st4 RENAME as st3 ;
 ALTER TABLE st3 RENAME to st4 ;
@@ -87,7 +87,7 @@ name VARCHAR(25),
 deptId INT(11),
 salary FLOAT,
 PRIMARY KEY(id)
-);
+) engine=tianmu;
 alter table st5 modify name varchar(20);
 alter table st5 modify column name varchar(24);
 alter table st5 modify column name varchar(15) after salary;
@@ -98,7 +98,7 @@ name VARCHAR(25),
 deptId INT(11),
 salary FLOAT,
 PRIMARY KEY(id)
-);
+) engine=tianmu;
 alter table st6 rename to st7,add name1 varchar(10);
 desc st7;
 Field	Type	Null	Key	Default	Extra
@@ -138,4 +138,9 @@ salary	float	YES		NULL
 name	varchar(20)	YES		NULL	
 name2	varchar(10)	YES		NULL	
 name3	varchar(10)	YES		NULL	
+DROP TABLE st8;
+DROP TABLE st5;
+DROP TABLE st4;
+DROP TABLE st2;
+DROP TABLE st1;
 drop database alter_table1_test;
