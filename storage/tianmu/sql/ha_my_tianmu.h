@@ -22,10 +22,7 @@
 namespace Tianmu {
 namespace DBHandler {
 
-enum class QueryRouteTo {
-  kToMySQL = 0,
-  kToTianmu,
-};
+enum class QueryRouteTo { kToMySQL = 0, kToTianmu, kUnknown };
 
 // processing the queries which routed to Tianmu engine.
 QueryRouteTo ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option,

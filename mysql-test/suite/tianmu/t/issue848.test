@@ -1,26 +1,34 @@
 --source include/have_tianmu.inc
-create database test_issue848;
-use test_issue848;
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue848_test;
+--enable_warnings
+
+CREATE DATABASE issue848_test;
+USE issue848_test;
+
 CREATE TABLE `t1` (
   `c_char` char(10) DEFAULT NULL COMMENT 'char',
   `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
   `c_text` text COMMENT 'text') 
 ENGINE=TIANMU DEFAULT CHARSET=GBK;
+
 show create table t1;
 
 insert into t1(c_char,c_varchar,c_text) values(x'D6D0B9FA',x'D5E3BDAD',x'BABCD6DD');
+
 ALTER TABLE t1 DEFAULT CHARACTER SET gbk;
 show create table t1;
 
 ALTER TABLE t1 CHARACTER SET latin1;
 show create table t1;
 
-alter table t1  add column ex_column char(30);
+ALTER TABLE t1  ADD COLUMN ex_column char(30) AFTER c_text;
 show create table t1;
 
-ALTER TABLE t1 MODIFY c_char char(10) CHARACTER SET UTF8MB4;
-ALTER TABLE t1 MODIFY c_varchar char(10) CHARACTER SET UTF8MB4;
-ALTER TABLE t1 MODIFY c_text char(10) CHARACTER SET UTF8MB4;
+ALTER TABLE t1 MODIFY c_char char(15) CHARACTER SET UTF8MB4;
+ALTER TABLE t1 MODIFY c_varchar char(15) CHARACTER SET UTF8MB4;
+ALTER TABLE t1 MODIFY c_text char(15) CHARACTER SET UTF8MB4;
 show create table t1;
 select hex(c_char),hex(c_varchar),hex(c_text) from t1;
 
@@ -30,5 +38,5 @@ ALTER TABLE t1 CHANGE c_text c_text char(10) CHARACTER SET GBK;
 select hex(c_char),hex(c_varchar),hex(c_text) from t1;
 show create table t1;
 
-drop table t1;
-drop database test_issue848;
+DROP TABLE t1;
+DROP DATABASE issue848_test;

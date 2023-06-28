@@ -102,6 +102,7 @@ class ValueOrNull final {
 
       string_owner = false;
       null = true;
+      len = 0;
     }
   }
 

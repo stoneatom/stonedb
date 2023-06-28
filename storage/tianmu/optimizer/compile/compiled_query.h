@@ -131,7 +131,7 @@ class CompiledQuery final {
   // Add a new step to the execution plan
 
   void TableAlias(TabID &t_out, const TabID &n, const char *tab_name = nullptr, int id = -1);
-  void TmpTable(TabID &t_out, const TabID &t1, bool for_subq = false);
+  void TmpTable(TabID &t_out, const TabID &t1, TableSubType subtype, bool for_subq = false);
   void CreateConds(CondID &c_out, const TabID &t1, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3 = CQTerm(),
                    bool is_or_subtree = false, char like_esc = '\\', bool can_cond_push = false);
   void CreateConds(CondID &c_out, const TabID &t1, const CondID &c1, bool is_or_subtree = false,

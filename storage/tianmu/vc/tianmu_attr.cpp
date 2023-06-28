@@ -1094,19 +1094,39 @@ void TianmuAttr::UpdateData(uint64_t row, Value &old_v, Value &new_v) {
   // rclog << lock << "update data for row " << row << " col " << m_cid <<
   // system::unlock;
   no_change = false;
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  ASSERT(eng);
 
   auto pn = row2pack(row);
   FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
+
   // primary key process
-  UpdateIfIndex(nullptr, row, ColId(), old_v, new_v);
+  uint32_t colid = this->m_share->col_id;
+  auto owner = this->m_share->owner;
+  if (owner->s->primary_key == colid) {  // if this col is defined as PK. Now, tianmu does not support unique key now.
+    common::ErrorCode err = UpdateIfIndex(nullptr, row, ColId(), old_v, new_v);
+
+    if (eng && eng->getExtra() == HA_EXTRA_IGNORE_DUP_KEY) {  // using `ingore` keyword
+      if (err == common::ErrorCode::DUPP_KEY)
+        return;
+      else if (err == common::ErrorCode::NOT_FOUND_KEY)
+        ;
+      else if (err == common::ErrorCode::FAILED)
+        ;
+    } else {  // without `ignore` keywords. we throw a `DupKeyException` execption.
+      if (err == common::ErrorCode::DUPP_KEY)
+        throw common::DupKeyException("");
+      else if (err == common::ErrorCode::NOT_FOUND_KEY)
+        ;
+      else if (err == common::ErrorCode::FAILED)
+        ;
+    }
+  }
 
   CopyPackForWrite(pn);
 
   auto &dpn = get_dpn(pn);
   auto dpn_save = dpn;
-
-  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
-  assert(eng);
 
   if (ct.Lookup() && new_v.HasValue()) {
     auto &str = new_v.GetString();
@@ -1543,49 +1563,56 @@ std::shared_ptr<RSIndex_Bloom> TianmuAttr::GetFilter_Bloom() {
       FilterCoordinate(m_tid, m_cid, (int)FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
 }
 
-void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v,
-                               const Value &new_v) {
+common::ErrorCode TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v,
+                                            const Value &new_v) {
+  DBUG_ENTER("TianmuAttr::UpdateIfIndex");
+
   if (tx == nullptr) {
     tx = current_txn_;
   }
 
+  common::ErrorCode returnCode = common::ErrorCode::SUCCESS;
   core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
-  assert(eng);
+  ASSERT(eng);
 
   auto path = m_share->owner->Path();
   std::shared_ptr<index::TianmuTableIndex> tab = eng->GetTableIndex(path);
   // col is not primary key
   if (!tab)
-    return;
+    DBUG_RETURN(returnCode);
 
   std::vector<uint> keycols = tab->KeyCols();
   if (std::find(keycols.begin(), keycols.end(), col) == keycols.end())
-    return;
+    DBUG_RETURN(returnCode);
 
-  if (!new_v.HasValue())
-    throw common::Exception("primary key not support null!");
+  if (!new_v.HasValue()) {
+    returnCode = common::ErrorCode::UNSUPPORTED_DATATYPE;
+    TIANMU_LOG(LogCtl_Level::DEBUG, "primary key not support null!");
+    DBUG_RETURN(returnCode);
+  }
 
   if (GetPackType() == common::PackType::STR) {
     auto &vnew = new_v.GetString();
     auto &vold = old_v.GetString();
     std::string nkey(vnew.data(), vnew.length());
     std::string okey(vold.data(), vold.length());
-    common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
+    returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
-      throw common::DupKeyException("Duplicate entry: " + vnew + " for primary key");
+      // throw common::DupKeyException("Duplicate entry: " + vnew + " for primary key");
     }
   } else {  // common::PackType::INT
     int64_t vnew = new_v.GetInt();
     int64_t vold = old_v.GetInt();
     std::string nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
     std::string okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
-    common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
+    returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
-      throw common::DupKeyException("Duplicate entry: " + std::to_string(vnew) + " for primary key");
+      // throw common::DupKeyException("Duplicate entry: " + std::to_string(vnew) + " for primary key");
     }
   }
+  return returnCode;
 }
 
 void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {

@@ -140,6 +140,7 @@ class ColumnShare final {
   bool has_filter_hist = false;
   bool has_filter_bloom = false;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

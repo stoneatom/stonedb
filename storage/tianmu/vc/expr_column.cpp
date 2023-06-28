@@ -16,6 +16,7 @@
 */
 
 #include "expr_column.h"
+#include <mutex>
 #include "core/mysql_expression.h"
 #include "optimizer/compile/compiled_query.h"
 #include "vc/tianmu_attr.h"
@@ -131,6 +132,9 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
 }
 
 int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
+  static std::mutex scp_mutex;
+  std::scoped_lock lock(scp_mutex);
+
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
 
@@ -152,6 +156,7 @@ int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
         val_it.second->Clear_SP();
     }
   }
+
   return last_val_->Get64();
 }
 

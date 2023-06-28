@@ -23,6 +23,7 @@
 
 namespace Tianmu {
 namespace core {
+
 void ValueOrNull::SetBString(const types::BString &tianmu_s) {
   Clear();
   if (!tianmu_s.IsNull()) {
@@ -44,7 +45,7 @@ void ValueOrNull::SetBString(const types::BString &tianmu_s) {
 }
 
 void ValueOrNull::MakeStringOwner() {
-  if (!sp || string_owner)
+  if (!sp || !len || string_owner)
     return;
 
   char *tmp = new (std::nothrow) char[len + 1];
@@ -70,17 +71,14 @@ void ValueOrNull::GetBString(types::BString &tianmu_s) const {
     tianmu_s = rcs_null;
   } else {
     // copy either from sp or x
-    if (sp)
-      tianmu_s = types::BString(sp, len, true);
-    else
-      tianmu_s = types::TianmuNum(x).ToBString();
+    tianmu_s = (sp) ? types::BString(sp, len, true) : types::TianmuNum(x).ToBString();
     tianmu_s.MakePersistent();
   }
 }
 
 ValueOrNull::ValueOrNull(ValueOrNull const &von)
     : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null) {
-  if (string_owner) {
+  if (string_owner && von.sp && len > 0) {
     sp = new (std::nothrow) char[len + 1];
 
     if (sp) {
@@ -99,7 +97,7 @@ ValueOrNull &ValueOrNull::operator=(ValueOrNull const &von) {
   if (this == &von)
     return *this;
 
-  if (von.string_owner) {
+  if (von.string_owner && von.sp) {
     sp = new (std::nothrow) char[von.len + 1];
     if (sp) {
       std::memset(sp, '\0', von.len + 1);
@@ -140,5 +138,6 @@ void ValueOrNull::Swap(ValueOrNull &von) {
     std::swap(string_owner, von.string_owner);
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu

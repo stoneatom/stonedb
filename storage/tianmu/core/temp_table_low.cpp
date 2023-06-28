@@ -393,7 +393,9 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     if (page_end > no_obj + local_offset)
       page_end = no_obj + local_offset;
 
-    for (uint i = 0; i < NumOfAttrs(); i++) attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
+    for (uint i = 0; i < NumOfAttrs(); i++) {
+      attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
+    }
 
     auto &attr = attrs[0];
     if (attr->NeedFill()) {
@@ -528,34 +530,35 @@ std::vector<AttributeTypeInfo> TempTable::GetATIs(bool orig) {
 }
 
 #define STRING_LENGTH_THRESHOLD 512
-void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
-                                    // current multiindex contents
+void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the current multiindex contents
 {
-  for (uint i = 0; i < attrs.size(); i++)
-    if (ATI::IsStringType(attrs[i]->TypeName())) {
-      // reduce string size when column defined too large to reduce allocated
-      // temp memory
-      if (attrs[i]->term.vc->MaxStringSize() < STRING_LENGTH_THRESHOLD) {
-        attrs[i]->OverrideStringSize(attrs[i]->term.vc->MaxStringSize());
-      } else {
-        vcolumn::VirtualColumn *vc = attrs[i]->term.vc;
-        int max_length = attrs[i]->term.vc->MaxStringSize();
-        if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
-          auto &var_map = dynamic_cast<vcolumn::ExpressionColumn *>(vc)->GetVarMap();
-          for (auto &it : var_map) {
-            PhysicalColumn *column = it.GetTabPtr()->GetColumn(it.col_ndx);
-            ColumnType ct = column->Type();
-            uint precision = ct.GetPrecision();
-            if (precision >= STRING_LENGTH_THRESHOLD) {
-              uint actual_size = column->MaxStringSize() * ct.GetCollation().collation->mbmaxlen;
-              if (actual_size < precision)
-                max_length += (actual_size - precision);
-            }
+  for (uint i = 0; i < attrs.size(); i++) {
+    if (!ATI::IsStringType(attrs[i]->TypeName()))  // and 'IsTxtType' or 'IsCharType' ?
+      continue;
+
+    // reduce string size when column defined too large to reduce allocated
+    // temp memory
+    if (attrs[i]->term.vc->MaxStringSize() < STRING_LENGTH_THRESHOLD) {
+      attrs[i]->OverrideStringSize(attrs[i]->term.vc->MaxStringSize());
+    } else {
+      vcolumn::VirtualColumn *vc = attrs[i]->term.vc;
+      int max_length = attrs[i]->term.vc->MaxStringSize();
+      if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
+        auto &var_map = dynamic_cast<vcolumn::ExpressionColumn *>(vc)->GetVarMap();
+        for (auto &it : var_map) {
+          PhysicalColumn *column = it.GetTabPtr()->GetColumn(it.col_ndx);
+          ColumnType ct = column->Type();
+          uint precision = ct.GetPrecision();
+          if (precision >= STRING_LENGTH_THRESHOLD) {
+            uint actual_size = column->MaxStringSize() * ct.GetCollation().collation->mbmaxlen;
+            if (actual_size < precision)
+              max_length += (actual_size - precision);
           }
         }
-        attrs[i]->OverrideStringSize(max_length);
       }
+      attrs[i]->OverrideStringSize(max_length);
     }
+  }
 }
 
 void TempTable::FillbufferTask(Attr *attr, Transaction *txn, MIIterator *page_start, int64_t start_row,

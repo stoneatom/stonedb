@@ -586,26 +586,18 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
     std::shared_ptr<JustATable> t1_ptr, t2_ptr, t3_ptr;
 
     if (step.t1.n != common::NULL_VALUE_32) {
-      if (step.t1.n >= 0)
-        t1_ptr = Table(step.t1.n);  // normal table
-      else {
-        t1_ptr = ta[-step.t1.n - 1];  // TempTable
-      }
+      // normal table or TempTable
+      t1_ptr = (step.t1.n >= 0) ? Table(step.t1.n) : ta[-step.t1.n - 1];
     }
+
     if (step.t2.n != common::NULL_VALUE_32) {
-      if (step.t2.n >= 0)
-        t2_ptr = Table(step.t2.n);  // normal table
-      else {
-        t2_ptr = ta[-step.t2.n - 1];  // TempTable
-      }
+      t2_ptr = (step.t2.n >= 0) ? Table(step.t2.n) : ta[-step.t2.n - 1];
     }
+
     if (step.t3.n != common::NULL_VALUE_32) {
-      if (step.t3.n >= 0)
-        t3_ptr = Table(step.t3.n);  // normal table
-      else {
-        t3_ptr = ta[-step.t3.n - 1];  // TempTable
-      }
+      t3_ptr = (step.t3.n >= 0) ? Table(step.t3.n) : ta[-step.t3.n - 1];
     }
+
     // Some technical information
     if (step.alias && std::strcmp(step.alias, "roughstats") == 0) {
       // magical word (passed as table alias) to display statistics
@@ -623,13 +615,18 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
         case CompiledQuery::StepType::TABLE_ALIAS:
           ta[-step.t1.n - 1] = t2_ptr;
           break;
-        case CompiledQuery::StepType::TMP_TABLE:
+        case CompiledQuery::StepType::TMP_TABLE: {
           DEBUG_ASSERT(step.t1.n < 0);
-          ta[-step.t1.n - 1] = step.n1
-                                   ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, true)
-                                   : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this);
+          TableSubType sub_type = TableSubType::NORMAL;
+          if (step.n2 == static_cast<typename std::underlying_type<TableSubType>::type>(TableSubType::DUAL)) {
+            sub_type = TableSubType::DUAL;
+          }
+
+          ta[-step.t1.n - 1] =
+              step.n1 ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type, true)
+                      : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type);
           ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NumOfVirtualColumns(step.t1));
-          break;
+        } break;
         case CompiledQuery::StepType::CREATE_CONDS:
           DEBUG_ASSERT(step.t1.n < 0);
           if (step.ex_op == common::ExtraOperation::EX_COND_PUSH) {

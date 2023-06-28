@@ -569,9 +569,11 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64
     DEBUG_ASSERT(gdistinct[col]);
     if (vc[col]->IsNull(mit))
       return true;  // omit nulls
+
     GDTResult res = gdistinct[col]->Add(row, mit);
     if (res == GDTResult::GDT_EXISTS)
       return true;  // value found, do not aggregate it again
+
     if (res == GDTResult::GDT_FULL) {
       // if (gdistinct[col]->AlreadyFull())
       // not_full = false;  // disable also the main grouping table (if it is a
