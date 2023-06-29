@@ -560,6 +560,9 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemInt2ValueOrNull(Item *item) {
   if (v == common::NULL_VALUE_64)
     v++;
   val->SetFixed(v);
+  // add unsigned flag here as item may have unsigned valued, like where a = 18446744073709551601; 18446744073709551601
+  // is an unsigned valued stored in item. Introduced by a bug: https://github.com/stoneatom/stonedb/issues/1564
+  val->SetUnsignedFlag(static_cast<bool>(item->unsigned_flag));
   if (item->null_value)
     return std::make_shared<ValueOrNull>();
   return val;

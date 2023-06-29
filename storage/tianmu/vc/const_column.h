@@ -58,6 +58,7 @@ class ConstColumn : public VirtualColumn {
   int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return value_or_null_.IsNull() ? common::NULL_VALUE_64 : value_or_null_.Get64();
   }
+  bool GetUnsignedFlagImpl() override { return value_or_null_.GetUnsignedFlag(); }
   bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return value_or_null_.IsNull(); }
   void GetValueStringImpl(types::BString &s, const core::MIIterator &mit) override;
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
