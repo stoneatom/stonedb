@@ -6,12 +6,12 @@ set global default_storage_engine=innodb;
 --enable_warnings
 
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # tianmu_mandatory=OFF
 --echo # 
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global tianmu_mandatory=OFF;
 --enable_warnings
 
 --echo [on master]
@@ -39,11 +39,11 @@ drop table t_issue1090;
 
 
 --echo # 
---echo # sql_mode='MANDATORY_TIANMU'
+--echo # tianmu_mandatory=ON
 --echo # 
 --echo [on slave]
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set global tianmu_mandatory=ON;
 --enable_warnings
 
 --echo [on master]
@@ -52,8 +52,6 @@ create table t_issue1090_2(c1 int,c2 varchar(255));
 show create table t_issue1090_2;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-show global variables like 'sql_mode';
-show variables like '%_engine';
 show create table t_issue1090_2;
 --echo [on master]
 connection master;
@@ -61,8 +59,6 @@ alter table t_issue1090_2 add c3 int;
 show create table t_issue1090_2;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-show global variables like 'sql_mode';
-show global variables like '%_engine';
 show create table t_issue1090_2;
 --echo [on master]
 connection master;
@@ -70,11 +66,11 @@ drop table t_issue1090_2;
 --source include/sync_slave_sql_with_master.inc
 
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # tianmu_mandatory=OFF
 --echo # 
 --echo [on slave]
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global tianmu_mandatory=OFF;
 --enable_warnings
 
 --echo [on master]
@@ -84,8 +80,6 @@ create table t_issue1090_3(c1 int,c2 varchar(255));
 show create table t_issue1090_3;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-show global variables like 'sql_mode';
-show global variables like '%_engine';
 show create table t_issue1090_3;
 --echo [on master]
 connection master;
@@ -93,8 +87,6 @@ alter table t_issue1090_3 add c3 int;
 show create table t_issue1090_3;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-show global variables like 'sql_mode';
-show global variables like '%_engine';
 show create table t_issue1090_3;
 --echo [on master]
 connection master;
@@ -102,12 +94,12 @@ drop table t_issue1090_3;
 --source include/sync_slave_sql_with_master.inc
 
 --echo # 
---echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU'
+--echo # tianmu_mandatory=ON
 
 --echo # 
 --echo [on slave]
 --disable_warnings
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set global tianmu_mandatory=ON;
 --enable_warnings
 
 
@@ -118,8 +110,6 @@ create table t_issue1090_4(c1 int,c2 varchar(255));
 show create table t_issue1090_4;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-show global variables like 'sql_mode';
-show global variables like '%_engine';
 show create table t_issue1090_4;
 --echo [on master]
 connection master;
@@ -127,8 +117,6 @@ alter table t_issue1090_4 DROP COLUMN c2;
 show create table t_issue1090_4;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-show global variables like 'sql_mode';
-show global variables like '%_engine';
 show create table t_issue1090_4;
 --echo [on master]
 connection master;

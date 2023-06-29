@@ -118,7 +118,7 @@
 #include "rpl_group_replication.h"
 #include <algorithm>
 
-#include "../storage/tianmu/handler/ha_my_tianmu.h" // tianmu code
+#include "../storage/tianmu/sql/ha_my_tianmu.h" // tianmu code
 using std::max;
 
 /**
@@ -2774,18 +2774,14 @@ mysql_execute_command(THD *thd, bool first_level)
   if (!thd->in_sub_stmt)
     thd->query_plan.set_query_plan(lex->sql_command, lex,
                                    !thd->stmt_arena->is_conventional());
-  /* 
-    the (sql_mode) of (MANDATORY_TIANMU) is set,
-    the engine will be forcibly converted to the tianmu engine.
-  */
+                                   
   if(lex && ((lex->sql_command == SQLCOM_CREATE_TABLE) || 
     (lex->sql_command == SQLCOM_ALTER_TABLE)) && 
     !(lex->create_info.options & HA_LEX_CREATE_TMP_TABLE)){
 
-    sql_mode_t sql_mode = thd->variables.sql_mode;
-    if(thd->slave_thread) sql_mode = global_system_variables.sql_mode;
-    if(sql_mode & MODE_MANDATORY_TIANMU){
+    my_bool tianmu_mandatory = thd->slave_thread ? global_system_variables.tianmu_mandatory : thd->variables.tianmu_mandatory;
 
+    if(tianmu_mandatory){
       lex->create_info.db_type = ha_default_handlerton(thd);
       old_db_type = lex->create_info.db_type->db_type;
       lex->create_info.db_type->db_type = DB_TYPE_TIANMU;

@@ -18,9 +18,9 @@
 #include "item_tianmu_field.h"
 
 #include "common/assert.h"
-#include "core/compilation_tools.h"
 #include "core/quick_math.h"
 #include "core/transaction.h"
+#include "optimizer/compile/compilation_tools.h"
 
 namespace Tianmu {
 namespace core {
@@ -238,6 +238,7 @@ Item_tianmudecimal::Item_tianmudecimal(DataType t) : Item_decimal(0, false) {
 }
 
 void Item_tianmudecimal::Set(int64_t val) {
+  std::scoped_lock guard(mtx);
   std::fill(decimal_value.buf, decimal_value.buf + decimal_value.len, 0);
   if (val) {
     int2my_decimal((uint)-1, val, 0, &decimal_value);
@@ -246,6 +247,11 @@ void Item_tianmudecimal::Set(int64_t val) {
     my_decimal_set_zero(&decimal_value);
   }
   decimal_value.frac = scale;
+}
+
+String *Item_tianmudecimal::val_str(String *str) {
+  std::scoped_lock guard(mtx);
+  return Item_decimal::val_str(str);
 }
 
 my_decimal *Item_tianmudatetime_base::val_decimal(my_decimal *d) {
@@ -260,8 +266,10 @@ bool Item_tianmudatetime_base::get_time(MYSQL_TIME *ltime) {
 }
 
 longlong Item_tianmudatetime::val_int() {
-  return dt.year * 10000000000LL + dt.month * 100000000 + dt.day * 1000000 + dt.hour * 10000 + dt.minute * 100 +
-         dt.second;
+  MYSQL_TIME ltime;
+  dt.Store(&ltime, MYSQL_TIMESTAMP_DATETIME);
+  longlong tmp = (longlong)TIME_to_ulonglong_datetime_round(&ltime);
+  return dt.Neg() ? -tmp : tmp;
 }
 
 String *Item_tianmudatetime::val_str(String *s) {
@@ -311,7 +319,12 @@ bool Item_tianmudate::get_time(MYSQL_TIME *ltime) {
   return false;
 }
 
-longlong Item_tianmutime::val_int() { return dt.hour * 10000 + dt.minute * 100 + dt.second; }
+longlong Item_tianmutime::val_int() {
+  MYSQL_TIME ltime;
+  dt.Store(&ltime, MYSQL_TIMESTAMP_TIME);
+  longlong tmp = (longlong)TIME_to_ulonglong_time_round(&ltime);
+  return dt.Neg() ? -tmp : tmp;
+}
 String *Item_tianmutime::val_str(String *s) {
   MYSQL_TIME ltime;
   get_time(&ltime);

@@ -18,12 +18,12 @@
 #include <algorithm>
 
 #include "common/mysql_gate.h"
-#include "core/compilation_tools.h"
-#include "core/compiled_query.h"
 #include "core/engine.h"
 #include "core/mysql_expression.h"
 #include "core/query.h"
 #include "core/transaction.h"
+#include "optimizer/compile/compilation_tools.h"
+#include "optimizer/compile/compiled_query.h"
 
 namespace Tianmu {
 namespace core {
@@ -311,7 +311,7 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
       // TMP_TABLE is required in combination with Query::Preexecute.
       TabID tab(-1);
       left_tables.push_back(tab);
-      cq->TmpTable(tmp_table, tab, for_subq_in_where);
+      cq->TmpTable(tmp_table, tab, TableSubType::NORMAL, for_subq_in_where);
       return QueryRouteTo::kToTianmu;
     }
 
@@ -383,7 +383,7 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
         DEBUG_ASSERT(!join_ptr->join_cond() &&
                      "It is not possible to join the first table with the LEFT "
                      "direction");
-        cq->TmpTable(tmp_table, tab, for_subq_in_where);
+        cq->TmpTable(tmp_table, tab, TableSubType::NORMAL, for_subq_in_where);
         first_table = false;
       } else {
         cq->Join(tmp_table, tab);
@@ -913,7 +913,7 @@ int Query::AddColumnForPhysColumn(Item *item, const TabID &tmp_table, TabID cons
     if (item->type() == Item::SUM_FUNC_ITEM && ((Item_sum *)item)->sum_func() == Item_sum::GROUP_CONCAT_FUNC) {
       // pass the seprator to construct the special instruction
       char *ptr = ((Item_func_group_concat *)item)->get_separator()->c_ptr();
-      SI si;
+      SpecialInstruction si;
       si.separator.assign(ptr, std::strlen(ptr));
       si.order = ((Item_func_group_concat *)item)->direction();
       cq->AddColumn(at, tmp_table, CQTerm(vc.second), oper, group_by ? nullptr : item->item_name.ptr(), distinct, &si);
@@ -1070,8 +1070,7 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
     int64_t offset_value = -1;
     /*
       Increase the identification of whether to create a JOIN object,
-      which is used to release the JOIN object later.
-      See #669 for the problems solved.
+      which is used to release the JOIN object later. See #669 for the problems solved.
     */
     bool ifNewJoinForTianmu = false;
     if (!sl->join) {
@@ -1098,8 +1097,7 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
 
     // if (order) global_order = 0;   //we want to zero global order (which
     // seems to be always present) if we find a local order by clause
-    //  The above is not necessary since global_order is set only in case of
-    //  real UNIONs
+    //  The above is not necessary since global_order is set only in case of  real UNIONs
 
     ORDER *group = sl->group_list.first;
     Item *having = sl->having_cond();
@@ -1109,9 +1107,8 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
     // The exists subquery determines whether a value exists during the query optimization phase
     // result is not set to zero only when a matching value is found in the query optimization phase
     // When a field has an index, the optimization phase scans the table through the index
-    // The primary key implementation of the current column storage engine
-    // has a problem with the primary key index to scan the table for data
-    // Remove the following temporary practices after primary key indexing is complete
+    // The primary key implementation of the current column storage engine has a problem with the primary key
+    // index to scan the table for data Remove the following temporary practices after primary key indexing is complete
     if (zero_result) {
       if (Item::Type::SUBSELECT_ITEM == (conds->type())) {
         zero_result = false;
@@ -1137,12 +1134,14 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
       List_iterator_fast<Item> li(*fields);
       for (Item *item = li++; item; item = li++) {
         if ((item->type() == Item::Type::FUNC_ITEM) &&
-            (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP) && (!sl->is_distinct())) {
+            ((down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP) ||
+             (down_cast<Item_func *>(item)->functype() == Item_func::Functype::SUSERVAR_FUNC)) &&
+            (!sl->is_distinct())) {
           sl->add_active_options(SELECT_DISTINCT);
           sl->join->select_distinct = TRUE;
           use_tmp_when_no_join = true;
           break;
-        }
+        }  // else if (item->type() == Item::Type::)
       }
     }
 
@@ -1152,12 +1151,6 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
 
     TabID tmp_table;
     try {
-      // partial optimization of LOJ conditions, JOIN::optimize(part=3)
-      // necessary due to already done basic transformation of conditions
-      // see comments in sql_select.cc:JOIN::optimize()
-      if (IsLOJ(join_list))
-        sl->join->optimize(OptimizePhase::Finish_LOJ_Transform);
-
       if (left_expr_for_subselect)
         if (!ClearSubselectTransformation(*oper_for_subselect, field_for_subselect, conds, having, cond_to_reinsert,
                                           list_to_reinsert, left_expr_for_subselect))
@@ -1172,6 +1165,7 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
         if (!table_ptr->is_view_or_derived()) {
           if (!Engine::IsTianmuTable(table_ptr->table))
             throw CompilationError();
+
           std::string path = TablePath(table_ptr);
           if (path2num.find(path) == path2num.end()) {
             path2num[path] = NumOfTabs();
@@ -1181,13 +1175,18 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
         }
       }
 
-      // handle join & join cond
-      std::vector<TabID> left_tables, right_tables;
-      bool first_table = true;
-      if (QueryRouteTo::kToMySQL == AddJoins(*join_list, tmp_table, left_tables, right_tables,
-                                             (res_tab != nullptr && res_tab->n != 0), first_table, for_subq_in_where,
-                                             use_tmp_when_no_join))
-        throw CompilationError();
+      if (!sl->leaf_table_count && !use_tmp_when_no_join) {  // process select xxx or select xxx from dual.
+        TabID tab(-NumOfTabs() - 1);
+        cq->TmpTable(tmp_table, tab, TableSubType::DUAL, false);
+        use_tmp_when_no_join = true;
+      } else {  // handle join & join cond, which has table(s).
+        std::vector<TabID> left_tables, right_tables;
+        bool first_table = true;
+        if (QueryRouteTo::kToMySQL == AddJoins(*join_list, tmp_table, left_tables, right_tables,
+                                               (res_tab != nullptr && res_tab->n != 0), first_table, for_subq_in_where,
+                                               use_tmp_when_no_join))
+          throw CompilationError();
+      }
 
       // handle fields
       List<Item> field_list_for_subselect;
@@ -1214,17 +1213,17 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
 
       // handle where cond
       CondID cond_id;
-      if (QueryRouteTo::kToMySQL == BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result))
-        throw CompilationError();
-
-      cq->AddConds(tmp_table, cond_id, CondType::WHERE_COND);
+      (BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result) == QueryRouteTo::kToMySQL)
+          ? throw CompilationError()
+          : cq->AddConds(tmp_table, cond_id, CondType::WHERE_COND);
 
       // handle having cond
       cond_id = CondID();
-      if (QueryRouteTo::kToMySQL == BuildConditions(having, cond_id, cq, tmp_table, CondType::HAVING_COND))
-        throw CompilationError();
+      (BuildConditions(having, cond_id, cq, tmp_table, CondType::HAVING_COND) == QueryRouteTo::kToMySQL)
+          ? throw CompilationError()
+          : cq->AddConds(tmp_table, cond_id, CondType::HAVING_COND);
 
-      cq->AddConds(tmp_table, cond_id, CondType::HAVING_COND);
+      // apply the condition to tmp_table.
       cq->ApplyConds(tmp_table);
 
       // handle group by & order by after semi-join
@@ -1232,23 +1231,29 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
         if (group != nullptr) {
           cq->Mode(tmp_table, TMParameter::TM_DISTINCT);
           TabID new_tmp_table;
-          cq->TmpTable(new_tmp_table, tmp_table, false);
-          if (QueryRouteTo::kToMySQL ==
-              AddFields(*fields, new_tmp_table, tmp_table, group != nullptr, col_count, ignore_minmax, aggr_used))
-            throw CompilationError();
-          if (QueryRouteTo::kToMySQL == AddGroupByFields(group, new_tmp_table, tmp_table))
-            throw CompilationError();
-          if (QueryRouteTo::kToMySQL == AddOrderByFields(order, new_tmp_table, tmp_table,
-                                                         group != nullptr || sl->join->select_distinct || aggr_used))
-            throw CompilationError();
+          cq->TmpTable(new_tmp_table, tmp_table, TableSubType::NORMAL, false);
+
+          // process all fields.
+          (AddFields(*fields, new_tmp_table, tmp_table, group != nullptr, col_count, ignore_minmax, aggr_used) ==
+           QueryRouteTo::kToMySQL)
+              ? throw CompilationError()
+              : TIANMU_LOG(LogCtl_Level::DEBUG, "AddFields process success, temp_table: %d.", tmp_table.n);
+          // process group by clause.
+          (AddGroupByFields(group, new_tmp_table, tmp_table) == QueryRouteTo::kToMySQL)
+              ? throw CompilationError()
+              : TIANMU_LOG(LogCtl_Level::DEBUG, "AddGroupByFields process success, temp_table: %d", tmp_table.n);
+          // process order by clause.
+          (AddOrderByFields(order, new_tmp_table, tmp_table,
+                            group != nullptr || sl->join->select_distinct || aggr_used) == QueryRouteTo::kToMySQL)
+              ? throw CompilationError()
+              : TIANMU_LOG(LogCtl_Level::DEBUG, "AddGroupByFields process success, tmp_table: %d", tmp_table.n);
           tmp_table = new_tmp_table;
         } else {
           cq->Mode(tmp_table, TMParameter::TM_DISTINCT);
         }
       }
     } catch (...) {
-      // restore original values of class fields (necessary if this method is
-      // called recursively)
+      // restore original values of class fields (necessary if this method is called recursively)
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert)
         list_to_reinsert->push_back(cond_to_reinsert);
@@ -1264,17 +1269,19 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
 
     if (sl == selects_list) {
       prev_result = tmp_table;
-      if (global_order && !selects_list->next_select()) {  // trivial union with one select and
-                                                           // ext. order by
+      if (global_order && !selects_list->next_select()) {  // trivial union with one select and ext. order by
         tmp_table = TabID();
         cq->Union(prev_result, prev_result, tmp_table, true);
       }
     } else
       cq->Union(prev_result, prev_result, tmp_table, union_all);
+
     if (sl == last_distinct)
       union_all = true;
+
     if (cond_to_reinsert && list_to_reinsert)
       list_to_reinsert->push_back(cond_to_reinsert);
+
     if (ifNewJoinForTianmu)
       sl->cleanup(true);
   }
@@ -1323,5 +1330,6 @@ bool Query::IsLOJ(List<TABLE_LIST> *join) {
   }
   return false;
 }
+
 }  // namespace core
 }  // namespace Tianmu

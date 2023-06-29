@@ -15,11 +15,11 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 #include "common/common_definitions.h"
-#include "core/filter.h"
-#include "core/tianmu_attr_typeinfo.h"
+#include "executor/filter.h"
 #include "types/text_stat.h"
 #include "types/tianmu_num.h"
 #include "util/hash64.h"
+#include "vc/tianmu_attr_typeinfo.h"
 
 #include "value_set.h"
 

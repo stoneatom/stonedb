@@ -20,8 +20,8 @@
 
 #include <mutex>
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -83,6 +83,7 @@ class ExpressionColumn : public VirtualColumn {
   /////////////// Data access //////////////////////
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &) override;
+  bool GetUnsignedFlagImpl() override { return static_cast<bool>(expr_->GetItem()->unsigned_flag); }
   bool IsNullImpl(const core::MIIterator &) override;
   void GetValueStringImpl(types::BString &, const core::MIIterator &) override;
   double GetValueDoubleImpl(const core::MIIterator &) override;

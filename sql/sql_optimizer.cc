@@ -228,7 +228,7 @@ JOIN::optimize(OptimizePhase phase)
             if (phase == OptimizePhase::Before_LOJ_Transform)
             {
               if (tl->is_view_or_derived() && tl->optimize_derived_for_tianmu(thd))
-                DBUG_RETURN(1);
+                DBUG_RETURN(0);
             }          
           }
         }
@@ -5142,23 +5142,8 @@ bool JOIN::make_join_plan()
     trace_table_dependencies(trace, join_tab, primary_tables);
 
   // Build the key access information, which is the basis for ref access.
-  if (where_cond || select_lex->outer_join)
-  {
-    /*
-      The primary key of the tianmu engine does not support delete and update statements.
-      The following codes can be deleted after subsequent support
-    */
-    TABLE *const table= join_tab->table();
-    bool check_if_tianmu_engine = table && table->s && 
-                        (table->s->db_type() ? (table->s->db_type()->db_type == DB_TYPE_TIANMU): false);
-    enum_sql_command sql_command = SQLCOM_END;
-    if(thd->lex) sql_command = thd->lex->sql_command;
-    bool check_tianmu_delete_or_update = (check_if_tianmu_engine && ((sql_command == SQLCOM_DELETE) ||
-                                          (sql_command == SQLCOM_DELETE_MULTI) ||
-                                          (sql_command == SQLCOM_UPDATE) ||
-                                          (sql_command == SQLCOM_UPDATE_MULTI)));
-
-    if (!check_tianmu_delete_or_update && update_ref_and_keys(thd, &keyuse_array, join_tab, tables, where_cond,
+  if (where_cond || select_lex->outer_join) {
+    if (update_ref_and_keys(thd, &keyuse_array, join_tab, tables, where_cond,
                             cond_equal, ~select_lex->outer_join, select_lex,
                             &sargables))
       DBUG_RETURN(true);
@@ -6901,19 +6886,17 @@ merge_key_fields(Key_field *start, Key_field *new_fields, Key_field *end,
             old->val= new_fields->val;
           /* The referred expression can be NULL: */ 
           old->null_rejecting= 0;
-	}
-	else
-	{
-	  /*
-	    We are comparing two different const.  In this case we can't
-	    use a key-lookup on this so it's better to remove the value
-	    and let the range optimizer handle it
-	  */
-	  if (old == --first_free)		// If last item
-	    break;
-	  *old= *first_free;			// Remove old value
-	  old--;				// Retry this value
-	}
+        } else {
+          /*
+            We are comparing two different const.  In this case we can't
+            use a key-lookup on this so it's better to remove the value
+            and let the range optimizer handle it
+          */
+          if (old == --first_free) // If last item
+            break;
+          *old = *first_free; // Remove old value
+          old--;              // Retry this value
+        }
       }
     }
   }
@@ -9404,13 +9387,11 @@ static bool make_join_select(JOIN *join, Item *cond)
               get_quick_record_count().
             */
             assert(tab->quick()->is_valid());
-	  }
-	  else
-          {
+          } else {
             delete tab->quick();
-	    tab->set_quick(NULL);
+            tab->set_quick(NULL);
           }
-	}
+        }
 
         if ((tab->type() == JT_ALL || tab->type() == JT_RANGE ||
             tab->type() == JT_INDEX_MERGE || tab->type() == JT_INDEX_SCAN) &&
@@ -10126,7 +10107,7 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
       DBUG_EXECUTE("where",print_where(*cond,"after const change", QT_ORDINARY););
     }
   }
-  if (*cond)
+  if ((*cond) && (!( (int64)(*cond) & 0x1)))
   {
     Opt_trace_object step_wrapper(trace);
     step_wrapper.add_alnum("transformation", "trivial_condition_removal");

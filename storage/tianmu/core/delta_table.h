@@ -22,13 +22,13 @@
 
 #include "common/exception.h"
 #include "core/delta_record_head.h"
-#include "core/tianmu_attr.h"
 #include "index/kv_store.h"
 #include "rocksdb/db.h"
 #include "rocksdb/iterator.h"
 #include "rocksdb/slice.h"
 #include "types/tianmu_data_types.h"
 #include "util/bitset.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 namespace core {

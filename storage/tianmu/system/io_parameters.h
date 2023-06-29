@@ -23,8 +23,8 @@
 #include "common/assert.h"
 #include "common/common_definitions.h"
 #include "common/data_format.h"
-#include "core/tianmu_attr_typeinfo.h"
 #include "system/file_system.h"
+#include "vc/tianmu_attr_typeinfo.h"
 
 namespace Tianmu {
 namespace system {

@@ -16,9 +16,10 @@
 */
 
 #include "expr_column.h"
-#include "core/compiled_query.h"
+#include <mutex>
 #include "core/mysql_expression.h"
-#include "core/tianmu_attr.h"
+#include "optimizer/compile/compiled_query.h"
+#include "vc/tianmu_attr.h"
 
 namespace Tianmu {
 namespace vcolumn {
@@ -101,42 +102,89 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
     first_eval_ = false;
     return true;
   }
+
   for (auto &it : var_map_) {
     core::ValueOrNull v(it.just_a_table_ptr->GetComplexValue(mit[it.dim], it.col_ndx));
     v.MakeStringOwner();
+
     auto cache = var_buf_.find(it.var_id);
     DEBUG_ASSERT(cache != var_buf_.end());
+
     diff = diff || (v != cache->second.begin()->first);
-    if (diff)
-      for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
+    if (diff) {
+      for (auto &val_it : cache->second) {
+        val_it.first = v;
+        *(val_it.second) = val_it.first;
+      }
+    }
   }
+
   first_eval_ = false;
+
+  {
+    Item *item = expr_->GetItem();
+    if (item && (Item::FUNC_ITEM == item->type()) && (dynamic_cast<Item_func_if *>(item))) {
+      return true;
+    }
+  }
+
   return (diff || !deterministic_);
 }
 
 int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
+  static std::mutex scp_mutex;
+  std::scoped_lock lock(scp_mutex);
+
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
+
   if (last_val_->IsNull())
     return common::NULL_VALUE_64;
+
+  // In `FeedArguments`, the stings were stored in var_buf_, but we don't want to store all the data
+  // in due to the limitation of memory resource. Therefore, to store in FeedArguments, and frees the
+  // stored resource. This perphaps wastes some computing cost, but the memory cost is saved. And the
+  // memory leakage occur if we don't call clear.
+  for (auto &it : var_map_) {
+    auto cache = var_buf_.find(it.var_id);
+    DEBUG_ASSERT(cache != var_buf_.end());
+
+    for (auto &val_it : cache->second) {
+      if (&val_it.first)
+        val_it.first.Clear_SP();
+      if (val_it.second)
+        val_it.second->Clear_SP();
+    }
+  }
+
   return last_val_->Get64();
 }
 
 bool ExpressionColumn::IsNullImpl(const core::MIIterator &mit) {
+  {
+    Item *item = expr_->GetItem();
+    if (item && (Item::FUNC_ITEM == item->type()) && (dynamic_cast<Item_func_if *>(item))) {
+      return false;
+    }
+  }
+
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
+
   return last_val_->IsNull();
 }
 
 void ExpressionColumn::GetValueStringImpl(types::BString &s, const core::MIIterator &mit) {
   if (FeedArguments(mit))
     last_val_ = expr_->Evaluate();
+
   if (core::ATI::IsDateTimeType(TypeName())) {
     int64_t tmp;
     types::TianmuDateTime vd(last_val_->Get64(), TypeName());
     vd.ToInt64(tmp);
     last_val_->SetFixed(tmp);
   }
+
   last_val_->GetBString(s);
 }
 
@@ -154,13 +202,13 @@ double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   else if (core::ATI::IsRealType(TypeName())) {
     val = last_val_->GetDouble();
   } else if (core::ATI::IsDateTimeType(TypeName())) {
-    types::TianmuDateTime vd(last_val_->Get64(),
-                             TypeName());  // 274886765314048  ->  2000-01-01
-    int64_t vd_conv = 0;
-    vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
+    types::TianmuDateTime vd(last_val_->Get64(), TypeName());  // 274886765314048  ->  2000-01-01
+    int64_t vd_conv = 0;                                       // 2000-01-01  ->  20000101
+    vd.ToInt64(vd_conv);
     val = (double)vd_conv;
   } else if (core::ATI::IsStringType(TypeName())) {
     auto str = last_val_->ToString();
+
     if (str)
       val = std::stod(*str);
   } else
@@ -175,14 +223,19 @@ types::TianmuValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &
     GetValueString(s, mit);
     return s;
   }
+
   if (core::ATI::IsIntegerType(TypeName()))
     return types::TianmuNum(GetValueInt64(mit), -1, false, TypeName());
+
   if (core::ATI::IsDateTimeType(TypeName()))
     return types::TianmuDateTime(GetValueInt64(mit), TypeName());
+
   if (core::ATI::IsRealType(TypeName()))
     return types::TianmuNum(GetValueInt64(mit), 0, true, TypeName());
+
   if (lookup_to_num || TypeName() == common::ColumnType::NUM || TypeName() == common::ColumnType::BIT)
     return types::TianmuNum(GetValueInt64(mit), Type().GetScale());
+
   DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();
 }
@@ -212,6 +265,7 @@ int64_t ExpressionColumn::GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls
                                                 [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
   if (multi_index_->TooManyTuples())
     return common::PLUS_INF_64;
+
   return multi_index_->NumOfTuples();  // default
 }
 
@@ -247,6 +301,7 @@ int64_t ExpressionColumn::RoughMinImpl() {
     double dmin = -(DBL_MAX);
     return *(int64_t *)(&dmin);
   }
+
   return common::MINUS_INF_64;
 }
 
@@ -255,6 +310,7 @@ int64_t ExpressionColumn::RoughMaxImpl() {
     double dmax = DBL_MAX;
     return *(int64_t *)(&dmax);
   }
+
   return common::PLUS_INF_64;
 }
 
@@ -268,12 +324,15 @@ bool ExpressionColumn::IsDistinctImpl() { return false; }
 bool ExpressionColumn::ExactlyOneLookup() {
   if (!deterministic_)
     return false;
+
   auto iter = var_map_.begin();
   if (iter == var_map_.end() || !iter->GetTabPtr()->GetColumnType(iter->col_ndx).Lookup())
     return false;  // not a lookup
+
   iter++;
   if (iter != var_map_.end())  // more than one column
     return false;
+
   return true;
 }
 
@@ -290,14 +349,20 @@ void ExpressionColumn::FeedLookupArguments(core::MILookupIterator &mit) {
     v = col->DecodeValue_S(mit[0]);
 
   auto cache = var_buf_.find(iter->var_id);
-  for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
+  for (auto &val_it : cache->second) {
+    val_it.first = v;
+    *(val_it.second) = v;
+  }
 
   if (mit.IsValid() && mit[0] != common::NULL_VALUE_64 && mit[0] >= col->Cardinality())
     mit.Invalidate();
 }
 
 void ExpressionColumn::LockSourcePacks(const core::MIIterator &mit) {
-  for (auto &it : var_map_) it.just_a_table_ptr = it.GetTabPtr().get();
+  for (auto &it : var_map_) {
+    it.just_a_table_ptr = it.GetTabPtr().get();
+  }
+
   VirtualColumn::LockSourcePacks(mit);
 }
 }  // namespace vcolumn

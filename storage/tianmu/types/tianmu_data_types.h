@@ -24,9 +24,9 @@
 #include "common/assert.h"
 #include "common/common_definitions.h"
 #include "common/exception.h"
-#include "core/bin_tools.h"
-#include "core/tianmu_attr_typeinfo.h"
 #include "system/txt_utils.h"
+#include "util/bin_tools.h"
+#include "vc/tianmu_attr_typeinfo.h"
 
 namespace Tianmu {
 namespace types {
@@ -90,18 +90,22 @@ union DT {
 
   bool Neg() const { return neg == 1; }
   void Store(MYSQL_TIME *my_time, enum_mysql_timestamp_type t) {
-    my_time->year = year;
-    my_time->month = month;
-    my_time->day = day;
-    my_time->hour = hour;
+    if (t == MYSQL_TIMESTAMP_TIME) {
+      my_time->year = 0;
+      my_time->month = 0;
+      my_time->day = 0;
+      my_time->hour = time_hour;
+    } else {
+      my_time->year = year;
+      my_time->month = month;
+      my_time->day = day;
+      my_time->hour = hour;
+    }
     my_time->minute = minute;
     my_time->second = second;
     my_time->second_part = microsecond;
     my_time->neg = neg;
     my_time->time_type = t;
-
-    if (t == MYSQL_TIMESTAMP_TIME)
-      my_time->hour = time_hour;
   }
 
   // util functions

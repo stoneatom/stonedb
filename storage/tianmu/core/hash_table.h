@@ -22,8 +22,8 @@
 #include <vector>
 
 #include "base/util/spinlock.h"
-#include "core/bin_tools.h"
 #include "mm/traceable_object.h"
+#include "util/bin_tools.h"
 
 namespace Tianmu {
 namespace core {

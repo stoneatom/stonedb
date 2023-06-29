@@ -1037,9 +1037,7 @@ bool SELECT_LEX::resolve_subquery(THD *thd)
   for (TABLE_LIST *p_table_list = parent_tables.first; p_table_list;
        p_table_list = p_table_list->next_local) {
     TABLE* p_table = p_table_list->table;
-    if (p_table && p_table->s && p_table->s->db_type() &&
-        p_table->s->db_type()->db_type == DB_TYPE_TIANMU &&
-        p_table->key_info) {
+    if (p_table && p_table->reginfo.join_tab && p_table->reginfo.join_tab->quick()) {
       tianmu_table_has_index = true;
       break;
     }

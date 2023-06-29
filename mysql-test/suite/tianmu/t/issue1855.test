@@ -1,0 +1,88 @@
+-- source include/have_tianmu.inc
+
+--disable_warnings
+
+--disable_query_log
+
+DROP DATABASE IF EXISTS issue1855_test_db;
+CREATE DATABASE issue1855_test_db;
+
+USE issue1855_test_db;
+
+DROP TABLE IF EXISTS squence;
+
+CREATE TABLE ttt (
+  p_id varchar(50) NOT NULL,
+  p_val int NOT NULL
+) ENGINE=TIANMU AUTO_INCREMENT=3000000004910127 DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `ttt` 
+VALUES("THIS IS", 20),
+("THIS IS", 5),
+("A TEST", 2),
+("FOR SUM LENGTH", 10);
+--enable_query_log
+
+SELECT SUM(LENGTH(p_id)) FROM ttt;
+
+SELECT SUM(LENGTH(p_id)/2) FROM ttt;
+
+SELECT SUM(LENGTH(p_val)) FROM ttt;
+
+SELECT SUM(LENGTH(p_val)/2) FROM ttt;
+
+--disable_query_log
+
+--DELIMITER //
+CREATE PROCEDURE insert_data()
+wholeblock:BEGIN
+  DECLARE x INT;
+  DECLARE str VARCHAR(50);
+  DECLARE str1 VARCHAR(50);
+  SET x = 0;
+  SET str = 'this is ';
+  SET str1 = '';
+  
+  loop_label: LOOP
+    IF x > 10000 THEN
+      LEAVE loop_label;
+    END IF;
+   
+    SET str1 = substring(md5(rand()), 1, 10);
+    SET str = CONCAT(str,str1,',');
+    SET str = CONCAT(str,x,',');
+     
+    INSERT INTO ttt VALUES (str, x);
+    SET str ='';
+    SET x = x + 1;
+    ITERATE loop_label;
+  END LOOP;
+END//
+
+--DELIMITER ;
+
+CALL insert_data();
+
+DROP PROCEDURE insert_data;
+
+SHOW VARIABLES LIKE "%tianmu_groupby_parallel%";
+
+SET GLOBAL tianmu_groupby_parallel_rows_minimum = 100;
+SET GLOBAL tianmu_groupby_parallel_degree = 4;
+
+SHOW VARIABLES LIKE "%tianmu_groupby_parallel%";
+
+SELECT SUM(LENGTH(p_id)) FROM ttt;
+
+SELECT SUM(LENGTH(p_id)/2) FROM ttt;
+
+SELECT SUM(LENGTH(p_val)) FROM ttt;
+
+SELECT SUM(LENGTH(p_val)/2) FROM ttt;
+
+
+DROP TABLE ttt;
+DROP DATABASE issue1855_test_db;
+--enable_query_log
+
+--enable_warnings

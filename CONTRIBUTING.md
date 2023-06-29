@@ -12,7 +12,7 @@ Check if  `git` has been installed. If not, install it first.
 1. Issue report: Open a regular [StoneDB issue](https://github.com/stoneatom/stonedb/issues/new/choose) to bind your pull request.<br />For more details about creating github issue concepts, see: [create an github issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/creating-an-issue)
 2.  Fork [StoneDB repo](https://github.com/stoneatom/stonedb) to your own account. 
 3.  After add you own code, add unit test 
-4.  Do *make mtr test*
+4.  Do *make mtr test* [How to add mtr test](https://stonedb.io/docs/getting-started/quick-add-mtr-test/)
 5.  After all test passed, use *clang-format* to formate your code according to [google c++ styleguide](https://google.github.io/styleguide/cppguide.html) 
 6.  Submit a [Draft Pull Requests](https://github.blog/2019-02-14-introducing-draft-pull-requests/) and  [write your PR description](https://github.com/stoneatom/stonedb/blob/stonedb-5.7/.github/pull_request_template.md)<br />For more details about pr concepts, see [creating-a-pull-request-from-a-fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)<br />For more detail about draft pr concepts,  see [draft-pull-request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests#draft-pull-requests) 
 7.  After all CI tests are passed, change the status to “Ready for review”. 

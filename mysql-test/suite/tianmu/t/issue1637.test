@@ -1,0 +1,22 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1637_test;
+--enable_warnings
+
+CREATE DATABASE issue1637_test;
+
+USE issue1637_test;
+
+create table ttt(id int primary key,name varchar(10));
+insert into ttt values(1,'aaa');
+insert into ttt values(2,'bbb');
+--disable_warnings
+insert ignore into ttt values(2,'ccc');
+--enable_warnings
+
+sleep 2;
+
+select * from ttt;
+
+DROP DATABASE issue1637_test;

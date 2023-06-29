@@ -1,0 +1,17 @@
+#
+# This test tests the (NOT) LIKE test in filters that is added
+# to a FilterCommand in primproc.
+# This is a very rare situation, yet somehow I managed to trigger it.
+#
+DROP DATABASE IF EXISTS like_not_like;
+CREATE DATABASE like_not_like;
+USE like_not_like;
+CREATE TABLE tcs(d1 CHAR(6), d2 CHAR(6));
+INSERT INTO tcs(d1, d2) VALUES ('a','a'), ('a', 'b');
+SELECT 'stonedb like', d1, d2 FROM tcs WHERE (d1 LIKE d2);
+stonedb like	d1	d2
+stonedb like	a	a
+SELECT 'stonedb not like', d1, d2 FROM tcs WHERE (d1 NOT LIKE d2);
+stonedb not like	d1	d2
+stonedb not like	a	b
+DROP DATABASE like_not_like;

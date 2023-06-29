@@ -18,8 +18,8 @@
 #define TIANMU_VC_CONST_EXPR_COLUMN_H_
 #pragma once
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "vc/expr_column.h"
 
 namespace Tianmu {
@@ -95,6 +95,8 @@ class ConstExpressionColumn : public ExpressionColumn {
   int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return last_val_->IsNull() ? common::NULL_VALUE_64 : last_val_->Get64();
   }
+
+  bool GetUnsignedFlagImpl() override { return last_val_->GetUnsignedFlag(); }
 
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {

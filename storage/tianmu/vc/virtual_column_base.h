@@ -20,12 +20,12 @@
 
 #include <vector>
 
-#include "core/column.h"
 #include "core/just_a_table.h"
-#include "core/multi_index.h"
 #include "core/mysql_expression.h"
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
+#include "index/multi_index.h"
 #include "types/text_stat.h"
+#include "vc/column.h"
 
 namespace Tianmu {
 namespace core {
@@ -91,6 +91,7 @@ class VirtualColumnBase : public core::Column {
    * - Doubles must be cast e.g. *(double*)&
    */
   inline int64_t GetValueInt64(const core::MIIterator &mit) { return GetValueInt64Impl(mit); }
+  inline bool GetUnsignedFlag() { return GetUnsignedFlagImpl(); }
   virtual int64_t GetNotNullValueInt64(const core::MIIterator &mit) = 0;
 
   /*! \brief get Item
@@ -492,6 +493,7 @@ class VirtualColumnBase : public core::Column {
 
  protected:
   virtual int64_t GetValueInt64Impl(const core::MIIterator &) = 0;
+  virtual bool GetUnsignedFlagImpl() = 0;
   virtual bool IsNullImpl(const core::MIIterator &) = 0;
   virtual void GetValueStringImpl(types::BString &, const core::MIIterator &) = 0;
   virtual double GetValueDoubleImpl(const core::MIIterator &) = 0;

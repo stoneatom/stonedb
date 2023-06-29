@@ -20,13 +20,13 @@
 #include <limits>
 #include <map>
 #include <vector>
-#include "core/tools.h"
 #include "core/transaction.h"
 #include "item_timefunc.h"
 #include "loader/value_cache.h"
 #include "system/io_parameters.h"
 #include "system/tianmu_system.h"
 #include "types/value_parser4txt.h"
+#include "util/tools.h"
 
 namespace Tianmu {
 namespace loader {
@@ -433,9 +433,12 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     if (!first_row_prepared_) {
       std::string field_name(field->field_name);
 
-      str = new (thd_->mem_root) String(MAX_FIELD_WIDTH);
-      String *res = field->val_str(str);
-      DEBUG_ASSERT(res);
+      str = new (thd_->mem_root) String();
+      if (!field->is_null()) {
+        str->real_alloc(MAX_FIELD_WIDTH);
+        String *res = field->val_str(str);
+        DEBUG_ASSERT(res);
+      }
       vec_field_Str_list_.push_back(str);
       vec_field_num_to_index_.push_back(0);
       map_field_name_to_index_[field_name] = i;
@@ -711,8 +714,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
     auto function = types::ValueParserForText::GetParsingFuntion(ati);
     if (function(tmp_string, *reinterpret_cast<int64_t *>(buffer.Prepare(sizeof(int64_t)))) ==
         common::ErrorCode::FAILED)
-      throw common::FormatException(0,
-                                    col);  // TODO: throw appropriate exception
+      throw common::FormatException(0, col);  // TODO: throw appropriate exception
     buffer.ExpectedSize(sizeof(int64_t));
   }
 }

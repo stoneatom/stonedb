@@ -1,0 +1,41 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+
+CREATE DATABASE IF NOT EXISTS test_db_1707;
+
+USE test_db_1707;
+
+CREATE TABLE tianmu_table (
+  id INT NOT NULL,
+  name VARCHAR(50) NOT NULL,
+  age INT NOT NULL,
+  gender VARCHAR(10) NOT NULL,
+  salary INT NOT NULL,
+  address VARCHAR(100) NOT NULL
+) ENGINE=tianmu;
+
+INSERT INTO tianmu_table 
+  (id, name, age, gender, salary, address) 
+VALUES 
+  (1, 'John', 25, 'Male', 50000, '123 Main St'),
+  (2, 'Jane', 30, 'Female', 60000, '456 Elm St'),
+  (3, 'Bob', 35, 'Male', 70000, '789 Maple St');
+
+
+select @age_cutoff := age
+from (
+SELECT name, age, gender, salary
+FROM (
+  SELECT name, age, gender, salary
+  FROM tianmu_table
+  WHERE age < 30
+  UNION ALL
+  SELECT name, age, gender, salary
+  FROM tianmu_table
+  WHERE age >= 30
+) AS derived_table
+WHERE salary > 30 ) H;
+
+
+drop database test_db_1707;

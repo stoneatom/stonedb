@@ -1,0 +1,52 @@
+# Create test database
+CREATE DATABASE IF NOT EXISTS test_db_1662;
+USE test_db_1662;
+# Create test table with tianmu engine
+CREATE TABLE IF NOT EXISTS test_table (
+id INT,
+value INT,
+PRIMARY KEY (id)
+) ENGINE=tianmu;
+# Insert data into test table
+INSERT INTO test_table (id, value) VALUES
+(1, 10),
+(2, 20),
+(3, 10),
+(4, 30),
+(5, 20);
+# Select data from test table with user-defined variable
+SELECT
+id,
+value,
+@my_var := IF(value = @prev_value, @my_var, @my_var + 1) AS group_id,
+@prev_value := value
+FROM
+test_table,
+(SELECT @my_var := 0, @prev_value := NULL) AS init
+ORDER BY
+value,
+id;
+id	value	group_id	@prev_value := value
+1	10	2	10
+3	10	2	10
+2	20	4	20
+5	20	4	20
+4	30	6	30
+SELECT
+id,
+value,
+@my_var := IF(id = @prev_value, @my_var, @my_var + 1) AS group_id,
+@prev_value := value
+FROM
+test_table,
+(SELECT @my_var := 0, @prev_value := NULL) AS init
+ORDER BY
+value,
+id;
+id	value	group_id	@prev_value := value
+1	10	2	10
+3	10	4	10
+2	20	6	20
+5	20	8	20
+4	30	10	30
+DROP DATABASE test_db_1662;

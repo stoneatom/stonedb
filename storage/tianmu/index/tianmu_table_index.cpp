@@ -27,16 +27,20 @@
 namespace Tianmu {
 namespace index {
 
+// Here, In future, tianmu maybe has uniquekey, secondary key, fulltext, etc. Therefore, a type of index should be
+// added. But, now. we only have only one index: PK.
 TianmuTableIndex::TianmuTableIndex(const std::string &name, TABLE *table) {
   std::string fullname;
   // normalize the table name.
   NormalizeName(name, fullname);
+
   // does the table exists now.
-  rocksdb_tbl_ = ha_kvstore_->FindTable(fullname);
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  rocksdb_tbl_ = store->FindTable(fullname);
   TIANMU_LOG(LogCtl_Level::WARN, "normalize tablename %s, table_full_name %s!", name.c_str(), fullname.c_str());
 
   keyid_ = table->s->primary_key;
-  rocksdb_key_ = rocksdb_tbl_->GetRdbTableKeys().at(KVStore::pk_index(table, rocksdb_tbl_));
+  rocksdb_key_ = rocksdb_tbl_->GetRdbTableKeys().at(store->pk_index(table, rocksdb_tbl_));
   // compatible version that primary key make up of one part
   if (table->key_info[keyid_].actual_key_parts == 1)
     index_of_columns_.push_back(table->key_info[keyid_].key_part[0].field->field_index);
@@ -49,7 +53,9 @@ bool TianmuTableIndex::FindIndexTable(const std::string &name) {
   if (!NormalizeName(name, str)) {
     throw common::Exception("Normalization wrong of table  " + name);
   }
-  if (ha_kvstore_->FindTable(str)) {
+
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  if (store->FindTable(str)) {
     return true;
   }
 
@@ -74,11 +80,12 @@ common::ErrorCode TianmuTableIndex::CreateIndexTable(const std::string &name, TA
   std::shared_ptr<RdbTable> tbl = std::make_shared<RdbTable>(str);
   tbl->GetRdbTableKeys().resize(table->s->keys);
 
-  if (KVStore::create_keys_and_cf(table, tbl) != common::ErrorCode::SUCCESS) {
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  if (store->create_keys_and_cf(table, tbl) != common::ErrorCode::SUCCESS) {
     return common::ErrorCode::FAILED;
   }
 
-  return ha_kvstore_->KVWriteTableMeta(tbl);
+  return store->KVWriteTableMeta(tbl);
 }
 
 common::ErrorCode TianmuTableIndex::DropIndexTable(const std::string &name) {
@@ -87,8 +94,9 @@ common::ErrorCode TianmuTableIndex::DropIndexTable(const std::string &name) {
     throw common::Exception("Exception: table name  " + name);
   }
 
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
   //  Find the table in the hash
-  return ha_kvstore_->KVDelTableMeta(str);
+  return store->KVDelTableMeta(str);
 }
 
 common::ErrorCode TianmuTableIndex::RefreshIndexTable(const std::string &name) {
@@ -97,11 +105,14 @@ common::ErrorCode TianmuTableIndex::RefreshIndexTable(const std::string &name) {
   if (!NormalizeName(name, fullname)) {
     return common::ErrorCode::FAILED;
   }
-  rocksdb_tbl_ = ha_kvstore_->FindTable(fullname);
+
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  rocksdb_tbl_ = store->FindTable(fullname);
   if (rocksdb_tbl_ == nullptr) {
     TIANMU_LOG(LogCtl_Level::WARN, "table %s init ddl error", fullname.c_str());
     return common::ErrorCode::FAILED;
   }
+
   rocksdb_key_ = rocksdb_tbl_->GetRdbTableKeys().at(keyid_);
   return common::ErrorCode::SUCCESS;
 }
@@ -112,11 +123,13 @@ common::ErrorCode TianmuTableIndex::RenameIndexTable(const std::string &from, co
   if (!NormalizeName(from, sname)) {
     return common::ErrorCode::FAILED;
   }
+
   if (!NormalizeName(to, dname)) {
     return common::ErrorCode::FAILED;
   }
 
-  return ha_kvstore_->KVRenameTableMeta(sname, dname);
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+  return store->KVRenameTableMeta(sname, dname);
 }
 
 void TianmuTableIndex::TruncateIndexTable() {
@@ -124,10 +137,12 @@ void TianmuTableIndex::TruncateIndexTable() {
   rocksdb::ReadOptions ropts;
   ropts.total_order_seek = true;
   uchar key_buf[INDEX_NUMBER_SIZE];
+  KVStore *store = (reinterpret_cast<core::Engine *>(tianmu_hton->data))->getStore();
+
   for (auto &rocksdb_key_ : rocksdb_tbl_->GetRdbTableKeys()) {
     be_store_index(key_buf, rocksdb_key_->get_gl_index_id().index_id);
     auto cf = rocksdb_key_->get_cf();
-    std::unique_ptr<rocksdb::Iterator> it(ha_kvstore_->GetScanIter(ropts, cf));
+    std::unique_ptr<rocksdb::Iterator> it(store->GetScanIter(ropts, cf));
     it->Seek({(const char *)key_buf, INDEX_NUMBER_SIZE});
 
     while (it->Valid()) {
@@ -135,7 +150,8 @@ void TianmuTableIndex::TruncateIndexTable() {
       if (!rocksdb_key_->covers_key(key)) {
         break;
       }
-      if (!ha_kvstore_->KVDeleteKey(wopts, cf, key)) {
+
+      if (!store->KVDeleteKey(wopts, cf, key)) {
         throw common::Exception("Rdb delete key fail!");
       }
       it->Next();
@@ -154,16 +170,12 @@ common::ErrorCode TianmuTableIndex::CheckUniqueness(core::Transaction *tx, const
     s = tx->KVTrans().Get(rocksdb_key_->get_cf(), pk_slice, &retrieved_value);
   }
 
-  if (!s.ok() && !s.IsNotFound()) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.getState());
-    return common::ErrorCode::FAILED;
-  }
-
-  if (s.ok()) {
+  if (s.ok()) {  // means that there's  another key existed.
     return common::ErrorCode::DUPP_KEY;
-  }
-
-  return common::ErrorCode::SUCCESS;
+  } else if (s.IsNotFound()) {  // not exist a key.
+    return common::ErrorCode::NOT_FOUND_KEY;
+  } else  // failed.
+    return common::ErrorCode::FAILED;
 }
 
 common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string> &fields, uint64_t row) {
@@ -171,9 +183,13 @@ common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vect
 
   rocksdb_key_->pack_key(key, fields, value);
 
+  // 1)inserts into a PK; 2) insert into without a PK. the return value of `CheckUniqueness` is as following:
+  // 1: common::ErrorCode::DUPP_KEY; 2: common::ErrorCode::NOT_FOUND_KEY; 3:common::ErrorCode::FAILED
   common::ErrorCode err_code = CheckUniqueness(tx, {(const char *)key.ptr(), key.length()});
-  if (err_code != common::ErrorCode::SUCCESS)
+  if (idx_type_ == IndexType::INDEX_TYPE_PRIMARY && err_code == common::ErrorCode::DUPP_KEY) {  // PK
     return err_code;
+  } else if (idx_type_ == IndexType::INDEX_TYPE_SECONDARY) {  // do not need uniqueness constrain
+  }
 
   value.write_uint64(row);
   const auto cf = rocksdb_key_->get_cf();
@@ -182,27 +198,37 @@ common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vect
   if (!s.ok()) {
     TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: insert key fail!");
     err_code = common::ErrorCode::FAILED;
-  }
+  } else if (s.ok())
+    err_code = common::ErrorCode::SUCCESS;
+
   return err_code;
 }
 
 common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::string &nkey, std::string &okey,
                                                 uint64_t row) {
-  StringWriter value, packkey;
-  std::vector<std::string> ofields, nfields;
+  StringWriter new_value, old_value, new_packke, old_packkey;
+  std::vector<std::string> old_fields, new_fields;
 
-  ofields.emplace_back(okey);
-  nfields.emplace_back(nkey);
+  old_fields.emplace_back(okey);
+  new_fields.emplace_back(nkey);
 
-  rocksdb_key_->pack_key(packkey, ofields, value);
-  common::ErrorCode err_code = CheckUniqueness(tx, {(const char *)packkey.ptr(), packkey.length()});
+  rocksdb_key_->pack_key(new_packke, new_fields, new_value);
+  rocksdb_key_->pack_key(old_packkey, old_fields, old_value);
+
+  common::ErrorCode err_code = CheckUniqueness(tx, {(const char *)new_packke.ptr(), new_packke.length()});
+
   if (err_code == common::ErrorCode::DUPP_KEY) {
-    const auto cf = rocksdb_key_->get_cf();
-    tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
-  } else {
-    TIANMU_LOG(LogCtl_Level::WARN, "RockDb: don't have the key for update!");
+  } else if (err_code == common::ErrorCode::NOT_FOUND_KEY || err_code == common::ErrorCode::SUCCESS) {
+    // gets the old index. then update it.
+    common::ErrorCode code = CheckUniqueness(tx, {(const char *)old_packkey.ptr(), old_packkey.length()});
+    if (code != common::ErrorCode::SUCCESS) {
+      const auto cf = rocksdb_key_->get_cf();
+      // delete old index then insert a new one.
+      rocksdb::Status ret_del = tx->KVTrans().Delete(cf, {(const char *)old_packkey.ptr(), old_packkey.length()});
+      err_code = InsertIndex(tx, new_fields, row);
+    }
   }
-  err_code = InsertIndex(tx, nfields, row);
+
   return err_code;
 }
 

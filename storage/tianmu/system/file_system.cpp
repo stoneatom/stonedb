@@ -54,15 +54,15 @@ int ClearDirectory(std::string const &path) {
 void DeleteDirectory(std::string const &path) {
   std::vector<fs::path> targets;
   try {
-    for (auto &p : fs::recursive_directory_iterator(path))
+    for (auto &p : fs::recursive_directory_iterator(path)) {
       if (fs::is_symlink(p.path()))
         targets.emplace_back(fs::canonical(fs::absolute(fs::read_symlink(p.path()), p.path().parent_path())));
+    }
 
     fs::remove_all(path);
     std::error_code ec;
     for (auto &t : targets) {
-      // ingore error because the target might be under 'path' and thus have
-      // been removed
+      // ingore error because the target might be under 'path' and thus have been removed
       fs::remove_all(t, ec);
       if (ec && ec != std::errc::no_such_file_or_directory)
         TIANMU_LOG(LogCtl_Level::ERROR, "Failed to delete %s", t.c_str());

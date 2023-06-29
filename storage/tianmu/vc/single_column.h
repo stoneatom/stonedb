@@ -18,9 +18,9 @@
 #define TIANMU_VC_SINGLE_COLUMN_H_
 #pragma once
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
-#include "core/physical_column.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
+#include "vc/physical_column.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -73,6 +73,7 @@ class SingleColumn : public VirtualColumn {
 
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &mit) override { return col_->GetValueInt64(mit[dim_]); }
+  bool GetUnsignedFlagImpl() override { return col_->Type().GetUnsigned(); }
   bool IsNullImpl(const core::MIIterator &mit) override { return col_->IsNull(mit[dim_]); }
   void GetValueStringImpl(types::BString &s, const core::MIIterator &mit) override {
     col_->GetValueString(mit[dim_], s);

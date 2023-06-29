@@ -18,10 +18,10 @@
 #define TIANMU_VC_SUBSELECT_COLUMN_H_
 #pragma once
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
 #include "core/rough_value.h"
 #include "core/temp_table.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "vc/multi_value_column.h"
 
 namespace Tianmu {

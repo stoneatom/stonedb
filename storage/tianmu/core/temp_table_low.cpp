@@ -23,16 +23,16 @@
 #include "common/assert.h"
 #include "common/data_format.h"
 #include "core/engine.h"
-#include "core/pack_guardian.h"
-#include "core/sorter_wrapper.h"
 #include "core/temp_table.h"
 #include "core/transaction.h"
+#include "data/pack_guardian.h"
 #include "exporter/data_exporter.h"
 #include "system/fet.h"
 #include "system/io_parameters.h"
 #include "system/tianmu_system.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"
+#include "util/sorter_wrapper.h"
 #include "util/thread_pool.h"
 #include "vc/expr_column.h"
 #include "vc/virtual_column.h"
@@ -98,15 +98,6 @@ bool TempTable::OrderByAndMaterialize(
       SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset),
       SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset),
       SorterWrapper(*(filter.mind_), limit + offset), SorterWrapper(*(filter.mind_), limit + offset)};
-  /*
-      std::vector<SorterWrapper> v_sw;
-      if(task_num != 1) {
-          for(int i = 0; i < task_num; i++) {
-              SorterWrapper tmpsubsorted_table(*(filter.mind_), limit + offset);
-              v_sw.push_back(tmpsubsorted_table);
-          }
-      }
-  */
 
   int sort_order = 0;
   for (auto &j : attrs) {
@@ -142,6 +133,7 @@ bool TempTable::OrderByAndMaterialize(
       vc_for_prefetching.push_back(ord[i].vc);
     }
   }
+
   if (task_num == 1)
     sorted_table.InitSorter(*(filter.mind_), true);
   else
@@ -151,16 +143,22 @@ bool TempTable::OrderByAndMaterialize(
                sorted_table.GetSorter()->Name());
     task_num = 1;
   }
+
   // Put data
   std::vector<PackOrderer> po(filter.mind_->NumOfDimensions());
   if (task_num == 1) {
     sorted_table.SortRoughly(po);
   }
+
   MIIterator it(filter.mind_, all_dims, po);
   int64_t local_row = 0;
   bool continue_now = true;
 
   ord.clear();
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if (task_num == 1) {
     while (it.IsValid() && continue_now) {
       if (m_conn->Killed())
@@ -213,8 +211,8 @@ bool TempTable::OrderByAndMaterialize(
 
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
-                                                               current_txn_, &subsorted_table[i]));
+      res.insert(eng->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i], current_txn_,
+                                                 &subsorted_table[i]));
     if (filter.mind_->m_conn->Killed())
       throw common::KilledException("Query killed by user");
 
@@ -288,8 +286,8 @@ bool TempTable::OrderByAndMaterialize(
         ++offset_done;
       global_row++;
     } while (valid && global_row < limit + offset &&
-             !(sender && local_row >= tianmu_sysvar_result_sender_rows));  // a limit for
-                                                                           // streaming buffer
+             !(sender && local_row >= tianmu_sysvar_result_sender_rows));  // a limit for streaming buffer
+
     // Note: what about SetNumOfMaterialized()? Only no_obj is set now.
     if (sender) {
       TempTable::RecordIterator iter = begin();
@@ -381,6 +379,10 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
   // row		- a row number in orig. tables
   // no_obj	- a number of rows to be actually sent (offset already omitted)
   // start_row, page_end - in terms of orig. tables
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   while (it.IsValid() && row < no_obj + local_offset) { /* go thru all rows */
     bool outer_iterator_updated = false;
     MIIterator page_start(it);
@@ -391,7 +393,9 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     if (page_end > no_obj + local_offset)
       page_end = no_obj + local_offset;
 
-    for (uint i = 0; i < NumOfAttrs(); i++) attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
+    for (uint i = 0; i < NumOfAttrs(); i++) {
+      attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
+    }
 
     auto &attr = attrs[0];
     if (attr->NeedFill()) {
@@ -404,11 +408,12 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
         outer_iterator_updated = true;
       }
     }
+
     utils::result_set<void> res;
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
-        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i],
-                                                                 current_txn_, &page_start, start_row, page_end));
+        res.insert(eng->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
+                                                   &page_start, start_row, page_end));
       }
     }
     res.get_all_with_except();
@@ -525,34 +530,35 @@ std::vector<AttributeTypeInfo> TempTable::GetATIs(bool orig) {
 }
 
 #define STRING_LENGTH_THRESHOLD 512
-void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
-                                    // current multiindex contents
+void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the current multiindex contents
 {
-  for (uint i = 0; i < attrs.size(); i++)
-    if (ATI::IsStringType(attrs[i]->TypeName())) {
-      // reduce string size when column defined too large to reduce allocated
-      // temp memory
-      if (attrs[i]->term.vc->MaxStringSize() < STRING_LENGTH_THRESHOLD) {
-        attrs[i]->OverrideStringSize(attrs[i]->term.vc->MaxStringSize());
-      } else {
-        vcolumn::VirtualColumn *vc = attrs[i]->term.vc;
-        int max_length = attrs[i]->term.vc->MaxStringSize();
-        if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
-          auto &var_map = dynamic_cast<vcolumn::ExpressionColumn *>(vc)->GetVarMap();
-          for (auto &it : var_map) {
-            PhysicalColumn *column = it.GetTabPtr()->GetColumn(it.col_ndx);
-            ColumnType ct = column->Type();
-            uint precision = ct.GetPrecision();
-            if (precision >= STRING_LENGTH_THRESHOLD) {
-              uint actual_size = column->MaxStringSize() * ct.GetCollation().collation->mbmaxlen;
-              if (actual_size < precision)
-                max_length += (actual_size - precision);
-            }
+  for (uint i = 0; i < attrs.size(); i++) {
+    if (!ATI::IsStringType(attrs[i]->TypeName()))  // and 'IsTxtType' or 'IsCharType' ?
+      continue;
+
+    // reduce string size when column defined too large to reduce allocated
+    // temp memory
+    if (attrs[i]->term.vc->MaxStringSize() < STRING_LENGTH_THRESHOLD) {
+      attrs[i]->OverrideStringSize(attrs[i]->term.vc->MaxStringSize());
+    } else {
+      vcolumn::VirtualColumn *vc = attrs[i]->term.vc;
+      int max_length = attrs[i]->term.vc->MaxStringSize();
+      if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
+        auto &var_map = dynamic_cast<vcolumn::ExpressionColumn *>(vc)->GetVarMap();
+        for (auto &it : var_map) {
+          PhysicalColumn *column = it.GetTabPtr()->GetColumn(it.col_ndx);
+          ColumnType ct = column->Type();
+          uint precision = ct.GetPrecision();
+          if (precision >= STRING_LENGTH_THRESHOLD) {
+            uint actual_size = column->MaxStringSize() * ct.GetCollation().collation->mbmaxlen;
+            if (actual_size < precision)
+              max_length += (actual_size - precision);
           }
         }
-        attrs[i]->OverrideStringSize(max_length);
       }
+      attrs[i]->OverrideStringSize(max_length);
     }
+  }
 }
 
 void TempTable::FillbufferTask(Attr *attr, Transaction *txn, MIIterator *page_start, int64_t start_row,

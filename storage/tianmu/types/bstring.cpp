@@ -17,7 +17,7 @@
 #include "types/tianmu_data_types.h"
 
 #include "common/assert.h"
-#include "core/tools.h"
+#include "util/tools.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -72,7 +72,7 @@ BString::BString(const BString &tianmu_s)
 }
 
 BString::~BString() {
-  if (persistent_)
+  if (persistent_ && len_)
     delete[] val_;
 }
 

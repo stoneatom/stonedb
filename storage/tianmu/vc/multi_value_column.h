@@ -18,8 +18,8 @@
 #define TIANMU_VC_MULTI_VALUE_COLUMN_H_
 #pragma once
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "types/tianmu_num.h"
 #include "vc/virtual_column.h"
 
@@ -193,6 +193,10 @@ class MultiValColumn : public VirtualColumn {
   int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
+  }
+  bool GetUnsignedFlagImpl() override {
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
+    return (false);
   }
   double GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");

@@ -19,8 +19,8 @@
 
 #include "common/assert.h"
 #include "core/hash_table.h"
-#include "core/rough_multi_index.h"
 #include "core/transaction.h"
+#include "index/rough_multi_index.h"
 #include "system/fet.h"
 
 namespace Tianmu {

@@ -1,13 +1,13 @@
 include/master-slave.inc
 [connection master]
 # 
-# sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+# tianmu_mandatory=OFF
 # default_storage_engine=innodb
 # 
 [on slave]
 include/sync_slave_sql_with_master.inc
 set global default_storage_engine=innodb;
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global tianmu_mandatory=OFF;
 [on master]
 create table t_issue956(c1 int,c2 varchar(255))engine=InnoDB;
 show create table t_issue956;
@@ -20,7 +20,7 @@ t_issue956	CREATE TABLE `t_issue956` (
 include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	InnoDB
@@ -43,7 +43,7 @@ t_issue956	CREATE TABLE `t_issue956` (
 [on slave]
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	InnoDB
@@ -59,12 +59,12 @@ t_issue956	CREATE TABLE `t_issue956` (
 drop table t_issue956;
 include/sync_slave_sql_with_master.inc
 # 
-# sql_mode='MANDATORY_TIANMU'
+# tianmu_mandatory=ON
 # default_storage_engine=innodb
 # 
 [on slave]
 set global default_storage_engine=innodb;
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set global tianmu_mandatory=ON;
 [on master]
 create table t_issue956_2(c1 int,c2 varchar(255))engine=InnoDB;
 show create table t_issue956_2;
@@ -77,7 +77,7 @@ t_issue956_2	CREATE TABLE `t_issue956_2` (
 include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	InnoDB
@@ -100,7 +100,7 @@ t_issue956_2	CREATE TABLE `t_issue956_2` (
 [on slave]
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	InnoDB
@@ -116,12 +116,12 @@ t_issue956_2	CREATE TABLE `t_issue956_2` (
 drop table t_issue956_2;
 include/sync_slave_sql_with_master.inc
 # 
-# sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+# tianmu_mandatory=OFF
 # default_storage_engine=tianmu
 # 
 [on slave]
 set global default_storage_engine=tianmu;
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global tianmu_mandatory=OFF;
 [on master]
 create table t_issue956_3(c1 int,c2 varchar(255))engine=InnoDB;
 show create table t_issue956_3;
@@ -134,7 +134,7 @@ t_issue956_3	CREATE TABLE `t_issue956_3` (
 include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	TIANMU
@@ -157,7 +157,7 @@ t_issue956_3	CREATE TABLE `t_issue956_3` (
 [on slave]
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	TIANMU
@@ -173,12 +173,12 @@ t_issue956_3	CREATE TABLE `t_issue956_3` (
 drop table t_issue956_3;
 include/sync_slave_sql_with_master.inc
 # 
-# sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU'
+# tianmu_mandatory=ON
 # default_storage_engine=tianmu
 # 
 [on slave]
 set global default_storage_engine=tianmu;
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set global tianmu_mandatory=ON;
 [on master]
 create table t_issue956_4(c1 int,c2 varchar(255))engine=InnoDB;
 show create table t_issue956_4;
@@ -191,7 +191,7 @@ t_issue956_4	CREATE TABLE `t_issue956_4` (
 include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	TIANMU
@@ -214,7 +214,7 @@ t_issue956_4	CREATE TABLE `t_issue956_4` (
 [on slave]
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	TIANMU
@@ -230,12 +230,12 @@ t_issue956_4	CREATE TABLE `t_issue956_4` (
 drop table t_issue956_4;
 include/sync_slave_sql_with_master.inc
 # 
-# sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+# tianmu_mandatory=OFF
 # default_storage_engine=MyISAM
 # 
 [on slave]
 set global default_storage_engine=MyISAM;
-set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+set global tianmu_mandatory=OFF;
 [on master]
 create table t_issue956_4(c1 int,c2 varchar(255))engine=InnoDB;
 show create table t_issue956_4;
@@ -248,7 +248,7 @@ t_issue956_4	CREATE TABLE `t_issue956_4` (
 include/sync_slave_sql_with_master.inc
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	MyISAM
@@ -271,7 +271,7 @@ t_issue956_4	CREATE TABLE `t_issue956_4` (
 [on slave]
 show global variables like 'sql_mode';
 Variable_name	Value
-sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+sql_mode	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 show global variables like '%_engine';
 Variable_name	Value
 default_storage_engine	MyISAM

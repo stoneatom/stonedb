@@ -15,9 +15,9 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "core/filter.h"
 #include "core/query.h"
 #include "core/temp_table.h"
+#include "executor/filter.h"
 
 #include "vc/const_column.h"
 #include "vc/const_expr_column.h"
@@ -28,8 +28,12 @@
 
 namespace Tianmu {
 namespace core {
-TempTable::TempTable(JustATable *t, int alias, Query *q)
-    : mem_scale(-1), filter(t->Getpackpower()), output_mind(t->Getpackpower()), m_conn(current_txn_) {
+TempTable::TempTable(JustATable *t, int alias, Query *q, TableSubType subtype)
+    : mem_scale(-1),
+      sub_type(subtype),
+      filter(t->Getpackpower()),
+      output_mind(t->Getpackpower()),
+      m_conn(current_txn_) {
   p_power = t->Getpackpower();
   filter.table_ = this;
   tables.push_back(t);
@@ -43,16 +47,16 @@ TempTable::TempTable(JustATable *t, int alias, Query *q)
     else
       ((TempTable *)t)->Materialize(false, nullptr, false);
 
-    filter.mind_->AddDimension_cross(t->NumOfObj());
+    uint64_t tuple_nums = (subtype == TableSubType::CONST || subtype == TableSubType::DUAL) ? 1 : t->NumOfObj();
+    filter.mind_->AddDimension_cross(tuple_nums);
   } else {
     filter.mind_->AddDimension_cross(t->NumOfObj());
   }
 
   if (filter.mind_->TooManyTuples())
-    no_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to
-                                     // be changed after conditions are applied
+    no_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to be changed after conditions are applied
   else
-    no_obj = filter.mind_->NumOfTuples();
+    no_obj = (sub_type == TableSubType::DUAL || sub_type == TableSubType::CONST) ? 1 : filter.mind_->NumOfTuples();
 
   no_cols = 0;
   no_global_virt_cols = 0;

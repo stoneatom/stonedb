@@ -19,13 +19,13 @@
 
 #include "common/assert.h"
 #include "core/engine.h"
-#include "core/join_thread_table.h"
-#include "core/joiner_hash.h"
 #include "core/parallel_hash_join.h"
 #include "core/proxy_hash_joiner.h"
-#include "core/task_executor.h"
 #include "core/temp_table.h"
 #include "core/transaction.h"
+#include "executor/join_thread_table.h"
+#include "executor/task_executor.h"
+#include "optimizer/joiner_hash.h"
 #include "system/fet.h"
 #include "util/thread_pool.h"
 #include "vc/virtual_column.h"
@@ -33,8 +33,15 @@
 namespace Tianmu {
 namespace core {
 namespace {
-const int kJoinSplittedMinPacks = 5;
-const int kTraversedPacksPerFragment = 30;
+// bug 1538: The instance occasionally crashes when the parallel degree is enabled for
+// the hash join. To change this from 5 to INT_MAX32/2, to disable the parallel of
+// right table, btw. the kTraversedPacksPerFragment is for left table.
+// we'll re-enable the hash join later if the bug is fixed in near future.
+const int kJoinSplittedMinPacks = INT_MAX32 / 2;
+// bug 1476:  change this threhold from 30 to INT_MAX32 to disable the parallel hash join
+// because the result is sometimes wrong if parallel hash join is enabled.
+// we'll re-enable the hash join later if the bug is fixed in near future.
+const int kTraversedPacksPerFragment = INT_MAX32 / 2;
 
 int EvaluateTraversedFragments(int packs_count) {
   const int kMaxTraversedFragmentCount = 8;
@@ -540,6 +547,9 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   int64_t traversed_rows = 0;
   bool no_except = true;
   utils::result_set<int64_t> res;
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+
   try {
     for (MITaskIterator *iter : task_iterators) {
       auto &ht = traversed_hash_tables_.emplace_back(hash_table_key_size_, hash_table_tuple_size_,
@@ -552,7 +562,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
       params.build_item = multi_index_builder_->CreateBuildItem();
       params.task_miter = iter;
 
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
+      res.insert(eng->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();
@@ -786,6 +796,10 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
   std::vector<MatchTaskParams> match_task_params;
   match_task_params.reserve(task_iterators.size());
   int64_t matched_rows = 0;
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   if (task_iterators.size() > 1) {
     bool no_except = true;
     utils::result_set<int64_t> res;
@@ -796,7 +810,7 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
         params.build_item = multi_index_builder_->CreateBuildItem();
         params.task_miter = iter;
 
-        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
+        res.insert(eng->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
       }
     } catch (std::exception &e) {
       res.get_all_with_except();
@@ -1166,14 +1180,18 @@ int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
   std::vector<OuterMatchedParams> outer_matched_params;
   outer_matched_params.reserve(task_iterators.size());
   utils::result_set<void> res;
+
+  core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+  assert(eng);
+
   try {
     for (MITaskIterator *iter : task_iterators) {
       auto &params = outer_matched_params.emplace_back();
       params.task_iter = iter;
       params.build_item = multi_index_builder_->CreateBuildItem();
 
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this,
-                                                               &params, outer_matched_filter_.get()));
+      res.insert(eng->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this, &params,
+                                                 outer_matched_filter_.get()));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();

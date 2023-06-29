@@ -20,7 +20,7 @@
 
 #include "common/common_definitions.h"
 #include "common/defs.h"
-#include "core/column_share.h"
+#include "vc/column_share.h"
 
 #include <list>
 #include <mutex>
@@ -35,7 +35,7 @@ struct TABLE_META {
   uint64_t magic = common::FILE_MAGIC;
   uint32_t ver = common::TABLE_DATA_VERSION;
   uint32_t id;
-  uint32_t pss = 16;
+  uint32_t pss = common::MAX_PSS;
 };
 
 class TableShare final {
@@ -66,6 +66,9 @@ class TableShare final {
   void Reset();
   // MySQL lock
   THR_LOCK thr_lock;
+
+  // TABLE share in sql.
+  TABLE_SHARE *s;
 
  private:
   TABLE_META meta;

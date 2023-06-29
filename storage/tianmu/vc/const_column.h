@@ -18,8 +18,8 @@
 #define TIANMU_VC_CONST_COLUMN_H_
 #pragma once
 
-#include "core/mi_updating_iterator.h"
-#include "core/pack_guardian.h"
+#include "data/pack_guardian.h"
+#include "optimizer/iterators/mi_updating_iterator.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -58,6 +58,7 @@ class ConstColumn : public VirtualColumn {
   int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return value_or_null_.IsNull() ? common::NULL_VALUE_64 : value_or_null_.Get64();
   }
+  bool GetUnsignedFlagImpl() override { return value_or_null_.GetUnsignedFlag(); }
   bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return value_or_null_.IsNull(); }
   void GetValueStringImpl(types::BString &s, const core::MIIterator &mit) override;
   double GetValueDoubleImpl(const core::MIIterator &mit) override;

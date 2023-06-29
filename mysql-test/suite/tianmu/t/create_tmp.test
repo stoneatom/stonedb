@@ -1,0 +1,107 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test create temporary
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS create_tmp_test;
+--enable_warnings
+
+CREATE DATABASE create_tmp_test;
+USE create_tmp_test;
+
+CREATE TEMPORARY TABLE st (
+    id INT(11),
+    name VARCHAR(255)
+);
+
+INSERT INTO st (id, name) VALUES (1, 'John');
+INSERT INTO st (id, name) VALUES (2, 'Jane');
+SELECT * FROM st;
+UPDATE st SET name = 'Johnny' WHERE id = 1;
+SELECT * FROM st;
+DELETE FROM st WHERE id = 2;
+SELECT * FROM st; 
+
+CREATE TEMPORARY TABLE st1 (
+    id INT(11),
+    name VARCHAR(255)
+);
+
+CREATE TEMPORARY TABLE st2 (
+    id INT(11),
+    city VARCHAR(255)
+);
+
+INSERT INTO st1 (id, name) VALUES (1, 'John');
+INSERT INTO st1 (id, name) VALUES (2, 'Jane');
+INSERT INTO st2 (id, city) VALUES (1, 'London');
+INSERT INTO st2 (id, city) VALUES (2, 'New York');
+SELECT st1.name, st2.city 
+FROM st1 INNER JOIN st2 ON st1.id=st2.id;
+
+create table t2 (id int(11) auto_increment primary key, score int(11), name varchar(32)) ;
+insert into t2 (score, name) values (98, 'Bob');
+select * from t2 where score > 90;
+
+create temporary table t3 like t2 ;
+insert into t3 (score, name) values (88, 'Charlie');
+select * from t3;
+
+# data type
+create table t5 (
+    id int(11) unsigned auto_increment primary key,
+    col1 varchar(32),
+    col2 datetime,
+    col3 time
+) ;
+
+insert into t5 (col1, col2, col3) values ('aaa', '2022-01-17 15:22:00', '12:00:00');
+insert into t5 (col1, col2, col3) values ('bbb', '2022-01-18 10:10:10', '20:00:00');
+insert into t5 (col1, col2, col3) values ('ccc', '2022-01-19 15:45:32', '18:45:00');
+select * from t5 where col1 = 'aaa';
+
+# create temporary table like
+create temporary table temp_t6 like t5 ;
+insert into temp_t6 (col1, col2, col3) select col1, col2, col3 from t5 where col1 between 'aaa' and 'bbb';
+select * from temp_t6 order by col2 desc;
+drop temporary table if exists temp_t7;
+
+# unsigned type
+create temporary table temp_t7(
+    id int(11)unsigned auto_increment primary key,
+    col1 varchar(32)
+);
+insert into temp_t7(col1)values('apple'),('banana'),('orange'),('watermelon'),('grapefruit');
+select * from temp_t7 order by id desc;
+
+create temporary table temp_t8(id int(11) unsigned auto_increment primary key, col1 varchar(32), col2 datetime, status char(1)) ;
+insert into temp_t8(col1,col2,status)values('aaa','2022-02-19 09:21:40','Y'),('bbb','2022-02-20 14:15:23','N'),('ccc','2022-02-21 22:30:10','Y'),('ddd','2022-02-22 08:50:20','N'),('eee','2022-02-23 10:35:59','Y');
+select * from temp_t8;
+
+create temporary table temp_t9(id int(11) unsigned auto_increment primary key, col3 varchar(32), col4 int(11),price decimal(8,2));
+insert into temp_t9(col3, col4, price) values('code11', 10, 523.2),('code22', 20 , 2480),('code33', 30, 89.99),('code44', 40, 5200.55);
+select * from temp_t9;
+
+CREATE TEMPORARY TABLE temp_t10 SELECT * FROM temp_t9 LIMIT 3;
+select * from temp_t10;
+
+# decimal type
+drop table if exists t1,t2,t3;
+CREATE TEMPORARY TABLE t1 (c1 DECIMAL(10,2));
+INSERT INTO t1 VALUES (10.00), (-24.53), (5936.28);
+
+CREATE TEMPORARY TABLE t2 (c1 DECIMAL(38,10));
+INSERT INTO t2 VALUES (1.23), (-2.78), (99.99);
+
+CREATE TEMPORARY TABLE t3 (c1 DECIMAL(12,5), c2 DECIMAL(20,8));
+INSERT INTO t3 VALUES (123.45678, 450.04510000), (-234.54628, 2434.87654865);
+
+SELECT *, LENGTH(c1) FROM t1;
+SELECT *, LENGTH(c1) FROM t2;
+SELECT *, LENGTH(c1), LENGTH(c2) FROM t3;
+DROP TEMPORARY TABLE t1, t2, t3;
+
+# clean UP
+DROP DATABASE create_tmp_test;

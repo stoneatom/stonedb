@@ -82,21 +82,21 @@ jobs:
       image: stoneatom/stonedb_buildenv:${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-        with:
-          ssh-strict: 'false'
-      - name: compile stonedb
-        id: compile
-        run: |
+      - run: |
           case ${{ matrix.os }} in
             debian10_1.0.3)
-              apt-get update && apt-get install curl lcov bc  libssl-dev -y
+              apt-get --allow-releaseinfo-change update && apt-get install curl lcov bc  libssl-dev -y
               ;;
             centos7_1.0.3)
               yum install curl lcov.noarch bc.x86_64 -y
               rm -rf /usr/bin/gcc && ln -s /opt/rh/devtoolset-9/root/bin/gcc /usr/bin/gcc
             ;;
           esac
-
+        #with:
+        #  ssh-strict: 'false'
+      - name: compile stonedb
+        id: compile
+        run: |
           mkdir build && cd build
           git config --global --add safe.directory /__w/stonedb/stonedb
           git fetch --tags
@@ -119,9 +119,7 @@ jobs:
           -DDOWNLOAD_BOOST=0 \
           -DWITH_BOOST=/usr/local/stonedb-boost/ \
           -DDOWNLOAD_ROCKSDB=0 \
-          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
-          -DDOWNLOAD_ROCKSDB=0 \
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb -DENABLE_GCOV=1 && make -j`nproc` && make -j`nproc` install
 
       - name: mtr test
@@ -130,13 +128,15 @@ jobs:
           groupadd mysql && useradd -g mysql mysql
           chown -R mysql:mysql /stonedb57 && chown -R mysql:mysql ./build
           cd /stonedb57/install/mysql-test
-          ./mysql-test-run.pl --suite=innodb --nowarnings --force --nocheck-testcases --retry=0 --defaults-file=/stonedb57/install/mysql-test/suite/innodb/include/my_innodb.cnf --do-test-list=/stonedb57/install/mysql-test/suite/innodb/include/innodb_testlist
+          ./mysql-test-run.pl --suite=innodb,main --mysqld=--default-storage-engine=innodb --nowarnings --force --nocheck-testcases --retry=0 --do-test-list=./suite/innodb/include/innodb_testlist --parallel=15
           ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --retry=0 --parallel=10
 
       - name: create coverage.info
         run: |
+          cat codecov.yml | curl --data-binary @- https://codecov.io/validate
           cd build
-          lcov --capture --directory . --output-file  coverage.info --test-name coverage
+          lcov --capture --directory . --output-file coverage.info --test-name coverage
 
       - name: Codecov
-        uses: codecov/codecov-action@v3.1.1
+        uses: codecov/codecov-action@v3.1.4
+        
