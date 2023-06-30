@@ -1176,7 +1176,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
         NCHAR_STRING opt_component key_cache_name
         sp_opt_label BIN_NUM label_ident TEXT_STRING_filesystem ident_or_empty
         opt_constraint constraint opt_ident TEXT_STRING_sys_nonewline
-        filter_wild_db_table_string
+        filter_wild_db_table_string opt_layer_spec layer_param layer_ident
 
 %type <lex_str_ptr>
         opt_table_alias
@@ -12225,6 +12225,23 @@ show_engine_param:
           { Lex->sql_command= SQLCOM_SHOW_ENGINE_MUTEX; }
         | LOGS_SYM
           { Lex->sql_command= SQLCOM_SHOW_ENGINE_LOGS; }
+        ;
+
+opt_layer_spec:
+        /*empty*/ {}
+        | layer_ident opt_table_list
+        {
+            Lex->create_info.layer_name_ = to_lex_cstring($1);
+        }
+        ;
+
+layer_param:
+        table_list {}
+        ;
+
+
+layer_ident:
+         ident {$$ = $1;}
         ;
 
 master_or_binary:
