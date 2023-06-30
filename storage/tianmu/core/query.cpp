@@ -636,13 +636,12 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           }
 
           if (index != 0) {
+            ta[-step.t1.n - 1] = step.n1 ? TempTable::Create(ta[index].get(), step.tables1[0].n, this, sub_type, true)
+                                         : TempTable::Create(ta[index].get(), step.tables1[0].n, this, sub_type);
+          } else {
             ta[-step.t1.n - 1] =
-              step.n1 ? TempTable::Create(ta[index].get(), step.tables1[0].n, this, sub_type, true)
-                      : TempTable::Create(ta[index].get(), step.tables1[0].n, this, sub_type);
-          }else {
-            ta[-step.t1.n - 1] =
-              step.n1 ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type, true)
-                      : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type);
+                step.n1 ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type, true)
+                        : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type);
           }
           
           ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NumOfVirtualColumns(step.t1));
