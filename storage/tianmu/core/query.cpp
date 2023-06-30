@@ -643,7 +643,6 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                 step.n1 ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type, true)
                         : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type);
           }
-          
           ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NumOfVirtualColumns(step.t1));
         } break;
         case CompiledQuery::StepType::CREATE_CONDS:
