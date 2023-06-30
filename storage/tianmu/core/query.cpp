@@ -584,6 +584,19 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
   for (int i = 0; i < qu.NumOfSteps(); i++) {
     CompiledQuery::CQStep step = qu.Step(i);
     std::shared_ptr<JustATable> t1_ptr, t2_ptr, t3_ptr;
+    int index = 0;
+
+    if (i == 0 && step.t2.n == common::NULL_VALUE_32) {
+      for (int j = 1; j < qu.NumOfSteps(); j++) {
+        CompiledQuery::CQStep step = qu.Step(j);
+        if (step.t2.n >= 0) {
+          t2_ptr = Table(step.t2.n);
+          ta[-step.t1.n - 1] = t2_ptr;
+          index = -step.t1.n - 1;
+          break;
+        }
+      }
+    }
 
     if (step.t1.n != common::NULL_VALUE_32) {
       // normal table or TempTable
@@ -622,9 +635,16 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             sub_type = TableSubType::DUAL;
           }
 
-          ta[-step.t1.n - 1] =
+          if (index != 0) {
+            ta[-step.t1.n - 1] =
+              step.n1 ? TempTable::Create(ta[index].get(), step.tables1[0].n, this, sub_type, true)
+                      : TempTable::Create(ta[index].get(), step.tables1[0].n, this, sub_type);
+          }else {
+            ta[-step.t1.n - 1] =
               step.n1 ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type, true)
                       : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type);
+          }
+          
           ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NumOfVirtualColumns(step.t1));
         } break;
         case CompiledQuery::StepType::CREATE_CONDS:
