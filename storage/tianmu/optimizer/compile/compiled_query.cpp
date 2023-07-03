@@ -444,7 +444,7 @@ void CompiledQuery::TmpTable(TabID &t_out, const TabID &t1, TableSubType subtype
   else
     s.n1 = 0;
 
-  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() >= 0);
   s.type = StepType::TMP_TABLE;
   s.t1 = t_out = NextTabID();  // was s.t2!!!
   s.tables1.push_back(t1);

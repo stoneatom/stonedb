@@ -1176,7 +1176,7 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
       }
 
       if (!sl->leaf_table_count && !use_tmp_when_no_join) {  // process select xxx or select xxx from dual.
-        TabID tab(-NumOfTabs() - 1);
+        TabID tab(-1);
         cq->TmpTable(tmp_table, tab, TableSubType::DUAL, false);
         use_tmp_when_no_join = true;
       } else {  // handle join & join cond, which has table(s).
