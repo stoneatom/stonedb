@@ -145,6 +145,8 @@ class Engine final {
   void AddTableDelta(TABLE *form, std::shared_ptr<TableShare> share);
   void UnregisterDeltaTable(const std::string &from, const std::string &to);
 
+  size_t GetDeltaSyncStats(std::ostringstream& buf, std::unordered_set<std::string>& filter_set);
+
  public:
   utils::thread_pool bg_load_thread_pool;
   utils::thread_pool load_thread_pool;
