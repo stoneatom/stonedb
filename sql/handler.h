@@ -1097,6 +1097,9 @@ typedef struct st_ha_create_information
   st_ha_create_information() { memset(this, 0, sizeof(*this)); }
 
   const CHARSET_INFO *table_charset, *default_table_charset;
+
+  LEX_CSTRING layer_name;
+
   LEX_STRING connect_string;
   const char *password, *tablespace;
   LEX_STRING comment;

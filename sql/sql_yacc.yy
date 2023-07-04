@@ -1373,6 +1373,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
         definer_opt no_definer definer get_diagnostics
         alter_user_command password_expire
         group_replication
+        layer param
 END_OF_INPUT
 
 %type <NONE> call sp_proc_stmts sp_proc_stmts1 sp_proc_stmt
@@ -12229,14 +12230,14 @@ show_engine_param:
 
 opt_layer_spec:
         /*empty*/ {}
-        | layer_ident opt_table_list
+        | layer_ident layer_param
         {
-            Lex->create_info.layer_name_ = to_lex_cstring($1);
+            Lex->create_info.layer_name = to_lex_cstring($1);
         }
         ;
 
 layer_param:
-        table_list {}
+        opt_table_list {}
         ;
 
 
