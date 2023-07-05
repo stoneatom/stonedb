@@ -2443,20 +2443,19 @@ std::string Engine::DeltaStoreStat() {
  */
 size_t Engine::GetDeltaSyncStats(std::ostringstream &buf, std::unordered_set<std::string> &filter_set) {
   std::vector<std::shared_ptr<DeltaTable>> table_list;
-  for(auto& delta:m_table_deltas){
+  for(const auto& delta:m_table_deltas){
     if(filter_set.empty() || filter_set.find(delta.second->FullName())!=filter_set.end()){
-      table_list.emplace_back(std::move(delta.second));
+      table_list.push_back(delta.second);
     }
   }
+  buf << table_list.size() << " table(s) matched in the delta sync-stat query:" << std::endl;
   for(auto& table: table_list){
-    buf << fmt::format("table name: %s, delta table id: %d, current load id: %ld, merge id: %ld, "
-                     "current row_id: %ld",
-                     table->FullName().c_str(),table->GetDeltaTableID(),
-                     table->load_id.load(),table->merge_id.load(),
-                     table->row_id.load());
-    buf << std::endl;
+    buf << "table name: " << table->FullName()
+        << ", delta table id: " << table->GetDeltaTableID()
+        << ", current load id: " << table->load_id.load()
+        << ", merge id: " << table->merge_id.load()
+        <<", current row_id: " << table->row_id.load() << std::endl;
   }
-
   return table_list.size();
 }
 
