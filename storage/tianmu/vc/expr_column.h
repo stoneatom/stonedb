@@ -118,6 +118,7 @@ class ExpressionColumn : public VirtualColumn {
   }
   core::MysqlExpression *expr_;  //!= nullptr if ExpressionColumn encapsulates an expression. Note - a
                                  //! constant is an expression
+  bool BaseUserVar() { return use_usr_var_; }
 
  private:
   /*! \brief Set variable buffers with values for a given iterator.
@@ -137,6 +138,7 @@ class ExpressionColumn : public VirtualColumn {
   //! value for a given row is always the same or not? e.g. currenttime() is not
   //! deterministic
   bool deterministic_;
+  bool use_usr_var_;
 };
 }  // namespace vcolumn
 }  // namespace Tianmu
