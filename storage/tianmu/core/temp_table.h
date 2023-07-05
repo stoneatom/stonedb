@@ -88,6 +88,7 @@ class TempTable : public JustATable {
              !term.vc->IsConst();  // constant value, the buffer is already
                                    // filled in
     }
+    bool BaseUserVar() { return term.vc->BaseUserVar(); }
 
     enum phys_col_t ColType() const override { return phys_col_t::ATTR; }
     //! Use in cases where actual string length is less than declared, before
@@ -387,6 +388,7 @@ class TempTable : public JustATable {
   void MoveVC(vcolumn::VirtualColumn *vc, std::vector<vcolumn::VirtualColumn *> &from,
               std::vector<vcolumn::VirtualColumn *> &to);
   void FillbufferTask(Attr *attr, Transaction *txn, MIIterator *page_start, int64_t start_row, int64_t page_end);
+  void FillBufferByRow(std::vector<Attr *> attrs, MIIterator *page_start, int64_t start_row, int64_t page_end);
   size_t TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st);
   bool HasTempTable() const { return has_temp_table; }
 

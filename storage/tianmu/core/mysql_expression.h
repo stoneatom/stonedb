@@ -61,6 +61,7 @@ class MysqlExpression {
   Item *GetItem() { return item; }
   const tianmu_fields_cache_t &GetTIANMUItems() { return tianmu_fields_cache; }
   bool IsDeterministic() { return deterministic; }
+  bool BaseOnUserValue();
   /*! \brief Tests if other MysqlExpression is same as this one.
    *
    * \param other - equality to this MysqlExpression is being questioned.

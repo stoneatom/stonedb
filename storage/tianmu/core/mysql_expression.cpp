@@ -352,6 +352,31 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
 
 MysqlExpression::SetOfVars &MysqlExpression::GetVars() { return vars; }
 
+bool item_func_suser_traverse(Item_func *it_f) {
+  if (it_f->functype() == Item_func::Functype::SUSERVAR_FUNC)
+    return true;
+  bool res = false;
+  Item **args = nullptr;
+  uint cnt = it_f->arg_count;
+  if (it_f->arg_count > 0)
+    args = it_f->arguments();
+  for (uint i = 0; i < cnt && !res; ++i) {
+    if (args[i]->type() == Item::Type::FUNC_ITEM)
+      res = item_func_suser_traverse(reinterpret_cast<Item_func *>(args[i]));
+  }
+  return res;
+}
+
+/* Only return true when item set user value.
+ * It is equal to one of node in item tree is Item_func_set_user_var.
+ */
+bool MysqlExpression::BaseOnUserValue() {
+  if (item->type() != Item::Type::FUNC_ITEM)
+    return false;
+  Item_func *item_f = reinterpret_cast<Item_func *>(item);
+  return item_func_suser_traverse(item_f);
+}
+
 void MysqlExpression::SetBufsOrParams(var_buf_t *bufs) {
   DEBUG_ASSERT(bufs);
   for (auto &it : tianmu_fields_cache) {

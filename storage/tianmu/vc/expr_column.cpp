@@ -30,7 +30,7 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
       deterministic_(expr ? expr->IsDeterministic() : true) {
   const std::vector<core::JustATable *> *tables = &temp_table->GetTables();
   const std::vector<int> *aliases = &temp_table->GetAliases();
-
+  use_usr_var_ = false;
   if (expr_) {
     vars_ = expr_->GetVars();  // get all variables from complex term
     first_eval_ = true;
@@ -77,6 +77,9 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
 
     // if (status == VC_EXPR && var_map_.size() == 0 )
     //	status = VC_CONST;
+
+    // if expr calculate base on user value set the value use_usr_val_ true
+    use_usr_var_ = expr_->BaseOnUserValue();
   } else {
     DEBUG_ASSERT(!"unexpected!!");
   }
@@ -90,6 +93,7 @@ ExpressionColumn::ExpressionColumn(const ExpressionColumn &ec)
       var_buf_(ec.var_buf_),
       deterministic_(ec.deterministic_) {
   var_map_ = ec.var_map_;
+  use_usr_var_ = ec.use_usr_var_;
 }
 
 void ExpressionColumn::SetParamTypes(core::MysqlExpression::TypOfVars *types) { expr_->EvalType(types); }
