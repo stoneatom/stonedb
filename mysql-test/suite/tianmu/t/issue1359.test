@@ -1,0 +1,40 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+
+DROP DATABASE IF EXISTS issue1359_test;
+CREATE DATABASE issue1359_test;
+
+USE issue1359_test;
+
+# create test table & data
+
+create table t1(v1 int) engine=tianmu;
+create table t2(v2 int) engine=tianmu;
+create table t3(v3 int) engine=tianmu;
+
+insert into t1 values (1),(1);
+insert into t2 values (2),(2),(2);
+insert into t3 values (3),(3),(3),(3);
+
+
+# show engine status
+
+SHOW ENGINE Tianmu Delta STATUS;
+
+SHOW ENGINE Tianmu Delta t1 STATUS;
+
+SHOW ENGINE Tianmu Delta t1,t2 STATUS;
+
+SHOW ENGINE Tianmu Delta t1,t2,badName STATUS;
+
+
+SHOW ENGINE Tianmu DELTA STATUS;
+SHOW ENGINE Tianmu delta STATUS;
+
+
+## clean test table
+
+DROP TABLE t1,t2,t3;
+
+DROP DATABASE issue1359_test;

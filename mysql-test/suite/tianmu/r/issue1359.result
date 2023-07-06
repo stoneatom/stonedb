@@ -1,0 +1,55 @@
+DROP DATABASE IF EXISTS issue1359_test;
+CREATE DATABASE issue1359_test;
+USE issue1359_test;
+create table t1(v1 int) engine=tianmu;
+create table t2(v2 int) engine=tianmu;
+create table t3(v3 int) engine=tianmu;
+insert into t1 values (1),(1);
+insert into t2 values (2),(2),(2);
+insert into t3 values (3),(3),(3),(3);
+SHOW ENGINE Tianmu Delta STATUS;
+Type	Name	Status
+TIANMU	DELTA	
+3 table(s) matched in the delta sync-stat query:
+table name: issue1359_test.t3, delta table id: 258, current load id: 0, merge id: 0, current row_id: 0
+table name: issue1359_test.t1, delta table id: 256, current load id: 0, merge id: 0, current row_id: 0
+table name: issue1359_test.t2, delta table id: 257, current load id: 0, merge id: 0, current row_id: 0
+
+SHOW ENGINE Tianmu Delta t1 STATUS;
+Type	Name	Status
+TIANMU	DELTA	
+1 table(s) matched in the delta sync-stat query:
+table name: issue1359_test.t1, delta table id: 256, current load id: 0, merge id: 0, current row_id: 0
+
+SHOW ENGINE Tianmu Delta t1,t2 STATUS;
+Type	Name	Status
+TIANMU	DELTA	
+2 table(s) matched in the delta sync-stat query:
+table name: issue1359_test.t1, delta table id: 256, current load id: 0, merge id: 0, current row_id: 0
+table name: issue1359_test.t2, delta table id: 257, current load id: 0, merge id: 0, current row_id: 0
+
+SHOW ENGINE Tianmu Delta t1,t2,badName STATUS;
+Type	Name	Status
+TIANMU	DELTA	
+2 table(s) matched in the delta sync-stat query:
+table name: issue1359_test.t1, delta table id: 256, current load id: 0, merge id: 0, current row_id: 0
+table name: issue1359_test.t2, delta table id: 257, current load id: 0, merge id: 0, current row_id: 0
+
+SHOW ENGINE Tianmu DELTA STATUS;
+Type	Name	Status
+TIANMU	DELTA	
+3 table(s) matched in the delta sync-stat query:
+table name: issue1359_test.t3, delta table id: 258, current load id: 0, merge id: 0, current row_id: 0
+table name: issue1359_test.t1, delta table id: 256, current load id: 0, merge id: 0, current row_id: 0
+table name: issue1359_test.t2, delta table id: 257, current load id: 0, merge id: 0, current row_id: 0
+
+SHOW ENGINE Tianmu delta STATUS;
+Type	Name	Status
+TIANMU	DELTA	
+3 table(s) matched in the delta sync-stat query:
+table name: issue1359_test.t3, delta table id: 258, current load id: 0, merge id: 0, current row_id: 0
+table name: issue1359_test.t1, delta table id: 256, current load id: 0, merge id: 0, current row_id: 0
+table name: issue1359_test.t2, delta table id: 257, current load id: 0, merge id: 0, current row_id: 0
+
+DROP TABLE t1,t2,t3;
+DROP DATABASE issue1359_test;
