@@ -96,6 +96,8 @@ class ConstExpressionColumn : public ExpressionColumn {
     return last_val_->IsNull() ? common::NULL_VALUE_64 : last_val_->Get64();
   }
 
+  bool GetUnsignedFlagImpl() override { return last_val_->GetUnsignedFlag(); }
+
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return last_val_->IsNull() ? common::MINUS_INF_64 : last_val_->Get64();

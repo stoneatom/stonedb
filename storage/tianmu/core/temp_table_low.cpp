@@ -356,6 +356,7 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
   int64_t row = local_offset;
   std::vector<char> skip_parafilloutput;
   std::set<int> set_vcid;
+  std::vector<Attr *> attrs_fillbyrow;
 
   for (auto &attr : attrs) {
     // check if there is duplicated columns, mark skip flag for yes
@@ -367,6 +368,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
         skip = 1;
       } else {
         set_vcid.insert(attr->term.vc_id);
+        if (attr->BaseUserVar())
+          skip = 1;
       }
     }
     skip_parafilloutput.push_back(skip);
@@ -418,9 +421,19 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     }
     res.get_all_with_except();
 
-    for (uint i = 1; i < attrs.size(); i++)
-      if (skip_parafilloutput[i])
+    for (uint i = 1; i < attrs.size(); i++) {
+      if (attrs[i]->BaseUserVar()) {
+        if (attrs[i]->NeedFill()) {
+          attrs_fillbyrow.push_back(attrs[i]);
+        }
+      } else if (skip_parafilloutput[i]) {
         FillbufferTask(attrs[i], current_txn_, &page_start, start_row, page_end);
+      }
+    }
+    // if column base on user value, fill buffer by row order
+    if (!attrs_fillbyrow.empty()) {
+      FillBufferByRow(attrs_fillbyrow, &page_start, start_row, page_end);
+    }
 
     if (lazy)
       break;
@@ -571,6 +584,22 @@ void TempTable::FillbufferTask(Attr *attr, Transaction *txn, MIIterator *page_st
     MIIterator i(*page_start);
     attr->FillValues(i, start_row, page_end - start_row);
   }
+}
+
+void TempTable::FillBufferByRow(std::vector<Attr *> attrs, MIIterator *page_start, int64_t start_row,
+                                int64_t page_end) {
+  MIIterator itr(*page_start);
+  int64_t n, cnt = page_end - start_row;
+  for (size_t n = 0; n < cnt; ++n) {
+    for (auto attr : attrs) {
+      if (itr.PackrowStarted() || n == 0) {
+        attr->term.vc->LockSourcePacks(itr);
+      }
+      attr->FillValue(itr, start_row + n);
+    }
+    ++itr;
+  }
+  for (auto attr : attrs) attr->term.vc->UnlockSourcePacks();
 }
 
 size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st) {

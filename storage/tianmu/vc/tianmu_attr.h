@@ -231,6 +231,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   void SetMaxInt64(int64_t a_imax) { hdr.max = a_imax; }
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
   bool GetIfUnsigned() const { return ct.GetUnsigned(); }
+  void SetUnsigned(bool unsigned_flag) { ct.SetUnsigned(unsigned_flag); }
   uint64_t AutoIncNext() {
     backup_auto_inc_next_ = m_share->auto_inc_.fetch_add(1);
     if (backup_auto_inc_next_ >= UINT64_MAX)

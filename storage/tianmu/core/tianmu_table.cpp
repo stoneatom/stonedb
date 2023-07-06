@@ -893,13 +893,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
         my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
         common::GMTSec2GMTTime(&my_time, secs_utc);
       }
-      types::DT dt = {};
-      dt.year = my_time.year;
-      dt.month = my_time.month;
-      dt.day = my_time.day;
-      dt.hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
@@ -909,11 +903,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       MYSQL_TIME my_time;
       std::memset(&my_time, 0, sizeof(my_time));
       f->get_time(&my_time);
-      types::DT dt = {};
-      dt.time_hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
-      dt.neg = my_time.neg;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
@@ -926,13 +916,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       MYSQL_TIME my_time;
       std::memset(&my_time, 0, sizeof(my_time));
       f->get_time(&my_time);
-      types::DT dt = {};
-      dt.year = my_time.year;
-      dt.month = my_time.month;
-      dt.day = my_time.day;
-      dt.hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
@@ -1134,11 +1118,20 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
 
   auto no_loaded_rows = parser.GetNoRow();
 
-  if (no_loaded_rows > 0 && mysql_bin_log.is_open())
-    if (binlog_load_query_log_event(iop) != 0) {
-      TIANMU_LOG(LogCtl_Level::ERROR, "Write load binlog fail!");
-      throw common::FormatException("Write load binlog fail!");
+  if (no_loaded_rows > 0 && mysql_bin_log.is_open()) {
+    LOAD_FILE_INFO *lf_info = (LOAD_FILE_INFO *)iop.GetLogInfo();
+    THD *thd = lf_info->thd;
+    if (thd->is_current_stmt_binlog_format_row()) {  // if binlog format is row
+      if (binlog_flush_pending_rows_event(iop, true, iop.GetTable()->file->has_transactions()) != 0) {
+        TIANMU_LOG(LogCtl_Level::ERROR, "Write row binlog fail!");
+        throw common::FormatException("Write row binlog fail!");
+      }
+    } else if (binlog_load_query_log_event(iop) != 0) {
+      TIANMU_LOG(LogCtl_Level::ERROR, "Write statement binlog fail!");
+      throw common::FormatException("Write statement binlog fail!");
     }
+  }
+
   timer.Print(__PRETTY_FUNCTION__);
 
   no_rejected_rows = parser.GetNumOfRejectedRows();
@@ -1151,6 +1144,31 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
     throw common::FormatException(-1, -1);
 
   return no_loaded_rows;
+}
+
+int TianmuTable::binlog_flush_pending_rows_event(system::IOParameters &iop, bool stmt_end, bool is_transactional) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
+  /*
+    We shall flush the pending event even if we are not in row-based
+    mode: it might be the case that we left row-based mode before
+    flushing anything (e.g., if we have explicitly locked tables).
+   */
+  if (!mysql_bin_log.is_open())
+    DBUG_RETURN(0);
+
+  LOAD_FILE_INFO *lf_info = (LOAD_FILE_INFO *)iop.GetLogInfo();
+  THD *thd = lf_info->thd;
+  thd->tianmu_need_xid = true;
+  int error = 0;
+
+  if (Rows_log_event *pending = thd->binlog_get_pending_rows_event(is_transactional)) {
+    if (stmt_end) {
+      pending->set_flags(Rows_log_event::STMT_END_F);
+      thd->clear_binlog_table_maps();
+    }
+    error = mysql_bin_log.flush_and_set_pending_rows_event(thd, 0, is_transactional);
+  }
+  DBUG_RETURN(error);
 }
 
 int TianmuTable::binlog_load_query_log_event(system::IOParameters &iop) {

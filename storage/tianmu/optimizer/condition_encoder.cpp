@@ -238,6 +238,15 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
   bool v1_rounded = false, v2_rounded = false;
   static MIIterator mit(nullptr, pack_power);
 
+  // Will be used to construct value with signed/unsigned flag to valur_or_null later.
+  bool is_v1_unsigned = false, is_v2_unsigned = false;
+  if (nullptr != desc->val1.vc) {
+    is_v1_unsigned = desc->val1.vc->Type().GetUnsigned();
+  }
+  if (nullptr != desc->val2.vc) {
+    is_v2_unsigned = desc->val2.vc->Type().GetUnsigned();
+  }
+
   vcolumn::MultiValColumn *mvc = 0;
   if (desc->val1.vc && (desc->val1.vc)->IsMultival()) {
     mvc = static_cast<vcolumn::MultiValColumn *>(desc->val1.vc);
@@ -321,14 +330,20 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
     return;
   }
 
-  if (ISTypeOfEqualOperator(desc->op) || ISTypeOfNotEqualOperator(desc->op))
+  if (ISTypeOfEqualOperator(desc->op) || ISTypeOfNotEqualOperator(desc->op)) {
     v2 = v1;
+    is_v2_unsigned = is_v1_unsigned;
+  }
 
   if (ISTypeOfLessOperator(desc->op)) {
     if (!ATI::IsRealType(AttrTypeName())) {
       if (v1 > common::MINUS_INF_64)
         v2 = v1 - 1;
       v1 = common::MINUS_INF_64;
+      if (is_v1_unsigned && static_cast<uint64_t>(v1) > common::PLUS_INF_64) {  // like where a >= 18446744073709551599;
+        is_v2_unsigned = true;
+        is_v1_unsigned = false;  // as v1 = common::MINUS_INF_64
+      }
     } else {
       if (*(double *)&v1 > common::MINUS_INF_DBL)
         v2 = (AttrTypeName() == common::ColumnType::REAL) ? DoubleMinusEpsilon(v1) : FloatMinusEpsilon(v1);
@@ -350,9 +365,11 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
 
   if (ISTypeOfLessEqualOperator(desc->op)) {
     v2 = v1;
-    if (!ATI::IsRealType(AttrTypeName()))
+    is_v2_unsigned = is_v1_unsigned;  // set v2 unsigned flag be the same with v1
+    if (!ATI::IsRealType(AttrTypeName())) {
       v1 = common::MINUS_INF_64;
-    else
+      is_v1_unsigned = false;  // v1 unsigned flag maybe true in case: where x <= 18446744073709551599.
+    } else
       v1 = *(int64_t *)&common::MINUS_INF_DBL;
   }
 
@@ -364,20 +381,29 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
   }
 
   desc->sharp = false;
-  if (ISTypeOfNotEqualOperator(desc->op) || desc->op == common::Operator::O_NOT_BETWEEN)
+  if (ISTypeOfNotEqualOperator(desc->op) || desc->op == common::Operator::O_NOT_BETWEEN) {
     desc->op = common::Operator::O_NOT_BETWEEN;
-  else
+  } else {
     desc->op = common::Operator::O_BETWEEN;
+    //// After set between, check right args boundary, just like v1 above. deal with "where a between -22 and
+    /// 18446744073709551599"
+    if (is_v2_unsigned && static_cast<uint64_t>(v2) > common::PLUS_INF_64) {
+      is_v2_unsigned = false;
+      v2 = common::PLUS_INF_64;
+    }
+  }
 
   desc->val1 = CQTerm();
   desc->val1.vc = new vcolumn::ConstColumn(
-      ValueOrNull(types::TianmuNum(v1, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
+      ValueOrNull(types::TianmuNum(v1, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName(),
+                                   is_v1_unsigned)),
       attr->Type());
   desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
 
   desc->val2 = CQTerm();
   desc->val2.vc = new vcolumn::ConstColumn(
-      ValueOrNull(types::TianmuNum(v2, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
+      ValueOrNull(types::TianmuNum(v2, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName(),
+                                   is_v2_unsigned)),
       attr->Type());
   desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
 }
