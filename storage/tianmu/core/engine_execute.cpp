@@ -808,6 +808,10 @@ bool TABLE_LIST::optimize_derived_for_tianmu(THD *thd) {
 
   SELECT_LEX_UNIT *const unit = derived_unit();
 
+  if (unit->is_optimized()) {
+    DBUG_RETURN(true);
+  }
+
   assert(unit && unit->is_prepared() && !unit->is_optimized());
 
   if (unit && unit->is_prepared() && !unit->is_optimized()) {
