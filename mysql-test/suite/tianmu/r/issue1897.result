@@ -1,0 +1,51 @@
+DROP DATABASE IF EXISTS issue1897;
+CREATE DATABASE issue1897;
+USE issue1897;
+CREATE TABLE t1 (id INT, name VARCHAR(5));
+INSERT INTO t1 VALUES (1,'AAA'),(2,'BBB');
+INSERT INTO t1 VALUES (1,'AAA'),(2,'BBB');
+SELECT @row := @row + 1 FROM t1,(SELECT @row := 0) a;
+@row := @row + 1
+1
+2
+3
+4
+SELECT @rownum1 := @rownum1 + 1 inde FROM (SELECT a.* FROM t1 a) a,(SELECT @rownum1 := 0, @pxydm1 := NULL,
+@rankno1 := 0) b;
+inde
+1
+2
+3
+4
+SELECT
+id,
+name,
+@my_var := IF(name = @prev_value, @my_var, @my_var + 1) AS group_id,
+@prev_value := name
+FROM
+t1,
+(SELECT @my_var := 0, @prev_value := NULL) AS init
+ORDER BY
+name,
+id;
+id	name	group_id	@prev_value := name
+1	AAA	1	AAA
+1	AAA	1	AAA
+2	BBB	2	BBB
+2	BBB	2	BBB
+SELECT B.name, A.id, 1 sort_no 
+FROM t1 A 
+INNER JOIN t1 B 
+ON A.id = B.id 
+INNER JOIN (SELECT * FROM (SELECT @row := @row + 1 AS rowno FROM (SELECT 0) C) D) E ON 1 = 1;
+name	id	sort_no
+AAA	1	1
+AAA	1	1
+BBB	2	1
+BBB	2	1
+AAA	1	1
+AAA	1	1
+BBB	2	1
+BBB	2	1
+DROP TABLE t1;
+DROP DATABASE issue1897;
