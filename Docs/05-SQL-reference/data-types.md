@@ -36,7 +36,7 @@ For `BIGINT` type: `-9223372036854775807` is reserved to indicate `BIGINT_NULL` 
 
 For `BIGINT` type: Maximum Value Unsigned currently limited to 9223372036854775807, we'll expand it to 18446744073709551615 in the future.
 
-On StoneDB, the precision for DECIMAL numbers cannot be higher than 18. For example, if you specify **decimal(19)** in your code, an error will be reported. **DECIMAL(6, 2)** indicates that up to 6 places are supported at the left of the decimal and up to 2 at the right, and thus the value range is [-9999.99, 9999.99].
+On StoneDB, the precision for DECIMAL numbers cannot be higher than 18. For example, if you specify **decimal(19)** in your code, an error will be reported. **DECIMAL(6, 2)** indicates that up to 4 places are supported at the left of the decimal and up to 2 at the right, and thus the value range is [-9999.99, 9999.99].
 
 # String data types
 
