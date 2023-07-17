@@ -6,7 +6,7 @@ sidebar_position: 10.2
 # 产品FAQ
 
 ## StoneDB与MySQL的兼容性如何？
-StoneDB 高度兼容 MySQL 5.6、5.7 协议和 MySQL 生态等重要特性，支持 MySQL 常用的功能及语法。
+StoneDB 高度兼容 MySQL 5.6、5.7、8.0 协议和 MySQL 生态等重要特性，支持 MySQL 常用的功能及语法。
 由于 StoneDB 本身的一些特性，部分操作和功能尚未得到支持，如不支持创建索引、不支持删除数据等。
 ## StoneDB有自己的优化器吗？
 StoneDB 是在原生的 MySQL 加入的存储引擎，StoneDB 有自己的优化器，但 StoneDB 实际也会利用原生的 MySQL 的优化器做一些查询解析和重写机制。

@@ -26,9 +26,14 @@ namespace Tianmu {
 namespace core {
 TableShare::TableShare(const fs::path &table_path, const TABLE_SHARE *table_share)
     : no_cols(table_share->fields), table_path(table_path) {
-  system::TianmuFile ftbl;
-  ftbl.OpenReadOnly(table_path / common::TABLE_DESC_FILE);
-  ftbl.ReadExact(&meta, sizeof(meta));
+  s = const_cast<TABLE_SHARE *>(table_share);
+  try {
+    system::TianmuFile ftbl;
+    ftbl.OpenReadOnly(table_path / common::TABLE_DESC_FILE);
+    ftbl.ReadExact(&meta, sizeof(meta));
+  } catch (common::TianmuError &e) {
+    throw common::DatabaseException("Failed to open: " + table_path.string() + " error:" + e.Message());
+  }
 
   if (meta.magic != common::FILE_MAGIC)
     throw common::DatabaseException("Bad format of table definition in " + table_path.string() + ": bad signature!");

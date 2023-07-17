@@ -93,7 +93,9 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
   void UpdateData(uint64_t row, Value &old_v, Value &new_v);
   void UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, std::shared_ptr<Value>> &rows);
-  void UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v, const Value &new_v);
+  common::ErrorCode UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v,
+                                  const Value &new_v);
+
   void Truncate();
   void DeleteData(uint64_t row);
   void DeleteByPrimaryKey(uint64_t row, uint64_t col);
@@ -229,6 +231,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   void SetMaxInt64(int64_t a_imax) { hdr.max = a_imax; }
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
   bool GetIfUnsigned() const { return ct.GetUnsigned(); }
+  void SetUnsigned(bool unsigned_flag) { ct.SetUnsigned(unsigned_flag); }
   uint64_t AutoIncNext() {
     backup_auto_inc_next_ = m_share->auto_inc_.fetch_add(1);
     if (backup_auto_inc_next_ >= UINT64_MAX)

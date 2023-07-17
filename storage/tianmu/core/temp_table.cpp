@@ -88,7 +88,8 @@ TempTable::Attr::Attr(const Attr &a) : PhysicalColumn(a) {
 }
 
 TempTable::Attr::Attr(CQTerm t, common::ColOperation m, uint32_t power, bool dis, char *a, int dim,
-                      common::ColumnType type, uint scale, uint no_digits, bool notnull, DTCollation collation, SI *si1)
+                      common::ColumnType type, uint scale, uint no_digits, bool notnull, DTCollation collation,
+                      SpecialInstruction *si1)
     : mode(m), distinct(dis), term(t), dim(dim), not_complete(true) {
   ct.Initialize(type, notnull, common::PackFmt::DEFAULT, no_digits, scale, collation);
   orig_precision = no_digits;
@@ -936,7 +937,7 @@ void TempTable::Attr::SetNewPageSize(uint new_page_size) {
 }
 
 TempTable::TempTable(const TempTable &t, bool is_vc_owner)
-    : filter(t.filter), output_mind(t.output_mind), is_vc_owner(is_vc_owner), m_conn(t.m_conn) {
+    : filter(t.filter), output_mind(t.output_mind), is_vc_owner(is_vc_owner), m_conn(t.m_conn), sub_type(t.sub_type) {
   no_obj = t.no_obj;
   materialized = t.materialized;
   aliases = t.aliases;
@@ -954,9 +955,11 @@ TempTable::TempTable(const TempTable &t, bool is_vc_owner)
   force_full_materialize = t.force_full_materialize;
   no_materialized = t.no_materialized;
   no_global_virt_cols = int(t.virt_cols.size());
+
   for (uint i = 0; i < t.attrs.size(); i++) {
     attrs.push_back(new Attr(*t.attrs[i]));
   }
+
   is_sent = t.is_sent;
   mem_scale = t.mem_scale;
   rough_is_empty = t.rough_is_empty;
@@ -981,9 +984,10 @@ TempTable::~TempTable() {
 }
 
 void TempTable::TranslateBackVCs() {
-  for (int i = 0; i < no_global_virt_cols; i++)
+  for (int i = 0; i < no_global_virt_cols; i++) {
     if (virt_cols[i] && static_cast<int>(virt_cols[i]->IsSingleColumn()))
       static_cast<vcolumn::SingleColumn *>(virt_cols[i])->TranslateSourceColumns(attr_back_translation);
+  }
 }
 
 std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_order,
@@ -1000,14 +1004,17 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
     copy_buf.push_back(attrs[i]->buffer);
     attrs[i]->buffer = nullptr;
   }
+
   if (no_global_virt_cols != -1) {
     // this is a TempTable copy
     for (uint i = no_global_virt_cols; i < virt_cols.size(); i++) {
       delete virt_cols[i];
       virt_cols[i] = nullptr;
     }
+
     virt_cols.resize(no_global_virt_cols);
   }
+
   std::shared_ptr<TempTable> working_copy = Create(*this, in_subq);  // Original VCs of this will be copied to
                                                                      // working_copy, and then deleted in its
                                                                      // destructor
@@ -1029,6 +1036,7 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
   filter.mind_->AddDimension_cross(no_obj);
   if (virt_cols.size() < attrs.size())
     virt_cols.resize(attrs.size());
+
   fill(virt_cols.begin(), virt_cols.end(), (vcolumn::VirtualColumn *)nullptr);
   for (uint i = 0; i < attrs.size(); i++) {
     vcolumn::VirtualColumn *new_vc =
@@ -1037,9 +1045,9 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
     attrs[i]->term.vc = new_vc;
     attrs[i]->dim = 0;
   }
+
   if (translate_order) {
-    order_by.clear();  // translation needed: virt_cols should point to
-                       // working_copy as a data source
+    order_by.clear();  // translation needed: virt_cols should point to working_copy as a data source
     for (uint i = 0; i < working_copy->virt_cols.size(); i++) {
       vcolumn::VirtualColumn *orig_vc = working_copy->virt_cols[i];
       // if(in_subq && orig_vc->IsSingleColumn())
@@ -1064,6 +1072,7 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
         }
       }
     }
+
     for (uint i = 0; i < working_copy->order_by.size(); i++) {
       SortDescriptor sord;
       sord.vc = working_copy->order_by[i].vc;
@@ -1076,21 +1085,19 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
       // find which working_copy->vc is used in ordering
       for (uint j = 0; j < working_copy->virt_cols.size(); j++) {
         if (/*working_copy->*/ order_by[i].vc == working_copy->virt_cols[j]) {
-          // order_by[i].vc = working_copy->virt_cols[j];
-          MoveVC(j, working_copy->virt_cols,
-                 virt_cols);  // moving vc - now it is back in this
+          MoveVC(j, working_copy->virt_cols, virt_cols);  // moving vc - now it is back in this
           break;
         }
       }
     }
   }
+
   no_global_virt_cols = (int)virt_cols.size();
   return working_copy;  // must be deleted by DeleteMaterializedCopy()
 }
 
 void TempTable::DeleteMaterializedCopy(std::shared_ptr<TempTable> &old_t)  // delete the external table and remove
-                                                                           // VC pointers, make this fully
-                                                                           // materialized
+                                                                           // VC pointers, make this fully materialized
 {
   MEASURE_FET("TempTable::DeleteMaterializedCopy(...)");
   for (uint i = 0; i < attrs.size(); i++) {  // Make sure VCs are deleted before the source table is deleted
@@ -1098,6 +1105,7 @@ void TempTable::DeleteMaterializedCopy(std::shared_ptr<TempTable> &old_t)  // de
     delete virt_cols[i];
     virt_cols[i] = nullptr;
   }
+
   old_t.reset();
 }
 
@@ -1107,6 +1115,7 @@ void TempTable::MoveVC(int colnum, std::vector<vcolumn::VirtualColumn *> &from,
   to.push_back(vc);
   from[colnum] = nullptr;
   std::vector<vcolumn::VirtualColumn *> vv = vc->GetChildren();
+
   for (size_t i = 0; i < vv.size(); i++) MoveVC(vv[i], from, to);
 }
 
@@ -1209,7 +1218,7 @@ void TempTable::SetMode(TMParameter mode, int64_t mode_param1, int64_t mode_para
   }
 }
 
-int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool distinct, SI si) {
+int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool distinct, SpecialInstruction &si) {
   if (alias)
     no_cols++;
   common::ColumnType type = common::ColumnType::UNK;  // type of column
@@ -1315,25 +1324,31 @@ void TempTable::Union(TempTable *t, int all) {
   DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
   if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
+
   if (this->IsParametrized() || t->IsParametrized())
     throw common::NotImplementedException("Materialize: not implemented union of parameterized queries.");
+
   tianmu_control_.lock(m_conn->GetThreadID()) << "UNION: materializing components." << system::unlock;
   this->Materialize();
   t->Materialize();
+
   if ((!t->NumOfObj() && all) || (!this->NumOfObj() && !t->NumOfObj()))  // no objects = no union
     return;
 
-  Filter first_f(NumOfObj(), p_power), first_mask(NumOfObj(),
-                                                  p_power);  // mask of objects to be added to the final result set
+  // mask of objects to be added to the final result set
+  Filter first_f(NumOfObj(), p_power), first_mask(NumOfObj(), p_power);
   Filter sec_f(t->NumOfObj(), p_power), sec_mask(t->NumOfObj(), p_power);
   first_mask.Set();
   sec_mask.Set();
+
   if (!all) {
     tianmu_control_.lock(m_conn->GetThreadID()) << "UNION: excluding repetitions." << system::unlock;
     Filter first_f(NumOfObj(), p_power);
     first_f.Set();
+
     Filter sec_f(t->NumOfObj(), p_power);
     sec_f.Set();
+
     GroupDistinctTable dist_table(p_power);
     using vc_ptr_t = std::shared_ptr<vcolumn::VirtualColumn>;
     std::vector<vc_ptr_t> first_vcs;
@@ -1348,19 +1363,23 @@ void TempTable::Union(TempTable *t, int all) {
             vc_ptr_t(new vcolumn::SingleColumn(GetDisplayableAttrP(i), &output_mind, 0, -i - 1, this, 0)));
         sec_vcs.push_back(
             vc_ptr_t(new vcolumn::SingleColumn(t->GetDisplayableAttrP(i), t->GetOutputMultiIndexP(), 1, -i - 1, t, 0)));
+
         encoder.push_back(ColumnBinEncoder());
-        bool encoder_created;
-        if (NumOfObj() == 0)
-          encoder_created = encoder[i].PrepareEncoder(sec_vcs[i].get());
-        else if (t->NumOfObj() == 0)
-          encoder_created = encoder[i].PrepareEncoder(first_vcs[i].get());
-        else
+
+        bool encoder_created{false};
+        if (NumOfObj() && t->NumOfObj())
           encoder_created = encoder[i].PrepareEncoder(first_vcs[i].get(), sec_vcs[i].get());
+        else {
+          encoder_created = NumOfObj() ? encoder[i].PrepareEncoder(first_vcs[i].get())
+                                       : ((t->NumOfObj()) ? encoder[i].PrepareEncoder(sec_vcs[i].get()) : false);
+        }
+
         if (!encoder_created) {
           std::stringstream ss;
           ss << "UNION of non-matching columns (column no " << i << ") .";
           throw common::NotImplementedException(ss.str());
         }
+
         encoder[i].SetPrimaryOffset(size);
         size += encoder[i].GetPrimarySize();
       }
@@ -1374,53 +1393,68 @@ void TempTable::Union(TempTable *t, int all) {
       do {
         first_mit.Rewind();
         dist_table.Clear();
+
         while (first_mit.IsValid()) {
           int64_t pos = **first_mit;
           if (first_f.Get(pos)) {
-            for (uint i = 0; i < encoder.size(); i++) encoder[i].Encode(input_buf, first_mit);
+            for (uint i = 0; i < encoder.size(); i++) {
+              encoder[i].Encode(input_buf, first_mit);
+            }
+
             GDTResult res = dist_table.Add(input_buf);
             if (res == GDTResult::GDT_EXISTS)
               first_mask.ResetDelayed(pos);
-            if (res != GDTResult::GDT_FULL)  // note: if v is omitted here, it will also be
-                                             // omitted in sec!
+            if (res != GDTResult::GDT_FULL)  // note: if v is omitted here, it will also be omitted in sec!
               first_f.ResetDelayed(pos);
           }
+
           ++first_mit;
           if (m_conn->Killed())
             throw common::KilledException();
         }
+
         sec_mit.Rewind();
         while (sec_mit.IsValid()) {
           int64_t pos = **sec_mit;
           if (sec_f.Get(pos)) {
-            for (uint i = 0; i < encoder.size(); i++) encoder[i].Encode(input_buf, sec_mit, sec_vcs[i].get());
+            for (uint i = 0; i < encoder.size(); i++) {
+              encoder[i].Encode(input_buf, sec_mit, sec_vcs[i].get());
+            }
+
             GDTResult res = dist_table.Add(input_buf);
             if (res == GDTResult::GDT_EXISTS)
               sec_mask.ResetDelayed(pos);
             if (res != GDTResult::GDT_FULL)
               sec_f.ResetDelayed(pos);
           }
+
           ++sec_mit;
           if (m_conn->Killed())
             throw common::KilledException();
         }
+
         first_f.Commit();
-        sec_f.Commit();
         first_mask.Commit();
+
+        sec_f.Commit();
         sec_mask.Commit();
       } while (!first_f.IsEmpty() || !sec_f.IsEmpty());
     }
     delete[] input_buf;
   }
+
   int64_t first_no_obj = first_mask.NumOfOnes();
   int64_t sec_no_obj = sec_mask.NumOfOnes();
   int64_t new_no_obj = first_no_obj + sec_no_obj;
+
   tianmu_control_.lock(m_conn->GetThreadID())
       << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
+
   uint new_page_size = CalculatePageSize(new_no_obj);
   for (uint i = 0; i < NumOfDisplaybleAttrs(); i++) {
     Attr *first_attr = GetDisplayableAttrP(i);
     Attr *sec_attr = t->GetDisplayableAttrP(i);
+
     ColumnType new_type = GetUnionType(first_attr->Type(), sec_attr->Type());
     if (first_attr->Type() == sec_attr->Type() && first_mask.IsFull() && first_no_obj && sec_no_obj &&
         first_attr->Type().GetPrecision() >= sec_attr->Type().GetPrecision()) {
@@ -1439,35 +1473,39 @@ void TempTable::Union(TempTable *t, int all) {
       }
       continue;
     }
+
+    // generates the output attrs.
     Attr *new_attr =
         new Attr(CQTerm(), common::ColOperation::LISTING, p_power, false, first_attr->alias, 0, new_type.GetTypeName(),
                  new_type.GetScale(), new_type.GetPrecision(), new_type.NotNull(), new_type.GetCollation());
     new_attr->page_size = new_page_size;
     new_attr->CreateBuffer(new_no_obj, m_conn);
+
     if (first_attr->TypeName() == common::ColumnType::NUM && sec_attr->TypeName() == common::ColumnType::NUM &&
         first_attr->Type().GetScale() != sec_attr->Type().GetScale()) {
       uint max_scale = new_attr->Type().GetScale();
+
       // copy attr from first table to new_attr
       double multiplier = types::PowOfTen(max_scale - first_attr->Type().GetScale());
       FilterOnesIterator first_fi(&first_mask, p_power);
       for (int64_t j = 0; j < first_no_obj; j++) {
         int64_t pos = *first_fi;
         ++first_fi;
-        if (!first_attr->IsNull(pos))
-          new_attr->SetValueInt64(j, first_attr->GetNotNullValueInt64(pos) * (int64_t)multiplier);
-        else
-          new_attr->SetValueInt64(j, common::NULL_VALUE_64);
+
+        int64_t val = (!first_attr->IsNull(pos)) ? (first_attr->GetNotNullValueInt64(pos) * (int64_t)multiplier)
+                                                 : common::NULL_VALUE_64;
+        new_attr->SetValueInt64(j, val);
       }
+
       // copy attr from second table to new_attr
       multiplier = types::PowOfTen(max_scale - sec_attr->Type().GetScale());
       FilterOnesIterator sec_fi(&sec_mask, p_power);
       for (int64_t j = 0; j < sec_no_obj; j++) {
         int64_t pos = *sec_fi;
         ++sec_fi;
-        if (!sec_attr->IsNull(pos))
-          new_attr->SetValueInt64(first_no_obj + j, sec_attr->GetNotNullValueInt64(pos) * (int64_t)multiplier);
-        else
-          new_attr->SetValueInt64(first_no_obj + j, common::NULL_VALUE_64);
+        int64_t val = (!sec_attr->IsNull(pos)) ? (sec_attr->GetNotNullValueInt64(pos) * (int64_t)multiplier)
+                                               : common::NULL_VALUE_64;
+        new_attr->SetValueInt64(first_no_obj + j, val);
       }
     } else if (ATI::IsStringType(new_attr->TypeName())) {
       types::BString s;
@@ -1477,6 +1515,7 @@ void TempTable::Union(TempTable *t, int all) {
         new_attr->SetValueString(j, s);
         ++first_fi;
       }
+
       FilterOnesIterator sec_fi(&sec_mask, p_power);
       for (int64_t j = 0; j < sec_no_obj; j++) {
         sec_attr->GetValueString(s, *sec_fi);
@@ -1488,6 +1527,7 @@ void TempTable::Union(TempTable *t, int all) {
       for (int64_t j = 0; j < first_no_obj; j++) {
         int64_t pos = *first_fi;
         ++first_fi;
+
         if (first_attr->IsNull(pos))
           new_attr->SetValueInt64(j, common::NULL_VALUE_64);
         else if (first_attr->Type().IsFloat())
@@ -1497,10 +1537,12 @@ void TempTable::Union(TempTable *t, int all) {
           new_attr->SetValueInt64(j, *(int64_t *)&v);
         }
       }
+
       FilterOnesIterator sec_fi(&sec_mask, p_power);
       for (int64_t j = 0; j < sec_no_obj; j++) {
         int64_t pos = *sec_fi;
         ++sec_fi;
+
         if (sec_attr->IsNull(pos))
           new_attr->SetValueInt64(first_no_obj + j, common::NULL_VALUE_64);
         else if (sec_attr->Type().IsFloat())
@@ -1510,44 +1552,48 @@ void TempTable::Union(TempTable *t, int all) {
           new_attr->SetValueInt64(first_no_obj + j, *(int64_t *)&v);
         }
       }
-    } else {
+    } else {  // other types.
       // copy attr from first table to new_attr
       double multiplier = types::PowOfTen(new_attr->Type().GetScale() - first_attr->Type().GetScale());
       FilterOnesIterator first_fi(&first_mask, p_power);
       for (int64_t j = 0; j < first_no_obj; j++) {
         int64_t pos = *first_fi;
         ++first_fi;
+
         if (first_attr->IsNull(pos))
           new_attr->SetValueInt64(j, common::NULL_VALUE_64);
-        else if (multiplier == 1.0)  // do not multiply by 1.0, as it causes
-                                     // precision problems on bigint
+        else if (multiplier == 1.0)  // do not multiply by 1.0, as it causes precision problems on bigint
           new_attr->SetValueInt64(j, first_attr->GetNotNullValueInt64(pos));
         else
           new_attr->SetValueInt64(j, (int64_t)(first_attr->GetNotNullValueInt64(pos) * multiplier));
       }
+
       multiplier = types::PowOfTen(new_attr->Type().GetScale() - sec_attr->Type().GetScale());
       FilterOnesIterator sec_fi(&sec_mask, p_power);
       for (int64_t j = 0; j < sec_no_obj; j++) {
         int64_t pos = *sec_fi;
         ++sec_fi;
+
         if (sec_attr->IsNull(pos))
           new_attr->SetValueInt64(first_no_obj + j, common::NULL_VALUE_64);
-        else if (multiplier == 1.0)  // do not multiply by 1.0, as it causes
-                                     // precision problems on bigint
+        else if (multiplier == 1.0)  // do not multiply by 1.0, as it causes precision problems on bigint
           new_attr->SetValueInt64(first_no_obj + j, sec_attr->GetNotNullValueInt64(pos));
         else
           new_attr->SetValueInt64(first_no_obj + j, (int64_t)(sec_attr->GetNotNullValueInt64(pos) * multiplier));
       }
     }
+
     attrs[GetDisplayableAttrIndex(i)] = new_attr;
     displayable_attr[i] = new_attr;
     delete first_attr;
   }
+
   SetNumOfMaterialized(new_no_obj);
   // this->no_obj = new_no_obj;
   // this->Display();
   output_mind.Clear();
   output_mind.AddDimension_cross(no_obj);
+  return;
 }
 
 void TempTable::Union(TempTable *t, [[maybe_unused]] int all, ResultSender *sender, int64_t &g_offset,
@@ -1682,13 +1728,17 @@ types::TianmuValueObject TempTable::GetValueObject(int64_t obj, uint attr) {
 uint TempTable::CalculatePageSize(int64_t _no_obj) {
   int64_t new_no_obj = _no_obj == -1 ? no_obj : _no_obj;
   uint size_of_one_record = 0;
-  for (uint i = 0; i < attrs.size(); i++)
-    if (attrs[i]->TypeName() == common::ColumnType::BIN || attrs[i]->TypeName() == common::ColumnType::BYTE ||
-        attrs[i]->TypeName() == common::ColumnType::VARBYTE || attrs[i]->TypeName() == common::ColumnType::LONGTEXT ||
-        attrs[i]->TypeName() == common::ColumnType::STRING || attrs[i]->TypeName() == common::ColumnType::VARCHAR)
-      size_of_one_record += attrs[i]->Type().GetInternalSize() + 4;  // 4 bytes describing length
+
+  // for (uint i = 0; i < attrs.size(); i++) {
+  for (auto attr : attrs) {
+    if (attr->TypeName() == common::ColumnType::BIN || attr->TypeName() == common::ColumnType::BYTE ||
+        attr->TypeName() == common::ColumnType::VARBYTE || attr->TypeName() == common::ColumnType::LONGTEXT ||
+        attr->TypeName() == common::ColumnType::STRING || attr->TypeName() == common::ColumnType::VARCHAR)
+      size_of_one_record += attr->Type().GetInternalSize() + 4;  // 4 bytes describing length
     else
-      size_of_one_record += attrs[i]->Type().GetInternalSize();
+      size_of_one_record += attr->Type().GetInternalSize();
+  }
+
   uint raw_size = (uint)new_no_obj;
   if (size_of_one_record < 1)
     size_of_one_record = 1;
@@ -1888,11 +1938,12 @@ std::shared_ptr<TempTable> TempTable::Create(const TempTable &t, bool in_subq) {
   return tnew;
 }
 
-std::shared_ptr<TempTable> TempTable::Create(JustATable *const t, int alias, Query *q, bool for_subq) {
+std::shared_ptr<TempTable> TempTable::Create(JustATable *const t, int alias, Query *q, TableSubType sub_type,
+                                             bool for_subq) {
   if (for_subq)
     return std::shared_ptr<TempTable>(new TempTableForSubquery(t, alias, q));
   else
-    return std::shared_ptr<TempTable>(new TempTable(t, alias, q));
+    return std::shared_ptr<TempTable>(new TempTable(t, alias, q, sub_type));
 }
 
 ColumnType TempTable::GetUnionType(ColumnType type1, ColumnType type2) {
@@ -1911,15 +1962,6 @@ ColumnType TempTable::GetUnionType(ColumnType type1, ColumnType type2) {
     return t;
   }
   if (type1.IsFixed() && type2.IsFixed() && type1.GetScale() != type2.GetScale()) {
-    uint max_scale = type1.GetScale() > type2.GetScale() ? type1.GetScale() : type2.GetScale();
-    uint max_ints = (type1.GetPrecision() - type1.GetScale()) > (type2.GetPrecision() - type2.GetScale())
-                        ? (type1.GetPrecision() - type1.GetScale())
-                        : (type2.GetPrecision() - type2.GetScale());
-    if (max_ints + max_scale > 18) {
-      std::stringstream ss;
-      ss << "UNION of non-matching columns (column no " << 0 << ") .";
-      throw common::NotImplementedException(ss.str());
-    }
     return type1.GetScale() > type2.GetScale() ? type1 : type2;
   }
   if (type1.GetInternalSize() < type2.GetInternalSize())
@@ -1956,6 +1998,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
     sender->SetAffectRows(no_obj);
   CreateDisplayableAttrP();
   CalculatePageSize();
+
   int64_t offset = 0;  // controls the first object to be materialized
   int64_t limit = -1;  // if(limit>=0)  ->  for(row = offset; row < offset +
                        // limit; row++) ....
@@ -1970,6 +2013,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
     mode.param2 = -1;
     mode.param1 = 0;
   }
+
   int64_t local_offset = 0;  // controls the first object to be materialized in a given algorithm
   int64_t local_limit = -1;
   if (materialized && (order_by.size() > 0 || limits_present) && no_obj) {
@@ -1982,19 +2026,21 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       local_limit = local_limit < 0 ? 0 : local_limit;
     } else
       local_limit = no_obj;
+
     if (exists_only) {
-      if (local_limit == 0)  // else no change needed
-        no_obj = 0;
+      no_obj = (local_limit == 0) ? 0 : no_obj;
       return;
     }
 
     if (order_by.size() != 0 && no_obj > 1) {
       std::shared_ptr<TempTable> temporary_source_table =
           CreateMaterializedCopy(true, in_subq);  // true: translate definition of ordering
+
       OrderByAndMaterialize(order_by, local_limit, local_offset);
       DeleteMaterializedCopy(temporary_source_table);
     } else if (limits_present)
       ApplyOffset(local_limit, local_offset);
+
     order_by.clear();
     return;
   }
@@ -2005,9 +2051,11 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
 
   bool table_distinct = this->mode.distinct;
   bool distinct_on_materialized = false;
-  for (uint i = 0; i < NumOfAttrs(); i++)
+  for (uint i = 0; i < NumOfAttrs(); i++) {
     if (attrs[i]->mode != common::ColOperation::LISTING)
       group_by = true;
+  }
+
   if (table_distinct && group_by) {
     distinct_on_materialized = true;
     table_distinct = false;
@@ -2019,54 +2067,57 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
 
   bool no_rows_too_large = filter.mind_->TooManyTuples();
   no_obj = -1;         // no_obj not calculated yet - wait for better moment
-  VerifyAttrsSizes();  // resize attr[i] buffers basing on the current
-                       // multiindex state
+  VerifyAttrsSizes();  // resize attr[i] buffers basing on the current multiindex state
 
-  // the case when there is no grouping of attributes, check also DISTINCT
-  // modifier of TT
+  // the case when there is no grouping of attributes, check also DISTINCT modifier of TT
   if (!group_by && !table_distinct) {
-    DEBUG_ASSERT(!distinct_on_materialized);  // should by false here, otherwise must be
-                                              // added to conditions below
+    DEBUG_ASSERT(!distinct_on_materialized);  // should by false here, otherwise must be added to conditions below
 
     if (limits_present) {
-      if (no_rows_too_large && order_by.size() == 0)
-        no_obj = offset + limit;  // offset + limit in the worst case
+      // offset + limit in the worst case : or normal case.
+      if (sub_type == TableSubType::CONST || sub_type == TableSubType::DUAL)
+        no_obj = 1;
       else
-        no_obj = filter.mind_->NumOfTuples();
+        no_obj = (no_rows_too_large && order_by.size() == 0) ? (offset + limit) : filter.mind_->NumOfTuples();
+
       if (no_obj <= offset) {
         no_obj = 0;
         materialized = true;
         order_by.clear();
         return;
       }
+
       local_offset = offset;
       local_limit = std::min(limit, (int64_t)no_obj - offset);
       local_limit = local_limit < 0 ? 0 : local_limit;
     } else {
-      no_obj = filter.mind_->NumOfTuples();
+      if (sub_type == TableSubType::CONST || sub_type == TableSubType::DUAL)
+        no_obj = 1;
+      else {
+        no_obj = filter.mind_->NumOfTuples();
+      }
       local_limit = no_obj;
     }
+
     if (exists_only) {
       order_by.clear();
       return;
     }
+
     output_mind.Clear();
     output_mind.AddDimension_cross(local_limit);  // an artificial dimension for result
 
     CalculatePageSize();  // recalculate, as no_obj might changed
-    // perform order by: in this case it can be done on source tables, not on
-    // the result
+    // perform order by: in this case it can be done on source tables, not on  the result
     bool materialized_by_ordering = false;
-    if (CanOrderSources())
-      // false if no sorting used
+    if (CanOrderSources())  // false if no sorting used
       materialized_by_ordering = this->OrderByAndMaterialize(order_by, local_limit, local_offset, sender);
+
     if (!materialized_by_ordering) {  // not materialized yet?
       // materialize without aggregations. If ordering then do not send result
-      if (order_by.size() == 0)
-        FillMaterializedBuffers(local_limit, local_offset, sender, lazy);
-      else  // in case of order by we need to materialize all rows to be next
-            // ordered
-        FillMaterializedBuffers(no_obj, 0, nullptr, lazy);
+      // or in case of order by we need to materialize all rows to be next ordered
+      (order_by.size() == 0) ? FillMaterializedBuffers(local_limit, local_offset, sender, lazy)
+                             : FillMaterializedBuffers(no_obj, 0, nullptr, lazy);
     }
   } else {
     // GROUP BY or DISTINCT -  compute aggregations
@@ -2076,13 +2127,14 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       if (exists_only)
         local_limit = 1;
     }
+
     if (HasHavingConditions() && in_subq)
       having_conds[0].tree->Simplify(true);
 
     ResultSender *local_sender = (distinct_on_materialized || order_by.size() > 0 ? nullptr : sender);
     AggregationAlgorithm aggr(this);
-    aggr.Aggregate(table_distinct, local_limit, local_offset,
-                   local_sender);  // this->tree (HAVING) used inside
+    aggr.Aggregate(table_distinct, local_limit, local_offset, local_sender);  // this->tree (HAVING) used inside
+
     if (no_obj == 0) {
       order_by.clear();
       return;
@@ -2109,18 +2161,20 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       }
     } else
       local_limit = no_obj;
+
     if (exists_only)
       local_limit = 1;
+
     std::shared_ptr<TempTable> temporary_source_table = CreateMaterializedCopy(false, in_subq);
     ResultSender *local_sender = (order_by.size() > 0 ? nullptr : sender);
 
     AggregationAlgorithm aggr(this);
-    aggr.Aggregate(true, local_limit, local_offset,
-                   local_sender);  // true => select-level distinct
+    aggr.Aggregate(true, local_limit, local_offset, local_sender);  // true => select-level distinct
     DeleteMaterializedCopy(temporary_source_table);
     output_mind.Clear();
     output_mind.AddDimension_cross(no_obj);  // an artificial dimension for result
-  }                                          // end of distinct part
+  }
+
   // ORDER BY, if not sorted until now
   if (order_by.size() != 0) {
     if (limits_present) {
@@ -2135,17 +2189,21 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       }
     } else
       local_limit = no_obj;
+
     if (no_obj > 1 && !exists_only) {
-      std::shared_ptr<TempTable> temporary_source_table =
-          CreateMaterializedCopy(true, in_subq);  // true: translate definition of ordering
+      // true: translate definition of ordering
+      std::shared_ptr<TempTable> temporary_source_table = CreateMaterializedCopy(true, in_subq);
       OrderByAndMaterialize(order_by, local_limit, local_offset, sender);
       DeleteMaterializedCopy(temporary_source_table);
     }
+
     order_by.clear();
     output_mind.Clear();
     output_mind.AddDimension_cross(no_obj);  // an artificial dimension for result
   }
+
   materialized = true;
+  return;
 }
 
 // here we deal with both signed/unsigned, the exact values will be converted on send results phase.
@@ -2159,33 +2217,45 @@ void TempTable::RecordIterator::PrepareValues() {
         if (v == common::NULL_VALUE_32)
           dataTypes[att]->SetToNull();
         else
-          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))->Assign(v, 0, false, attrt_tmp);
       } else if (attrt_tmp == common::ColumnType::SMALLINT) {
         short &v = (*(AttrBuffer<short> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_SH)
           dataTypes[att]->SetToNull();
         else
-          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))->Assign(v, 0, false, attrt_tmp);
       } else if (attrt_tmp == common::ColumnType::BYTEINT) {
         char &v = (*(AttrBuffer<char> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_C)
           dataTypes[att]->SetToNull();
         else
-          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))->Assign(v, 0, false, attrt_tmp);
       } else if (ATI::IsRealType(attrt_tmp)) {
         double &v = (*(AttrBuffer<double> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == NULL_VALUE_D)
           dataTypes[att]->SetToNull();
         else
-          ((types::TianmuNum *)dataTypes[att].get())->Assign(v);
+          (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))->Assign(v);
       } else if (attrt_tmp == common::ColumnType::NUM || attrt_tmp == common::ColumnType::BIGINT ||
                  attrt_tmp == common::ColumnType::BIT) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)
           dataTypes[att]->SetToNull();
-        else
-          ((types::TianmuNum *)dataTypes[att].get())
-              ->Assign(v, table->GetDisplayableAttrP(att)->Type().GetScale(), false, attrt_tmp);
+        else {
+          if (dataTypes[att].get()->GetValueType() == types::ValueTypeEnum::NUMERIC_TYPE)
+            (dynamic_cast<types::TianmuNum *>(dataTypes[att].get()))
+                ->Assign(v, table->GetDisplayableAttrP(att)->Type().GetScale(), false, attrt_tmp);
+          if (dataTypes[att].get()->GetValueType() == types::ValueTypeEnum::STRING_TYPE) {
+            std::ostringstream stringStream;
+            stringStream << v;
+            std::string copyOfStr = stringStream.str();
+
+            char *vstr_p = const_cast<char *>(copyOfStr.c_str());
+            types::BString bs(vstr_p, strlen(vstr_p), true);
+            (dynamic_cast<types::BString *>(dataTypes[att].get()))->PersistentCopy(bs);
+          }
+          // process bstring type.
+        }
       } else if (ATI::IsDateTimeType(attrt_tmp)) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)

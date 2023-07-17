@@ -46,7 +46,7 @@ class SortDescriptor;
 class Transaction;
 
 // Sepecial Instruction
-struct SI {
+struct SpecialInstruction {
   std::string separator;  // group_concat separator
   ORDER::enum_order order;
 };
@@ -57,7 +57,7 @@ class TempTable : public JustATable {
  public:
   class Attr final : public PhysicalColumn {
    public:
-    SI si;
+    SpecialInstruction si;
     void *buffer;             // buffer to values of attribute, if materialized
     int64_t no_obj;           // number of objects in the buffer
     uint32_t no_power;        // number of objects in the buffer
@@ -75,7 +75,7 @@ class TempTable : public JustATable {
 
     Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = nullptr, int dim = -1,
          common::ColumnType type = common::ColumnType::INT, uint scale = 0, uint precision = 10, bool notnull = true,
-         DTCollation collation = DTCollation(), SI *si1 = nullptr);
+         DTCollation collation = DTCollation(), SpecialInstruction *si1 = nullptr);
     Attr(const Attr &);
     Attr &operator=(const Attr &);
     int operator==(const Attr &);
@@ -88,6 +88,7 @@ class TempTable : public JustATable {
              !term.vc->IsConst();  // constant value, the buffer is already
                                    // filled in
     }
+    bool BaseUserVar() { return term.vc->BaseUserVar(); }
 
     enum phys_col_t ColType() const override { return phys_col_t::ATTR; }
     //! Use in cases where actual string length is less than declared, before
@@ -187,7 +188,7 @@ class TempTable : public JustATable {
 
  protected:
   TempTable(const TempTable &, bool is_vc_owner);
-  TempTable(JustATable *const, int alias, Query *q);
+  TempTable(JustATable *const, int alias, Query *q, TableSubType subtype = TableSubType::NORMAL);
 
   std::shared_ptr<TempTable> CreateMaterializedCopy(bool translate_order,
                                                     bool in_subq);  // move all buffers to a newly created
@@ -209,7 +210,7 @@ class TempTable : public JustATable {
   void AddLeftConds(Condition *cond, std::vector<TabID> &dims1, std::vector<TabID> &dims2);
   void SetMode(TMParameter mode, int64_t mode_param1 = 0, int64_t mode_param2 = -1);
   void JoinT(JustATable *t, int alias, JoinType jt);
-  int AddColumn(CQTerm, common::ColOperation, char *alias, bool distinct, SI si);
+  int AddColumn(CQTerm, common::ColOperation, char *alias, bool distinct, SpecialInstruction &si);
   void AddOrder(vcolumn::VirtualColumn *vc, int direction);
   void Union(TempTable *, int);
   void Union(TempTable *, int, ResultSender *sender, int64_t &g_offset, int64_t &g_limit);
@@ -253,6 +254,7 @@ class TempTable : public JustATable {
     no_materialized = n;
   }
   TType TableType() const override { return TType::TEMP_TABLE; }  // type of JustATable - TempTable
+  TableSubType getSubType() { return sub_type; }                  // the sub type of TempTable
   uint NumOfAttrs() const override { return (uint)attrs.size(); }
   uint NumOfDisplaybleAttrs() const override { return no_cols; }  // no. of columns with defined alias
   bool IsDisplayAttr(int i) { return attrs[i]->alias != nullptr; }
@@ -386,6 +388,7 @@ class TempTable : public JustATable {
   void MoveVC(vcolumn::VirtualColumn *vc, std::vector<vcolumn::VirtualColumn *> &from,
               std::vector<vcolumn::VirtualColumn *> &to);
   void FillbufferTask(Attr *attr, Transaction *txn, MIIterator *page_start, int64_t start_row, int64_t page_end);
+  void FillBufferByRow(std::vector<Attr *> attrs, MIIterator *page_start, int64_t start_row, int64_t page_end);
   size_t TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st);
   bool HasTempTable() const { return has_temp_table; }
 
@@ -393,9 +396,10 @@ class TempTable : public JustATable {
   bool CanCondPushDown() { return can_cond_push_down; };
 
  protected:
-  int64_t no_obj;
+  int64_t no_obj;                        // no. of objs.(or rows.)
   uint32_t p_power;                      // pack power
   uint no_cols;                          // no. of output columns, i.e., with defined alias
+  TableSubType sub_type;                 // table sub type.
   TableMode mode;                        // based on { TM_DISTINCT, TM_TOP, TM_EXISTS }
   std::vector<Attr *> attrs;             // vector of output columns, each column contains
                                          // a buffer with values
@@ -456,7 +460,8 @@ class TempTable : public JustATable {
 
   void Display(std::ostream &out = std::cout);  // output to console
   static std::shared_ptr<TempTable> Create(const TempTable &, bool in_subq);
-  static std::shared_ptr<TempTable> Create(JustATable *const, int alias, Query *q, bool for_subquery = false);
+  static std::shared_ptr<TempTable> Create(JustATable *const, int alias, Query *q, TableSubType sub_type,
+                                           bool for_subquery = false);
   bool IsSent() { return is_sent; }
   void SetIsSent() { is_sent = true; }
   common::Tribool RoughIsEmpty() { return rough_is_empty; }

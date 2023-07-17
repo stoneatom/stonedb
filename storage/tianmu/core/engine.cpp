@@ -768,14 +768,19 @@ uint32_t Engine::GetNextTableId() {
   if (!fs::exists(p)) {
     TIANMU_LOG(LogCtl_Level::INFO, "Creating table id file");
     std::ofstream seq_file(p.string());
-    if (seq_file)
+    if (seq_file) {
       seq_file << 0;
+      seq_file.flush();  // sync to disk mandatory.
+    }
+
     if (!seq_file) {
       throw common::FileException("Failed to write to table id file");
     }
+
+    return 0;  // fast return if it's a new-created tianmu.tid file.
   }
 
-  uint32_t seq;
+  uint32_t seq{0};
   std::fstream seq_file(p.string());
   if (seq_file)
     seq_file >> seq;
@@ -785,6 +790,7 @@ uint32_t Engine::GetNextTableId() {
   seq++;
   seq_file.seekg(0);
   seq_file << seq;
+  seq_file.flush();  // sync to disk mandatory.
   if (!seq_file) {
     throw common::FileException("Failed to write to table id file");
   }
@@ -976,15 +982,20 @@ void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
 }
 
 int Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
+  DBUG_ENTER("Engine::DeleteTable");
+
   {
     std::unique_lock<std::shared_mutex> mem_guard(mem_table_mutex);
     DeltaTable::DropDeltaTable(table);
     m_table_deltas.erase(table);
   }
+
   if (DeleteTableIndex(table, thd)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "DeleteTable  failed");
-    return 1;
+    DBUG_RETURN(1);
   }
+  DBUG_EXECUTE_IF("TIANMU_DELETE_TABLE_AFTER_INDEX", { DBUG_RETURN(1); });
+
   UnRegisterTable(table);
   std::string p = table;
   p += common::TIANMU_EXT;
@@ -999,20 +1010,25 @@ int Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   system::DeleteDirectory(p);
   TIANMU_LOG(LogCtl_Level::INFO, "Drop table %s, ID = %u", table, id);
 
-  return 0;
+  DBUG_RETURN(0);
 }
 
 void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *thd) {
+  DBUG_ENTER("Engine::TruncateTable");
+
   auto indextab = GetTableIndex(table_path);
   if (indextab != nullptr) {
     indextab->TruncateIndexTable();
   }
+
   auto tab = current_txn_->GetTableByPath(table_path);
   tab->Truncate();
   auto id = tab->GetID();
   cache.ReleaseTable(id);
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
   TIANMU_LOG(LogCtl_Level::INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
+
+  DBUG_VOID_RETURN;
 }
 
 std::shared_ptr<TianmuTable> Engine::GetTableRD(const std::string &table_path) {
@@ -1587,16 +1603,8 @@ void Engine::LogStat() {
 
     // commands we are interested in
     static const enum_sql_command cmds[] = {
-        SQLCOM_SELECT,
-        // SQLCOM_CREATE_TABLE,
-        // SQLCOM_ALTER_TABLE,
-        SQLCOM_UPDATE,
-        SQLCOM_INSERT,
-        // SQLCOM_INSERT_SELECT,
-        // SQLCOM_DELETE,
-        // SQLCOM_TRUNCATE,
-        // SQLCOM_DROP_TABLE,
-        SQLCOM_LOAD,
+        SQLCOM_SELECT,        SQLCOM_CREATE_TABLE, SQLCOM_ALTER_TABLE, SQLCOM_UPDATE,     SQLCOM_INSERT,
+        SQLCOM_INSERT_SELECT, SQLCOM_DELETE,       SQLCOM_TRUNCATE,    SQLCOM_DROP_TABLE, SQLCOM_LOAD,
     };
 
     STATUS_VAR sv;
@@ -1707,7 +1715,8 @@ int Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableSh
   uint64_t row_id = tm_table->NextRowId();
   // Insert primary key first
   int ret = tm_table->InsertIndexForDelta(table, row_id);
-
+  if (ret != 0)
+    return ret;
   // check & encode
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
@@ -1817,6 +1826,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
 
 int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
                       const uchar *old_data, uchar *new_data) {
+  // DBUG_ENTER("Engine::UpdateRow");
   int ret = 0;
   if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
     UpdateToDelta(table_path, share, table, row_id, old_data, new_data);
@@ -1826,14 +1836,12 @@ int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_p
     ret = tm_table->Update(table, row_id, old_data, new_data);
   }
   return ret;
-  if (tianmu_sysvar_insert_delayed) {
-    tianmu_stat.failed_delta_update++;
-    ret = 1;
-  }
+  // DBUG_RETURN(ret);
 }
 
 int Engine::DeleteRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share,
                       uint64_t row_id) {
+  DBUG_ENTER("Engine::DeleteRow");
   int ret = 0;
   if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE && tianmu_sysvar_enable_rowstore) {
     DeleteToDelta(share, table, row_id);
@@ -1842,11 +1850,8 @@ int Engine::DeleteRow(const std::string &table_path, TABLE *table, std::shared_p
     auto tm_table = current_txn_->GetTableByPath(table_path);
     ret = tm_table->Delete(table, row_id);
   }
-  return ret;
-  if (tianmu_sysvar_insert_delayed) {
-    tianmu_stat.failed_delta_delete++;
-    ret = 1;
-  }
+
+  DBUG_RETURN(ret);
 }
 
 common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
@@ -2201,10 +2206,10 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
     if (ex.field.escaped->alloced_length() != 0)
       io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
 
-    if (ex.field.field_term->alloced_length() != 0)
+    if (ex.field.field_term->ptr() && strlen(ex.field.field_term->ptr()))
       io_params->SetDelimiter(ex.field.field_term->ptr());
 
-    if (ex.line.line_term->alloced_length() != 0)
+    if (ex.line.line_term->ptr() && strlen(ex.line.line_term->ptr()))
       io_params->SetLineTerminator(ex.line.line_term->ptr());
 
     if (ex.field.enclosed->length()) {
@@ -2291,6 +2296,8 @@ std::shared_ptr<TableShare> Engine::GetTableShare(const TABLE_SHARE *table_share
     }
 
     return it->second;
+  } catch (common::DatabaseException &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create table share: %s", e.getExceptionMsg());
   } catch (common::Exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to create table share: %s", e.what());
   } catch (std::exception &e) {

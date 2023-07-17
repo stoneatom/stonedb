@@ -584,28 +584,33 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
   for (int i = 0; i < qu.NumOfSteps(); i++) {
     CompiledQuery::CQStep step = qu.Step(i);
     std::shared_ptr<JustATable> t1_ptr, t2_ptr, t3_ptr;
+    int index = 0;
+
+    if (i == 0 && step.t2.n == common::NULL_VALUE_32) {
+      for (int j = 1; j < qu.NumOfSteps(); j++) {
+        CompiledQuery::CQStep step = qu.Step(j);
+        if (step.t2.n >= 0) {
+          t2_ptr = Table(step.t2.n);
+          ta[-step.t1.n - 1] = t2_ptr;
+          index = -step.t1.n - 1;
+          break;
+        }
+      }
+    }
 
     if (step.t1.n != common::NULL_VALUE_32) {
-      if (step.t1.n >= 0)
-        t1_ptr = Table(step.t1.n);  // normal table
-      else {
-        t1_ptr = ta[-step.t1.n - 1];  // TempTable
-      }
+      // normal table or TempTable
+      t1_ptr = (step.t1.n >= 0) ? Table(step.t1.n) : ta[-step.t1.n - 1];
     }
+
     if (step.t2.n != common::NULL_VALUE_32) {
-      if (step.t2.n >= 0)
-        t2_ptr = Table(step.t2.n);  // normal table
-      else {
-        t2_ptr = ta[-step.t2.n - 1];  // TempTable
-      }
+      t2_ptr = (step.t2.n >= 0) ? Table(step.t2.n) : ta[-step.t2.n - 1];
     }
+
     if (step.t3.n != common::NULL_VALUE_32) {
-      if (step.t3.n >= 0)
-        t3_ptr = Table(step.t3.n);  // normal table
-      else {
-        t3_ptr = ta[-step.t3.n - 1];  // TempTable
-      }
+      t3_ptr = (step.t3.n >= 0) ? Table(step.t3.n) : ta[-step.t3.n - 1];
     }
+
     // Some technical information
     if (step.alias && std::strcmp(step.alias, "roughstats") == 0) {
       // magical word (passed as table alias) to display statistics
@@ -623,13 +628,23 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
         case CompiledQuery::StepType::TABLE_ALIAS:
           ta[-step.t1.n - 1] = t2_ptr;
           break;
-        case CompiledQuery::StepType::TMP_TABLE:
+        case CompiledQuery::StepType::TMP_TABLE: {
           DEBUG_ASSERT(step.t1.n < 0);
-          ta[-step.t1.n - 1] = step.n1
-                                   ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, true)
-                                   : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this);
+          TableSubType sub_type = TableSubType::NORMAL;
+          if (step.n2 == static_cast<typename std::underlying_type<TableSubType>::type>(TableSubType::DUAL)) {
+            sub_type = TableSubType::DUAL;
+          }
+
+          if (index != 0) {
+            ta[-step.t1.n - 1] = step.n1 ? TempTable::Create(ta[index].get(), step.tables1[0].n, this, sub_type, true)
+                                         : TempTable::Create(ta[index].get(), step.tables1[0].n, this, sub_type);
+          } else {
+            ta[-step.t1.n - 1] =
+                step.n1 ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type, true)
+                        : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, sub_type);
+          }
           ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NumOfVirtualColumns(step.t1));
-          break;
+        } break;
         case CompiledQuery::StepType::CREATE_CONDS:
           DEBUG_ASSERT(step.t1.n < 0);
           if (step.ex_op == common::ExtraOperation::EX_COND_PUSH) {
@@ -902,6 +917,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           tianmu_control_.lock(m_conn->GetThreadID())
               << "ERROR: unsupported type of CQStep (" << static_cast<int>(step.type) << ")" << system::unlock;
       }
+
     } catch (...) {
       for (auto &c : conds) delete c;
       throw;
@@ -1727,7 +1743,15 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
     if (cond_removed->type() == Item::FUNC_ITEM &&
         down_cast<Item_func *>(cond_removed)->functype() == Item_func::TRIG_COND_FUNC) {
       // Condition was wrapped into trigger
-      cond_removed = down_cast<Item_cond *>(down_cast<Item_func *>(cond_removed)->arguments()[0]);
+      Item_func_trig_cond *trig_cond = down_cast<Item_func_trig_cond *>(cond_removed);
+      Item *arg = trig_cond->arguments()[0];
+
+      if ((arg->type() == Item::FUNC_ITEM) && (down_cast<Item_func *>(arg)->functype() == Item_func::EQ_FUNC)) {
+        cond_removed = down_cast<Item_func_eq *>(arg);
+      } else
+        cond_removed = down_cast<Item_cond *>(arg);
+
+      // cond_removed = down_cast<Item_cond *>(down_cast<Item_func *>(cond_removed)->arguments()[0]);
     }
     if (cond_removed->type() == Item::COND_ITEM &&
         down_cast<Item_func *>(cond_removed)->functype() == Item_func::COND_OR_FUNC) {

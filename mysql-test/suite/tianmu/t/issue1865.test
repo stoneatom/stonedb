@@ -1,0 +1,29 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1865_test_db;
+--enable_warnings
+
+CREATE DATABASE issue1865_test_db;
+
+USE issue1865_test_db;
+
+create table t1 (a int default 100, b int, c varchar(60))engine=tianmu;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1865.dat' into table t1 (a, c);
+select * from t1;
+
+alter table t1 alter column b drop default;
+alter table t1 alter column b set default 10;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1865.dat' into table t1 (a, c);
+select * from t1;
+
+alter table t1 modify c text;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1865.dat' into table t1 (a, c);
+select * from t1;
+
+DROP DATABASE issue1865_test_db;

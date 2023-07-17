@@ -139,9 +139,9 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
                                                                   // (above)
     my_encoder.reset(new ColumnBinEncoder::EncoderInt(vc, decodable, nulls_possible, descending));
   } else {
-    DEBUG_ASSERT(!"wrong combination of encoded columns");  // Other types not
-                                                            // implemented yet
-    my_encoder.reset(new ColumnBinEncoder::EncoderText(vc, decodable, nulls_possible, descending));
+    // DEBUG_ASSERT(!"wrong combination of encoded columns");  // Other types not implemented yet
+    throw common::DatabaseException("wrong types of columns");
+    // my_encoder.reset(new ColumnBinEncoder::EncoderText(vc, decodable, nulls_possible, descending));
   }
   if (_vc2 != nullptr) {  // multiple column encoding?
     bool encoding_possible = my_encoder->SecondColumn(_vc2);

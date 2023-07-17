@@ -1,0 +1,61 @@
+DROP DATABASE IF EXISTS issue1616_test;
+CREATE DATABASE issue1616_test;
+USE issue1616_test;
+CREATE TABLE T1  (id int(11) NOT NULL auto_increment,  parent_id int(11) DEFAULT '0' NOT NULL,  level tinyint(4)
+DEFAULT '0' NOT NULL, PRIMARY KEY (id)) engine=tianmu;
+INSERT INTO T1 VALUES (3,1,1),(4,1,1);
+INSERT INTO T1 VALUES (3,1,1),(4,1,1);
+ERROR 23000: Duplicate entry '3' for key 'PRIMARY'
+SELECT * FROM T1;
+id	parent_id	level
+3	1	1
+4	1	1
+UPDATE IGNORE T1 SET id=id+1;
+SELECT * FROM T1;
+id	parent_id	level
+3	1	1
+5	1	1
+UPDATE T1 SET id =10;
+ERROR 23000: Duplicate entry '10' for key 'PRIMARY'
+SELECT * FROM T1;
+id	parent_id	level
+3	1	1
+5	1	1
+UPDATE T1 SET ID=5 WHERE ID=3;
+ERROR 23000: Duplicate entry '5' for key 'PRIMARY'
+SELECT * FROM T1;
+id	parent_id	level
+3	1	1
+5	1	1
+DROP TABLE T1;
+CREATE TABLE T2 (dt datetime, val int, primary key(dt)) ENGINE =tianmu;
+INSERT INTO T2 VALUES ('2017-11-05 20:29:36',1), ('2027-11-05 20:29:36', 2);
+UPDATE T2 SET dt ='2027-11-05 20:29:36' WHERE val =1;
+ERROR 23000: Duplicate entry '2027-11-05 20:29:36' for key 'PRIMARY'
+SELECT * FROM T2;
+dt	val
+2017-11-05 20:29:36	1
+2027-11-05 20:29:36	2
+DROP TABLE T2;
+CREATE TABLE T3  (id int(11) NOT NULL auto_increment,  parent_id int(11) DEFAULT '0' NOT NULL,  level tinyint(4)
+DEFAULT '0' NOT NULL, PRIMARY KEY (id, parent_id)) engine=tianmu;
+INSERT INTO T3 VALUES (3,1,1),(4,1,1);
+INSERT INTO T3 VALUES (3,1,1),(4,1,1);
+ERROR 23000: Duplicate entry '3-1' for key 'PRIMARY'
+UPDATE IGNORE T3 SET id=id+1;
+SELECT * FROM T3;
+id	parent_id	level
+4	1	1
+5	1	1
+DROP TABLE T3;
+CREATE TABLE T4  (id int(11) NOT NULL auto_increment,  parent_id int(11) DEFAULT '0' NOT NULL,  level tinyint(4)
+DEFAULT '0' NOT NULL, PRIMARY KEY (id)) engine=innodb;
+INSERT INTO T4 VALUES (3,1,1),(4,1,1);
+UPDATE T4 SET id =10;
+ERROR 23000: Duplicate entry '10' for key 'PRIMARY'
+SELECT * FROM T4;
+id	parent_id	level
+3	1	1
+4	1	1
+DROP TABLE T4;
+DROP DATABASE issue1616_test;

@@ -19,16 +19,16 @@ cat /proc/cpuinfo |grep avx
 ### 1. Pull the image
 Run the following command:
 ```bash
-docker pull stoneatom/stonedb:v1.0.3
+docker pull stoneatom/stonedb:v1.0.4
 ```
 ### 2. Run the image
 Run the following command:
 ```bash
-docker run -p 3306:3306 -itd -v $YOU_DATA_DIR:/opt -e MYSQL_ROOT_PASSWORD='$YOU_PASSWORD' stoneatom/stonedb:v1.0.3
+docker run -p 3306:3306 -itd -v $YOU_DATA_DIR:/opt -e MYSQL_ROOT_PASSWORD='$YOU_PASSWORD' stoneatom/stonedb:v1.0.4
 ```
 Altenatively, run the following command:
 ```bash
-docker run -p 3306:3306 -itd  -e MYSQL_ROOT_PASSWORD='$YOU_PASSWORD'  stoneatom/stonedb:v1.0.3
+docker run -p 3306:3306 -itd  -e MYSQL_ROOT_PASSWORD='$YOU_PASSWORD'  stoneatom/stonedb:v1.0.4
 ```
 Parameter description:
 

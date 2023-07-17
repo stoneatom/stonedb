@@ -18,6 +18,7 @@
 #define TIANMU_CORE_ENGINE_H_
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <list>
 #include <mutex>
@@ -178,6 +179,9 @@ class Engine final {
   static const char *StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num);
   static char *FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd);
 
+  void setExtra(ha_extra_function extra) { extra_info = extra; }
+  ha_extra_function getExtra() { return extra_info; }
+
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
@@ -243,6 +247,8 @@ class Engine final {
   system::ResourceManager *m_resourceManager = nullptr;
 
   uint m_slot = 0;
+  //?????
+  // atomic_uint32_t tableID_;
 
   struct TrxCmp {
     bool operator()(Transaction *l, Transaction *r) const;
@@ -285,6 +291,8 @@ class Engine final {
   uint64_t m_mem_available_ = 0;
   uint64_t m_swap_used_ = 0;
   index::KVStore *store_;
+
+  ha_extra_function extra_info;
 };
 
 class ResultSender {
@@ -294,7 +302,7 @@ class ResultSender {
 
   void Send(TempTable *t);
   void Send(TempTable::RecordIterator &iter);
-  void SendRow(const std::vector<std::unique_ptr<types::TianmuDataType>> &record, TempTable *owner);
+  void SendRow(std::vector<std::unique_ptr<types::TianmuDataType>> &record, TempTable *owner);
 
   void SetLimits(int64_t *_offset, int64_t *_limit) {
     offset = _offset;
@@ -307,12 +315,14 @@ class ResultSender {
   void Finalize(TempTable *result);
   int64_t SentRows() const { return rows_sent; }
 
+ public:
+  List<Item> &fields;
+
  protected:
   THD *thd;
   Query_result *res;
   std::map<int, Item *> items_backup;
   uint *buf_lens;
-  List<Item> &fields;
   bool is_initialized;
   int64_t *offset;
   int64_t *limit;
@@ -320,7 +330,7 @@ class ResultSender {
   int64_t affect_rows;
 
   virtual void Init(TempTable *t);
-  virtual void SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &record);
+  virtual void SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>> &record);
 };
 
 class ResultExportSender final : public ResultSender {
@@ -332,7 +342,7 @@ class ResultExportSender final : public ResultSender {
 
  protected:
   void Init(TempTable *t) override;
-  void SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &record) override;
+  void SendRecord(std::vector<std::unique_ptr<types::TianmuDataType>> &record) override;
 
   exporter::select_tianmu_export *export_res_;
   std::unique_ptr<exporter::DataExporter> tianmu_data_exp_;

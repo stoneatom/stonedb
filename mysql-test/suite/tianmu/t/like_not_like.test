@@ -1,0 +1,25 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # This test tests the (NOT) LIKE test in filters that is added
+--echo # to a FilterCommand in primproc.
+--echo # This is a very rare situation, yet somehow I managed to trigger it.
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS like_not_like;
+--enable_warnings
+
+CREATE DATABASE like_not_like;
+USE like_not_like;
+
+CREATE TABLE tcs(d1 CHAR(6), d2 CHAR(6));
+
+INSERT INTO tcs(d1, d2) VALUES ('a','a'), ('a', 'b');
+
+SELECT 'stonedb like', d1, d2 FROM tcs WHERE (d1 LIKE d2);
+
+SELECT 'stonedb not like', d1, d2 FROM tcs WHERE (d1 NOT LIKE d2);
+
+# clean up
+DROP DATABASE like_not_like;

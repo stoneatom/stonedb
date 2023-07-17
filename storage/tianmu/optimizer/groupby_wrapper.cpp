@@ -271,6 +271,7 @@ void GroupByWrapper::Merge(GroupByWrapper &sec) {
   gt.Merge(sec.gt, m_conn);
   if (tuple_left)
     tuple_left->And(*(sec.tuple_left));
+
   packrows_omitted += sec.packrows_omitted;
   packrows_part_omitted += sec.packrows_part_omitted;
 

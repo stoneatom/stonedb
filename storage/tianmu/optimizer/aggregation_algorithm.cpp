@@ -30,6 +30,7 @@ low-level mechanisms
 #include "optimizer/iterators/mi_iterator.h"
 #include "system/fet.h"
 #include "system/tianmu_system.h"
+#include "vc/expr_column.h"
 
 namespace Tianmu {
 namespace core {
@@ -165,6 +166,19 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     gbw.AddAllAggregatedConstants(mit);
     gbw.AddAllCountStar(row, mit, mind->NumOfTuples());
     all_done_in_one_row = true;
+
+    {
+      for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++) {
+        TempTable::Attr &cur_a = *(t->GetAttrP(gr_a));
+
+        if (cur_a.term.vc && dynamic_cast<Tianmu::vcolumn::ExpressionColumn *>(cur_a.term.vc)) {
+          bool value_successfully_aggregated = gbw.PutAggregatedValue(gr_a, 0, mit, mit.Factor());
+          if (!value_successfully_aggregated) {
+            gbw.DistinctlyOmitted(gr_a, 0);
+          }
+        }
+      }
+    }
   }  // Special case 2, if applicable: SELECT COUNT(DISTINCT col) FROM .....;
   else if (gbw.IsCountDistinctOnly()) {
     int64_t count_distinct = t->GetAttrP(0)->term.vc->GetExactDistVals();  // multiindex checked inside
@@ -224,8 +238,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
                                                        [[maybe_unused]] bool limit_less_than_no_groups) {
   MEASURE_FET("TempTable::MultiDimensionalGroupByScan(...)");
   bool first_pass = true;
-  // tuples are numbered according to tuple_left filter (not used, if tuple_left
-  // is null)
+  // tuples are numbered according to tuple_left filter (not used, if tuple_left is null)
   int64_t cur_tuple = 0;
   int64_t displayed_no_groups = 0;
 
@@ -286,8 +299,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
       gbw.AddAllGroupingConstants(mit);
       ag_worker.Init(mit);
       if (rewind_needed)
-        mit.Rewind();  // aggregated rows will be massively omitted packrow by
-                       // packrow
+        mit.Rewind();  // aggregated rows will be massively omitted packrow by packrow
       rewind_needed = true;
       for (uint i = 0; i < t->NumOfAttrs(); i++) {  // left as uninitialized (nullptr or 0)
         if (t->GetAttrP(i)->mode == common::ColOperation::DELAYED) {
@@ -309,9 +321,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         ag_worker.DistributeAggreTaskAverage(mit, &mem_used);
       } else {
         thread_type = "sin";
-        while (mit.IsValid()) {  // need muti thread
-                                 // First stage -
-                                 //  some distincts may be delayed
+        while (mit.IsValid()) {  // need muti thread First stage - some distincts may be delayed
           if (m_conn->Killed())
             throw common::KilledException();
 
@@ -359,8 +369,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
                                                                         // all other possible rows (if any)
         t->CalculatePageSize(upper_groups);
         if (upper_groups > gbw.UpperApproxOfGroups())
-          upper_groups = gbw.UpperApproxOfGroups();  // another upper limitation: not more
-                                                     // than theoretical number of
+          upper_groups = gbw.UpperApproxOfGroups();  // another upper limitation: not more  than theoretical number of
                                                      // combinations
 
         MIDummyIterator m(1);
@@ -1063,6 +1072,7 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit, uint64_t 
   for (uint i = 0; i < vTask.size(); ++i) {
     if (dims.NoDimsUsed() == 0)
       dims.SetAll();
+
     auto &mii = taskIterator.emplace_back(mit, true);
     mii.SetTaskNum(vTask.size());
     mii.SetTaskId(i);

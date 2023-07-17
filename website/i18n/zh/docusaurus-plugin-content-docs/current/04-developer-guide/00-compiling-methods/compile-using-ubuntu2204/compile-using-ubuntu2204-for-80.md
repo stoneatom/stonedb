@@ -326,5 +326,6 @@ sudo ./bin/mysqld --user=root &
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
 Query OK, 0 rows affected
 ### 允许远程访问
+mysql> use mysql;
 mysql> update user set host='%' where user='root';
 ```

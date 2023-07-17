@@ -1,0 +1,88 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1903_test_db;
+--enable_warnings
+CREATE DATABASE issue1903_test_db;
+USE issue1903_test_db;
+
+CREATE TABLE `c1am_acct_day` (
+  `ACCOUNT_ID` decimal(18,0) NOT NULL DEFAULT '-1' COMMENT '账户ID',
+  `FISCAL_DATE` date DEFAULT NULL COMMENT '记账日期',
+  `BALANCE` decimal(16,2) NOT NULL DEFAULT '0.00' COMMENT '余额',
+  `DELETED_FLAG` char(1) NOT NULL DEFAULT '0' COMMENT '记录删除标志 [0]-未删除;[1]-逻辑删除'
+) ENGINE=TIANMU;
+
+CREATE TABLE `c1md_bank_acct` (
+  `ROW_ID` decimal(18,0) NOT NULL DEFAULT '-1' COMMENT 'ROW_ID',
+  `CURRENCY_ID` decimal(18,0) NOT NULL DEFAULT '-1' COMMENT '币种ID',
+  `DELETED_FLAG` char(1) NOT NULL DEFAULT '0' COMMENT '记录删除标志 [0]-未删除;[1]-逻辑删除'
+) ENGINE=TIANMU;
+
+INSERT INTO `c1am_acct_day` 
+  VALUES 
+    (3000000000028804, '2023-04-16', 7628617.08, '0'),
+    (3000000000028804, '2023-04-17', 7626656.73, '0'),
+    (3000000000028804, '2023-04-18', 7626471.23, '0'),
+    (3000000000028806, '2023-04-15', 605253889.19, '0'),
+    (3000000000028806, '2023-04-16', 611274357.27, '0'),
+    (3000000000028806, '2023-04-17', 605257716.01, '0'),
+    (3000000000028808, '2023-04-18', 79322521.29, '0'),
+    (3000000000028808, '2023-04-19', 79322521.29, '0'),
+    (3000000000028808, '2023-04-20', 79322521.29, '0'),
+    (3000000000028809, '2023-04-18', 79322521.29, '0'),
+    (3000000000028809, '2023-04-19', 79322521.29, '0'),
+    (3000000000028809, '2023-04-20', 79322521.29, '0');
+
+INSERT INTO `c1md_bank_acct`
+  VALUES
+    (3000000000028804, 1, '0'),
+    (3000000000028806, 3, '0'),
+    (3000000000028808, 15, '0'),
+    (3000000000028809, 6, '0');
+
+SELECT 
+ 	result.* 
+ FROM (
+     SELECT 
+     	a.*, 
+     	@rownum1 := @rownum1 + 1 inde,
+     	IF(@pxydm1 = a.account_id,@rankno1 := @rankno1 + 1,@rankno1 := 1) AS rankno,
+     	@pxydm1 := a.account_id 
+     FROM (
+         SELECT 
+         	b.CURRENCY_ID,
+         	a.account_id,
+         	a.fiscal_date,
+         	a.balance
+         FROM 
+         	c1am_acct_day a, c1md_bank_acct b
+         WHERE a.deleted_flag = '0'
+         		AND b.deleted_flag = '0'
+         		AND a.account_id = b.ROW_ID
+         ORDER BY a.account_id, a.fiscal_date) a) result
+WHERE result.rankno = 1;
+
+SELECT 
+ 	result.* 
+ FROM (
+     SELECT 
+     	a.*, 
+     	@rownum1 := @rownum1 + 1 inde,
+     	IF(@pxydm1 = a.account_id,@rankno1 := @rankno1 + 1,@rankno1 := 1) AS rankno,
+     	@pxydm1 := a.account_id 
+     FROM (
+         SELECT 
+         	b.CURRENCY_ID,
+         	a.account_id,
+         	a.fiscal_date,
+         	a.balance
+         FROM 
+         	c1am_acct_day a, c1md_bank_acct b
+         WHERE a.deleted_flag = '0'
+         		AND b.deleted_flag = '0'
+         		AND a.account_id = b.ROW_ID
+         ORDER BY a.account_id, a.fiscal_date) a) result
+WHERE result.rankno = 1;
+
+DROP DATABASE issue1903_test_db;

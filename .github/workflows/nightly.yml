@@ -66,21 +66,22 @@ jobs:
           cd /stonedb57/install/mysql-test
           ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --retry=0
 
-      - name: output some vars
-        id: vars
-        env:
-          SHA_EXT: sha256sum.txt
-        run: |
-          find pkg_outdir -type f \( -iname \*.deb -o -iname \*.rpm -o -iname \*.tar.gz \) -exec bash -c "sha256sum {} > {}.sha256sum.txt" \;
-          subdir=$(date -u +%Y.%m.%d)
-          echo "::set-output name=subdir::$subdir"
-      
-      - name: copy file via ssh password
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.FILE_SERVER_HOST }}
-          username: ${{ secrets.FILE_SERVER_USERNAME }}
-          password: ${{ secrets.FILE_SERVER_PASSWORD }}
-          port: ${{ secrets.FILE_SERVER_PORT }}
-          source: "pkg_outdir/*"
-          target: "${{ secrets.FILE_SERVER_DIR }}"
+          # TODO(): physical machine has been removed, we restart this funcion again in the future.
+          #- name: output some vars
+          #  id: vars
+          #  env:
+          #    SHA_EXT: sha256sum.txt
+          #  run: |
+          #    find pkg_outdir -type f \( -iname \*.deb -o -iname \*.rpm -o -iname \*.tar.gz \) -exec bash -c "sha256sum {} > {}.sha256sum.txt" \;
+          #    subdir=$(date -u +%Y.%m.%d)
+          #    echo "::set-output name=subdir::$subdir"
+          #
+          #- name: copy file via ssh password
+          #  uses: appleboy/scp-action@master
+          #  with:
+          #    host: ${{ secrets.FILE_SERVER_HOST }}
+          #    username: ${{ secrets.FILE_SERVER_USERNAME }}
+          #    password: ${{ secrets.FILE_SERVER_PASSWORD }}
+          #    port: ${{ secrets.FILE_SERVER_PORT }}
+          #    source: "pkg_outdir/*"
+          #    target: "${{ secrets.FILE_SERVER_DIR }}"

@@ -419,7 +419,7 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
  Called from sql_select.cc, sql_acl.cc, sql_update.cc, and sql_insert.cc.
  */
 int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
-  DBUG_ENTER(__PRETTY_FUNCTION__);
+  DBUG_ENTER("ha_tianmu::update_row");
 
   core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
   assert(eng);
@@ -703,6 +703,7 @@ int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]
 
     eng->AddTableDelta(table, share_);
     ret = 0;
+
   } catch (common::Exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Error from Tianmu engine", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "A tianmu exception is caught: %s", e.what());
@@ -1175,6 +1176,15 @@ int ha_tianmu::extra(enum ha_extra_function operation) {
     cq_.reset();
     query_.reset();
   }
+
+  extra_info = operation;
+  if (operation == HA_EXTRA_IGNORE_DUP_KEY || operation == HA_EXTRA_NO_IGNORE_DUP_KEY) {
+    core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+    ASSERT(eng);
+    if (eng)
+      eng->setExtra(extra_info);
+  }
+
   DBUG_RETURN(0);
 }
 
@@ -1238,6 +1248,14 @@ int ha_tianmu::delete_table(const char *name) {
     } else {
       DBUG_RETURN(1);
     }
+  } catch (common::TianmuError &e) {
+    std::string errmsg = "TianmuError exception error caught. err:" + e.Message();
+    my_message(static_cast<int>(common::ErrorCode::FAILED), errmsg.c_str(), MYF(0));
+    TIANMU_LOG(LogCtl_Level::ERROR, "TianmuError exception error caught. err." + e.Message());
+  } catch (common::DatabaseException &e) {
+    std::string errmsg = "Database exception error caught. err:" + e.getExceptionMsg();
+    my_message(static_cast<int>(common::ErrorCode::FAILED), errmsg.c_str(), MYF(0));
+    TIANMU_LOG(LogCtl_Level::ERROR, "Database exception error caught. err." + e.getExceptionMsg());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1532,7 +1550,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
       query_->AddTable(rctp);
       core::TabID t_out;
       cq_->TableAlias(t_out, core::TabID(0));  // we apply it to the only table in this query
-      cq_->TmpTable(tmp_table_, t_out);
+      cq_->TmpTable(tmp_table_, t_out, core::TableSubType::NORMAL);
 
       std::string ext_alias;
       if (table->pos_in_table_list->referencing_view)
@@ -2605,7 +2623,7 @@ static MYSQL_SYSVAR_BOOL(groupby_speedup, tianmu_sysvar_groupby_speedup, PLUGIN_
 static MYSQL_SYSVAR_UINT(groupby_parallel_degree, tianmu_sysvar_groupby_parallel_degree, PLUGIN_VAR_INT,
                          "group by parallel degree, number of worker threads", nullptr, nullptr, 8, 0, INT32_MAX, 0);
 static MYSQL_SYSVAR_ULONGLONG(groupby_parallel_rows_minimum, tianmu_sysvar_groupby_parallel_rows_minimum,
-                              PLUGIN_VAR_LONGLONG, "group by parallel minimum rows", nullptr, nullptr, 655360, 655360,
+                              PLUGIN_VAR_LONGLONG, "group by parallel minimum rows", nullptr, nullptr, 655360, 100,
                               INT64_MAX, 0);
 static MYSQL_SYSVAR_UINT(slow_query_record_interval, tianmu_sysvar_slow_query_record_interval, PLUGIN_VAR_INT,
                          "slow Query Threshold of recording tianmu logs, in seconds", nullptr, nullptr, 0, 0, INT32_MAX,

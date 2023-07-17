@@ -70,15 +70,13 @@ bool ha_my_tianmu_set_statement_allowed(THD *thd, LEX *lex) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  "Queries inside SET statements are not supported. "
                  "Enable the MySQL core::Query Path in my.cnf to execute the query "
-                 "with reduced "
-                 "performance.",
+                 "with reduced  performance.",
                  MYF(0));
       return false;
     } else
       push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                    "SET statement not supported by the Tianmu Optimizer. The "
-                   "query executed "
-                   "by MySQL engine.");
+                   "query executed by MySQL engine.");
   }
   return true;
 }
@@ -97,12 +95,22 @@ QueryRouteTo ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result_output
     if (handle_select_ret == QueryRouteTo::kToMySQL && AtLeastOneTianmuTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
-                 "The query includes syntax that is not supported by the storage engine. \
-Either restructure the query with supported syntax, or enable the MySQL core::Query Path in config file to execute the query with reduced performance.",
+                 "The query includes syntax that is not supported by the storage engine. "
+                 "Either restructure the query with supported syntax, or enable the MySQL core::Query Path in config "
+                 "file to execute the query with reduced performance.",
                  MYF(0));
       handle_select_ret = QueryRouteTo::kToTianmu;
     }
     ret = handle_select_ret;
+  } catch (Tianmu::common::TianmuError &e) {
+    std::string str_msg = std::string("A Tianmu Error system exception error caught. ") + e.Message().c_str();
+    my_message(static_cast<int>(common::ErrorCode::FAILED), str_msg.c_str(), MYF(0));
+    TIANMU_LOG(LogCtl_Level::ERROR, "A TianmuError system exception error caught.");
+  } catch (Tianmu::common::DatabaseException &e) {
+    std::string str_msg =
+        std::string("A Tianmu DatabaseException Error system exception error caught. ") + e.getExceptionMsg().c_str();
+    my_message(static_cast<int>(common::ErrorCode::FAILED), str_msg.c_str(), MYF(0));
+    TIANMU_LOG(LogCtl_Level::ERROR, "A DatabaseException system exception error caught.");
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "HandleSelect Error: %s", e.what());

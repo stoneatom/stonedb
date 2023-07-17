@@ -71,6 +71,7 @@ class TypeCastColumn : public VirtualColumn {
 
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &mit) override { return vc_->GetValueInt64(mit); }
+  bool GetUnsignedFlagImpl() override { return vc_->GetUnsignedFlag(); }
   bool IsNullImpl(const core::MIIterator &mit) override { return vc_->IsNull(mit); }
   void GetValueStringImpl(types::BString &s, const core::MIIterator &m) override { return vc_->GetValueString(s, m); }
   double GetValueDoubleImpl(const core::MIIterator &m) override { return vc_->GetValueDouble(m); }

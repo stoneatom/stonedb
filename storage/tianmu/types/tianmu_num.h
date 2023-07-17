@@ -31,13 +31,14 @@ class TianmuNum : public ValueBasic<TianmuNum> {
 
  public:
   TianmuNum(common::ColumnType attrt = common::ColumnType::NUM);
-  TianmuNum(int64_t value, short scale = -1, bool dbl = false, common::ColumnType attrt = common::ColumnType::UNK);
+  TianmuNum(int64_t value, short scale = -1, bool dbl = false, common::ColumnType attrt = common::ColumnType::UNK,
+            bool unsigned_flag = false);
   TianmuNum(double value);
   TianmuNum(const TianmuNum &);
   ~TianmuNum();
 
   TianmuNum &Assign(int64_t value, short scale = -1, bool dbl = false,
-                    common::ColumnType attrt = common::ColumnType::UNK);
+                    common::ColumnType attrt = common::ColumnType::UNK, bool unsigned_flag = false);
   TianmuNum &Assign(double value);
 
   static common::ErrorCode Parse(const BString &tianmu_s, TianmuNum &tianmu_n,
@@ -82,6 +83,7 @@ class TianmuNum : public ValueBasic<TianmuNum> {
 
   short Scale() const { return scale_; }
   int64_t ValueInt() const { return value_; }
+  bool GetUnsignedFlag() const { return unsigned_flag_; }
   char *GetDataBytesPointer() const override { return (char *)&value_; }
   int64_t GetIntPart() const {
     return is_double_ ? (int64_t)GetIntPartAsDouble() : value_ / (int64_t)Uint64PowOfTen(scale_);
@@ -105,6 +107,7 @@ class TianmuNum : public ValueBasic<TianmuNum> {
  private:
   static constexpr int MAX_DEC_PRECISION = 18;
   int64_t value_;
+  bool unsigned_flag_ = false;
   ushort scale_;  // means 'scale' actually
   bool is_double_;
   bool is_dot_;

@@ -1492,6 +1492,8 @@ private:
   { assert(0); return Query_arena::is_conventional(); }
 
 public:
+  /* Used only for tianmu to wirte xid log event */
+  bool tianmu_need_xid;
   MDL_context mdl_context;
 
   /*
