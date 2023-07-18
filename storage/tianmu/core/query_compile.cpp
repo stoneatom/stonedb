@@ -1110,7 +1110,7 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
     // The primary key implementation of the current column storage engine has a problem with the primary key
     // index to scan the table for data Remove the following temporary practices after primary key indexing is complete
     if (zero_result) {
-      if (Item::Type::SUBSELECT_ITEM == (conds->type())) {
+      if (conds && Item::Type::SUBSELECT_ITEM == (conds->type())) {
         zero_result = false;
       } else {
         Item_cond *item_cond = dynamic_cast<Item_cond *>(conds);
