@@ -81,10 +81,10 @@ age	sum(age)
 NULL	NULL
 select case when age is not null then age else 33 end, sum(age) from t1;
 case when age is not null then age else 33 end	sum(age)
-33	NULL
+NULL	NULL
 select case when age is not null then age else 33 end, sum(age) from (select * from t1) ta;
 case when age is not null then age else 33 end	sum(age)
-33	NULL
+NULL	NULL
 insert into t1 values(1);
 select * from t1;
 age
