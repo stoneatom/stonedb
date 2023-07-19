@@ -167,7 +167,7 @@ int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
 bool ExpressionColumn::IsNullImpl(const core::MIIterator &mit) {
   {
     Item *item = expr_->GetItem();
-    if (item && (Item::FUNC_ITEM == item->type()) && (dynamic_cast<Item_func_if *>(item))) {
+    if ((item && (Item::FUNC_ITEM == item->type()) && (dynamic_cast<Item_func_if *>(item))) || !deterministic_) {
       return false;
     }
   }

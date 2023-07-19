@@ -418,15 +418,6 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     }
   }
 
-  if (!exec_direct) {
-    for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
-      if ((!sl->join->m_select_limit) && (!sl->join->where_cond)) {
-        exec_direct = true;
-        break;
-      }
-    }
-  }
-
   if (exec_direct) {
     if ((selects_list->fields_list.elements)) {
       List_iterator_fast<Item> li(selects_list->fields_list);
@@ -807,6 +798,10 @@ bool TABLE_LIST::optimize_derived_for_tianmu(THD *thd) {
   DBUG_ENTER("TABLE_LIST::optimize_derived_for_tianmu");
 
   SELECT_LEX_UNIT *const unit = derived_unit();
+
+  if (unit->is_optimized()) {
+    DBUG_RETURN(true);
+  }
 
   assert(unit && unit->is_prepared() && !unit->is_optimized());
 
