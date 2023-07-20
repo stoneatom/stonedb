@@ -111,7 +111,7 @@ class SingleColumn : public VirtualColumn {
   bool IsNullsPossibleImpl(bool val_nulls_possible) override {
     if (multi_index_->NullsExist(dim_))
       return true;
-    if (val_nulls_possible && col_->GetNumOfNulls(-1) != 0)
+    if (val_nulls_possible)
       return true;
     return false;
   }
