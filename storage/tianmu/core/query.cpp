@@ -1103,7 +1103,6 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
     return QueryRouteTo::kToTianmu;
   } else {
     // WHERE FILTER
-
     AttrID vc;
     AttrID col;
     TabID tab;
@@ -1117,7 +1116,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
         phys2virt.insert(std::make_pair(std::pair<int, int>(tab.n, col.n), phys_vc));
       }
       vc.n = phys_vc.second;
-    } else if (an_arg->type() == Item::VARBIN_ITEM) {
+    } else if (an_arg->type() == Item::VARBIN_ITEM && an_arg->cmp_context == REAL_RESULT) {
       String str;
       an_arg->val_str(&str);  // sets null_value
       if (!an_arg->null_value) {
