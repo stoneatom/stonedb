@@ -558,16 +558,23 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
       int max_length = attrs[i]->term.vc->MaxStringSize();
       if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
         auto &var_map = dynamic_cast<vcolumn::ExpressionColumn *>(vc)->GetVarMap();
+        // set max_length equal to longest column need in var_map
+        int min_need = 0;
+
         for (auto &it : var_map) {
           PhysicalColumn *column = it.GetTabPtr()->GetColumn(it.col_ndx);
           ColumnType ct = column->Type();
           uint precision = ct.GetPrecision();
+          int need = max_length;
           if (precision >= STRING_LENGTH_THRESHOLD) {
             uint actual_size = column->MaxStringSize() * ct.GetCollation().collation->mbmaxlen;
-            if (actual_size < precision)
-              max_length += (actual_size - precision);
+            if (actual_size < precision) {
+              need += (actual_size - precision);
+            }
           }
+          min_need = std::max(min_need, need);
         }
+        max_length = min_need;
       }
       attrs[i]->OverrideStringSize(max_length);
     }

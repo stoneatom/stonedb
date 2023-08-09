@@ -167,7 +167,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     gbw.AddAllCountStar(row, mit, mind->NumOfTuples());
     all_done_in_one_row = true;
 
-    {
+    if (mit.IsValid()) {
       for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++) {
         TempTable::Attr &cur_a = *(t->GetAttrP(gr_a));
 

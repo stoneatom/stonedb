@@ -1,0 +1,23 @@
+DROP DATABASE IF EXISTS issue1942_test_db;
+CREATE DATABASE issue1942_test_db;
+USE issue1942_test_db;
+CREATE TABLE t0(c0 INT);
+SELECT * FROM t0 WHERE (t0.c0 IS NULL);
+c0
+SELECT SUM(count) FROM (SELECT (t0.c0 IS NULL) IS TRUE  as count FROM t0) as res;
+SUM(count)
+NULL
+SELECT SUM(count) FROM (SELECT CAST((t0.c0 IS NULL) AS UNSIGNED)  as count FROM t0) as res;
+SUM(count)
+NULL
+INSERT INTO t0 VALUES (NULL), (1);
+SELECT * FROM t0 WHERE (t0.c0 IS NULL);
+c0
+NULL
+SELECT SUM(count) FROM (SELECT (t0.c0 IS NULL) IS TRUE  as count FROM t0) as res;
+SUM(count)
+1
+SELECT SUM(count) FROM (SELECT CAST((t0.c0 IS NULL) AS UNSIGNED)  as count FROM t0) as res;
+SUM(count)
+1
+DROP DATABASE issue1942_test_db;

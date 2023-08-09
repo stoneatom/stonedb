@@ -126,14 +126,18 @@ CREATE TABLE t_utf8(
 SET SQL_MODE="STRICT_TRANS_TABLES";
 INSERT INTO t_latin1 values(x'f242', x'f242', x'f242');
 UPDATE t_latin1 SET a=x'f343' where a=x'f242';
+select * from t_latin1;
 INSERT INTO t_gb2312 values(x'e5ac', x'e5ac', x'e5ac');
 UPDATE t_gb2312 SET a=x'e6af' where a=x'e5ac';
+select * from t_gb2312;
 INSERT INTO t_utf8 values(x'e4b8ad', x'e4b8ad', x'e4b8ad');
 --disable_abort_on_error
 INSERT INTO t_utf8 values(x'f4b8ad', x'f4b8ad', x'f4b8ad');
 --enable_abort_on_error
 UPDATE t_utf8 SET a=x'e69687' where a=x'e4b8ad';
-UPDATE t_utf8 SET a=x'f69687' where a=x'e69687';
 select * from t_utf8;
+--disable_abort_on_error
+UPDATE t_utf8 SET a=x'f69687' where a=x'e69687';
+--enable_abort_on_error
 # Clean UP
 DROP DATABASE insert_update_db;
