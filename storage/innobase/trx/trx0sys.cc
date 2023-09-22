@@ -30,6 +30,8 @@ this program; if not, write to the Free Software Foundation, Inc.,
  Created 3/26/1996 Heikki Tuuri
  *******************************************************/
 
+#include "trx0sys.h"
+
 #include <sys/types.h>
 #include <new>
 
@@ -37,7 +39,6 @@ this program; if not, write to the Free Software Foundation, Inc.,
 #include "ha_prototypes.h"
 #include "mysql/plugin.h"
 #include "sql_error.h"
-#include "trx0sys.h"
 
 #ifndef UNIV_HOTBACKUP
 #include "fsp0fsp.h"

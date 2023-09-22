@@ -199,7 +199,7 @@ THR_LOCK_DATA **ha_mock::store_lock(THD *, THR_LOCK_DATA **to,
   return to;
 }
 
-int ha_mock::load_table(const TABLE &table_arg) {
+int ha_mock::load_table(THD *thd, const TABLE &table_arg) {
   assert(table_arg.file != nullptr);
   loaded_tables->add(table_arg.s->db.str, table_arg.s->table_name.str);
   if (loaded_tables->get(table_arg.s->db.str, table_arg.s->table_name.str) ==
@@ -211,7 +211,7 @@ int ha_mock::load_table(const TABLE &table_arg) {
   return 0;
 }
 
-int ha_mock::unload_table(const char *db_name, const char *table_name,
+int ha_mock::unload_table(THD *thd, const char *db_name, const char *table_name,
                           bool error_if_not_loaded) {
   if (error_if_not_loaded &&
       loaded_tables->get(db_name, table_name) == nullptr) {

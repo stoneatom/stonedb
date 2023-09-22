@@ -7136,6 +7136,9 @@ ER_MISSING_KEY
 WARN_NAMED_PIPE_ACCESS_EVERYONE
   eng "Setting named_pipe_full_access_group='%s' is insecure. Consider using a Windows group with fewer members."
 
+ER_SECONDARY_ENGINE_LOAD
+  eng "Secondary engine load the table '%s'.'%s' failed."
+
 #
 #  End of 5.6 error messages (server-to-client).
 #
@@ -9818,6 +9821,21 @@ ER_DA_EXPIRE_LOGS_DAYS_IGNORED
 
 
 reserved-error-section 5000 5999
+
+################################################################################
+# Error numbers starting at 6000: server-to-client messages rapid
+################################################################################
+
+start-error-number 6000
+
+ER_RAPID_DA_ONLY_SUPPORT_SINGLE_PRIMARY_KEY
+  eng "Rapid engine only support single primary key, but %s.%s has %u primary keys."
+
+ER_RAPID_DA_PRIMARY_KEY_CAN_NOT_HAVE_NOT_SECONDARY_FLAG
+  eng "The primary key of %s.%s can't have NOT_SECONDARY flag."
+
+ER_RAPID_DA_INSERT_FAILED
+  eng "Rapid engine failed to insert rows."
 
 
 ################################################################################

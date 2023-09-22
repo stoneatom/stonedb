@@ -37,6 +37,7 @@
 #include "mysql/components/services/bits/mysql_mutex_bits.h"
 #include "sql/dd/string_type.h"
 #include "sql/mdl.h"
+#include "sql_string.h"
 
 class Alter_info;
 class Alter_table_ctx;
@@ -606,4 +607,30 @@ bool lock_check_constraint_names_for_rename(THD *thd, const char *db,
 bool prepare_check_constraints_for_create(THD *thd, const char *db_name,
                                           const char *table_name,
                                           Alter_info *alter_info);
+
+constexpr uint MAX_RPD_NAME_STRING_LEN = 128;
+struct rpd_columns_info_t {
+  /**unique id*/
+  uint id;
+  /**table id*/
+  uint table_id;
+  /**table_name*/
+  char table_name[MAX_RPD_NAME_STRING_LEN] = {0};
+  /**cloumn name with charset info*/
+  char column_name[MAX_RPD_NAME_STRING_LEN] = {0};
+  /**columun id*/
+  uint column_id;
+  /**The number of distinct values in the column.*/
+  longlong ndv;
+  /**The type of encoding used.*/
+  char encoding[MAX_RPD_NAME_STRING_LEN] = {0};
+  /**data placement index*/
+  uint data_placement_index;
+  /**The dictionary size per column, in bytes.*/
+  longlong data_dict_bytes;
+};
+
+using rpd_columns_info = rpd_columns_info_t;
+using rpd_columns_container = std::vector<rpd_columns_info>;
+extern rpd_columns_container meta_rpd_columns;
 #endif /* SQL_TABLE_INCLUDED */

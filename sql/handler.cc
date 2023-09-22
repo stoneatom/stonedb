@@ -2836,8 +2836,10 @@ int handler::ha_rnd_init(bool scan) {
   int result;
   DBUG_TRACE;
   assert(table_share->tmp_table != NO_TMP_TABLE || m_lock_type != F_UNLCK);
-  // stonedb8: add assert index with tianmu type, to fix incorrect trigger result.
-  assert(inited == NONE || (inited == RND && scan) || (inited == INDEX && ht->db_type == DB_TYPE_TIANMU));
+  // stonedb8: add assert index with tianmu type, to fix incorrect trigger
+  // result.
+  assert(inited == NONE || (inited == RND && scan) ||
+         (inited == INDEX && ht->db_type == DB_TYPE_TIANMU));
   inited = (result = rnd_init(scan)) ? NONE : RND;
   end_range = nullptr;
   return result;
@@ -2921,6 +2923,40 @@ int handler::ha_rnd_pos(uchar *buf, uchar *pos) {
     m_update_generated_read_fields = false;
   }
   table->set_row_status_from_handler(result);
+  return result;
+}
+
+/**
+  ha_parallel_init
+  @param pod parallel of degree
+  @param keyno keyno of index
+
+  @return operation status
+    @retval 0 suscess
+    @retval !=0 Error
+*/
+int handler::ha_parallel_init(uint pod, uint keyno) {
+  int result = 0;
+
+  return result;
+}
+
+/**
+  ha_parallel_end
+*/
+int handler::ha_parallel_end() {
+  int result = 0;
+
+  return result;
+}
+
+/**
+  ha_parallel_next
+*/
+
+int handler::ha_parallel_next(uchar *buf, void *para_ctx) {
+  int result = 0;
+
   return result;
 }
 
@@ -4950,16 +4986,18 @@ int handler::ha_create(const char *name, TABLE *form, HA_CREATE_INFO *info,
  *
  * @sa handler::load_table()
  */
-int handler::ha_load_table(const TABLE &table) { return load_table(table); }
+int handler::ha_load_table(THD *thd, const TABLE &table) {
+  return load_table(thd, table);
+}
 
 /**
  * Unloads a table from its defined secondary storage engine: public interface.
  *
  * @sa handler::unload_table()
  */
-int handler::ha_unload_table(const char *db_name, const char *table_name,
-                             bool error_if_not_loaded) {
-  return unload_table(db_name, table_name, error_if_not_loaded);
+int handler::ha_unload_table(THD *thd, const char *db_name,
+                             const char *table_name, bool error_if_not_loaded) {
+  return unload_table(thd, db_name, table_name, error_if_not_loaded);
 }
 
 /**

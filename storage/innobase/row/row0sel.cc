@@ -2502,6 +2502,7 @@ void row_sel_field_store_in_mysql_format_func(
     IF_DEBUG(ulint field_no, ) const byte *data,
     ulint len IF_DEBUG(, ulint sec_field)) {
   byte *ptr;
+  const char *field_name;
 #ifdef UNIV_DEBUG
   const dict_field_t *field =
       templ->is_virtual ? nullptr : index->get_field(field_no);
@@ -2510,6 +2511,11 @@ void row_sel_field_store_in_mysql_format_func(
 #endif /* UNIV_DEBUG */
   ulint mysql_col_len =
       templ->is_multi_val ? templ->mysql_mvidx_len : templ->mysql_col_len;
+
+  if (templ->mysql_type == MYSQL_SYS_TYPE_TRX_ID) {
+    len = mysql_col_len;
+    field_name = index->get_field(templ->col_no)->name;
+  }
 
   ut_ad(rec_field_not_null_not_add_col_def(len));
   UNIV_MEM_ASSERT_RW(data, len);
@@ -2658,12 +2664,22 @@ void row_sel_field_store_in_mysql_format_func(
         memset(dest + len, 0x20, mysql_col_len - len);
       }
       break;
+    case DATA_SYS:
+      /* These column types should never be shipped to MySQL. */
+      /*But in rapid, when we load data from innodb into rapid, we want to
+      keep its trx_id, which will be used in consistent-read in rapid engine.
+      */
+      // ut_d(ut_error);
+      if (templ->mysql_type == MYSQL_SYS_TYPE_TRX_ID &&
+          !strncmp(field_name, "DB_TRX_ID", strlen("DB_TRX_ID"))) {
+        trx_id_t id = mach_read_from_6(data);
+        memcpy(dest, &id, sizeof(trx_id_t));
+      }
+      break;
 
     default:
 #ifdef UNIV_DEBUG
     case DATA_SYS_CHILD:
-    case DATA_SYS:
-      /* These column types should never be shipped to MySQL. */
       ut_d(ut_error);
       [[fallthrough]];
 
@@ -2680,9 +2696,9 @@ void row_sel_field_store_in_mysql_format_func(
       happens for end range comparison. So length can
       vary according to secondary index record length. */
       ut_ad((templ->is_virtual && !field) ||
-            (field && field->prefix_len
-                 ? field->prefix_len == len
-                 : clust_templ_for_sec ? 1 : mysql_col_len == len));
+            (field && field->prefix_len ? field->prefix_len == len
+             : clust_templ_for_sec      ? 1
+                                        : mysql_col_len == len));
       memcpy(dest, data, len);
   }
 }
@@ -2819,7 +2835,7 @@ void row_sel_field_store_in_mysql_format_func(
 
     data = rec_get_nth_field_instant(rec, offsets, field_no, rec_index, &len);
 
-    if (len == UNIV_SQL_NULL) {
+    if (templ->mysql_type != MYSQL_SYS_TYPE_TRX_ID && len == UNIV_SQL_NULL) {
       /* MySQL assumes that the field for an SQL
       NULL value is set to the default value. */
       ut_ad(templ->mysql_null_bit_mask);
@@ -2868,7 +2884,8 @@ void row_sel_field_store_in_mysql_format_func(
                                         sec_field_no);
   }
 
-  ut_ad(rec_field_not_null_not_add_col_def(len));
+  if (templ->mysql_type != MYSQL_SYS_TYPE_TRX_ID)
+    ut_ad(rec_field_not_null_not_add_col_def(len));
 
   if (templ->mysql_null_bit_mask) {
     /* It is a nullable column with a non-NULL value */
@@ -3533,7 +3550,8 @@ static inline void row_sel_dequeue_cached_row_for_mysql(
   const mysql_row_templ_t *templ;
   const byte *cached_rec;
   ut_ad(prebuilt->n_fetch_cached > 0);
-  ut_ad(prebuilt->mysql_prefix_len <= prebuilt->mysql_row_len);
+  ut_ad(prebuilt->mysql_prefix_len <=
+        prebuilt->mysql_row_len + MAX_TRX_ID_WIDHT);
 
   UNIV_MEM_ASSERT_W(buf, prebuilt->mysql_row_len);
 
@@ -3597,7 +3615,7 @@ static inline void row_sel_prefetch_cache_init(
   provide one. */
   ut_ad(row_sel_get_record_buffer(prebuilt) == nullptr);
 
-  /* Reserve space for the magic number. */
+  /* Reserve space for the magic number. 8 is magic number space*/
   sz = UT_ARR_SIZE(prebuilt->fetch_cache) * (prebuilt->mysql_row_len + 8);
   ptr = static_cast<byte *>(ut::malloc_withkey(UT_NEW_THIS_FILE_PSI_KEY, sz));
 
@@ -3628,7 +3646,7 @@ static inline byte *row_sel_fetch_last_buf(
   if (record_buffer == nullptr) {
     ut_ad(prebuilt->n_fetch_cached < MYSQL_FETCH_CACHE_SIZE);
   } else {
-    ut_ad(prebuilt->mysql_prefix_len <= record_buffer->record_size());
+    // ut_ad(prebuilt->mysql_prefix_len <= record_buffer->record_size());
     ut_ad(record_buffer->records() == prebuilt->n_fetch_cached);
   }
 
@@ -6408,4 +6426,34 @@ bool row_search_index_stats(const char *db_name, const char *tbl_name,
   mtr_commit(&mtr);
   mem_heap_free(heap);
   return (false);
+}
+
+/** Searches for rows in the database. This is used in the interface to
+MySQL. This function opens a cursor, and also implements fetch next
+and fetch prev. NOTE that if we do a search with a full key value
+from a unique index (ROW_SEL_EXACT), then we will not store the cursor
+position and fetch next or fetch prev must not be tried to the cursor!
+
+@param[out]	buf		buffer for the fetched row in MySQL format
+@param[in]	mode		search mode PAGE_CUR_L
+@param[in,out]	prebuilt	prebuilt struct for the table handler;
+                                this contains the info to search_tuple,
+                                index; if search tuple contains 0 field then
+                                we position the cursor at start or the end of
+                                index, depending on 'mode'
+@param[in]	match_mode	0 or ROW_SEL_EXACT or ROW_SEL_EXACT_PREFIX
+@param[in]	direction	0 or ROW_SEL_NEXT or ROW_SEL_PREV;
+                                Note: if this is != 0, then prebuilt must has a
+                                pcur with stored position! In opening of a
+                                cursor 'direction' should be 0.
+@return DB_SUCCESS, DB_RECORD_NOT_FOUND, DB_END_OF_INDEX, DB_DEADLOCK,
+DB_LOCK_TABLE_FULL, DB_CORRUPTION, or DB_TOO_BIG_RECORD */
+dberr_t row_search_for_mysql(byte *buf, page_cur_mode_t mode,
+                             row_prebuilt_t *prebuilt, ulint match_mode,
+                             ulint direction) {
+  if (!prebuilt->table->is_intrinsic()) {
+    return (row_search_mvcc(buf, mode, prebuilt, match_mode, direction));
+  } else {
+    return (row_search_no_mvcc(buf, mode, prebuilt, match_mode, direction));
+  }
 }

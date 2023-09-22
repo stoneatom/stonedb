@@ -513,11 +513,10 @@ enum enum_alter_inplace_result {
 */
 #define HA_MULTI_VALUED_KEY_SUPPORT (1LL << 55)
 
-
 /*
   The handler supports non-KEY auto_increment column
 */
-#define HA_NON_KEY_AUTO_INC           (1LL << 56)     // TIANMU
+#define HA_NON_KEY_AUTO_INC (1LL << 56)  // TIANMU
 
 /*
   Bits in index_flags(index_number) for what you can do with index.
@@ -671,7 +670,7 @@ enum legacy_db_type {
   DB_TYPE_MEMCACHE,
   DB_TYPE_FALCON,
   DB_TYPE_MARIA,
-  DB_TYPE_TIANMU,     // TIANMU
+  DB_TYPE_TIANMU,  // TIANMU
   /** Performance schema engine. */
   DB_TYPE_PERFORMANCE_SCHEMA,
   DB_TYPE_TEMPTABLE,
@@ -2836,8 +2835,8 @@ constexpr const decltype(handlerton::flags) HTON_SUPPORTS_ENGINE_ATTRIBUTE{
     1 << 17};
 
 /** Engine supports Generated invisible primary key. */
-constexpr const decltype(
-    handlerton::flags) HTON_SUPPORTS_GENERATED_INVISIBLE_PK{1 << 18};
+constexpr const decltype(handlerton::flags)
+    HTON_SUPPORTS_GENERATED_INVISIBLE_PK{1 << 18};
 
 inline bool ddl_is_atomic(const handlerton *hton) {
   return (hton->flags & HTON_SUPPORTS_ATOMIC_DDL) != 0;
@@ -3916,9 +3915,7 @@ class Ft_hints {
 
      @return pointer to ft_hints struct
    */
-  struct ft_hints *get_hints() {
-    return &hints;
-  }
+  struct ft_hints *get_hints() { return &hints; }
 };
 
 /**
@@ -4074,6 +4071,7 @@ class Ft_hints {
   need not set any status in struct TABLE. These notes also apply to module
   index scan, documented below.
 
+  some parallel scan methods are added to support parallel abilities.
   Methods:
 
     rnd_init()
@@ -4082,6 +4080,10 @@ class Ft_hints {
     rnd_pos()
     rnd_pos_by_record()
     position()
+
+    parallel_init()
+    parallel_end()
+    parallel_next()
 
   -------------------------------------------------------------------------
   MODULE index scan
@@ -4380,7 +4382,7 @@ class handler {
   /** Length of ref (1-8 or the clustered key length) */
   uint ref_length;
   FT_INFO *ft_handler;
-  enum { NONE = 0, INDEX, RND, SAMPLING } inited;
+  enum { NONE = 0, INDEX, RND, SAMPLING, PARALLEL } inited;
   bool implicit_emptied; /* Can be !=0 only if HEAP */
   const Item *pushed_cond;
 
@@ -4618,6 +4620,9 @@ class handler {
   int ha_rnd_init(bool scan);
   int ha_rnd_end();
   int ha_rnd_next(uchar *buf);
+  int ha_parallel_init(uint pod, uint keyno);
+  int ha_parallel_end();
+  int ha_parallel_next(uchar *buf, void *para_ctx);
   // See the comment on m_update_generated_read_fields.
   int ha_rnd_pos(uchar *buf, uchar *pos);
   int ha_index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map,
@@ -4684,9 +4689,9 @@ class handler {
   int ha_create(const char *name, TABLE *form, HA_CREATE_INFO *info,
                 dd::Table *table_def);
 
-  int ha_load_table(const TABLE &table);
+  int ha_load_table(THD *thd, const TABLE &table);
 
-  int ha_unload_table(const char *db_name, const char *table_name,
+  int ha_unload_table(THD *thd, const char *db_name, const char *table_name,
                       bool error_if_not_loaded);
 
   /**
@@ -6510,7 +6515,8 @@ class handler {
    *
    * @return 0 if success, error code otherwise.
    */
-  virtual int load_table(const TABLE &table [[maybe_unused]]) {
+  virtual int load_table(THD *thd [[maybe_unused]],
+                         const TABLE &table [[maybe_unused]]) {
     /* purecov: begin inspected */
     assert(false);
     return HA_ERR_WRONG_COMMAND;
@@ -6529,7 +6535,8 @@ class handler {
    *                            should not prevent dropping the whole table.
    * @return 0 if success, error code otherwise.
    */
-  virtual int unload_table(const char *db_name [[maybe_unused]],
+  virtual int unload_table(THD *thd [[maybe_unused]],
+                           const char *db_name [[maybe_unused]],
                            const char *table_name [[maybe_unused]],
                            bool error_if_not_loaded [[maybe_unused]]) {
     /* purecov: begin inspected */

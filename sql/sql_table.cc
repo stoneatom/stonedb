@@ -204,6 +204,9 @@ static constexpr const int KEY_DEFAULT_PACK_LENGTH{8};
 /* Max number of enumeration values */
 static constexpr const int MAX_ENUM_VALUES{65535};
 
+// global rpd_column information map.
+rpd_columns_container meta_rpd_columns;
+
 #define ER_THD_OR_DEFAULT(thd, X) \
   ((thd) ? ER_THD_NONCONST(thd, X) : ER_DEFAULT_NONCONST(X))
 
@@ -2635,6 +2638,9 @@ static bool secondary_engine_load_table(THD *thd, const TABLE &table) {
   assert(thd->mdl_context.owns_equal_or_stronger_lock(
       MDL_key::TABLE, table.s->db.str, table.s->table_name.str,
       SECLOAD_SCAN_START_MDL));
+  assert(thd->mdl_context.owns_equal_or_stronger_lock(
+      MDL_key::TABLE, table.s->db.str, table.s->table_name.str,
+      SECLOAD_SCAN_START_MDL));
   assert(table.s->has_secondary_engine());
 
   // At least one column must be loaded into the secondary engine.
@@ -2668,7 +2674,38 @@ static bool secondary_engine_load_table(THD *thd, const TABLE &table) {
 
   // Load table from primary into secondary engine and add to change
   // propagation if that is enabled.
-  return handler->ha_load_table(table);
+  if (handler->ha_load_table(thd, table)) {
+    my_error(ER_SECONDARY_ENGINE, MYF(0),
+             "secondary storage engine load table failed");
+    return true;
+  }
+
+  // add the mete info into 'rpd_column_id' and 'rpd_columns tables', etc.
+  // to check whether it has been loaded or not.
+  uint32 field_count = table.s->fields;
+  Field *field_ptr = nullptr;
+  for (uint32 index = 0; index < field_count; index++) {
+    field_ptr = *(table.field + index);
+
+    // Skip columns marked as NOT SECONDARY. │
+    if ((field_ptr)->is_flag_set(NOT_SECONDARY_FLAG)) continue;
+    rpd_columns_info row_rpd_columns;
+    row_rpd_columns.id = meta_rpd_columns.size();
+
+    strncpy(row_rpd_columns.column_name, field_ptr->field_name,
+            strlen(field_ptr->field_name));
+
+    row_rpd_columns.data_dict_bytes = 0;
+    row_rpd_columns.data_placement_index = 0;
+    strncpy(row_rpd_columns.encoding, "dictionary", strlen("dictionary"));
+    row_rpd_columns.ndv = 0;
+    row_rpd_columns.table_id = static_cast<uint>(table.s->table_map_id.id());
+    strncpy(row_rpd_columns.table_name, table.s->table_name.str,
+            table.s->table_name.length);
+    meta_rpd_columns.push_back(row_rpd_columns);
+  }
+
+  return 0;
 }
 
 /**
@@ -2736,7 +2773,8 @@ static bool secondary_engine_unload_table(THD *thd, const char *db_name,
   if (handler == nullptr) return true;
 
   // Unload table from secondary engine.
-  return handler->ha_unload_table(db_name, table_name, error_if_not_loaded) > 0;
+  return handler->ha_unload_table(thd, db_name, table_name,
+                                  error_if_not_loaded) > 0;
 }
 
 /**
@@ -11066,9 +11104,9 @@ bool mysql_create_like_table(THD *thd, TABLE_LIST *table, TABLE_LIST *src_table,
             goto err;
         }
       } else  // Case 1
-          if (write_bin_log(thd, true, thd->query().str, thd->query().length,
-                            is_trans))
-        goto err;
+        if (write_bin_log(thd, true, thd->query().str, thd->query().length,
+                          is_trans))
+          goto err;
     }
     /*
       Case 3 and 4 does nothing under RBR
