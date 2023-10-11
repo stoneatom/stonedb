@@ -1,0 +1,24 @@
+# Creating test database test_db_1708
+CREATE DATABASE IF NOT EXISTS test_db_1708;
+USE test_db_1708;
+CREATE TABLE t1 (
+id int NOT NULL PRIMARY KEY,
+ct int DEFAULT NULL,
+pc int DEFAULT NULL
+);
+INSERT INTO t1 VALUES (1,NULL,NULL),(2,NULL,NULL),(3,NULL,NULL),(4,NULL,NULL),(5,NULL,NULL);
+CREATE TABLE t2 (
+id int NOT NULL PRIMARY KEY,
+sr int NOT NULL,
+nm varchar(255) NOT NULL
+);
+INSERT INTO t2 VALUES (2441905,4308,'LesAbymes'),(2441906,4308,'Anse-Bertrand');
+CREATE TABLE t3 (
+id int NOT NULL PRIMARY KEY,
+ct int NOT NULL,
+ln int NOT NULL
+);
+SELECT t1.* FROM t1 LEFT JOIN (t2 LEFT JOIN t3 ON t3.ct=t2.id AND t3.ln='5') ON t1.ct=t2.id WHERE t1.id='5';
+id	ct	pc
+5	NULL	NULL
+DROP DATABASE test_db_1708;
