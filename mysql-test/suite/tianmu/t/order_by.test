@@ -1,0 +1,28 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS order_by;
+--enable_warnings
+
+CREATE DATABASE order_by;
+USE order_by;
+
+create table t1 (a int, b int) ;
+create table t2 (a int, b int) ;
+
+insert into t1 values (1, 2), (1, 3), (1, 4), (2, 5), (2, 6), (2, 7);
+insert into t2 values (1, 2), (1, 2), (1, 4), (2, 5), (2, 6), (2, 8);
+
+select * from t1, t2 where t1.a = t2.a and t2.b = (select max(b) from t2 where t1.a = t2.a) order by t1.a,t1.b,t2.b;
+select * from t1, t2 where t1.a = t2.a and t2.b < (select max(b) from t2 where t1.a = t2.a) order by t1.a,t1.b,t2.b;
+select * from t1, t2 where t1.a = t2.a and t2.b > (select max(b) from t2 where t1.a = t2.a) order by t1.a,t1.b,t2.b;
+
+select * from t1, t2 where t1.a = t2.a and t1.b = (select avg(t2.b) from t2 where t1.a = t2.a group by t2.a) order by t2.b;
+select * from t1, t2 where t1.a = t2.a and t2.b < (select avg(t2.b) from t2 where t1.a = t2.a group by t2.a) order by t1.a,t1.b,t2.b;
+select * from t1, t2 where t1.a = t2.a and t2.b > (select avg(t2.b) from t2 where t1.a = t2.a group by t2.a) order by t1.a,t1.b,t2.b;
+
+drop table t1;
+drop table t2;
+
+#clean up
+DROP DATABASE order_by;

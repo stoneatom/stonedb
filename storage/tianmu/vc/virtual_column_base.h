@@ -91,6 +91,7 @@ class VirtualColumnBase : public core::Column {
    * - Doubles must be cast e.g. *(double*)&
    */
   inline int64_t GetValueInt64(const core::MIIterator &mit) { return GetValueInt64Impl(mit); }
+  inline bool GetUnsignedFlag() { return GetUnsignedFlagImpl(); }
   virtual int64_t GetNotNullValueInt64(const core::MIIterator &mit) = 0;
 
   /*! \brief get Item
@@ -286,11 +287,11 @@ class VirtualColumnBase : public core::Column {
    */
   inline size_t MaxStringSize() { return MaxStringSizeImpl(); }
   virtual types::BString DecodeValue_S([[maybe_unused]] int64_t code) {
-    assert(0);
+    DEBUG_ASSERT(0);
     return types::BString();
   }  // lookup (physical) only
   virtual int EncodeValue_S([[maybe_unused]] types::BString &v) {
-    assert(0);
+    DEBUG_ASSERT(0);
     return -1;
   }                                           // lookup (physical) only
   int64_t DecodeValueAsDouble(int64_t code);  // convert code to a double value
@@ -427,7 +428,7 @@ class VirtualColumnBase : public core::Column {
    *
    */
   virtual VirtualColumn *Copy() {
-    assert(0 && "not implemented");
+    DEBUG_ASSERT(0 && "not implemented");
     return nullptr;
   }
 
@@ -492,6 +493,7 @@ class VirtualColumnBase : public core::Column {
 
  protected:
   virtual int64_t GetValueInt64Impl(const core::MIIterator &) = 0;
+  virtual bool GetUnsignedFlagImpl() = 0;
   virtual bool IsNullImpl(const core::MIIterator &) = 0;
   virtual void GetValueStringImpl(types::BString &, const core::MIIterator &) = 0;
   virtual double GetValueDoubleImpl(const core::MIIterator &) = 0;

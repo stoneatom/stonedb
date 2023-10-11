@@ -18,6 +18,7 @@
 #define TIANMU_CORE_ENGINE_H_
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <list>
 #include <mutex>
@@ -178,6 +179,9 @@ class Engine final {
   static const char *StrToFiled(const char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num);
   static char *FiledToStr(char *ptr, Field *field, DeltaRecordHead *deltaRecord, int col_num, THD *thd);
 
+  void setExtra(ha_extra_function extra) { extra_info = extra; }
+  ha_extra_function getExtra() { return extra_info; }
+
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
@@ -243,6 +247,8 @@ class Engine final {
   system::ResourceManager *m_resourceManager = nullptr;
 
   uint m_slot = 0;
+  //?????
+  // atomic_uint32_t tableID_;
 
   struct TrxCmp {
     bool operator()(Transaction *l, Transaction *r) const;
@@ -285,6 +291,8 @@ class Engine final {
   uint64_t m_mem_available_ = 0;
   uint64_t m_swap_used_ = 0;
   index::KVStore *store_;
+
+  ha_extra_function extra_info;
 };
 
 class ResultSender {

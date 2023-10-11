@@ -72,7 +72,7 @@ ValueMatching_OnePosition::ValueMatching_OnePosition() {
 }
 
 ValueMatching_OnePosition::ValueMatching_OnePosition(ValueMatching_OnePosition &sec) : ValueMatchingTable(sec) {
-  assert(total_width > 0);
+  DEBUG_ASSERT(total_width > 0);
   iterator_valid = sec.iterator_valid;
 
   t_aggr = nullptr;
@@ -83,7 +83,7 @@ ValueMatching_OnePosition::ValueMatching_OnePosition(ValueMatching_OnePosition &
 ValueMatching_OnePosition::~ValueMatching_OnePosition() { delete[] t_aggr; }
 
 void ValueMatching_OnePosition::Init(int _total_width) {
-  assert(_total_width > 0);
+  DEBUG_ASSERT(_total_width > 0);
   total_width = _total_width;
   matching_width = input_buffer_width = 0;
   t_aggr = new unsigned char[total_width];
@@ -154,7 +154,7 @@ void ValueMatching_LookupTable::Init(int64_t max_group_code, int _total_width, i
   total_width = _total_width;
   matching_width = _match_width;
   input_buffer_width = _input_buf_width;
-  assert(matching_width > 0);  // else another class should be used
+  DEBUG_ASSERT(matching_width > 0);  // else another class should be used
 
   max_no_rows = max_group_code + 1;  // easy case: the row number is just the coded value
 
@@ -170,7 +170,7 @@ void ValueMatching_LookupTable::Init(int64_t max_group_code, int _total_width, i
 bool ValueMatching_LookupTable::FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new) {
   row = 0;
   std::memcpy(&row, input_buffer, matching_width);
-  assert(row < max_no_rows);
+  DEBUG_ASSERT(row < max_no_rows);
   if (occupied->Get(row))
     return true;
   if (!add_if_new) {

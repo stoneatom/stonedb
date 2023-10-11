@@ -18,6 +18,7 @@
 #define TIANMU_CORE_AGGREGATOR_BASIC_H_
 #pragma once
 
+#include <mutex>
 #include "optimizer/aggregator.h"
 
 namespace Tianmu {
@@ -82,11 +83,12 @@ class AggregatorSum64 : public TIANMUAggregator {
     return null_group_found;  // if found, do not search any more
   }
   bool PackCannotChangeAggregation() override {
-    assert(stats_updated);
+    DEBUG_ASSERT(stats_updated);
     return !null_group_found && pack_min == 0 && pack_max == 0;  // uniform 0 pack - no change for sum
   }
 
  private:
+  std::mutex aggr_mtx;
   int64_t pack_sum;
   int64_t pack_min;  // min and max are used to check whether a pack may update
                      // sum (i.e. both 0 means "no change")
@@ -307,7 +309,7 @@ class AggregatorMin32 : public AggregatorMin {
     return false;
   }
   bool PackCannotChangeAggregation() override {
-    assert(stats_updated);
+    DEBUG_ASSERT(stats_updated);
     return !null_group_found && pack_min != common::NULL_VALUE_64 && pack_min >= (int64_t)stat_max;
   }
 
@@ -362,7 +364,7 @@ class AggregatorMin64 : public AggregatorMin {
     return false;
   }
   bool PackCannotChangeAggregation() override {
-    assert(stats_updated);
+    DEBUG_ASSERT(stats_updated);
     return !null_group_found && pack_min != common::NULL_VALUE_64 && pack_min >= stat_max;
   }
 
@@ -420,7 +422,7 @@ class AggregatorMinD : public AggregatorMin {
     return false;
   }
   bool PackCannotChangeAggregation() override {
-    assert(stats_updated);
+    DEBUG_ASSERT(stats_updated);
     return !null_group_found && !IsDoubleNull(pack_min) && !IsDoubleNull(stat_max) && pack_min >= stat_max;
   }
 
@@ -536,7 +538,7 @@ class AggregatorMax32 : public AggregatorMax {
     return false;
   }
   bool PackCannotChangeAggregation() override {
-    assert(stats_updated);
+    DEBUG_ASSERT(stats_updated);
     return !null_group_found && pack_max != common::NULL_VALUE_64 && pack_max <= (int64_t)stat_min;
   }
 
@@ -592,7 +594,7 @@ class AggregatorMax64 : public AggregatorMax {
     return false;
   }
   bool PackCannotChangeAggregation() override {
-    assert(stats_updated);
+    DEBUG_ASSERT(stats_updated);
     return !null_group_found && pack_max != common::NULL_VALUE_64 && pack_max <= stat_min;
   }
 
@@ -650,7 +652,7 @@ class AggregatorMaxD : public AggregatorMax {
     return false;
   }
   bool PackCannotChangeAggregation() override {
-    assert(stats_updated);
+    DEBUG_ASSERT(stats_updated);
     return !null_group_found && !IsDoubleNull(pack_max) && !IsDoubleNull(stat_min) && pack_max <= stat_min;
   }
 

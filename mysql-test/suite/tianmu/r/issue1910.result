@@ -1,0 +1,126 @@
+DROP DATABASE IF EXISTS issue1910;
+CREATE DATABASE issue1910;
+USE issue1910;
+CREATE TABLE t1 (`id` BIGINT(20) NOT NULL, 
+`created_date` DATETIME DEFAULT NULL,
+`name` VARCHAR(20),
+`price` DECIMAL(10,2));
+INSERT INTO t1 VALUES 
+(1,'2023-06-30 10:00:00','aaa',186.43),
+(2,'2023-11-21 14:26:54','bbb',12.2),
+(3,'2023-01-25 17:10:20','ccc',1743.19),
+(4,'2012-03-18 23:56:41','ddd',1.3);
+CREATE TABLE t2 (`id` INT(20) NOT NULL, 
+`name` VARCHAR(20),
+`price` DECIMAL(10,2));
+INSERT INTO t2 VALUES 
+(1,'aaa',186.43),
+(2,'bbb',12.2),
+(3,'aaa',1743.19),
+(4,'ddd',12.2),
+(3,'ccc',1743.19);
+SELECT C.* FROM t1 A INNER JOIN (SELECT @row1 := @row1 + 1 AS '上划日' FROM (SELECT 0) a) C ON 1 = 1;
+上划日
+NULL
+NULL
+NULL
+NULL
+SELECT C.* FROM t1 A LEFT JOIN (SELECT @row1 := @row1 + 1 AS '上划日' FROM (SELECT 0) a) C ON 1 = 1;
+上划日
+NULL
+NULL
+NULL
+NULL
+SELECT C.* FROM t1 A RIGHT JOIN (SELECT @row1 := @row1 + 1 AS '上划日' FROM (SELECT 0) a) C ON 1 = 1;
+上划日
+NULL
+NULL
+NULL
+NULL
+SELECT C.* FROM t1 A CROSS JOIN (SELECT @row1 := @row1 + 1 AS '上划日' FROM (SELECT 0) a) C ON 1 = 1;
+上划日
+NULL
+NULL
+NULL
+NULL
+SELECT @row1 := @row1 + 1 AS '上划日' FROM (SELECT 1.99) a INNER JOIN t1;
+上划日
+NULL
+NULL
+NULL
+NULL
+SELECT * FROM t1 INNER JOIN (SELECT @row1 := @row1 + 1 AS '上划日') a;
+id	created_date	name	price	上划日
+1	2023-06-30 10:00:00	aaa	186.43	NULL
+2	2023-11-21 14:26:54	bbb	12.20	NULL
+3	2023-01-25 17:10:20	ccc	1743.19	NULL
+4	2012-03-18 23:56:41	ddd	1.30	NULL
+SELECT * FROM (SELECT 456.234) a LEFT JOIN t1 ON created_date;
+456.234	id	created_date	name	price
+456.234	1	2023-06-30 10:00:00	aaa	186.43
+456.234	2	2023-11-21 14:26:54	bbb	12.20
+456.234	3	2023-01-25 17:10:20	ccc	1743.19
+456.234	4	2012-03-18 23:56:41	ddd	1.30
+SELECT * FROM (SELECT 'abc') a RIGHT JOIN t2 ON a.abc = t2.name;
+abc	id	name	price
+NULL	1	aaa	186.43
+NULL	2	bbb	12.20
+NULL	3	aaa	1743.19
+NULL	4	ddd	12.20
+NULL	3	ccc	1743.19
+SELECT * FROM (SELECT 'abc',123) a CROSS JOIN (SELECT created_date AS number FROM t1,t2 WHERE t1.id = t2.id) b;
+abc	123	number
+abc	123	2023-06-30 10:00:00
+abc	123	2023-11-21 14:26:54
+abc	123	2023-01-25 17:10:20
+abc	123	2012-03-18 23:56:41
+abc	123	2023-01-25 17:10:20
+SELECT * FROM t1 LEFT JOIN (SELECT * FROM (SELECT * FROM (SELECT 'abc' AS '上划日') e RIGHT JOIN t2 ON t2.price) f 
+CROSS JOIN (SELECT * FROM (SELECT 1) a INNER JOIN (SELECT t1.name AS nm FROM t1,t2 WHERE t1.id = t2.id AND 
+t2.price = (SELECT 12.2)) b ON b.nm) c) d ON d.name = t1.name LIMIT 10;
+id	created_date	name	price	上划日	id	name	price	1	nm
+1	2023-06-30 10:00:00	aaa	186.43	abc	1	aaa	186.43	1	bbb
+1	2023-06-30 10:00:00	aaa	186.43	abc	1	aaa	186.43	1	ddd
+2	2023-11-21 14:26:54	bbb	12.20	abc	2	bbb	12.20	1	bbb
+2	2023-11-21 14:26:54	bbb	12.20	abc	2	bbb	12.20	1	ddd
+1	2023-06-30 10:00:00	aaa	186.43	abc	3	aaa	1743.19	1	bbb
+1	2023-06-30 10:00:00	aaa	186.43	abc	3	aaa	1743.19	1	ddd
+4	2012-03-18 23:56:41	ddd	1.30	abc	4	ddd	12.20	1	bbb
+4	2012-03-18 23:56:41	ddd	1.30	abc	4	ddd	12.20	1	ddd
+3	2023-01-25 17:10:20	ccc	1743.19	abc	3	ccc	1743.19	1	bbb
+3	2023-01-25 17:10:20	ccc	1743.19	abc	3	ccc	1743.19	1	ddd
+SELECT * FROM (SELECT * FROM ((SELECT @row1 := @row1 + 1 AS '上划日') a LEFT JOIN (SELECT 1) b ON b.1) CROSS JOIN t2)
+c RIGHT JOIN t2 ON t2.id;
+上划日	1	id	name	price	id	name	price
+NULL	1	1	aaa	186.43	1	aaa	186.43
+NULL	1	2	bbb	12.20	1	aaa	186.43
+NULL	1	3	aaa	1743.19	1	aaa	186.43
+NULL	1	4	ddd	12.20	1	aaa	186.43
+NULL	1	3	ccc	1743.19	1	aaa	186.43
+NULL	1	1	aaa	186.43	2	bbb	12.20
+NULL	1	2	bbb	12.20	2	bbb	12.20
+NULL	1	3	aaa	1743.19	2	bbb	12.20
+NULL	1	4	ddd	12.20	2	bbb	12.20
+NULL	1	3	ccc	1743.19	2	bbb	12.20
+NULL	1	1	aaa	186.43	3	aaa	1743.19
+NULL	1	2	bbb	12.20	3	aaa	1743.19
+NULL	1	3	aaa	1743.19	3	aaa	1743.19
+NULL	1	4	ddd	12.20	3	aaa	1743.19
+NULL	1	3	ccc	1743.19	3	aaa	1743.19
+NULL	1	1	aaa	186.43	4	ddd	12.20
+NULL	1	2	bbb	12.20	4	ddd	12.20
+NULL	1	3	aaa	1743.19	4	ddd	12.20
+NULL	1	4	ddd	12.20	4	ddd	12.20
+NULL	1	3	ccc	1743.19	4	ddd	12.20
+NULL	1	1	aaa	186.43	3	ccc	1743.19
+NULL	1	2	bbb	12.20	3	ccc	1743.19
+NULL	1	3	aaa	1743.19	3	ccc	1743.19
+NULL	1	4	ddd	12.20	3	ccc	1743.19
+NULL	1	3	ccc	1743.19	3	ccc	1743.19
+SELECT * FROM (SELECT t1.name FROM t1 RIGHT JOIN t2 ON t1.id = t2.id) a INNER JOIN (SELECT * FROM (SELECT * FROM t2
+WHERE name = 'aaa') b WHERE id = 3) c ON a.name = 'aaa';
+name	id	name	price
+aaa	3	aaa	1743.19
+DROP TABLE t1;
+DROP TABLE t2;
+DROP DATABASE issue1910;

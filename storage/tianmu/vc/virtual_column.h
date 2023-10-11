@@ -44,6 +44,7 @@ class VirtualColumn : public VirtualColumnBase {
 
   void LockSourcePacks(const core::MIIterator &mit) override { vc_pack_guard_.LockPackrow(mit); }
   void UnlockSourcePacks() override { vc_pack_guard_.UnlockAll(); }
+  virtual bool BaseUserVar() { return false; }
 
  private:
   core::VCPackGuardian vc_pack_guard_;

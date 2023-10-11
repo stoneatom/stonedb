@@ -1,0 +1,20 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1808_test;
+ 
+CREATE DATABASE issue1808_test;
+ 
+USE issue1808_test;
+
+--enable_warnings
+--disable_query_log
+
+CREATE TABLE ttt(c1 decimal(18,0),c2 decimal(18,0));
+INSERT INTO ttt VALUES(3000000000027266,1),(3000000000027267,1),(3000000000027268,1),(3000000000027269,1),(3000000000027270,1);
+
+--enable_query_log
+SELECT c1 FROM ttt UNION ALL SELECT 'aaa' c1 FROM (SELECT c2 FROM ttt WHERE c1 IN (3000000000027265)) x ORDER BY c1;
+
+DROP DATABASE issue1808_test;
+

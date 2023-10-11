@@ -58,7 +58,7 @@ class IncAlloc {
   // currently, 'size' must be at most MAX_FRAG_SIZE_
   void *_alloc(uint size) {
     // find a fragment...
-    assert(size && (size <= MAX_FRAG_SIZE_));
+    DEBUG_ASSERT(size && (size <= MAX_FRAG_SIZE_));
     auto &frag = frags_[size];
     if (frag.size()) {
       void *mem = frag.back();
@@ -79,7 +79,7 @@ class IncAlloc {
   void *_alloc_search(uint size);  // more complicated part of _alloc, executed rarely
   // put 'p' into frags_[size]; does NOT check if p points into a block!
   void _free(void *p, uint size) {
-    assert(size && (size <= MAX_FRAG_SIZE_));
+    DEBUG_ASSERT(size && (size <= MAX_FRAG_SIZE_));
     frags_[size].push_back(p);
   }
 

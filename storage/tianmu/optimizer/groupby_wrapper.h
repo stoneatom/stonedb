@@ -62,6 +62,7 @@ class GroupByWrapper final {
   GroupByWrapper(const GroupByWrapper &sec);
   GroupByWrapper &operator=(const GroupByWrapper &) = delete;
   ~GroupByWrapper();
+  void Initialize(int64_t upper_approx_of_groups, bool parallel_allowed = true);
 
   void AddGroupingColumn(int attr_no, int orig_no, TempTable::Attr &a);
   void AddAggregatedColumn(int orig_no, TempTable::Attr &a, int64_t max_no_vals = 0,
@@ -73,24 +74,26 @@ class GroupByWrapper final {
   void AddAllAggregatedConstants(MIIterator &mit);  // set buffers for all constants in aggregations
   void AddAllCountStar(int64_t row, MIIterator &mit,
                        int64_t val);  // set all count(*) values to val, or to 0 in case of nulls
+
   bool AggregatePackInOneGroup(int attr_no, MIIterator &mit, int64_t uniform_pos, int64_t rows_in_pack, int64_t factor);
   bool AttrMayBeUpdatedByPack(int i, MIIterator &mit);
   bool PackWillNotUpdateAggregation(int i, MIIterator &mit);  // ...because min/max worse than already found
   bool DataWillNotUpdateAggregation(int i);                   // as above, for the whole dataset
   void InvalidateAggregationStatistics() { gt.InvalidateAggregationStatistics(); }
   void DefineAsEquivalent(int i, int j) { attr_mapping[i] = attr_mapping[j]; }
+
   void PutGroupingValue(int gr_a, MIIterator &mit) { gt.PutGroupingValue(gr_a, mit); }
   bool PutAggregatedNull(int gr_a, int64_t pos);
   bool PutAggregatedValue(int gr_a, int64_t pos, MIIterator &mit, int64_t factor = 1);
-  // return value: true if value checked in, false if not (DISTINCT buffer
-  // overflow) functionalities around DISTINCT
+  // return value: true if value checked in, false if not (DISTINCT buffer overflow) functionalities around DISTINCT
   bool PutAggregatedValueForCount(int gr_a, int64_t pos,
-                                  int64_t factor);  // a simplified version for counting only
-  bool PutAggregatedValueForMinMax(int gr_a, int64_t pos,
-                                   int64_t factor);  // a simplified version for MIN or MAX
-  bool PutCachedValue(int gr_a);                     // current value from distinct cache
-  bool CacheValid(int gr_a);                         // true if there is a value cached for current row
-  void UpdateDistinctCaches();                       // take into account which values are already counted
+                                  int64_t factor);                          // a simplified version for counting only
+  bool PutAggregatedValueForMinMax(int gr_a, int64_t pos, int64_t factor);  // a simplified version for MIN or MAX
+
+  bool PutCachedValue(int gr_a);  // current value from distinct cache
+
+  bool CacheValid(int gr_a);    // true if there is a value cached for current row
+  void UpdateDistinctCaches();  // take into account which values are already counted
   void OmitInCache(int attr, int64_t obj_to_omit);
   void DistinctlyOmitted(int attr, int64_t obj);
   bool AnyOmittedByDistinct() { return distinct_watch.AnyOmitted(); }
@@ -98,16 +101,17 @@ class GroupByWrapper final {
 
   int NumOfAttrs() { return no_attr; }
   int NumOfGroupingAttrs() { return no_grouping_attr; }
+
   bool DistinctAggr(int col) { return gt.AttrDistinct(col); }
-  void Initialize(int64_t upper_approx_of_groups, bool parallel_allowed = true);
   int64_t NumOfGroups() { return no_groups; }
   void AddGroup() { no_groups++; }
   void ClearNoGroups() { no_groups = 0; }
   int64_t UpperApproxOfGroups() { return gt.UpperApproxOfGroups(); }
-  // a position in the current GroupTable, row==common::NULL_VALUE_64 if not
-  // found
+
+  // a position in the current GroupTable, row==common::NULL_VALUE_64 if not found
   bool FindCurrentRow(int64_t &row) { return gt.FindCurrentRow(row); }
   int64_t GetValue64(int col, int64_t row) { return gt.GetValue64(col, row); }
+
   // iteration through resulting rows
   void RewindRows() { gt.RewindRows(); }
   int64_t GetCurrentRow() { return gt.GetCurrentRow(); }
@@ -120,16 +124,20 @@ class GroupByWrapper final {
 
   void Clear();  // reset all contents of the grouping table and statistics
   void ClearUsed() { gt.ClearUsed(); }
-  void ClearDistinctBuffers();   // reset distinct buffers and distinct cache
-  void RewindDistinctBuffers();  // reset distinct buffers, rewind distinct
-                                 // cache to use it contents
+  void ClearDistinctBuffers();  // reset distinct buffers and distinct cache
+
+  void RewindDistinctBuffers();  // reset distinct buffers, rewind distinct  cache to use it contents
+
   void SetDistinctTuples(int64_t no_tuples) { distinct_watch.InitTuples(no_tuples, gt); }
-  bool IsFull() { return gt.IsFull(); }
   void SetAsFull() { gt.SetAsFull(); }
-  bool IsAllGroupsFound() { return no_more_groups; }
   void SetAllGroupsFound() { no_more_groups = true; }
+
+  bool IsFull() { return gt.IsFull(); }
+  bool IsAllGroupsFound() { return no_more_groups; }
   void FillDimsUsed(DimensionVector &dims);  // set true on all dimensions used
+
   int AttrMapping(int a) { return attr_mapping[a]; }
+
   bool IsCountOnly(int a = -1);  // true, if an attribute is count(*)/count(const), or if
                                  // there is no columns except constants and count (when no
                                  // attr specified)
@@ -139,6 +147,7 @@ class GroupByWrapper final {
     return no_grouping_attr == 0 && no_aggregated_attr == 1 && gt.AttrOper(0) == GT_Aggregation::GT_COUNT_NOT_NULL &&
            gt.AttrDistinct(0);
   }
+
   bool MayBeParallel() const;
   bool IsOnePass() { return gt.IsOnePass(); }
   int MemoryBlocksLeft() { return gt.MemoryBlocksLeft(); }  // no place left for more packs (soft limit)
@@ -176,7 +185,7 @@ class GroupByWrapper final {
   void OmitColumnForPackrow(int a) { pack_not_omitted[a] = false; }
   vcolumn::VirtualColumn *SourceColumn(int a) { return virt_col[a]; }
   vcolumn::VirtualColumn *GetColumn(int i) {
-    assert(i < no_attr);
+    DEBUG_ASSERT(i < no_attr);
     return virt_col[i];
   }
   bool JustDistinct() { return just_distinct; }

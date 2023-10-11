@@ -30,7 +30,7 @@ class ValueOrNull final {
 
  public:
   ValueOrNull() : x(common::NULL_VALUE_64), null(true) {}
-  explicit ValueOrNull(int64_t x) : x(x), null(false) { assert(x != common::NULL_VALUE_64); }
+  explicit ValueOrNull(int64_t x) : x(x), null(false) { DEBUG_ASSERT(x != common::NULL_VALUE_64); }
   ValueOrNull(types::TianmuNum const &tianmu_n);
   ValueOrNull(types::TianmuDateTime const &tianmu_dt);
   ValueOrNull(types::BString const &tianmu_s);
@@ -58,6 +58,8 @@ class ValueOrNull final {
   bool NotNull() const { return !null; }
   size_t StrLen() const { return len; }
   int64_t Get64() const { return x; }
+  bool GetUnsignedFlag() const { return unsigned_flag_; }
+  void SetUnsignedFlag(bool is_unsigned) { unsigned_flag_ = is_unsigned; }
 
   void SetFixed(int64_t v) {
     Clear();
@@ -95,24 +97,40 @@ class ValueOrNull final {
    */
   void GetBString(types::BString &tianmu_s) const;
   std::optional<std::string> ToString() const;
+  void Clear_SP() {
+    if (string_owner && sp) {
+      delete[] sp;
+      sp = nullptr;
+
+      string_owner = false;
+      null = true;
+      len = 0;
+    }
+  }
 
  private:
-  int64_t x;                  // 8-byte value of an expression; interpreted as int64_t or double
-  char *sp = nullptr;         // != 0 if string value assigned
-  uint len = 0;               // string length; used only for ValueType::VT_STRING
-  bool string_owner = false;  // if true, destructor must deallocate sp
-  bool null;
-
   void Swap(ValueOrNull &von);
   void Clear() {
-    if (string_owner)
+    if (string_owner && sp) {
       delete[] sp;
-    sp = nullptr;
-    string_owner = false;
+      sp = nullptr;
+
+      string_owner = false;
+    }
+
     null = true;
     x = common::NULL_VALUE_64;
     len = 0;
+    unsigned_flag_ = false;
   }
+
+ private:
+  int64_t x;                    // 8-byte value of an expression; interpreted as int64_t or double
+  bool unsigned_flag_ = false;  // check if x is unsigned or not
+  char *sp = nullptr;           // != 0 if string value assigned
+  uint len = 0;                 // string length; used only for ValueType::VT_STRING
+  bool string_owner = false;    // if true, destructor must deallocate sp
+  bool null;
 };
 }  // namespace core
 }  // namespace Tianmu

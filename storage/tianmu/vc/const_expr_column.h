@@ -62,7 +62,7 @@ class ConstExpressionColumn : public ExpressionColumn {
 
   ConstExpressionColumn(ConstExpressionColumn const &cc)
       : ExpressionColumn(nullptr, nullptr, common::NULL_VALUE_32, nullptr) {
-    assert(params_.size() == 0 && "cannot copy expressions");
+    DEBUG_ASSERT(params_.size() == 0 && "cannot copy expressions");
     last_val_ = cc.last_val_;
     ct = cc.ct;
     first_eval_ = cc.first_eval_;
@@ -95,6 +95,8 @@ class ConstExpressionColumn : public ExpressionColumn {
   int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return last_val_->IsNull() ? common::NULL_VALUE_64 : last_val_->Get64();
   }
+
+  bool GetUnsignedFlagImpl() override { return last_val_->GetUnsignedFlag(); }
 
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
@@ -140,7 +142,7 @@ class ConstExpressionColumn : public ExpressionColumn {
   // comparison of a const with a const should be simplified earlier
   virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
                                                 [[maybe_unused]] int64_t limit) override {
-    assert(0);
+    DEBUG_ASSERT(0);
     return common::ErrorCode::FAILED;
   }
 };

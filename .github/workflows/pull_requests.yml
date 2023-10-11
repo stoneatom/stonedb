@@ -99,7 +99,7 @@ jobs:
         run: |
           mkdir build && cd build
           git config --global --add safe.directory /__w/stonedb/stonedb
-          git fetch --tags
+          git fetch --tags -f
           cmake ../ \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/stonedb57/install \
@@ -133,8 +133,10 @@ jobs:
 
       - name: create coverage.info
         run: |
+          cat codecov.yml | curl --data-binary @- https://codecov.io/validate
           cd build
-          lcov --capture --directory . --output-file  coverage.info --test-name coverage
+          lcov --capture --directory . --output-file coverage.info --test-name coverage
 
       - name: Codecov
-        uses: codecov/codecov-action@v3.1.1
+        uses: codecov/codecov-action@v3.1.4
+        

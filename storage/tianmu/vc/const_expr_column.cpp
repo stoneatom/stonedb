@@ -36,7 +36,7 @@ void ConstExpressionColumn::RequestEval([[maybe_unused]] const core::MIIterator 
 }
 
 double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) {
-  assert(core::ATI::IsNumericType(TypeName()));
+  DEBUG_ASSERT(core::ATI::IsNumericType(TypeName()));
 
   double val = 0;
   if (last_val_->IsNull())
@@ -65,7 +65,7 @@ double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MI
     if (vs)
       val = std::stod(*vs);
   } else
-    assert(0 && "conversion to double not implemented");
+    DEBUG_ASSERT(0 && "conversion to double not implemented");
 
   return val;
 }
@@ -93,12 +93,12 @@ types::TianmuValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] co
   if (lookup_to_num || TypeName() == common::ColumnType::NUM || TypeName() == common::ColumnType::BIT)
     return types::TianmuNum((int64_t)last_val_->Get64(), Type().GetScale());
 
-  assert(!"Illegal execution path");
+  DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();
 }
 
 int64_t ConstExpressionColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
-  assert(!core::ATI::IsStringType(TypeName()));
+  DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
 
   nonnegative = true;
   if (last_val_->IsNull())
@@ -147,7 +147,7 @@ core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl(
 
 void ConstExpressionColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
                                              [[maybe_unused]] core::Descriptor &desc) {
-  assert(0);  // comparison of a const with a const should be simplified earlier
+  DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
 
 common::RoughSetValue ConstExpressionColumn::RoughCheckImpl([[maybe_unused]] const core::MIIterator &mit,

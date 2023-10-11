@@ -1,0 +1,44 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1938_test_db;
+--enable_warnings
+CREATE DATABASE issue1938_test_db;
+USE issue1938_test_db;
+
+CREATE TABLE `c1fg_pl_node` (
+  `ROW_ID` decimal(18,0) NOT NULL DEFAULT '-1' COMMENT 'ROW_ID',
+  `COMPANY_ID` decimal(18,0) DEFAULT '-1' COMMENT '对应组织ID。实体类型为公司、部门'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='账户信息包括成员单位内部开设的账户，系统为相关会计科目保留的内部账户';
+
+CREATE TABLE `c1md_company` (
+  `ROW_ID` decimal(18,0) NOT NULL DEFAULT '-1' COMMENT 'ROW_ID',
+  `SHORT_NAME` varchar(300) NOT NULL COMMENT '简称',
+  `COMPANY_NAME` varchar(300) NOT NULL COMMENT '单位名称'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='组织机构';
+
+INSERT INTO `c1fg_pl_node`
+  VALUES
+    (3000000000030962,3000000000027247),
+    (3000000000030987,3000000000027248),
+    (3000000000030994,3000000000027249);
+
+INSERT INTO `c1md_company`
+  VALUES
+    (3000000000027247, '集团本部', '凯润国际（中国）有限公司'),
+    (3000000000027248, '南京凯润易事', '南京凯润易事软件科技有限公司'),
+    (3000000000027249, '深圳凯润银科', '深圳凯润银科信息技术有限公司'),
+    (3000000000027250, '北京易事通慧', '北京易事通慧科技有限公司'),
+    (3000000000027251, '北京繁德信息', '繁德信息技术服务有限公司'),
+    (3000000000027252, '胜科金仕达', '胜科金仕达数据系统（中国）有限公司'),
+    (3000000000027253, '上海凯润银科', '凯润银科上海有限公司'),
+    (3000000000027254, '融银科技', '南京融银万家网络科技有限公司'),
+    (3000000000027255, '外汇公司', '浦发2889959354');
+
+SELECT A.company_id, IFNULL(B.short_name, B.company_name) company_name
+  FROM (SELECT B.company_id, 1 sort_no FROM c1fg_pl_node B) A
+  LEFT JOIN c1md_company B
+    ON A.company_id = B.row_id
+ORDER BY A.company_id;
+
+DROP DATABASE issue1938_test_db;

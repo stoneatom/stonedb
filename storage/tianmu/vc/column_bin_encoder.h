@@ -191,15 +191,15 @@ class ColumnBinEncoder::ColumnValueEncoder {  // base class for detailed
 
   virtual int64_t ValEncode([[maybe_unused]] vcolumn::VirtualColumn *vc, [[maybe_unused]] MIIterator &mit,
                             [[maybe_unused]] bool update_stats = false) {
-    assert(0);
+    DEBUG_ASSERT(0);
     return 0;
   }
   virtual int64_t ValEncodeInt64([[maybe_unused]] int64_t v, [[maybe_unused]] bool update_stats) {
-    assert(0);
+    DEBUG_ASSERT(0);
     return 0;
   }  // used in special cases only
   virtual int64_t ValEncodeString([[maybe_unused]] types::BString &v, [[maybe_unused]] bool update_stats) {
-    assert(0);
+    DEBUG_ASSERT(0);
     return 0;
   }  // used in special cases only
 

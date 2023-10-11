@@ -58,6 +58,7 @@ class ConstColumn : public VirtualColumn {
   int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return value_or_null_.IsNull() ? common::NULL_VALUE_64 : value_or_null_.Get64();
   }
+  bool GetUnsignedFlagImpl() override { return value_or_null_.GetUnsignedFlag(); }
   bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return value_or_null_.IsNull(); }
   void GetValueStringImpl(types::BString &s, const core::MIIterator &mit) override;
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
@@ -103,7 +104,7 @@ class ConstColumn : public VirtualColumn {
   // comparison of a const with a const should be simplified earlier
   virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
                                                 [[maybe_unused]] int64_t limit) override {
-    assert(0);
+    DEBUG_ASSERT(0);
     return common::ErrorCode::FAILED;
   }
   core::ValueOrNull value_or_null_;

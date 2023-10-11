@@ -28,7 +28,7 @@ TypeCastColumn::TypeCastColumn(VirtualColumn *from, core::ColumnType const &targ
 }
 
 TypeCastColumn::TypeCastColumn(const TypeCastColumn &c) : VirtualColumn(c) {
-  assert(CanCopy());
+  DEBUG_ASSERT(CanCopy());
   vc_ = CreateVCCopy(c.vc_);
 }
 
@@ -608,7 +608,7 @@ types::TianmuValueObject DateTime2NumCastColumn::GetValueImpl(const core::MIIter
 
 TimeZoneConversionCastColumn::TimeZoneConversionCastColumn(VirtualColumn *from)
     : TypeCastColumn(from, core::ColumnType(common::ColumnType::DATETIME)) {
-  assert(from->TypeName() == common::ColumnType::TIMESTAMP);
+  DEBUG_ASSERT(from->TypeName() == common::ColumnType::TIMESTAMP);
   core::MIIterator mit(nullptr, PACK_INVALID);
   full_const_ = vc_->IsFullConst();
   if (full_const_) {

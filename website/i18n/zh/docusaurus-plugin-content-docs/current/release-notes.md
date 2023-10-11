@@ -4,6 +4,254 @@ sidebar_position: 11.0
 ---
 
 # 发版日志
+
+## StoneDB-5.7-v1.0.4-alpha 的发行日志 (2023-06-30, Alpha)
+发布日期： 2023 年 06 月 30 日
+
+### 一、稳定性
+
+1.  修复在导入数据时候，增量数据导致的 crash(**#1805**)
+
+2.  修复在 union all 字句结果集导致的 crash(**#1875**)
+
+3.  修复在大数据量情况下使用聚合函数导致的 crash(**#1855**)
+
+4.  修复主从复制下的内存溢出导致的 crash(**#1549**)
+
+### 二、新特性
+
+#### 2.1  支持 insert/update ignore 语法特性
+
+当更新 Tianmu 时候，对于主键冲突的记录将被跳过，然后执行后续的更新操作。例如：
+
+```sql
+CREATE TABLE t1  (id int(11) NOT NULL auto_increment,parent_id int(11) DEFAULT '0' NOT NULL,level tinyint(4)
+DEFAULT '0' NOT NULL, PRIMARY KEY (id)) engine=tianmu;
+INSERT INTO t1 VALUES (3,1,1),(4,1,1);
+```
+
+执行 `update ignore t1 set id=id+1;` 语句会忽略  PK=3  的更新，因为更新后的主键会与  PK=4 冲突。继续执行 PK=4 的更新，更新后 PK=5。
+```sql
+mysql>  CREATE TABLE t1  (id int(11) NOT NULL auto_increment,  parent_id int(11) DEFAULT '0' NOT NULL,  level tinyint(4)
+    ->  DEFAULT '0' NOT NULL, PRIMARY KEY (id)) engine=tianmu;
+Query OK, 0 rows affected (0.01 sec)
+
+mysql>  INSERT INTO t1 VALUES (3,1,1),(4,1,1);
+Query OK, 2 rows affected (0.01 sec)
+Records: 2  Duplicates: 0  Warnings: 0
+
+mysql> update t1 set id=id+1;
+ERROR 1062 (23000): Duplicate entry '4' for key 'PRIMARY'
+mysql> select * from t1;
++----+-----------+-------+
+| id | parent_id | level |
++----+-----------+-------+
+|  3 |         1 |     1 |
+|  4 |         1 |     1 |
++----+-----------+-------+
+2 rows in set (0.00 sec)
+
+mysql> update ignore t1 set id=id+1;
+Query OK, 2 rows affected (0.00 sec)
+Rows matched: 2  Changed: 2  Warnings: 0
+
+mysql> select * from t1;
++----+-----------+-------+
+| id | parent_id | level |
++----+-----------+-------+
+|  3 |         1 |     1 |
+|  5 |         1 |     1 |
++----+-----------+-------+
+2 rows in set (0.00 sec)
+```
+
+#### 2.2 ROW 格式支持 Load 语句转换为 write row
+
+当 StoneDB 作为主机时候，Load 语句将以 insert into 的方式被写进 binlog。
+```binlong
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 4
+#230630 10:50:51 server id 1  end_log_pos 123 CRC32 0x050a2c27 	Start: binlog v 4, server v 5.7.36-StoneDB-v1.0.1.42e5a3ad4 created 230630 10:50:51 at startup
+# Warning: this binlog is either in use or was not closed properly.
+ROLLBACK/*!*/;
+BINLOG '
+C0OeZA8BAAAAdwAAAHsAAAABAAQANS43LjM2LVN0b25lREItdjEuMC4xLjQyZTVhM2FkNAAAAAAA
+AAAAAAAAAAAAAAAAAAALQ55kEzgNAAgAEgAEBAQEEgAAXwAEGggAAAAICAgCAAAACgoKKioAEjQA
+AScsCgU=
+'/*!*/;
+# at 123
+#230630 10:50:51 server id 1  end_log_pos 154 CRC32 0x3407f97c 	Previous-GTIDs
+# [empty]
+# at 154
+#230630 10:50:51 server id 1  end_log_pos 219 CRC32 0x1631cab7 	Anonymous_GTID	last_committed=0	sequence_number=1	rbr_only=no
+SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
+# at 219
+#230630 10:50:51 server id 1  end_log_pos 334 CRC32 0x1b721a4f 	Query	thread_id=2	exec_time=0	error_code=0
+use `test`/*!*/;
+SET TIMESTAMP=1688093451/*!*/;
+SET @@session.pseudo_thread_id=2/*!*/;
+SET @@session.foreign_key_checks=1, @@session.sql_auto_is_null=0, @@session.unique_checks=1, @@session.autocommit=1/*!*/;
+SET @@session.sql_mode=1436549152/*!*/;
+SET @@session.auto_increment_increment=1, @@session.auto_increment_offset=1/*!*/;
+/*!\C latin1 *//*!*/;
+SET @@session.character_set_client=8,@@session.collation_connection=8,@@session.collation_server=8/*!*/;
+SET @@session.lc_time_names=0/*!*/;
+SET @@session.collation_database=DEFAULT/*!*/;
+create table t1(id int, name varchar(10))
+/*!*/;
+# at 334
+#230630 10:50:51 server id 1  end_log_pos 399 CRC32 0x092fa235 	Anonymous_GTID	last_committed=1	sequence_number=2	rbr_only=yes
+/*!50718 SET TRANSACTION ISOLATION LEVEL READ COMMITTED*//*!*/;
+SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
+# at 399
+#230630 10:50:51 server id 1  end_log_pos 471 CRC32 0x417b2366 	Query	thread_id=2	exec_time=0	error_code=0
+SET TIMESTAMP=1688093451/*!*/;
+BEGIN
+/*!*/;
+# at 471
+#230630 10:50:51 server id 1  end_log_pos 519 CRC32 0x563c6d07 	Table_map: `test`.`t1` mapped to number 108
+# at 519
+#230630 10:50:51 server id 1  end_log_pos 580 CRC32 0x99df1dba 	Write_rows: table id 108 flags: STMT_END_F
+BINLOG '
+C0OeZBMBAAAAMAAAAAcCAAAAAGwAAAAAAAEABHRlc3QAAnQxAAIDDwIKAAMHbTxW
+C0OeZB4BAAAAPQAAAEQCAAAAAGwAAAAAAAEAAgAC//wBAAAAB0FBQUFBQUH8AgAAAAdCQkJCQkJC
+uh3fmQ==
+'/*!*/;
+### INSERT INTO `test`.`t1`
+### SET
+###   @1=1 /* INT meta=0 nullable=1 is_null=0 */
+###   @2='AAAAAAA' /* VARSTRING(10) meta=10 nullable=1 is_null=0 */
+### INSERT INTO `test`.`t1`
+### SET
+###   @1=2 /* INT meta=0 nullable=1 is_null=0 */
+###   @2='BBBBBBB' /* VARSTRING(10) meta=10 nullable=1 is_null=0 */
+# at 580
+#230630 10:50:51 server id 1  end_log_pos 611 CRC32 0x8ee952db 	Xid = 3
+COMMIT/*!*/;
+# at 611
+#230630 10:50:51 server id 1  end_log_pos 676 CRC32 0x5d2a5859 	Anonymous_GTID	last_committed=2	sequence_number=3	rbr_only=no
+SET @@SESSION.GTID_NEXT= 'ANONYMOUS'/*!*/;
+# at 676
+#230630 10:50:51 server id 1  end_log_pos 791 CRC32 0x929d7148 	Query	thread_id=2	exec_time=0	error_code=0
+SET TIMESTAMP=1688093451/*!*/;
+DROP TABLE `t1` /* generated by server */
+/*!*/;
+SET @@SESSION.GTID_NEXT= 'AUTOMATIC' /* added by mysqlbinlog */ /*!*/;
+DELIMITER ;
+# End of log file
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
+```
+
+#### 2.3  支持  AggregatorGroupConcat  函数
+```sql
+mysql> select GROUP_CONCAT(t.id) from sequence t;
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| GROUP_CONCAT(t.id)                                                                                                                                                                         |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| 3000000000010000,3000000000010001,3000000000010002,3000000000010003,3000000000010004,3000000000010005,3000000000010006,3000000000010007,3000000000010008,3000000000010009,3000000000010010 |
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+1 row in set (0.01 sec)
+```
+
+#### 2.4  支持  uion/union all  中使用  select 111  或者  select 111 from dual  场景
+```sql
+mysql>  select id from tt union all select 2222 c1 from dual;
++------+
+| id   |
++------+
+| 1111 |
+| 2222 |
++------+
+
+mysql>  select id from tt union all select 2222 ;
++------+
+| id   |
++------+
+| 1111 |
+| 2222 |
++------+
+
+-- PS：select 111( from dual) 出现位置非第一子句位置
+```
+
+### 三、其他  Bug fixed
+
+1. 修复主备场景下，新增列默认值问题(**#1187**)
+2. 修复 derived table 中使用 case...when... 结果集不正确问题(**#1784**)
+3. 修复类型为 TIME 时候，位操作时由于精度丢失导致结果不正确问题(**#1173**)
+4. 修复类型为 BIGINT 时候，由于类型溢出导致查询结果不正确问题(**#1564**)
+5. 修复当过滤条件为十六进制时候，结果不正确问题(**#1625**)
+6. 修复使用 load 命令导入数据时候，表上缺省值未生效问题(**#1865**)
+7. 修改 load 命令默认字段分隔符，使其与 MySQL 行为一致(**#1609**)
+8. 修复由于元数据异常导致，查询错误(**#1822**)
+9. 修复自动提交被关闭导致数据无法写入的问题(**#1510**)
+10. 提升 GitHub 上 MTR 稳定性，wan'sha。
+
+### 四、支持平台
+
+- CentOS 7.6  以上
+- Ubuntu 20
+
+
+
+### 更新内容
+* fix(sql,tianmu):fix when binlog format is row, the load data statement…
+* fix(tianmu): add TIME_to_ulonglong_time_round process and fix up preci…
+* fix(tianmu): incorrect result when using where expr and args > bigint_max #1564
+* fix(tianmu): hotfix corruption in ValueOrNull under multi-thread
+* fix(tianmu): To remove unnessary optimization in tianmu
+* fix(tianmu): To support union(all) the statement which is without from clause
+* fix(tianmu): default value of the field take unaffect in load #1865
+* workflow(coverage): Update the lcov running logic
+* wokflow(codecov): Filter out excess code files
+* docs(intro): update the support for 8.0
+* ci(codecov): update the codecov congfig
+* fix(tianmu): To suuport ignore option for update statement
+* ci(codecov): update the config
+* test(mtr): add order by sentence in the mtr case various_join.test
+* test(mtr): add more test cases for tianmu(#1196)
+* test(tianmu): add order by sentence in the mtr case various_join.test
+* fix(tianmu): fix UNION of non-matching columns (column no 0)
+* fix(tianmu): Fixup the mem leakage of aggregation function
+* docs(developer-guide): update the compiling guide of stonedb 8.0 for c…
+* fix(tianmu): To fixup the instance crashed if the result of aggregate …
+* fix(tianmu): fix up the `group_concat` function in tianmu (#1852)
+* fix(tianmu): fix up mtr test case for delim of load data command (#1854)
+* fix(tianmu): revert PR #1841. (#1850)
+* feat(tianmu): fixup the default delimeter for load data (#1843)
+* feat(tianmu): revert assert() --> debug_assert() #1551
+* fix(workflow): nightly build failed #1830
+* fix(tianmu): fix up the incorrect meta-info leads unexpected behavior (#1840)
+* fix(tianmu): Fix up the unknown exception after instance killed randomly (#1841)
+* fix(tianmu): fix up the incompatible type
+* docs(website): update the documentation for Compile StoneDB 8.0 in Docker(#1823)
+* fix(tinmu): fix tianmu crash when set varchar to num when order by
+* fix incorrect result of TIME type by distinguishing the processing of …
+* fix: fix storage of DT type
+* automatically formatting
+* feature: remove DBUG_OFF and repalce DEBUG_ASSERT with assert
+* docs:add docker compile guide of stonedb8.0.(#1780)
+* doc(develop-guide): modify method for complie stonedb using docker
+* fix(tianmu): fix Error result set of the IN subquery with semi join (#1764)
+* fit format
+* open log for all cmds
+* add delete/drop into tianmu log stat
+* fix(tianmu):Even if a primary key is defined, duplicate data may be im…
+* docs(quickstart): add stonedb-8.0 compiling guide(Chinese) for CentOS 7.x
+* add stonedb-8.0 compiling guide for CentOS 7.x
+* fix bug and change test case exptected result
+* remove unused code block
+* fix(tianmu): fix error occurred in the union all query result (#1599)
+* fix(tianmu): Insert ignore can insert duplicate values.(#1699)
+* fix(tianmu): fix mysqld crash when assigning return values using b…
+* feat(tianmu): Test cases that supplement custom variables (#1703)
+
+**完整的更新日志**: https://gitee.com/StoneDB/stonedb/compare/5.7-v1.0.3-GA...5.7-v1.0.4-alpha
+
+
 ## StoneDB-5.7-v1.0.3 的发行日志 (2023-03-20, GA)
 发布日期： 2023 年 03 月 20 日
 ### 主备能力

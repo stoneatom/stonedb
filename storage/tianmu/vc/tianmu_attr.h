@@ -93,7 +93,9 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
   void UpdateData(uint64_t row, Value &old_v, Value &new_v);
   void UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, std::shared_ptr<Value>> &rows);
-  void UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v, const Value &new_v);
+  common::ErrorCode UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &old_v,
+                                  const Value &new_v);
+
   void Truncate();
   void DeleteData(uint64_t row);
   void DeleteByPrimaryKey(uint64_t row, uint64_t col);
@@ -107,20 +109,20 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
       return types::TianmuNum::NullValue();
     if (ATI::IsStringType(TypeName()))
       return types::BString::NullValue();
-    assert(ATI::IsDateTimeType(TypeName()));
+    DEBUG_ASSERT(ATI::IsDateTimeType(TypeName()));
     return types::TianmuDateTime::NullValue();
   }
 
   int64_t GetValueInt64(int64_t obj) const override {
     if (obj == common::NULL_VALUE_64)
       return common::NULL_VALUE_64;
-    assert(hdr.numOfRecords >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
     auto p = get_packN(pack);
     if (!dpn.Trivial()) {
-      assert(pack_type == common::PackType::INT);
-      assert(p->IsLocked());  // assuming it is already loaded and locked
+      DEBUG_ASSERT(pack_type == common::PackType::INT);
+      DEBUG_ASSERT(p->IsLocked());  // assuming it is already loaded and locked
       int inpack = row2offset(obj);
       if (p->IsNull(inpack))
         return common::NULL_VALUE_64;
@@ -143,7 +145,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
     int pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
     if (!dpn.Trivial()) {
-      assert(get_pack(pack)->IsLocked());
+      DEBUG_ASSERT(get_pack(pack)->IsLocked());
 
       int64_t res = get_packN(pack)->GetValInt(row2offset(obj));  // 2-level encoding
       // Natural encoding
@@ -159,7 +161,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   bool IsNull(int64_t obj) const override {
     if (obj == common::NULL_VALUE_64)
       return true;
-    assert(hdr.numOfRecords >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
 
@@ -167,7 +169,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
       return false;
 
     if (!dpn.Trivial()) {
-      assert(get_pack(pack)->IsLocked());  // assuming the pack is already loaded and locked
+      DEBUG_ASSERT(get_pack(pack)->IsLocked());  // assuming the pack is already loaded and locked
       return get_pack(pack)->IsNull(row2offset(obj));
     }
 
@@ -175,7 +177,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
       return true;
 
     if ((pack_type == common::PackType::STR) && !dpn.Trivial()) {
-      assert(0);
+      DEBUG_ASSERT(0);
       return true;
     }
     return true;
@@ -229,6 +231,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   void SetMaxInt64(int64_t a_imax) { hdr.max = a_imax; }
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
   bool GetIfUnsigned() const { return ct.GetUnsigned(); }
+  void SetUnsigned(bool unsigned_flag) { ct.SetUnsigned(unsigned_flag); }
   uint64_t AutoIncNext() {
     backup_auto_inc_next_ = m_share->auto_inc_.fetch_add(1);
     if (backup_auto_inc_next_ >= UINT64_MAX)

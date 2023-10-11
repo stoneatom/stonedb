@@ -25,6 +25,7 @@
 
 namespace Tianmu {
 namespace core {
+
 #define MATERIAL_TUPLES_LIMIT 150000000000LL  // = ~1 TB of cache needed for one dimension
 #define MATERIAL_TUPLES_WARNING 2500000000LL  // = 10-20 GB of cache for one dimension
 
@@ -46,12 +47,14 @@ MultiIndex::MultiIndex(const MultiIndex &s) : m_conn(s.m_conn) {
   no_dimensions = s.no_dimensions;
   no_tuples = s.no_tuples;
   no_tuples_too_big = s.no_tuples_too_big;
+
   if (no_dimensions > 0) {
     dim_size = new int64_t[no_dimensions];
     group_for_dim = new DimensionGroup *[no_dimensions];
     group_num_for_dim = new int[no_dimensions];
     used_in_output = s.used_in_output;
     can_be_distinct = s.can_be_distinct;
+
     for (uint i = 0; i < s.dim_groups.size(); i++) dim_groups.push_back(s.dim_groups[i]->Clone(false));
 
     for (int i = 0; i < no_dimensions; i++) dim_size[i] = s.dim_size[i];
@@ -62,6 +65,7 @@ MultiIndex::MultiIndex(const MultiIndex &s) : m_conn(s.m_conn) {
     group_for_dim = nullptr;
     group_num_for_dim = nullptr;
   }
+
   iterator_lock = 0;
   shallow_dim_groups = false;
 }
@@ -71,6 +75,7 @@ MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
   no_dimensions = s.no_dimensions;
   no_tuples = s.no_tuples;
   no_tuples_too_big = s.no_tuples_too_big;
+
   if (no_dimensions > 0) {
     group_for_dim = new DimensionGroup *[no_dimensions];
     group_num_for_dim = new int[no_dimensions];
@@ -87,6 +92,7 @@ MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
     group_for_dim = nullptr;
     group_num_for_dim = nullptr;
   }
+
   iterator_lock = 0;
   shallow_dim_groups = shallow;
 }
@@ -98,6 +104,7 @@ MultiIndex::~MultiIndex() {
       dim_groups[i] = nullptr;
     }
   }
+
   delete[] dim_size;
   delete[] group_for_dim;
   delete[] group_num_for_dim;
@@ -110,11 +117,13 @@ void MultiIndex::Clear() {
       dim_groups[i] = nullptr;
     }
   } catch (...) {
-    assert(!"exception from destructor");
+    DEBUG_ASSERT(!"exception from destructor");
   }
+
   delete[] dim_size;
   delete[] group_for_dim;
   delete[] group_num_for_dim;
+
   dim_groups.clear();
   no_dimensions = 0;
   no_tuples = 0;
@@ -123,6 +132,7 @@ void MultiIndex::Clear() {
   group_for_dim = nullptr;
   group_num_for_dim = nullptr;
   iterator_lock = 0;
+
   can_be_distinct.clear();
   used_in_output.clear();
 }
@@ -133,6 +143,7 @@ void MultiIndex::FillGroupForDim() {
   for (uint i = 0; i < dim_groups.size(); i++) {  // pack all holes
     if (dim_groups[i] == nullptr) {
       while (i + move_groups < dim_groups.size() && dim_groups[i + move_groups] == nullptr) move_groups++;
+
       if (i + move_groups < dim_groups.size()) {
         dim_groups[i] = dim_groups[i + move_groups];
         dim_groups[i + move_groups] = nullptr;
@@ -140,6 +151,7 @@ void MultiIndex::FillGroupForDim() {
         break;
     }
   }
+
   for (int i = 0; i < move_groups; i++) dim_groups.pop_back();  // clear nulls from the end
 
   for (int d = 0; d < no_dimensions; d++) {
@@ -162,12 +174,14 @@ void MultiIndex::Empty(int dim_to_make_empty) {
   else {
     for (uint i = 0; i < dim_groups.size(); i++) dim_groups[i]->Empty();
   }
+
   for (int i = 0; i < no_dimensions; i++) {
     if (dim_to_make_empty == -1 || group_for_dim[dim_to_make_empty]->DimUsed(i)) {
       can_be_distinct[i] = true;
       used_in_output[i] = true;
     }
   }
+
   no_tuples = 0;
   no_tuples_too_big = false;
 }
@@ -177,14 +191,17 @@ void MultiIndex::AddDimension() {
   int64_t *ns = new int64_t[no_dimensions];
   DimensionGroup **ng = new DimensionGroup *[no_dimensions];
   int *ngn = new int[no_dimensions];
+
   for (int i = 0; i < no_dimensions - 1; i++) {
     ns[i] = dim_size[i];
     ng[i] = group_for_dim[i];
     ngn[i] = group_num_for_dim[i];
   }
+
   delete[] dim_size;
   delete[] group_for_dim;
   delete[] group_num_for_dim;
+
   dim_size = ns;
   group_for_dim = ng;
   group_num_for_dim = ngn;
@@ -192,7 +209,6 @@ void MultiIndex::AddDimension() {
   group_for_dim[no_dimensions - 1] = nullptr;
   group_num_for_dim[no_dimensions - 1] = -1;
   // Temporary code, for rare cases when we add a dimension after other joins
-  // (smk_33):
   for (uint i = 0; i < dim_groups.size(); i++) dim_groups[i]->AddDimension();
 
   return;  // Note: other functions will use AddDimension() to enlarge tables
@@ -202,10 +218,12 @@ void MultiIndex::AddDimension_cross(uint64_t size) {
   AddDimension();
   int new_dim = no_dimensions - 1;
   used_in_output.push_back(true);
+
   if (no_dimensions > 1)
     MultiplyNoTuples(size);
   else
     no_tuples = size;
+
   DimensionGroupFilter *nf = nullptr;
   if (size > 0) {
     dim_size[new_dim] = size;
@@ -215,6 +233,7 @@ void MultiIndex::AddDimension_cross(uint64_t size) {
     nf = new DimensionGroupFilter(new_dim, dim_size[new_dim], p_power);  // redo
     nf->Empty();
   }
+
   dim_groups.push_back(nf);
   group_for_dim[new_dim] = nf;
   group_num_for_dim[new_dim] = int(dim_groups.size() - 1);
@@ -231,23 +250,21 @@ void MultiIndex::MultiplyNoTuples(uint64_t factor) {
 void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct table
                                                 // in case of virtual multiindex
 {
-  // check whether can_be_distinct can be true
-  // it is possible only when there are only 1-object dimensions
-  // and one multiobject (then the multiobject one can be distinct, the rest
-  // cannot)
+  // check whether can_be_distinct can be true it is possible only when there are only 1-object dimensions
+  // and one multiobject (then the multiobject one can be distinct, the rest cannot)
   if (no_dimensions > 1) {
     int non_one_found = 0;
     for (int i = 0; i < no_dimensions; i++) {
       if (dim_size[i] > 1)
         non_one_found++;
     }
+
     if (non_one_found == 1) {
-      for (int j = 0; j < no_dimensions; j++)
-        if (dim_size[j] == 1)
-          can_be_distinct[j] = false;
-        else
-          can_be_distinct[j] = true;
+      for (int j = 0; j < no_dimensions; j++) {
+        can_be_distinct[j] = (dim_size[j] == 1) ? false : true;
+      }
     }
+
     if (non_one_found > 1)
       for (int j = 0; j < no_dimensions; j++) can_be_distinct[j] = false;
   }
@@ -290,22 +307,27 @@ void MultiIndex::UnlockAllFromUse() {
 void MultiIndex::MakeCountOnly(int64_t mat_tuples, DimensionVector &dims_to_materialize) {
   MEASURE_FET("MultiIndex::MakeCountOnly(...)");
   MarkInvolvedDimGroups(dims_to_materialize);
+
   for (int i = 0; i < NumOfDimensions(); i++) {
     if (dims_to_materialize[i] && group_for_dim[i] != nullptr) {
       // delete this group
       int dim_group_to_delete = group_num_for_dim[i];
-      for (int j = i; j < NumOfDimensions(); j++)
+      for (int j = i; j < NumOfDimensions(); j++) {
         if (group_num_for_dim[j] == dim_group_to_delete) {
           group_for_dim[j] = nullptr;
           group_num_for_dim[j] = -1;
         }
+      }
+
       delete dim_groups[dim_group_to_delete];
       dim_groups[dim_group_to_delete] = nullptr;  // these holes will be packed in FillGroupForDim()
     }
   }
+
   DimensionGroupMaterialized *count_only_group = new DimensionGroupMaterialized(dims_to_materialize);
   count_only_group->SetNumOfObj(mat_tuples);
   dim_groups.push_back(count_only_group);
+
   FillGroupForDim();
   UpdateNumOfTuples();
 }
@@ -319,14 +341,11 @@ void MultiIndex::UpdateNumOfTuples() {
   // output)
   // - if no_material_tuples > 0, then new index_type is not IT_VIRTUAL
   no_tuples_too_big = false;
-  if (dim_groups.size() == 0)
-    no_tuples = 0;
-  else {
-    no_tuples = 1;
-    for (uint i = 0; i < dim_groups.size(); i++) {
-      dim_groups[i]->UpdateNumOfTuples();
-      MultiplyNoTuples(dim_groups[i]->NumOfTuples());
-    }
+  no_tuples = (dim_groups.size() == 0) ? 0 : 1;
+
+  for (uint i = 0; i < dim_groups.size(); i++) {
+    dim_groups[i]->UpdateNumOfTuples();
+    MultiplyNoTuples(dim_groups[i]->NumOfTuples());
   }
 }
 
@@ -336,13 +355,16 @@ int64_t MultiIndex::NumOfTuples(DimensionVector &dimensions,
   std::vector<int> dg = ListInvolvedDimGroups(dimensions);
   if (dg.size() == 0)
     return 0;
+
   int64_t res = 1;
   for (uint i = 0; i < dg.size(); i++) {
     dim_groups[dg[i]]->UpdateNumOfTuples();
     res = SafeMultiplication(res, dim_groups[dg[i]]->NumOfTuples());
   }
+
   if (res == common::NULL_VALUE_64 && fail_on_overflow)
     throw common::OutOfMemoryException("Too many tuples.  (1428)");
+
   return res;
 }
 
@@ -379,9 +401,11 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
     while (fit.IsValid()) {
       if (!fd.Get(cur_pos))
         fit.ResetDelayed();
+
       ++fit;
       cur_pos++;
     }
+
     f->Commit();
     UpdateNumOfTuples();
     UnlockAllFromUse();
@@ -397,6 +421,7 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
   new_mind.Init(new_no_tuples);
   mit.Rewind();
   int64_t f_pos = 0;
+
   while (mit.IsValid()) {
     if (fd.Get(f_pos)) {
       for (int d = 0; d < no_dimensions; d++)
@@ -407,6 +432,7 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
     ++mit;
     f_pos++;
   }
+
   new_mind.Commit(new_no_tuples);
   UpdateNumOfTuples();
   UnlockAllFromUse();
@@ -479,5 +505,6 @@ std::string MultiIndex::Display() {
   s += "]";
   return s;
 }
+
 }  // namespace core
 }  // namespace Tianmu

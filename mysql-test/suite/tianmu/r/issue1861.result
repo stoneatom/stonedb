@@ -1,0 +1,61 @@
+DROP DATABASE IF EXISTS issue1861_test;
+CREATE DATABASE issue1861_test;
+USE issue1861_test;
+CREATE TABLE `c1fg_pool` (
+`ROW_ID` decimal(18,0) NOT NULL DEFAULT '-1',
+PRIMARY KEY (`ROW_ID`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `c1fg_pl_node` (
+`ROW_ID` decimal(18,0) NOT NULL DEFAULT '-1',
+`POOL_ID` decimal(18,0) NOT NULL DEFAULT '-1',
+`COMPANY_ID` decimal(18,0) DEFAULT '-1',
+PRIMARY KEY (`ROW_ID`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `c1fg_pl_account` (
+`ROW_ID` decimal(18,0) NOT NULL DEFAULT '-1',
+`NODE_ID` decimal(18,0) NOT NULL DEFAULT '-1',
+PRIMARY KEY (`ROW_ID`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `c1fg_pl_subsidiary` (
+`ROW_ID` decimal(18,0) NOT NULL DEFAULT '-1',
+`ACCOUNT_ID` decimal(18,0) NOT NULL DEFAULT '-1',
+`FISCAL_DATE` date DEFAULT NULL,
+`DR_AMOUNT` decimal(16,2) NOT NULL DEFAULT '0.00' ,
+PRIMARY KEY (`ROW_ID`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `c1md_company` (
+`ROW_ID` decimal(18,0) NOT NULL DEFAULT '-1' ,
+`SYS_ID` decimal(18,0) NOT NULL DEFAULT '-1' ,
+PRIMARY KEY (`ROW_ID`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+SELECT B.company_id,
+'上划日' ud_type,
+2 sort_no,
+'合计' fiscal_date,
+DATE_FORMAT('2023-06-06', '%Y-%m-%d') fiscal_date,
+C.pl_amount
+FROM c1fg_pool A
+INNER JOIN c1fg_pl_node B
+ON A.row_id = B.pool_id
+LEFT JOIN (SELECT c.node_id, SUM(d.dr_amount) pl_amount
+FROM c1fg_pool          a,
+c1fg_pl_node       b,
+c1fg_pl_account    c,
+c1fg_pl_subsidiary d
+WHERE a.row_id = b.pool_id
+AND b.row_id = c.node_id
+AND c.row_id = d.account_id
+AND b.company_id IN
+(SELECT t1.row_id
+FROM c1md_company t1, c1md_company t2
+WHERE t1.sys_id = t2.sys_id)
+GROUP BY c.node_id) C
+ON B.row_id = C.node_id
+ORDER BY B.company_id;
+company_id	ud_type	sort_no	fiscal_date	fiscal_date	pl_amount
+DROP TABLE c1md_company;
+DROP TABLE c1fg_pl_subsidiary;
+DROP TABLE c1fg_pl_account;
+DROP TABLE c1fg_pl_node;
+DROP TABLE c1fg_pool;
+DROP DATABASE issue1861_test;

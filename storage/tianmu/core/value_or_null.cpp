@@ -23,31 +23,39 @@
 
 namespace Tianmu {
 namespace core {
+
 void ValueOrNull::SetBString(const types::BString &tianmu_s) {
   Clear();
   if (!tianmu_s.IsNull()) {
     null = false;
     if (tianmu_s.IsPersistent()) {
       string_owner = true;
-      sp = new char[tianmu_s.len_ + 1];
-      std::memcpy(sp, tianmu_s.val_, tianmu_s.len_);
-      sp[tianmu_s.len_] = 0;
+      sp = new (std::nothrow) char[tianmu_s.len_ + 1];
+      if (sp) {
+        std::memset(sp, '\0', tianmu_s.len_ + 1);
+        std::memcpy(sp, tianmu_s.val_, tianmu_s.len_);
+      }
     } else {
       sp = tianmu_s.val_;
       string_owner = false;
     }
+
     len = tianmu_s.len_;
   }
 }
 
 void ValueOrNull::MakeStringOwner() {
-  if (!sp || string_owner)
+  if (!sp || !len || string_owner)
     return;
-  char *tmp = new char[len + 1];
-  std::memcpy(tmp, sp, len);
-  tmp[len] = 0;
-  sp = tmp;
-  string_owner = true;
+
+  char *tmp = new (std::nothrow) char[len + 1];
+  if (tmp) {
+    std::memset(tmp, '\0', len + 1);
+    std::memcpy(tmp, sp, len);
+
+    sp = tmp;
+    string_owner = true;
+  }
 }
 
 std::optional<std::string> ValueOrNull::ToString() const {
@@ -63,36 +71,55 @@ void ValueOrNull::GetBString(types::BString &tianmu_s) const {
     tianmu_s = rcs_null;
   } else {
     // copy either from sp or x
-    if (sp)
-      tianmu_s = types::BString(sp, len, true);
-    else
-      tianmu_s = types::TianmuNum(x).ToBString();
+    tianmu_s = (sp) ? types::BString(sp, len, true) : types::TianmuNum(x).ToBString();
     tianmu_s.MakePersistent();
   }
 }
 
 ValueOrNull::ValueOrNull(ValueOrNull const &von)
-    : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null) {
-  if (string_owner) {
-    sp = new char[len + 1];
-    std::memcpy(sp, von.sp, len);
-    sp[len] = 0;
+    : x(von.x), len(von.len), string_owner(von.string_owner), null(von.null), unsigned_flag_(von.unsigned_flag_) {
+  if (string_owner && von.sp && len > 0) {
+    sp = new (std::nothrow) char[len + 1];
+
+    if (sp) {
+      std::memset(sp, '\0', len + 1);
+      std::memcpy(sp, von.sp, len);
+    } else {
+      string_owner = false;
+      sp = von.sp;
+    }
   } else {
     sp = von.sp;
   }
 }
 
 ValueOrNull &ValueOrNull::operator=(ValueOrNull const &von) {
-  if (&von != this) {
-    ValueOrNull tmp(von);
-    Swap(tmp);
+  if (this == &von)
+    return *this;
+
+  if (von.string_owner && von.sp) {
+    sp = new (std::nothrow) char[von.len + 1];
+    if (sp) {
+      std::memset(sp, '\0', von.len + 1);
+      std::memcpy(sp, von.sp, von.len);
+      len = von.len;
+    }
+  } else {
+    sp = von.sp;
   }
+
+  string_owner = von.string_owner;
+  null = von.null;
+  x = von.x;
+
   return (*this);
 }
 
-ValueOrNull::ValueOrNull(types::TianmuNum const &tianmu_n) : x(tianmu_n.GetValueInt64()), null(tianmu_n.IsNull()) {}
+ValueOrNull::ValueOrNull(types::TianmuNum const &tianmu_n)
+    : x(tianmu_n.GetValueInt64()), null(tianmu_n.IsNull()), unsigned_flag_(tianmu_n.GetUnsignedFlag()) {}
 
-ValueOrNull::ValueOrNull(types::TianmuDateTime const &tianmu_dt) : x(tianmu_dt.GetInt64()), null(tianmu_dt.IsNull()) {}
+ValueOrNull::ValueOrNull(types::TianmuDateTime const &tianmu_dt)
+    : x(tianmu_dt.GetInt64()), null(tianmu_dt.IsNull()), unsigned_flag_(true) {}
 
 ValueOrNull::ValueOrNull(types::BString const &tianmu_s)
     : x(common::NULL_VALUE_64),
@@ -111,7 +138,9 @@ void ValueOrNull::Swap(ValueOrNull &von) {
     std::swap(sp, von.sp);
     std::swap(len, von.len);
     std::swap(string_owner, von.string_owner);
+    std::swap(unsigned_flag_, von.unsigned_flag_);
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu

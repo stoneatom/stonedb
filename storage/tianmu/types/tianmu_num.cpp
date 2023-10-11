@@ -29,14 +29,16 @@ namespace Tianmu {
 namespace types {
 
 TianmuNum::TianmuNum(common::ColumnType attrt)
-    : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt) {}
+    : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt), unsigned_flag_(false) {}
 
-TianmuNum::TianmuNum(int64_t value, short scale, bool is_double, common::ColumnType attrt) {
-  Assign(value, scale, is_double, attrt);
+TianmuNum::TianmuNum(int64_t value, short scale, bool is_double, common::ColumnType attrt, bool unsigned_flag) {
+  Assign(value, scale, is_double, attrt, unsigned_flag);
 }
 
 TianmuNum::TianmuNum(double value)
     : value_(*(int64_t *)&value), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::ColumnType::REAL) {
+  // In tianmu, real type does not support unsigned well.
+  unsigned_flag_ = false;
   null_ = (value_ == NULL_VALUE_D ? true : false);
 }
 
@@ -46,17 +48,19 @@ TianmuNum::TianmuNum(const TianmuNum &tianmu_n)
       scale_(tianmu_n.scale_),
       is_double_(tianmu_n.is_double_),
       is_dot_(tianmu_n.is_dot_),
-      attr_type_(tianmu_n.attr_type_) {
+      attr_type_(tianmu_n.attr_type_),
+      unsigned_flag_(tianmu_n.unsigned_flag_) {
   null_ = tianmu_n.null_;
 }
 
 TianmuNum::~TianmuNum() {}
 
-TianmuNum &TianmuNum::Assign(int64_t value, short scale, bool is_double, common::ColumnType attrt) {
+TianmuNum &TianmuNum::Assign(int64_t value, short scale, bool is_double, common::ColumnType attrt, bool unsigned_flag) {
   this->value_ = value;
   this->scale_ = scale;
   this->is_double_ = is_double;
   this->attr_type_ = attrt;
+  this->unsigned_flag_ = unsigned_flag;
 
   if (scale != -1 &&
       !is_double_) {  // check if construct decimal, the UNK is used on temp_table.cpp: GetValueString(..)
@@ -84,6 +88,7 @@ TianmuNum &TianmuNum::Assign(double value) {
   this->is_double_ = true;
   this->is_dot_ = false;
   this->attr_type_ = common::ColumnType::REAL;
+  this->unsigned_flag_ = false;
   common::double_int_t v(value_);
   null_ = (v.i == common::NULL_VALUE_64 ? true : false);
   return *this;
@@ -346,7 +351,7 @@ bool TianmuNum::operator>=(const TianmuDataType &tianmu_dt) const {
 }
 
 TianmuNum &TianmuNum::operator-=(const TianmuNum &tianmu_n) {
-  assert(!null_);
+  DEBUG_ASSERT(!null_);
   if (tianmu_n.IsNull() || tianmu_n.IsNull())
     return *this;
   if (IsReal() || tianmu_n.IsReal()) {
@@ -370,7 +375,7 @@ TianmuNum &TianmuNum::operator-=(const TianmuNum &tianmu_n) {
 }
 
 TianmuNum &TianmuNum::operator+=(const TianmuNum &tianmu_n) {
-  assert(!null_);
+  DEBUG_ASSERT(!null_);
   if (tianmu_n.IsNull() || tianmu_n.IsNull())
     return *this;
   if (IsReal() || tianmu_n.IsReal()) {
@@ -394,7 +399,7 @@ TianmuNum &TianmuNum::operator+=(const TianmuNum &tianmu_n) {
 }
 
 TianmuNum &TianmuNum::operator*=(const TianmuNum &tianmu_n) {
-  assert(!null_);
+  DEBUG_ASSERT(!null_);
   if (tianmu_n.IsNull() || tianmu_n.IsNull())
     return *this;
   if (IsReal() || tianmu_n.IsReal()) {
@@ -431,7 +436,7 @@ void fcvt(char *buf, double val, int digits, int *dec, int *sign) {
 }
 
 TianmuNum &TianmuNum::operator/=(const TianmuNum &tianmu_n) {
-  assert(!null_);
+  DEBUG_ASSERT(!null_);
   if (tianmu_n.IsNull() || tianmu_n.IsNull())
     return *this;
   if (IsReal() || tianmu_n.IsReal()) {

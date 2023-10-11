@@ -123,7 +123,7 @@ id int(11) NOT NULL AUTO_INCREMENT,
 company varchar(25), 
 PRIMARY KEY (id)
 ) ENGINE=TIANMU AUTO_INCREMENT=100;
-LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/load_auto_increment_value.txt' INTO TABLE load_auto_increment_value;
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/load_auto_increment_value.txt' INTO TABLE load_auto_increment_value FIELDS TERMINATED BY ';';
 select * from load_auto_increment_value;
 id	company
 100	"syz100"

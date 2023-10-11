@@ -72,7 +72,7 @@ PackOrderer::PackOrderer(vcolumn::VirtualColumn *vc, common::RoughSetValue *r_fi
 }
 
 bool PackOrderer::Init(vcolumn::VirtualColumn *vc, OrderType order, common::RoughSetValue *r_filter) {
-  assert(vc->GetDim() != -1);  // works only for vcolumns based on a single table
+  DEBUG_ASSERT(vc->GetDim() != -1);  // works only for vcolumns based on a single table
 
   if (Initialized())
     return false;
@@ -290,7 +290,7 @@ void PackOrderer::NextPack() {
 }
 
 PackOrderer &PackOrderer::operator++() {
-  assert(Initialized());
+  DEBUG_ASSERT(Initialized());
   if (n_cols_ == 1) {
     NextPack();
   } else {
@@ -324,9 +324,9 @@ void PackOrderer::RewindCol() {
 }
 
 void PackOrderer::RewindToMatch(vcolumn::VirtualColumn *vc, MIIterator &mit) {
-  assert(vc->GetDim() != -1);
-  assert(order_type_[cur_vc_] == OrderType::kRangeSimilarity);
-  assert(n_cols_ == 1);  // not implemented otherwise
+  DEBUG_ASSERT(vc->GetDim() != -1);
+  DEBUG_ASSERT(order_type_[cur_vc_] == OrderType::kRangeSimilarity);
+  DEBUG_ASSERT(n_cols_ == 1);  // not implemented otherwise
 
   if (min_max_type_[cur_vc_] == MinMaxType::kMMTFixed) {
     int64_t mid = common::MINUS_INF_64;

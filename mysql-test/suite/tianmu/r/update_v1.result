@@ -259,7 +259,7 @@ id	token
 UPDATE t1 SET token = NULL WHERE token = X'ad';
 SELECT * FROM t1;
 id	token
-1	­
-2	­
+1	NULL
+2	NULL
 DROP TABLE t1;
 DROP DATABASE update_v1_db;

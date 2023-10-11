@@ -151,11 +151,11 @@ class ValueMatching_LookupTable : public mm::TraceableObject, public ValueMatchi
   // TO BE OPTIMIZED: actually we don't need any grouping buffer if there's no
   // UTF part
   unsigned char *GetGroupingRow(int64_t row) override {
-    assert(row < max_no_rows);
+    DEBUG_ASSERT(row < max_no_rows);
     return t + row * total_width;
   }
   unsigned char *GetAggregationRow(int64_t row) override {
-    assert(row < max_no_rows);
+    DEBUG_ASSERT(row < max_no_rows);
     return t_aggr + row * total_width;
   }
 

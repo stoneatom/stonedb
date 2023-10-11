@@ -163,7 +163,7 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
 
 Item_tianmufield *MysqlExpression::GetTianmufieldItem(Item_field *ifield) {
   auto key = item2varid->find(ifield);
-  assert(key != item2varid->end());
+  DEBUG_ASSERT(key != item2varid->end());
   auto it = tianmu_fields_cache.find(key->second);
   Item_tianmufield *tianmufield = nullptr;
   if (it != tianmu_fields_cache.end()) {
@@ -352,8 +352,33 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
 
 MysqlExpression::SetOfVars &MysqlExpression::GetVars() { return vars; }
 
+bool item_func_suser_traverse(Item_func *it_f) {
+  if (it_f->functype() == Item_func::Functype::SUSERVAR_FUNC)
+    return true;
+  bool res = false;
+  Item **args = nullptr;
+  uint cnt = it_f->arg_count;
+  if (it_f->arg_count > 0)
+    args = it_f->arguments();
+  for (uint i = 0; i < cnt && !res; ++i) {
+    if (args[i]->type() == Item::Type::FUNC_ITEM)
+      res = item_func_suser_traverse(reinterpret_cast<Item_func *>(args[i]));
+  }
+  return res;
+}
+
+/* Only return true when item set user value.
+ * It is equal to one of node in item tree is Item_func_set_user_var.
+ */
+bool MysqlExpression::BaseOnUserValue() {
+  if (item->type() != Item::Type::FUNC_ITEM)
+    return false;
+  Item_func *item_f = reinterpret_cast<Item_func *>(item);
+  return item_func_suser_traverse(item_f);
+}
+
 void MysqlExpression::SetBufsOrParams(var_buf_t *bufs) {
-  assert(bufs);
+  DEBUG_ASSERT(bufs);
   for (auto &it : tianmu_fields_cache) {
     auto buf_set = bufs->find(it.first);
     if (buf_set != bufs->end()) {
@@ -435,7 +460,7 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
       // the bug inside common::TxtDataFormat::StaticExtrnalSize.
       break;
     case ROW_RESULT:
-      assert(0 && "unexpected type: ROW_RESULT");
+      DEBUG_ASSERT(0 && "unexpected type: ROW_RESULT");
       break;
   }
   return type;
@@ -464,7 +489,7 @@ std::shared_ptr<ValueOrNull> MysqlExpression::Evaluate() {
     case STRING_RESULT:
       return ItemString2ValueOrNull(item, type.precision, type.attrtype);
     default:
-      assert(0 && "unexpected value");
+      DEBUG_ASSERT(0 && "unexpected value");
   }
   return std::make_shared<ValueOrNull>();
 }
@@ -540,7 +565,7 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item,
       }
     } else {
       uint len = ret->length();
-      assert(p[len] == 0);
+      DEBUG_ASSERT(p[len] == 0);
       if (maxstrlen >= 0 && len > uint(maxstrlen)) {
         len = maxstrlen;
         p[len] = 0;
@@ -560,6 +585,9 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemInt2ValueOrNull(Item *item) {
   if (v == common::NULL_VALUE_64)
     v++;
   val->SetFixed(v);
+  // add unsigned flag here as item may have unsigned valued, like where a = 18446744073709551601; 18446744073709551601
+  // is an unsigned valued stored in item. Introduced by a bug: https://github.com/stoneatom/stonedb/issues/1564
+  val->SetUnsignedFlag(static_cast<bool>(item->unsigned_flag));
   if (item->null_value)
     return std::make_shared<ValueOrNull>();
   return val;

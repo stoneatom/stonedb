@@ -55,7 +55,7 @@ CREATE TABLE load_auto_increment_value (
   PRIMARY KEY (id)
   ) ENGINE=TIANMU AUTO_INCREMENT=100;
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
-eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/load_auto_increment_value.txt' INTO TABLE load_auto_increment_value;  
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/load_auto_increment_value.txt' INTO TABLE load_auto_increment_value FIELDS TERMINATED BY ';';
 select * from load_auto_increment_value;
 show create table load_auto_increment_value;
 

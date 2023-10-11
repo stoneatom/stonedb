@@ -49,6 +49,11 @@ class TianmuFile : public Stream {
   off_t Tell();
   int Flush();
 
+  inline bool Exists(const std::string &name) {
+    struct stat buffer;
+    return (stat(name.c_str(), &buffer) == 0);
+  }
+
   int Open(std::string const &file, int flags, mode_t mode);
   int OpenCreate(std::string const &file);
   int OpenCreateNotExists(std::string const &file);

@@ -51,23 +51,23 @@ class QuickMath {
      // initialization
   static const double logof2;
   static double nlog2n(uint n) {
-    assert(n <= MAX_NLOG2N);
+    DEBUG_ASSERT(n <= MAX_NLOG2N);
     return tab_nlog2n[n];
   }
-  // static double log(uint n)			{ assert(n <= MAX_LOG);
+  // static double log(uint n)			{ DEBUG_ASSERT(n <= MAX_LOG);
   // return tab_log[n]; }
   static double log2(uint n) {
-    assert(n <= MAX_LOG2);
+    DEBUG_ASSERT(n <= MAX_LOG2);
     return tab_log2[n];
   }
   static double log2(double x) { return std::log(x) / logof2; }
   // returns 10^n
   static double power10f(uint n) {
-    assert(n <= MAX_POW10);
+    DEBUG_ASSERT(n <= MAX_POW10);
     return tab_pow10f[n];
   }
   static int64_t power10i(uint n) {
-    assert(n <= MAX_POW10);
+    DEBUG_ASSERT(n <= MAX_POW10);
     return tab_pow10i[n];
   }
 

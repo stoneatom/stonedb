@@ -66,7 +66,7 @@ void TextStat::AddLen(int pos)  // value of len n puts 0 on position n (starting
 {
   if (static_cast<size_t>(pos) == TAB_SIZE_)
     return;
-  assert(static_cast<size_t>(pos) < TAB_SIZE_);
+  DEBUG_ASSERT(static_cast<size_t>(pos) < TAB_SIZE_);
   chars_found_[256 * pos] = 1;
   if (static_cast<size_t>(pos) > max_string_size_)
     max_string_size_ = pos;
@@ -207,7 +207,7 @@ BString TextStat::Decode(int64_t code) {
   int len = max_string_size_;
   char buf_val[TMP_BUFFER_SIZE_] = {0};
 
-  assert(max_string_size_ < TMP_BUFFER_SIZE_);
+  DEBUG_ASSERT(max_string_size_ < TMP_BUFFER_SIZE_);
   buf_val[max_string_size_] = 0;
   for (int i = max_string_size_ - 1; i >= 0; i--) {
     charcode = 0;

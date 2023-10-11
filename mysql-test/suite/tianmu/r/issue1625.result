@@ -1,0 +1,14 @@
+DROP DATABASE IF EXISTS issue1625_test;
+create database issue1625_test;
+use issue1625_test;
+CREATE TABLE t_latin1(
+a CHAR(20) CHARACTER SET latin1,
+b VARCHAR(20) CHARACTER SET latin1,
+c TEXT(20) CHARACTER SET latin1
+)engine=tianmu;
+INSERT INTO t_latin1 values(x'f242', x'f242', x'f242');
+select * from t_latin1 where a=x'f242';
+a	b	c
+ÚB	ÚB	ÚB
+DROP TABLE t_latin1;
+drop database issue1625_test;

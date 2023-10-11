@@ -336,23 +336,30 @@ uint32_t TianmuTable::GetTableId(const fs::path &dir) {
 }
 
 void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
+  DBUG_ENTER("TianmuTable::CreateNew");
   core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
-  assert(eng);
+  ASSERT(eng);
 
+  // phase 1: Get the Next table id from tianmu.id file.
   uint32_t tid = eng->GetNextTableId();
   auto &path(opt->path);
   uint32_t no_attrs = opt->atis.size();
   uint64_t auto_inc_value = opt->create_info->auto_increment_value;
-  fs::create_directory(path);
+  if (!fs::create_directory(path))
+    throw common::DatabaseException("Create Directory " + path.string() + " failed!");
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE1", { DBUG_VOID_RETURN; });
 
   TABLE_META meta{common::FILE_MAGIC, common::TABLE_DATA_VERSION, tid, opt->pss};
 
+  // phase 2: create "TABLE_DESC" file.
   system::TianmuFile ftbl;
   ftbl.OpenCreateEmpty(path / common::TABLE_DESC_FILE);
   ftbl.WriteExact(&meta, sizeof(meta));
   ftbl.Flush();
   ftbl.Close();
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE2_FAILED", { DBUG_VOID_RETURN; });
 
+  // phase 3: create version file. "V.trxid"
   auto zero = common::TABLE_VERSION_PREFIX + common::TX_ID(0).ToString();
   std::ofstream ofs(path / zero);
   common::TX_ID zid(0);
@@ -360,12 +367,18 @@ void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
     ofs.write(reinterpret_cast<char *>(&zid), sizeof(zid));
   }
   ofs.flush();
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE3_FAILED", { DBUG_VOID_RETURN; });
 
+  // phase 4: create the symbol link of `VERSION`.
   fs::create_symlink(zero, path / common::TABLE_VERSION_FILE);
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE4_FAILED", { DBUG_VOID_RETURN; });
 
+  // phase 5: create  'columns' directories.
   auto column_path = path / common::COLUMN_DIR;
   fs::create_directories(column_path);
+  DBUG_EXECUTE_IF("TIANMU_CREATE_TABLE_PHASE5_FAILED", { DBUG_VOID_RETURN; });
 
+  // phase 6: create all columns directories with col id.
   for (size_t idx = 0; idx < no_attrs; idx++) {
     auto dir = Engine::GetNextDataDir();
     dir /= std::to_string(tid) + "." + std::to_string(idx);
@@ -380,6 +393,8 @@ void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
     // TIANMU_LOG(LogCtl_Level::INFO, "Column %zu at %s", idx, dir.c_str());
   }
   TIANMU_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);
+
+  DBUG_VOID_RETURN;
 }
 
 void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
@@ -744,32 +759,32 @@ int64_t TianmuTable::NumOfValues() const { return NumOfObj(); }
 uint64_t TianmuTable::NextRowId() { return m_delta->row_id++; }
 
 void TianmuTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
-  assert(static_cast<size_t>(attr) <= m_attrs.size());
-  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   s = m_attrs[attr]->GetValueString(obj);
 }
 
 int64_t TianmuTable::GetTable64(int64_t obj, int attr) {
-  assert(static_cast<size_t>(attr) <= m_attrs.size());
-  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValueInt64(obj);
 }
 
 bool TianmuTable::IsNull(int64_t obj, int attr) {
-  assert(static_cast<size_t>(attr) <= m_attrs.size());
-  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return (m_attrs[attr]->IsNull(obj) ? true : false);
 }
 
 types::TianmuValueObject TianmuTable::GetValue(int64_t obj, int attr, [[maybe_unused]] Transaction *conn) {
-  assert(static_cast<size_t>(attr) <= m_attrs.size());
-  assert(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValue(obj, false);
 }
 
 bool TianmuTable::IsDelete(int64_t row) const { return m_attrs[0]->IsDelete(row); }
 uint TianmuTable::MaxStringSize(int n_a, Filter *f) {
-  assert(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
+  DEBUG_ASSERT(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
   if (NumOfObj() == 0)
     return 1;
   return m_attrs[n_a]->MaxStringSize(f);
@@ -878,13 +893,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
         my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
         common::GMTSec2GMTTime(&my_time, secs_utc);
       }
-      types::DT dt = {};
-      dt.year = my_time.year;
-      dt.month = my_time.month;
-      dt.day = my_time.day;
-      dt.hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
@@ -894,11 +903,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       MYSQL_TIME my_time;
       std::memset(&my_time, 0, sizeof(my_time));
       f->get_time(&my_time);
-      types::DT dt = {};
-      dt.time_hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
-      dt.neg = my_time.neg;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
@@ -911,13 +916,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       MYSQL_TIME my_time;
       std::memset(&my_time, 0, sizeof(my_time));
       f->get_time(&my_time);
-      types::DT dt = {};
-      dt.year = my_time.year;
-      dt.month = my_time.month;
-      dt.day = my_time.day;
-      dt.hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
+      types::DT dt(my_time);
 
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
@@ -1001,7 +1000,6 @@ int TianmuTable::Insert(TABLE *table) {
 }
 
 int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data) {
-  // todo(dfx): move to before for loop, need test
   my_bitmap_map *org_bitmap2 = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [org_bitmap2, table](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap2); });
@@ -1010,6 +1008,9 @@ int TianmuTable::Update(TABLE *table, uint64_t row_id, const uchar *old_data, uc
   core::Engine *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
   assert(eng);
 
+  // uinsg check_unique_constraint(table) to check whether it has unique constr on this table;
+  // now, tianmu only support PK, the unique constraint is not supported now.
+  // the vfield is not in our consideration. and should not has any triggers on it.
   for (uint col_id = 0; col_id < table->s->fields; col_id++) {
     if (!bitmap_is_set(table->write_set, col_id)) {
       continue;
@@ -1117,11 +1118,20 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
 
   auto no_loaded_rows = parser.GetNoRow();
 
-  if (no_loaded_rows > 0 && mysql_bin_log.is_open())
-    if (binlog_load_query_log_event(iop) != 0) {
-      TIANMU_LOG(LogCtl_Level::ERROR, "Write load binlog fail!");
-      throw common::FormatException("Write load binlog fail!");
+  if (no_loaded_rows > 0 && mysql_bin_log.is_open()) {
+    LOAD_FILE_INFO *lf_info = (LOAD_FILE_INFO *)iop.GetLogInfo();
+    THD *thd = lf_info->thd;
+    if (thd->is_current_stmt_binlog_format_row()) {  // if binlog format is row
+      if (binlog_flush_pending_rows_event(iop, true, iop.GetTable()->file->has_transactions()) != 0) {
+        TIANMU_LOG(LogCtl_Level::ERROR, "Write row binlog fail!");
+        throw common::FormatException("Write row binlog fail!");
+      }
+    } else if (binlog_load_query_log_event(iop) != 0) {
+      TIANMU_LOG(LogCtl_Level::ERROR, "Write statement binlog fail!");
+      throw common::FormatException("Write statement binlog fail!");
     }
+  }
+
   timer.Print(__PRETTY_FUNCTION__);
 
   no_rejected_rows = parser.GetNumOfRejectedRows();
@@ -1134,6 +1144,31 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
     throw common::FormatException(-1, -1);
 
   return no_loaded_rows;
+}
+
+int TianmuTable::binlog_flush_pending_rows_event(system::IOParameters &iop, bool stmt_end, bool is_transactional) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
+  /*
+    We shall flush the pending event even if we are not in row-based
+    mode: it might be the case that we left row-based mode before
+    flushing anything (e.g., if we have explicitly locked tables).
+   */
+  if (!mysql_bin_log.is_open())
+    DBUG_RETURN(0);
+
+  LOAD_FILE_INFO *lf_info = (LOAD_FILE_INFO *)iop.GetLogInfo();
+  THD *thd = lf_info->thd;
+  thd->tianmu_need_xid = true;
+  int error = 0;
+
+  if (Rows_log_event *pending = thd->binlog_get_pending_rows_event(is_transactional)) {
+    if (stmt_end) {
+      pending->set_flags(Rows_log_event::STMT_END_F);
+      thd->clear_binlog_table_maps();
+    }
+    error = mysql_bin_log.flush_and_set_pending_rows_event(thd, 0, is_transactional);
+  }
+  DBUG_RETURN(error);
 }
 
 int TianmuTable::binlog_load_query_log_event(system::IOParameters &iop) {

@@ -121,15 +121,15 @@ CREATE TABLE `issue880_t3` (
 --disable_warnings
 # load data issue880_t1
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
-eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1 FIELDS TERMINATED BY ';';
 
 #  load data issue880_t3
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
-eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3 FIELDS TERMINATED BY ';';
 
 #  load data issue880_t2
 --replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
-eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2;
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2 FIELDS TERMINATED BY ';';
 --enable_warnings
 
 # test timestamp union timestamp

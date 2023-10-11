@@ -10,17 +10,17 @@ sidebar_position: 3.14
 
 - GitHub 下载
 ```sql
-wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+wget  https://github.com/stoneatom/stonedb/releases/download/5.7-v1.0.4-alpha/stonedb-ce-5.7-v1.0.4-alpha.ubuntu.amd64.deb
 ```
 
    - Gitee 下载
 ```sql
-wget https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.3-GA/stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+wget https://gitee.com/StoneDB/stonedb/releases/download/5.7-v1.0.4-alpha/stonedb-ce-5.7-v1.0.4-alpha.ubuntu.amd64.deb
 ```
 
 2. 使用 DPKG 命令进行安装。
 ```sql
-dpkg -i stonedb-ce-5.7_v1.0.2.ubuntu.amd64.deb
+dpkg -x stonedb-ce-5.7-v1.0.4-alpha.ubuntu.amd64.deb
 ```
 :::info
 如该步骤执行失败，请执行 `ldd /opt/stonedb57/install/bin/mysqld | grep 'not found'` 命令，检查是否缺少依赖。如是，请执行 `source /opt/stonedb57/install/bin/sourceenv` 问题后重试。

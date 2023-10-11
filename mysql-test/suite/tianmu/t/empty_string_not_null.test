@@ -1,0 +1,71 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # tests updates that sets invalid range when we set value at max boundary that is less than max.
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS empty_string_not_null;
+CREATE DATABASE empty_string_not_null;
+USE empty_string_not_null;
+--enable_warnings
+
+CREATE TABLE t(s text);
+INSERT INTO t(s) VALUES (''), (NULL);
+
+SELECT COUNT(*) FROM t WHERE s IS NULL;
+SELECT COUNT(*) FROM t WHERE s IS NOT NULL;
+
+SELECT * FROM t;
+
+DROP TABLE t;
+
+CREATE TABLE t(s text);
+# this will test different code path in writeengine.
+INSERT INTO t(s) VALUES ('');
+INSERT INTO t(s) VALUES (NULL);
+
+SELECT * FROM t;
+
+SELECT COUNT(*) FROM t WHERE s IS NULL;
+
+DROP TABLE t;
+
+CREATE TABLE t(s text) ;
+# handling of some obsucure pseudo-null magic value.
+INSERT INTO t(s) VALUES ('_CpNuLl_'),(''), (NULL);
+
+SELECT * FROM t;
+
+SELECT COUNT(*) FROM t WHERE s IS NULL;
+
+DROP TABLE t;
+
+# There is a problem with comparison
+CREATE TABLE t(c6 CHAR(6)) ;
+
+INSERT INTO t(c6) VALUES ('a'), ('b'), ('c');
+
+SELECT 2, COUNT(*) FROM t WHERE (c6 <= 'b' OR c6 <= '');
+
+SELECT 2, COUNT(*) FROM t WHERE (c6 <= 'b');
+
+SELECT 0, COUNT(*) FROM t WHERE (c6 <= '');
+
+SELECT 0, COUNT(*) FROM t WHERE (c6 <= ' ');
+
+SELECT 2, COUNT(*) FROM t WHERE (c6 <= 'b' OR c6 <= ' ');
+
+SELECT 0, COUNT(*) FROM t WHERE (c6 < '');
+
+SELECT 0, COUNT(*) FROM t WHERE (c6 < ' ');
+
+DROP TABLE IF EXISTS t;
+CREATE TABLE t(a CHAR(10));
+INSERT INTO t(a) VALUES (''), (NULL), ('   '), (' a ');
+SELECT LTRIM(a) FROM t;
+SELECT RTRIM(a) FROM t;
+#SELECT length(RTRIM(a)) FROM t;
+#SELECT length(RTRIM(a)) FROM t;
+
+DROP DATABASE empty_string_not_null;

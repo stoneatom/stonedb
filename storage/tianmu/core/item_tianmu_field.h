@@ -188,7 +188,7 @@ class Item_tianmuyear : public Item_tianmudatetime_base {
   int length;
 
  public:
-  Item_tianmuyear(int len) : length(len) { assert(length == 2 || length == 4); }
+  Item_tianmuyear(int len) : length(len) { DEBUG_ASSERT(length == 2 || length == 4); }
   longlong val_int() override;
   String *val_str(String *s) override;
   bool get_date(MYSQL_TIME *ltime, uint fuzzydate) override;

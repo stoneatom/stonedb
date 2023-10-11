@@ -904,9 +904,9 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
   bool false_desc = false;
 
   // descriptor preparation (normalization etc.)
-  for (uint i = 0; i < no_desc; i++) {      // Note that desc.size() may enlarge
-                                            // when joining with BETWEEN occur
-    assert(descriptors_[i].done == false);  // If not false, check it carefully.
+  for (uint i = 0; i < no_desc; i++) {            // Note that desc.size() may enlarge
+                                                  // when joining with BETWEEN occur
+    DEBUG_ASSERT(descriptors_[i].done == false);  // If not false, check it carefully.
     if (descriptors_[i].IsTrue()) {
       if (descriptors_[i].IsInner())
         descriptors_[i].done = true;
@@ -917,7 +917,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
     if (descriptors_[i].IsDelayed())
       continue;
 
-    assert(descriptors_[i].lop == common::LogicalOperator::O_AND);
+    DEBUG_ASSERT(descriptors_[i].lop == common::LogicalOperator::O_AND);
     // if(descriptors_[i].lop != common::LogicalOperator::O_AND && descriptors_[i].IsType_Join() &&
     // (descriptors_[i].op == common::Operator::O_BETWEEN || descriptors_[i].op ==
     // common::Operator::O_NOT_BETWEEN))

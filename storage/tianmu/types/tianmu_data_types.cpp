@@ -37,7 +37,7 @@ bool TianmuDataType::AreComperable(const TianmuDataType &tianmu_dt1, const Tianm
 
 bool TianmuDataType::compare(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2, common::Operator op,
                              char like_esc) {
-  // assert(TianmuDataType::AreComperable(tianmu_dt1, tianmu_dt2));
+  // DEBUG_ASSERT(TianmuDataType::AreComperable(tianmu_dt1, tianmu_dt2));
   if (op == common::Operator::O_LIKE || op == common::Operator::O_NOT_LIKE) {
     if (tianmu_dt1.IsNull() || tianmu_dt2.IsNull())
       return false;

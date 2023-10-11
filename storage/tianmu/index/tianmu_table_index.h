@@ -23,6 +23,7 @@
 #include "rocksdb/db.h"
 
 #include "common/common_definitions.h"
+#include "index/rdb_meta_manager.h"
 #include "index/rdb_utils.h"
 
 namespace Tianmu {
@@ -58,6 +59,7 @@ class TianmuTableIndex final {
   common::ErrorCode UpdateIndex(core::Transaction *tx, std::string &nkey, std::string &okey, uint64_t row);
   common::ErrorCode DeleteIndex(core::Transaction *tx, std::vector<std::string> &fields, uint64_t row);
   common::ErrorCode GetRowByKey(core::Transaction *tx, std::vector<std::string> &fields, uint64_t &row);
+  index::IndexType type() { return idx_type_; }
 
  public:
   std::shared_ptr<RdbTable> rocksdb_tbl_;
@@ -67,6 +69,8 @@ class TianmuTableIndex final {
   uint keyid_ = 0;
 
  private:
+  index::IndexType idx_type_ = index::IndexType::INDEX_TYPE_PRIMARY;
+
   common::ErrorCode CheckUniqueness(core::Transaction *tx, const rocksdb::Slice &pk_slice);
 };
 

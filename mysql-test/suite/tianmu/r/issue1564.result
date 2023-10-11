@@ -1,0 +1,99 @@
+DROP DATABASE IF EXISTS issue1564;
+create database issue1564;
+use issue1564;
+create table t(a bigint not null);
+insert into t values(-222222), (-22), (-15),(-16),(0), (11), (12), (9223372036854775807);
+select * from t;
+a
+-222222
+-22
+-15
+-16
+0
+11
+12
+9223372036854775807
+select * from t where a = 18446744073709551601;
+a
+select * from t where a != 18446744073709551601;
+a
+-222222
+-22
+-15
+-16
+0
+11
+12
+9223372036854775807
+select * from t where a = -22;
+a
+-22
+select * from t where a != -22;
+a
+-222222
+-15
+-16
+0
+11
+12
+9223372036854775807
+select * from t where a in(-16, -15, -11);
+a
+-15
+-16
+select * from t where a > 18446744073709551599;
+a
+select * from t where a >= 18446744073709551599;
+a
+select * from t where a < 18446744073709551599;
+a
+-222222
+-22
+-15
+-16
+0
+11
+12
+9223372036854775807
+select * from t where a <= 18446744073709551599;
+a
+-222222
+-22
+-15
+-16
+0
+11
+12
+9223372036854775807
+select * from t where a between -22 and 18446744073709551599;
+a
+-22
+-15
+-16
+0
+11
+12
+9223372036854775807
+select * from t where a between -22 and 9223372036854775807;
+a
+-22
+-15
+-16
+0
+11
+12
+9223372036854775807
+select * from t where a between -222222 and 9223372036854775807;
+a
+-222222
+-22
+-15
+-16
+0
+11
+12
+9223372036854775807
+select * from t where a between 9223372036854775807 and -22;
+a
+drop table t;
+drop database issue1564;

@@ -117,7 +117,7 @@ class MultiValColumn : public VirtualColumn {
     LazyValue operator*() { return LazyValue(impl->GetValue()); }
     LazyValue operator->() { return LazyValue(impl->GetValue()); }
     bool operator!=(Iterator const &it) const {
-      assert(owner == it.owner);
+      DEBUG_ASSERT(owner == it.owner);
       return (impl->NotEq(it.impl.get()));
     }
 
@@ -163,12 +163,12 @@ class MultiValColumn : public VirtualColumn {
   inline types::TianmuValueObject GetSetMax(core::MIIterator const &mit) { return GetSetMaxImpl(mit); }
   inline void SetExpectedType(core::ColumnType const &ct) { SetExpectedTypeImpl(ct); }
   int64_t GetNotNullValueInt64([[maybe_unused]] const core::MIIterator &mit) override {
-    assert(0);
+    DEBUG_ASSERT(0);
     return 0;
   }
   void GetNotNullValueString([[maybe_unused]] types::BString &s,
                              [[maybe_unused]] const core::MIIterator &mit) override {
-    assert(0);
+    DEBUG_ASSERT(0);
     ;
   }
   inline bool CopyCond(core::MIIterator const &mit, types::CondArray &condition, DTCollation coll) {
@@ -191,23 +191,27 @@ class MultiValColumn : public VirtualColumn {
   virtual void SetExpectedTypeImpl(core::ColumnType const &) = 0;
 
   int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
-    assert(!"Invalid call for this type of column.");
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
   }
+  bool GetUnsignedFlagImpl() override {
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
+    return (false);
+  }
   double GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) override {
-    assert(!"Invalid call for this type of column.");
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
   }
   bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override {
-    assert(!"Invalid call for this type of column.");
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (false);
   }
   void GetValueStringImpl([[maybe_unused]] types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
-    assert(!"Invalid call for this type of column.");
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
   }
   types::TianmuValueObject GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
                                         [[maybe_unused]] bool lookup_to_num) override {
-    assert(!"Invalid call for this type of column.");
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (types::TianmuValueObject());
   }
   int64_t GetNumOfNullsImpl([[maybe_unused]] const core::MIIterator &mit,
@@ -219,7 +223,7 @@ class MultiValColumn : public VirtualColumn {
   }  // implement properly when DoRoughMin/Max are implemented non-trivially
 
   int64_t GetSumImpl([[maybe_unused]] const core::MIIterator &mit, [[maybe_unused]] bool &nonnegative) override {
-    assert(!"Invalid call for this type of column.");
+    DEBUG_ASSERT(!"Invalid call for this type of column.");
     nonnegative = false;
     return common::NULL_VALUE_64;
   }

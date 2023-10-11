@@ -566,7 +566,7 @@ void JoinerHash::InitOuter(Condition &cond) {
 int64_t JoinerHash::SubmitOuterMatched(MIIterator &mit, MINewContents &new_mind) {
   MEASURE_FET("JoinerHash::SubmitOuterMatched(...)");
   // mit - an iterator through the matched dimensions
-  assert(outer_filter && watch_matched);
+  DEBUG_ASSERT(outer_filter && watch_matched);
   if (tips.count_only)
     return outer_filter->NumOfOnes();
   mit.Rewind();
@@ -810,7 +810,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
 
 int64_t JoinerHash::SubmitOuterTraversed(MINewContents &new_mind) {
   MEASURE_FET("JoinerHash::SubmitOuterTraversed(...)");
-  assert(outer_filter && watch_traversed);
+  DEBUG_ASSERT(outer_filter && watch_traversed);
   if (tips.count_only)
     return outer_filter->NumOfOnes();
   int64_t outer_added = 0;
