@@ -99,6 +99,11 @@ class MVCC {
     view->creator_trx_id(id);
   }
 
+  /**
+   * by rapid
+   */
+  ReadView *get_view_created_by_trx_id_rapid(trx_id_t trx_id) const;
+
  private:
   /**
   Validates a read view list. */

@@ -43,3 +43,7 @@ scalability_jobs_*
 .docusaurus/
 node_modules
 website/.docusaurus
+
+build/
+my.cnf
+build_out/

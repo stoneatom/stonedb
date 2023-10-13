@@ -683,13 +683,20 @@ bool Sql_cmd_insert_values::execute_inner(THD *thd) {
     if (!has_error ||
         thd->get_transaction()->cannot_safely_rollback(Transaction_ctx::STMT)) {
       /*
-        In the delayed insert mode, tianmu will actively write data to the binlog cache, 
-        but there is no non delayed insert. 
-        You need to release the logic written to the binlog cache when the sql layer 
-        is in the non delayed insert mode.
+        In the delayed insert mode, tianmu will actively write data to the
+        binlog cache, but there is no non delayed insert. You need to release
+        the logic written to the binlog cache when the sql layer is in the non
+        delayed insert mode.
       */
-      bool tianmu_engine = insert_table->s->db_type() ? insert_table->s->db_type()->db_type == DB_TYPE_TIANMU: false;
-      bool if_tianmu_engine_insert_delayed = tianmu_engine ? Tianmu::handler::ha_my_tianmu_get_insert_delayed_flag(thd): false;
+      bool tianmu_engine =
+          insert_table->s->db_type()
+              ? insert_table->s->db_type()->db_type == DB_TYPE_TIANMU
+              : false;
+#if 0
+      bool if_tianmu_engine_insert_delayed = tianmu_engine ? Tianmu::handler::ha_my_tianmu_get_insert_delayed_flag(thd) : 
+                                                             false;
+#endif
+      bool if_tianmu_engine_insert_delayed = false;
       if (!if_tianmu_engine_insert_delayed && mysql_bin_log.is_open()) {
         int errcode = 0;
         if (!has_error) {
@@ -2204,7 +2211,7 @@ ok_or_after_trg_err:
         Transaction_ctx::STMT);
   return trg_error;
 
-err : {
+err: {
   myf error_flags = MYF(0); /**< Flag for fatal errors */
   info->last_errno = error;
   if (table->file->is_fatal_error(error)) error_flags |= ME_FATALERROR;

@@ -1862,11 +1862,11 @@ static int open_binary_frm(THD *thd, TABLE_SHARE *share,
                       "int_length: %d  com_length: %d  gcol_screen_length: %d",
                       interval_count, interval_parts, share->keys, n_length,
                       int_length, com_length, gcol_screen_length));
-  if (!(field_ptr = (Field **)share->mem_root.Alloc((uint)(
-            (share->fields + 1) * sizeof(Field *) +
-            interval_count * sizeof(TYPELIB) +
-            (share->fields + interval_parts + keys + 3) * sizeof(char *) +
-            (n_length + int_length + com_length + gcol_screen_length)))))
+  if (!(field_ptr = (Field **)share->mem_root.Alloc((
+            uint)((share->fields + 1) * sizeof(Field *) +
+                  interval_count * sizeof(TYPELIB) +
+                  (share->fields + interval_parts + keys + 3) * sizeof(char *) +
+                  (n_length + int_length + com_length + gcol_screen_length)))))
     goto err; /* purecov: inspected */
 
   share->field = field_ptr;
@@ -2845,7 +2845,7 @@ int open_table_from_share(THD *thd, TABLE_SHARE *share, const char *alias,
   assert(!internal_tmp || share->ref_count() != 0);
   uchar *record, *bitmaps;
   Field **field_ptr;
-  Field *fts_doc_id_field = nullptr;
+  Field *fts_doc_id_field = nullptr, *last_field = nullptr;
   ptrdiff_t move_offset;
   DBUG_TRACE;
   DBUG_PRINT("enter", ("name: '%s.%s'  form: %p", share->db.str,
@@ -2899,6 +2899,7 @@ int open_table_from_share(THD *thd, TABLE_SHARE *share, const char *alias,
   if ((db_stat & HA_OPEN_KEYFILE) || (prgflag & DELAYED_OPEN)) records = 1;
   if (prgflag & (READ_ALL + EXTRA_RECORD)) records++;
 
+  // rec_buff_length is alread added with MAX_TRX_ID_WIDHT.
   record = root->ArrayAlloc<uchar>(share->rec_buff_length * records +
                                    share->null_bytes);
   if (record == nullptr) goto err; /* purecov: inspected */
@@ -2917,7 +2918,7 @@ int open_table_from_share(THD *thd, TABLE_SHARE *share, const char *alias,
   outparam->null_flags_saved = record + (records * share->rec_buff_length);
   memset(outparam->null_flags_saved, '\0', share->null_bytes);
 
-  if (!(field_ptr = root->ArrayAlloc<Field *>(share->fields + 1)))
+  if (!(field_ptr = root->ArrayAlloc<Field *>(share->fields + 1 + 1)))
     goto err; /* purecov: inspected */
 
   outparam->field = field_ptr;
@@ -2956,6 +2957,16 @@ int open_table_from_share(THD *thd, TABLE_SHARE *share, const char *alias,
         !strcmp(outparam->field[i]->field_name, FTS_DOC_ID_COL_NAME))
       fts_doc_id_field = new_field;
   }
+
+  if (share->field[share->fields]) {
+    last_field = share->field[share->fields]->clone(root);
+    *field_ptr = last_field;
+    if (last_field == nullptr) goto err;
+    last_field->init(outparam);
+    last_field->move_field_offset(move_offset);
+    field_ptr++;
+  }
+
   (*field_ptr) = nullptr;  // End marker
 
   if (share->found_next_number_field)
@@ -3149,13 +3160,11 @@ int open_table_from_share(THD *thd, TABLE_SHARE *share, const char *alias,
     if ((ha_err = (outparam->file->ha_open(
              outparam, share->normalized_path.str,
              (db_stat & HA_READ_ONLY ? O_RDONLY : O_RDWR),
-             ((db_stat & HA_OPEN_TEMPORARY
-                   ? HA_OPEN_TMP_TABLE
-                   : (db_stat & HA_WAIT_IF_LOCKED)
-                         ? HA_OPEN_WAIT_IF_LOCKED
-                         : (db_stat & (HA_ABORT_IF_LOCKED | HA_GET_INFO))
-                               ? HA_OPEN_ABORT_IF_LOCKED
-                               : HA_OPEN_IGNORE_IF_LOCKED) |
+             ((db_stat & HA_OPEN_TEMPORARY     ? HA_OPEN_TMP_TABLE
+               : (db_stat & HA_WAIT_IF_LOCKED) ? HA_OPEN_WAIT_IF_LOCKED
+               : (db_stat & (HA_ABORT_IF_LOCKED | HA_GET_INFO))
+                   ? HA_OPEN_ABORT_IF_LOCKED
+                   : HA_OPEN_IGNORE_IF_LOCKED) |
               ha_open_flags),
              table_def)))) {
       /* Set a flag if the table is crashed and it can be auto. repaired */
@@ -3375,17 +3384,16 @@ static void open_table_error(THD *thd, TABLE_SHARE *share, int error,
             datext = "";
         }
       }
-      err_no = (db_errno == ENOENT)
-                   ? ER_FILE_NOT_FOUND
-                   : (db_errno == EAGAIN) ? ER_FILE_USED : ER_CANT_OPEN_FILE;
+      err_no = (db_errno == ENOENT)   ? ER_FILE_NOT_FOUND
+               : (db_errno == EAGAIN) ? ER_FILE_USED
+                                      : ER_CANT_OPEN_FILE;
       strxmov(buff, share->normalized_path.str, datext, NullS);
       my_error(err_no, MYF(0), buff, db_errno,
                my_strerror(errbuf, sizeof(errbuf), db_errno));
       LogErr(ERROR_LEVEL,
-             (db_errno == ENOENT)
-                 ? ER_SERVER_FILE_NOT_FOUND
-                 : (db_errno == EAGAIN) ? ER_SERVER_FILE_USED
-                                        : ER_SERVER_CANT_OPEN_FILE,
+             (db_errno == ENOENT)   ? ER_SERVER_FILE_NOT_FOUND
+             : (db_errno == EAGAIN) ? ER_SERVER_FILE_USED
+                                    : ER_SERVER_CANT_OPEN_FILE,
              buff, db_errno, my_strerror(errbuf, sizeof(errbuf), db_errno));
       destroy(file);
       break;

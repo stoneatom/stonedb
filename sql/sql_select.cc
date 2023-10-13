@@ -125,7 +125,7 @@
 #include "template_utils.h"
 #include "thr_lock.h"
 
-#include "../storage/tianmu/handler/ha_my_tianmu.h" // tianmu header file
+#include "../storage/tianmu/handler/ha_my_tianmu.h"  // tianmu header file
 
 using std::max;
 using std::min;
@@ -576,10 +576,12 @@ bool Sql_cmd_dml::execute(THD *thd) {
   // if is select operation, route to Tianmu
   if (lex->sql_command == SQLCOM_SELECT) {
     int tianmu_res = 0, free_join_from_tianmu = 0, optimize_after_tianmu = 0;
+#if 0
     if (Tianmu::handler::ha_my_tianmu_query(thd, unit, result, 0, tianmu_res, optimize_after_tianmu,
       free_join_from_tianmu, false) != Tianmu::handler::QueryRouteTo::TO_MYSQL) {
         if (tianmu_res) goto err; else goto clean;
     }
+#endif
   }
 
   assert(!lex->is_query_tables_locked());
@@ -1629,8 +1631,10 @@ void JOIN::reset() {
 
   if (!executed) return;
 
-  query_expression()->offset_limit_cnt = (ha_rows)(
-      query_block->offset_limit ? query_block->offset_limit->val_uint() : 0ULL);
+  query_expression()->offset_limit_cnt =
+      (ha_rows)(query_block->offset_limit
+                    ? query_block->offset_limit->val_uint()
+                    : 0ULL);
 
   group_sent = false;
   recursive_iteration_count = 0;

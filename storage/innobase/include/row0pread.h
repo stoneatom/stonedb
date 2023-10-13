@@ -36,7 +36,7 @@ Created 2018-01-27 by Sunny Bains. */
 #include <vector>
 
 #include "os0thread-create.h"
-#include "row0sel.h"
+// #include "row0sel.h"
 
 // Forward declarations
 struct trx_t;

@@ -133,6 +133,7 @@ struct MYSQL_XID {
 #define PLUGIN_LICENSE_BSD_STRING "BSD"
 
 #define PLUGIN_AUTHOR_ORACLE "Oracle Corporation"
+#define PLUGIN_AUTHOR_STONEATOM "STONEATOM Corporation"
 
 /*
   Macros for beginning and ending plugin declarations.  Between
@@ -319,7 +320,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 
 #define MYSQL_SYSVAR_BOOL(name, varname, opt, comment, check, update, def) \
   DECLARE_MYSQL_SYSVAR_BASIC(name, bool) = {                               \
-      PLUGIN_VAR_BOOL | ((opt)&PLUGIN_VAR_MASK),                           \
+      PLUGIN_VAR_BOOL | ((opt) & PLUGIN_VAR_MASK),                         \
       #name,                                                               \
       comment,                                                             \
       check,                                                               \
@@ -329,7 +330,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 
 #define MYSQL_SYSVAR_STR(name, varname, opt, comment, check, update, def) \
   DECLARE_MYSQL_SYSVAR_BASIC(name, char *) = {                            \
-      PLUGIN_VAR_STR | ((opt)&PLUGIN_VAR_MASK),                           \
+      PLUGIN_VAR_STR | ((opt) & PLUGIN_VAR_MASK),                         \
       #name,                                                              \
       comment,                                                            \
       check,                                                              \
@@ -340,7 +341,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_SYSVAR_INT(name, varname, opt, comment, check, update, def, min, \
                          max, blk)                                             \
   DECLARE_MYSQL_SYSVAR_SIMPLE(name, int) = {                                   \
-      PLUGIN_VAR_INT | ((opt)&PLUGIN_VAR_MASK),                                \
+      PLUGIN_VAR_INT | ((opt) & PLUGIN_VAR_MASK),                              \
       #name,                                                                   \
       comment,                                                                 \
       check,                                                                   \
@@ -354,7 +355,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_SYSVAR_UINT(name, varname, opt, comment, check, update, def, \
                           min, max, blk)                                   \
   DECLARE_MYSQL_SYSVAR_SIMPLE(name, unsigned int) = {                      \
-      PLUGIN_VAR_INT | PLUGIN_VAR_UNSIGNED | ((opt)&PLUGIN_VAR_MASK),      \
+      PLUGIN_VAR_INT | PLUGIN_VAR_UNSIGNED | ((opt) & PLUGIN_VAR_MASK),    \
       #name,                                                               \
       comment,                                                             \
       check,                                                               \
@@ -368,7 +369,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_SYSVAR_LONG(name, varname, opt, comment, check, update, def, \
                           min, max, blk)                                   \
   DECLARE_MYSQL_SYSVAR_SIMPLE(name, long) = {                              \
-      PLUGIN_VAR_LONG | ((opt)&PLUGIN_VAR_MASK),                           \
+      PLUGIN_VAR_LONG | ((opt) & PLUGIN_VAR_MASK),                         \
       #name,                                                               \
       comment,                                                             \
       check,                                                               \
@@ -382,7 +383,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_SYSVAR_ULONG(name, varname, opt, comment, check, update, def, \
                            min, max, blk)                                   \
   DECLARE_MYSQL_SYSVAR_SIMPLE(name, unsigned long) = {                      \
-      PLUGIN_VAR_LONG | PLUGIN_VAR_UNSIGNED | ((opt)&PLUGIN_VAR_MASK),      \
+      PLUGIN_VAR_LONG | PLUGIN_VAR_UNSIGNED | ((opt) & PLUGIN_VAR_MASK),    \
       #name,                                                                \
       comment,                                                              \
       check,                                                                \
@@ -396,7 +397,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_SYSVAR_LONGLONG(name, varname, opt, comment, check, update, def, \
                               min, max, blk)                                   \
   DECLARE_MYSQL_SYSVAR_SIMPLE(name, long long) = {                             \
-      PLUGIN_VAR_LONGLONG | ((opt)&PLUGIN_VAR_MASK),                           \
+      PLUGIN_VAR_LONGLONG | ((opt) & PLUGIN_VAR_MASK),                         \
       #name,                                                                   \
       comment,                                                                 \
       check,                                                                   \
@@ -407,24 +408,24 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
       max,                                                                     \
       blk}
 
-#define MYSQL_SYSVAR_ULONGLONG(name, varname, opt, comment, check, update, \
-                               def, min, max, blk)                         \
-  DECLARE_MYSQL_SYSVAR_SIMPLE(name, unsigned long long) = {                \
-      PLUGIN_VAR_LONGLONG | PLUGIN_VAR_UNSIGNED | ((opt)&PLUGIN_VAR_MASK), \
-      #name,                                                               \
-      comment,                                                             \
-      check,                                                               \
-      update,                                                              \
-      &varname,                                                            \
-      def,                                                                 \
-      min,                                                                 \
-      max,                                                                 \
+#define MYSQL_SYSVAR_ULONGLONG(name, varname, opt, comment, check, update,   \
+                               def, min, max, blk)                           \
+  DECLARE_MYSQL_SYSVAR_SIMPLE(name, unsigned long long) = {                  \
+      PLUGIN_VAR_LONGLONG | PLUGIN_VAR_UNSIGNED | ((opt) & PLUGIN_VAR_MASK), \
+      #name,                                                                 \
+      comment,                                                               \
+      check,                                                                 \
+      update,                                                                \
+      &varname,                                                              \
+      def,                                                                   \
+      min,                                                                   \
+      max,                                                                   \
       blk}
 
 #define MYSQL_SYSVAR_ENUM(name, varname, opt, comment, check, update, def, \
                           typelib)                                         \
   DECLARE_MYSQL_SYSVAR_TYPELIB(name, unsigned long) = {                    \
-      PLUGIN_VAR_ENUM | ((opt)&PLUGIN_VAR_MASK),                           \
+      PLUGIN_VAR_ENUM | ((opt) & PLUGIN_VAR_MASK),                         \
       #name,                                                               \
       comment,                                                             \
       check,                                                               \
@@ -436,7 +437,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_SYSVAR_SET(name, varname, opt, comment, check, update, def, \
                          typelib)                                         \
   DECLARE_MYSQL_SYSVAR_TYPELIB(name, unsigned long long) = {              \
-      PLUGIN_VAR_SET | ((opt)&PLUGIN_VAR_MASK),                           \
+      PLUGIN_VAR_SET | ((opt) & PLUGIN_VAR_MASK),                         \
       #name,                                                              \
       comment,                                                            \
       check,                                                              \
@@ -448,7 +449,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_SYSVAR_DOUBLE(name, varname, opt, comment, check, update, def, \
                             min, max, blk)                                   \
   DECLARE_MYSQL_SYSVAR_SIMPLE(name, double) = {                              \
-      PLUGIN_VAR_DOUBLE | ((opt)&PLUGIN_VAR_MASK),                           \
+      PLUGIN_VAR_DOUBLE | ((opt) & PLUGIN_VAR_MASK),                         \
       #name,                                                                 \
       comment,                                                               \
       check,                                                                 \
@@ -459,32 +460,32 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
       max,                                                                   \
       blk}
 
-#define MYSQL_THDVAR_BOOL(name, opt, comment, check, update, def)      \
-  DECLARE_MYSQL_THDVAR_BASIC(name, bool) = {                           \
-      PLUGIN_VAR_BOOL | PLUGIN_VAR_THDLOCAL | ((opt)&PLUGIN_VAR_MASK), \
-      #name,                                                           \
-      comment,                                                         \
-      check,                                                           \
-      update,                                                          \
-      -1,                                                              \
-      def,                                                             \
+#define MYSQL_THDVAR_BOOL(name, opt, comment, check, update, def)        \
+  DECLARE_MYSQL_THDVAR_BASIC(name, bool) = {                             \
+      PLUGIN_VAR_BOOL | PLUGIN_VAR_THDLOCAL | ((opt) & PLUGIN_VAR_MASK), \
+      #name,                                                             \
+      comment,                                                           \
+      check,                                                             \
+      update,                                                            \
+      -1,                                                                \
+      def,                                                               \
       NULL}
 
-#define MYSQL_THDVAR_STR(name, opt, comment, check, update, def)      \
-  DECLARE_MYSQL_THDVAR_BASIC(name, char *) = {                        \
-      PLUGIN_VAR_STR | PLUGIN_VAR_THDLOCAL | ((opt)&PLUGIN_VAR_MASK), \
-      #name,                                                          \
-      comment,                                                        \
-      check,                                                          \
-      update,                                                         \
-      -1,                                                             \
-      def,                                                            \
+#define MYSQL_THDVAR_STR(name, opt, comment, check, update, def)        \
+  DECLARE_MYSQL_THDVAR_BASIC(name, char *) = {                          \
+      PLUGIN_VAR_STR | PLUGIN_VAR_THDLOCAL | ((opt) & PLUGIN_VAR_MASK), \
+      #name,                                                            \
+      comment,                                                          \
+      check,                                                            \
+      update,                                                           \
+      -1,                                                               \
+      def,                                                              \
       NULL}
 
 #define MYSQL_THDVAR_INT(name, opt, comment, check, update, def, min, max, \
                          blk)                                              \
   DECLARE_MYSQL_THDVAR_SIMPLE(name, int) = {                               \
-      PLUGIN_VAR_INT | PLUGIN_VAR_THDLOCAL | ((opt)&PLUGIN_VAR_MASK),      \
+      PLUGIN_VAR_INT | PLUGIN_VAR_THDLOCAL | ((opt) & PLUGIN_VAR_MASK),    \
       #name,                                                               \
       comment,                                                             \
       check,                                                               \
@@ -500,7 +501,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
                           blk)                                              \
   DECLARE_MYSQL_THDVAR_SIMPLE(name, unsigned int) = {                       \
       PLUGIN_VAR_INT | PLUGIN_VAR_THDLOCAL | PLUGIN_VAR_UNSIGNED |          \
-          ((opt)&PLUGIN_VAR_MASK),                                          \
+          ((opt) & PLUGIN_VAR_MASK),                                        \
       #name,                                                                \
       comment,                                                              \
       check,                                                                \
@@ -515,7 +516,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_THDVAR_LONG(name, opt, comment, check, update, def, min, max, \
                           blk)                                              \
   DECLARE_MYSQL_THDVAR_SIMPLE(name, long) = {                               \
-      PLUGIN_VAR_LONG | PLUGIN_VAR_THDLOCAL | ((opt)&PLUGIN_VAR_MASK),      \
+      PLUGIN_VAR_LONG | PLUGIN_VAR_THDLOCAL | ((opt) & PLUGIN_VAR_MASK),    \
       #name,                                                                \
       comment,                                                              \
       check,                                                                \
@@ -531,7 +532,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
                            blk)                                              \
   DECLARE_MYSQL_THDVAR_SIMPLE(name, unsigned long) = {                       \
       PLUGIN_VAR_LONG | PLUGIN_VAR_THDLOCAL | PLUGIN_VAR_UNSIGNED |          \
-          ((opt)&PLUGIN_VAR_MASK),                                           \
+          ((opt) & PLUGIN_VAR_MASK),                                         \
       #name,                                                                 \
       comment,                                                               \
       check,                                                                 \
@@ -543,26 +544,26 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
       blk,                                                                   \
       NULL}
 
-#define MYSQL_THDVAR_LONGLONG(name, opt, comment, check, update, def, min, \
-                              max, blk)                                    \
-  DECLARE_MYSQL_THDVAR_SIMPLE(name, long long) = {                         \
-      PLUGIN_VAR_LONGLONG | PLUGIN_VAR_THDLOCAL | ((opt)&PLUGIN_VAR_MASK), \
-      #name,                                                               \
-      comment,                                                             \
-      check,                                                               \
-      update,                                                              \
-      -1,                                                                  \
-      def,                                                                 \
-      min,                                                                 \
-      max,                                                                 \
-      blk,                                                                 \
+#define MYSQL_THDVAR_LONGLONG(name, opt, comment, check, update, def, min,   \
+                              max, blk)                                      \
+  DECLARE_MYSQL_THDVAR_SIMPLE(name, long long) = {                           \
+      PLUGIN_VAR_LONGLONG | PLUGIN_VAR_THDLOCAL | ((opt) & PLUGIN_VAR_MASK), \
+      #name,                                                                 \
+      comment,                                                               \
+      check,                                                                 \
+      update,                                                                \
+      -1,                                                                    \
+      def,                                                                   \
+      min,                                                                   \
+      max,                                                                   \
+      blk,                                                                   \
       NULL}
 
 #define MYSQL_THDVAR_ULONGLONG(name, opt, comment, check, update, def, min, \
                                max, blk)                                    \
   DECLARE_MYSQL_THDVAR_SIMPLE(name, unsigned long long) = {                 \
       PLUGIN_VAR_LONGLONG | PLUGIN_VAR_THDLOCAL | PLUGIN_VAR_UNSIGNED |     \
-          ((opt)&PLUGIN_VAR_MASK),                                          \
+          ((opt) & PLUGIN_VAR_MASK),                                        \
       #name,                                                                \
       comment,                                                              \
       check,                                                                \
@@ -576,7 +577,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 
 #define MYSQL_THDVAR_ENUM(name, opt, comment, check, update, def, typelib) \
   DECLARE_MYSQL_THDVAR_TYPELIB(name, unsigned long) = {                    \
-      PLUGIN_VAR_ENUM | PLUGIN_VAR_THDLOCAL | ((opt)&PLUGIN_VAR_MASK),     \
+      PLUGIN_VAR_ENUM | PLUGIN_VAR_THDLOCAL | ((opt) & PLUGIN_VAR_MASK),   \
       #name,                                                               \
       comment,                                                             \
       check,                                                               \
@@ -588,7 +589,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 
 #define MYSQL_THDVAR_SET(name, opt, comment, check, update, def, typelib) \
   DECLARE_MYSQL_THDVAR_TYPELIB(name, unsigned long long) = {              \
-      PLUGIN_VAR_SET | PLUGIN_VAR_THDLOCAL | ((opt)&PLUGIN_VAR_MASK),     \
+      PLUGIN_VAR_SET | PLUGIN_VAR_THDLOCAL | ((opt) & PLUGIN_VAR_MASK),   \
       #name,                                                              \
       comment,                                                            \
       check,                                                              \
@@ -601,7 +602,7 @@ typedef void (*mysql_var_update_func)(MYSQL_THD thd, SYS_VAR *var,
 #define MYSQL_THDVAR_DOUBLE(name, opt, comment, check, update, def, min, max, \
                             blk)                                              \
   DECLARE_MYSQL_THDVAR_SIMPLE(name, double) = {                               \
-      PLUGIN_VAR_DOUBLE | PLUGIN_VAR_THDLOCAL | ((opt)&PLUGIN_VAR_MASK),      \
+      PLUGIN_VAR_DOUBLE | PLUGIN_VAR_THDLOCAL | ((opt) & PLUGIN_VAR_MASK),    \
       #name,                                                                  \
       comment,                                                                \
       check,                                                                  \

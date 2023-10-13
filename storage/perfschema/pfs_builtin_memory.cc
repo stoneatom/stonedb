@@ -121,6 +121,9 @@ PFS_builtin_memory_class builtin_memory_prepared_stmt;
 
 PFS_builtin_memory_class builtin_memory_scalable_buffer;
 
+PFS_builtin_memory_class builtin_memory_rpd_column_id;
+PFS_builtin_memory_class builtin_memory_rpd_columns;
+
 static void init_builtin_memory_class(PFS_builtin_memory_class *klass,
                                       const char *name,
                                       const char *documentation) {
@@ -371,6 +374,12 @@ init_all_builtin_memory_class()
 
   init_builtin_memory_class(&builtin_memory_scalable_buffer,
                             GEN_DOC("scalable_buffer", "scalable buffers"));
+
+  init_builtin_memory_class(&builtin_memory_rpd_column_id,
+                            TABLE_DOC("builtin_memory_rpd_column_id"));
+
+  init_builtin_memory_class(&builtin_memory_rpd_columns,
+                            TABLE_DOC("builtin_memory_rpd_columns")); 
 }
 /* clang-format off */
 
@@ -463,6 +472,9 @@ static PFS_builtin_memory_class* all_builtin_memory[] = {
   &builtin_memory_prepared_stmt,
 
   &builtin_memory_scalable_buffer,
+
+  &builtin_memory_rpd_column_id,
+  &builtin_memory_rpd_columns,
 
   /*
     MAINTAINER:

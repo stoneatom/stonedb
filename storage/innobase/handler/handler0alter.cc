@@ -5911,6 +5911,7 @@ bool ha_innobase::prepare_inplace_alter_table_impl(
       ha_alter_info->alter_info->create_list);
   while (const Create_field *new_field = cf_it++) {
     const Field *field;
+    if (new_field->sql_type == MYSQL_SYS_TYPE_TRX_ID) continue;
 
     assert(i < altered_table->s->fields);
 

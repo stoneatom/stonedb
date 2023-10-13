@@ -125,6 +125,9 @@
 #include "storage/perfschema/table_replication_connection_status.h"
 #include "storage/perfschema/table_replication_group_member_stats.h"
 #include "storage/perfschema/table_replication_group_members.h"
+/*for rapid engine*/
+#include "storage/perfschema/table_rpd_column_id.h"
+#include "storage/perfschema/table_rpd_columns.h"
 #include "storage/perfschema/table_rpl_async_connection_failover_managed.h"
 #include "storage/perfschema/table_session_account_connect_attrs.h"
 #include "storage/perfschema/table_session_connect_attrs.h"
@@ -602,6 +605,10 @@ static PFS_engine_table_share *all_shares[] = {
     &table_binary_log_transaction_compression_stats::m_share,
     &table_tls_channel_status::m_share,
     &table_keyring_component_status::m_share,
+
+    &table_rpd_column_id::m_share,
+    &table_rpd_columns::m_share,
+
     nullptr};
 
 static PSI_mutex_key key_LOCK_pfs_share_list;

@@ -550,6 +550,7 @@ bool fill_dd_columns_from_create_fields(THD *thd, dd::Abstract_table *tab_obj,
     //
     // Add new DD column
     //
+    if (field.sql_type == MYSQL_SYS_TYPE_TRX_ID) continue;
 
     dd::Column *col_obj = tab_obj->add_column();
 

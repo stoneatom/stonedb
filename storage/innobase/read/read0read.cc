@@ -578,6 +578,10 @@ void MVCC::view_open(ReadView *&view, trx_t *trx) {
   trx_sys_mutex_exit();
 }
 
+ReadView *MVCC::get_view_created_by_trx_id_rapid(trx_id_t trx_id) const {
+  return get_view_created_by_trx_id(trx_id);
+}
+
 ReadView *MVCC::get_view_created_by_trx_id(trx_id_t trx_id) const {
   ReadView *view;
 
