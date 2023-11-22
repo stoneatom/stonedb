@@ -5,6 +5,40 @@ sidebar_position: 11.0
 
 # 发版日志
 
+
+## StoneDB-8.0-v2.1.0 企业版的发行日志 (2023-10-31, GA)
+
+### 一、新特性
+1. 支持事务。
+2. 支持主从复制。
+3. 支持常用的内置函数。
+4. 支持存储过程、临时表、视图、触发器等对象。
+
+### 二、Bug 修复
+1. 当前线程无法看到同步后的数据，必须退出当前线程后再次登录才能看到同步后的数据。
+2. 查询返回"Current transaction is aborted (please ROLLBACK)"报错。
+3. 分页查询结果集错误。
+4. kill线程后，无法关闭数据库。
+5. 当退出MDL元数据锁等待后，再次查询相关表报错，且无法删除该表。
+6. 在当前库查询其它库的表发生报错。
+7. 子查询返回单行数据，使用in返回正确结果集，但使用=返回错误结果集。
+
+### 三、稳定性提升
+1. 主从复制下null值的处理。
+2. 修复ifnull、nullif导致实例crash。
+
+## StoneDB-8.0-v2.0.0 企业版的发行日志 (2023-09-25, GA)
+
+### 一、架构介绍
+1. StoneDB 是业内首个单机内核开源、行列混存+内存计算架构的一体化 MySQL 实时 HTAP 数据库。
+2. 产品对标 Oracle HeatWave，使用 MySQL 的用户，不需要进行数据迁移，通过 StoneDB 可以实现 TP+AP 混合负载，分析性能提升 100 倍以上，也无需与其他 AP 集成，弥补 MySQL 分析领域的空白。
+3. 新⼀代企业级实时 HTAP 数据库，100% 兼容 MySQL 协议，100TB 存储，1万并发，70% TP场景，30% AP 场景，通过 AP 增强到自主可控的 TP，瞄准大量 MySQL 信创升级 + 替代市场。
+
+### 二、新特性
+1. StoneDB 2.0 提供实时的在线事务支持和数据分析能力。在支持TP事务的同时，支持内置的、对用户透明的AP引擎，百亿级数据join场景下的高性能，相比较MySQL提供100至1000倍的加速。
+2. 支持create/alter table/drop table 等DDL语句。
+3. 支持insert/update/load data等命令对数据做实时更新。
+
 ## StoneDB-5.7-v1.0.4-alpha 的发行日志 (2023-06-30, Alpha)
 发布日期： 2023 年 06 月 30 日
 
@@ -361,7 +395,7 @@ sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTI
 - 添加一些MTR测试用例。
 
 
-## StoneDB-5.7-v1.0.1 的发行日志 (2022-10-21, RC;2022-10-24,GA)
+## StoneDB-5.7-v1.0.1 的发行日志 (2022-10-21, RC; 2022-10-24, GA)
 - 功能添加或改变
 - 编译相关改动
 - 文档变更
@@ -390,7 +424,7 @@ sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTI
 - 修复及完善 Tianmu 功能: 
 >修复 issue 有： [#282](https://github.com/stoneatom/stonedb/issues/282),[#274](about:blank),[#270](https://github.com/stoneatom/stonedb/issues/270),[#663](https://github.com/stoneatom/stonedb/issues/663),[#669](https://github.com/stoneatom/stonedb/issues/669),[#670](https://github.com/stoneatom/stonedb/issues/670),[#675](https://github.com/stoneatom/stonedb/issues/675),[#678](https://github.com/stoneatom/stonedb/issues/678),[#682](https://github.com/stoneatom/stonedb/issues/682),[#487](https://github.com/stoneatom/stonedb/issues/487),[#426](https://github.com/stoneatom/stonedb/issues/426),[#250](https://github.com/stoneatom/stonedb/issues/250),[#247](https://github.com/stoneatom/stonedb/issues/247),[#569](https://github.com/stoneatom/stonedb/issues/569),[#566](https://github.com/stoneatom/stonedb/issues/566),[#290](https://github.com/stoneatom/stonedb/issues/290),[#736](https://github.com/stoneatom/stonedb/issues/736),[#567](https://github.com/stoneatom/stonedb/issues/567),[#500](https://github.com/stoneatom/stonedb/issues/500),[#300](https://github.com/stoneatom/stonedb/issues/300),[#289](https://github.com/stoneatom/stonedb/issues/289),[#566](https://github.com/stoneatom/stonedb/issues/566),[#279](https://github.com/stoneatom/stonedb/issues/279),[#570](https://github.com/stoneatom/stonedb/issues/570)[,#571](https://github.com/stoneatom/stonedb/issues/571),[#580](https://github.com/stoneatom/stonedb/issues/580),[#581](https://github.com/stoneatom/stonedb/issues/581),[#586](https://github.com/stoneatom/stonedb/issues/586),[#589](https://github.com/stoneatom/stonedb/issues/589),[#674](https://github.com/stoneatom/stonedb/issues/674),[#646](https://github.com/stoneatom/stonedb/issues/646),[#280](https://github.com/stoneatom/stonedb/issues/280),[#301](https://github.com/stoneatom/stonedb/issues/301),[#733](https://github.com/stoneatom/stonedb/issues/733) 等。
 
-## StoneDB-5.7-v1.0.0 的发行日志 (2022-08-31, 发行版)
+## StoneDB-5.7-v1.0.0 的发行日志 (2022-08-31, GA)
 - 支持MySQL 5.7
 - 功能添加或改变
 - 编译相关改动
@@ -398,10 +432,10 @@ sql_mode        =  'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTI
 - 文档变更
 - BUG修复
 
-## 支持MySQL 5.7
+### 支持MySQL 5.7
 
 - **关键项：** StoneDB 数据库支持MySQL 5.7 协议，基线版本：MySQL 5.7.36
-## 功能添加或改变
+### 功能添加或改变
 
 - **关键项：** StoneDB 数据库的列式存储引擎从 StoneDB 变更为 Tianmu
 ```bash
@@ -416,18 +450,18 @@ mysql> show engines;
 - **Tianmu:** 提升了 Tianmu 引擎对 decimal 数据类型的聚合能力；
 - **Tianmu: **提高了代码的可读性。有些代码在逻辑上没有分开或者变量名称不能体现真实含义。例如：修改 int DoGetSomething(); to int GetSomethingXXX();, int GetNoNulls() to int GetNumOfNulls()。
 - **Tianmu: **优化了视图对日期函数的调用能力，日期函数能够被视图正常调用使用 (例如：DATE_ADD, DATE_SUB等函数) ；([BUG #342](https://github.com/stoneatom/stonedb/issues/342))
-## 编译相关改动
+### 编译相关改动
 
 - Boost 依赖库的版本变更为 1.66.0；
 - Rocksdb 满足 StoneDB 数据库构建的版本变更为 6.12.6；
-## 配置相关改动
+### 配置相关改动
 
 - **关键项：**StoneDB 数据库默认配置文件从 stonedb.cnf 变更为 my.cnf；([feature #182](https://github.com/stoneatom/stonedb/issues/182))
 - **关键项：**StoneDB 数据库的默认存储引擎从 Innodb 变更为 Tianmu。([feature #255](https://github.com/stoneatom/stonedb/issues/255))
-## 文档变更
+### 文档变更
 
 - 用户手册、编译手册等相关文档发生了变更. ( [# address](https://stonedb.io/))
-## BUG修复
+### BUG修复
 
 - **修复 mtr 用例: **[BUG #78](https://github.com/stoneatom/stonedb/issues/78), [BUG #73](https://github.com/stoneatom/stonedb/issues/73),[ BUG #170](https://github.com/stoneatom/stonedb/issues/170), [BUG #192](https://github.com/stoneatom/stonedb/issues/192), [BUG #191](https://github.com/stoneatom/stonedb/issues/191), [BUG #227](https://github.com/stoneatom/stonedb/issues/227),  [BUG #245](https://github.com/stoneatom/stonedb/issues/245), [BUG  #263](https://github.com/stoneatom/stonedb/issues/263)
 - **修复 Tianmu 缺陷: **[BUG #338](https://github.com/stoneatom/stonedb/issues/388),[ BUG #327](https://github.com/stoneatom/stonedb/issues/327), [BUG #212](https://github.com/stoneatom/stonedb/issues/212), [BUG #142](https://github.com/stoneatom/stonedb/issues/142)

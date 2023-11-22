@@ -4,6 +4,37 @@ sidebar_position: 11.0
 ---
 
 # Release Notes
+## StoneDB-8.0-V2.1.0
+Release date： October 31, 2023
+
+### New Features
+1. Support for transactions.
+2. Support for master-slave replication.
+3. Support for commonly used built-in functions.
+4. Support for stored procedures, temporary tables, views, triggers, and other objects.
+### Bug Fixes
+1. The current thread cannot see the synchronized data and must log out and log in again to see the synchronized data.
+2. Query returns the error message "Current transaction is aborted (please ROLLBACK)".
+3. Pagination query result set error.
+4. After killing a thread, the database cannot be closed.
+5. After exiting the MDL metadata lock wait, querying the relevant table again returns an error and it is not possible to delete the table.
+6. Querying another library's tables in the current library returns an error.
+7. Subquery returns a single row of data, using 'in' returns the correct result set but '=' returns the incorrect result set.
+### Stability Improvements
+1. Handling of NULL values under master-slave replication.
+2. Fixing crashes caused by ifnull and nullif.
+
+## StoneDB-8.0-V2.0.0
+Release date： September 25, 2023
+### New architecture
+1. StoneDB is the industry's first open-source, integrated MySQL real-time HTAP database with a row-columnar in-memory computing architecture.
+2. The product is positioned against Oracle HeatWave. Users of MySQL do not need to migrate data. With StoneDB, they can achieve TP+AP mixed workloads, analyze performance improvements of over 100 times, and do not need to integrate with other AP solutions. It fills the gap in MySQL's analytical capabilities.
+3. StoneDB is a new generation of enterprise-grade real-time HTAP database, 100% compatible with the MySQL protocol, capable of storing 100TB, supporting 10,000 concurrent operations, with 70% of the workload in TP scenarios and 30% in AP scenarios. By enhancing AP, it aims to achieve self-controlled TP capabilities and target the vast market of MySQL information technology upgrades and replacements.
+
+### New features
+1. StoneDB 2.0 provides real-time online transaction support and data analysis capabilities. While supporting TP transactions, it also supports a built-in AP engine that is transparent to users, providing high performance in billion-scale data join scenarios, with a speedup of 100 to 1000 times compared to MySQL.
+2. It supports DDL statements such as create/alter table/drop table.
+3. It also supports commands such as insert/update/load data to update data in real-time.
 
 ## StoneDB-5.7-V1.0.4-alpha
 Release date： June 30th,2023
@@ -145,9 +176,9 @@ mysql>  select id from tt union all select 2222 ;
 * feat(tianmu): support volcano framework by @RingsC in https://github.com/stoneatom/stonedb/pull/1554
 * fix: max-width navbar search style by @Agility6 in https://github.com/stoneatom/stonedb/pull/1600
 * feat(website): Update site dependencies and fix some issues by @Nliver in https://github.com/stoneatom/stonedb/pull/1606
-* fix(tianmu):The instance occasionally crashes when the memory leak. (#1549) by @konghaiya in https://github.com/stoneatom/stonedb/pull/1598
+* fix(tianmu): The instance occasionally crashes when the memory leak. (#1549) by @konghaiya in https://github.com/stoneatom/stonedb/pull/1598
 * fix(website): fix the wrong QR code(#1624) by @Nliver in https://github.com/stoneatom/stonedb/pull/1634
-* fix(tianmu):assert failed on oldv <= dpn_->max_i at pack_int.cpp:337 (#1610) by @konghaiya in https://github.com/stoneatom/stonedb/pull/1627
+* fix(tianmu): assert failed on oldv `<=` dpn_->max_i at pack_int.cpp:337 (#1610) by @konghaiya in https://github.com/stoneatom/stonedb/pull/1627
 * fix(tianmu): fix mysqld crash when query where JOIN::propagate_dependencies… (#1628) by @adofsauron in https://github.com/stoneatom/stonedb/pull/1639
 * fix(tianmu): fix MySQL server has gone away when exec query (#1641 #1640) by @adofsauron in https://github.com/stoneatom/stonedb/pull/1642
 * fix(tianmu):Support insert ignore syntax (#1637) by @konghaiya in https://github.com/stoneatom/stonedb/pull/1643
@@ -319,8 +350,7 @@ Changes in StoneDB_5.7_v1.0.1 (2022-10-24, General Availability)
 - Document Notes
 - Bugs Fixed
 
-
-Functionality Added or Changed
+### Functionality Added or Changed
 - Tianmu:  From StoneDB_5.7 v1.0.1,  you can use delete statement to clear some data you don't need.
 ```sql
 delete from table1;
@@ -348,12 +378,13 @@ create trigger triggername
 - Tianmu: The Tianmu engine improved the performance of subqueries；
 - Tianmu: Added gtest module；
 - Tianmu: Added some mtr test cases；
-Compilation Notes
+
+### Compilation Notes
 - Added cmake parameter configuration for  build
 ```shell
 cmake  .. -DWITH_MARISA  -DWITH_ROCKSDB
 ```
-Document Notes
+### Document Notes
 - The manual has been updated as the code was modified. ( [# address](https://stonedb.io/))
 Bugs Fixed
 - fix some inherited mtr from MySQL
@@ -363,14 +394,14 @@ Bugs Fixed
 ## StoneDB-5.7-V1.0.0
 Changes in StoneDB_5.7_v1.0.0 (2022-08-31, General Availability)
 
--  Support for MySQL 5.7
--  Functionality Added or Changed
+- Support for MySQL 5.7
+- Functionality Added or Changed
 - Compilation Notes
 - Configuration Notes
 - Document Notes
 - Bugs Fixed
 
-Support for MySQL 5.7
+### Support for MySQL 5.7
 
 - Important Change: The Tianmu engine supports MySQL 5.7，base line edition MySQL 5.7.36. This change applies to the StoneDB database which would be fully compatible with the MySQL 5.7 protocols.
 
@@ -391,23 +422,23 @@ mysql> show engines;
 
 - Tianmu: The date-related functions (such as DATE_ADD, DATE_SUB)  can be queried (DATE_ADD|DATE_SUB) when  creating view using the date func.([BUG #342](https://github.com/stoneatom/stonedb/issues/342))
 
-Compilation Notes
+### Compilation Notes
 
 - The version of the Boost library for server builds is now 1.66.0.
 
 - The version of the Rocksdb for server builds is now 6.12.6.
 
-Configuration Notes
+### Configuration Notes
 
 - Important Change: Changed default config file stonedb.cnf to my.cnf. ([feature #182](https://github.com/stoneatom/stonedb/issues/182))
 
 - Important Change: Use tianmu as the default storage engine. ([feature #255](https://github.com/stoneatom/stonedb/issues/255))
 
-Document Notes
+### Document Notes
 
 - The manual has been updated as the code was modified. ( [# address](https://stonedb.io/))
 
-Bugs Fixed
+### Bugs Fixed
 
 - fix mtr case: [BUG #78](https://github.com/stoneatom/stonedb/issues/78), [BUG #73](https://github.com/stoneatom/stonedb/issues/73),[ BUG #170](https://github.com/stoneatom/stonedb/issues/170), [BUG #192](https://github.com/stoneatom/stonedb/issues/192), [BUG #191](https://github.com/stoneatom/stonedb/issues/191), [BUG #227](https://github.com/stoneatom/stonedb/issues/227),  [BUG #245](https://github.com/stoneatom/stonedb/issues/245), BUG  #263
 

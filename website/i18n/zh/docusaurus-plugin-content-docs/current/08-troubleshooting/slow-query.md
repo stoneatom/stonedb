@@ -186,7 +186,7 @@ optimizer trace的输出分3个阶段，分别是：
 - analyzing_range_alternatives：分析各种可能使用的索引的成本
 - "index": "idx_xxx",
 - "ranges": [
-  "2 <= column1 <= 2 AND 0 <= column2 <= 0"
+  "2 < = column1 < = 2 AND 0 < = column2 < = 0"
   ],
 - "index_dives_for_eq_ranges": true,   --->使用index dive
 - "rowid_ordered": true,   --->使用该索引获取的记录是否按照主键排序

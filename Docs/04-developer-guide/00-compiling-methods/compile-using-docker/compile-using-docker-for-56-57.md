@@ -162,7 +162,7 @@ After the `make` commands are successful, you can choose either to compress the 
 [root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb57.tar.gz /stonedb57/
 ```
 ### Directly use StoneDB in the container
-You can refer to [Quick Deployment](.../../../../02-getting-started/quick-deployment/quick-deployment-57.md) or the following code to deploy and use StoneDB in the container.
+You can refer to [Quick Deployment](../../../02-getting-started/quick-deployment/quick-deployment-57.md) or the following code to deploy and use StoneDB in the container.
 ### 1. Create an account
 ```shell
 groupadd mysql

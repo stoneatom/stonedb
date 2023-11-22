@@ -13,7 +13,7 @@ sidebar_position: 5.11
 
 
 ## 第三方依赖库集成 Docker 编译镜像使用： 
-- [Docker 编译环境搭建和使用](./compile-using-docker.md)
+- [Docker 编译环境搭建和使用](./compile-using-docker/compile-using-docker-for-80.md)
 
 
 
