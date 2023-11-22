@@ -63,7 +63,7 @@ partitions：匹配的分区
 
 2）ref：非唯一索引扫描，常用于非唯一索引等值查询，返回一行或多行记录
 
-3）range：索引范围扫描，常用于<、<=、>、>=、between and 等操作
+3）range：索引范围扫描，常用于`<`，`<=`，`>`，`>=`，`between` `and` 等操作
 
 4）index_merge：索引合并，既可以是一张表的两个索引字段使用 or(Using union)，又可以是一张表的两个索引字段使用 and(Using intersect)
 

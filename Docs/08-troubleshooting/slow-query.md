@@ -206,7 +206,7 @@ rows_estimation: estimates the relevant rows for a one-table query.
 
 - "usable": true,
 
-- "key_parts": [<br />  "column1",<br />  "column2",<br />  "id"<br /> analyzing_range_alternatives: analyzes the cost of each index that may be used.<br />  "index": "idx_xxx",<br />  "ranges": [<br />    "2 <= column1 <= 2 AND 0 <= column2 <= 0"<br />  ],
+- "key_parts": [<br/>"column1",<br/>"column2",<br/>"id"<br/>analyzing_range_alternatives: analyzes the cost of each index that may be used.<br/>  "index": "idx_xxx",<br/>"ranges": [<br/>"2 `<=` column1 `<=` 2 AND 0 `<=` column2 `<=` 0"<br/>],
 
 - "index_dives_for_eq_ranges": true,  # Index dives are used.
 
