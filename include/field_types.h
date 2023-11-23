@@ -68,9 +68,10 @@ enum enum_field_types {
   MYSQL_TYPE_VARCHAR,
   MYSQL_TYPE_BIT,
   MYSQL_TYPE_TIMESTAMP2,
-  MYSQL_TYPE_DATETIME2,   /**< Internal to MySQL. Not used in protocol */
-  MYSQL_TYPE_TIME2,       /**< Internal to MySQL. Not used in protocol */
-  MYSQL_TYPE_TYPED_ARRAY, /**< Used for replication only */
+  MYSQL_TYPE_DATETIME2,         /**< Internal to MySQL. Not used in protocol */
+  MYSQL_TYPE_TIME2,             /**< Internal to MySQL. Not used in protocol */
+  MYSQL_TYPE_TYPED_ARRAY,       /**< Used for replication only */
+  MYSQL_SYS_TYPE_TRX_ID = 242,  // for sys hindden col: DATA_TRX_ID
   MYSQL_TYPE_INVALID = 243,
   MYSQL_TYPE_BOOL = 244, /**< Currently just a placeholder */
   MYSQL_TYPE_JSON = 245,

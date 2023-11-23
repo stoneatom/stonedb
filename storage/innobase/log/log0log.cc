@@ -632,6 +632,8 @@ static void log_sys_create() {
   log.m_file_removed_event = os_event_create();
   log.next_checkpoint_event = os_event_create();
 
+  log.enable_rapid_lsn = false;
+
   mutex_create(LATCH_ID_LOG_CHECKPOINTER, &log.checkpointer_mutex);
   mutex_create(LATCH_ID_LOG_CLOSER, &log.closer_mutex);
   mutex_create(LATCH_ID_LOG_WRITER, &log.writer_mutex);

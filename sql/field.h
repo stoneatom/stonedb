@@ -3630,9 +3630,10 @@ class Field_blob : public Field_longstr {
         m_keep_old_value(false) {
     set_flag(BLOB_FLAG);
     if (set_packlength) {
-      packlength = len_arg <= 255
-                       ? 1
-                       : len_arg <= 65535 ? 2 : len_arg <= 16777215 ? 3 : 4;
+      packlength = len_arg <= 255        ? 1
+                   : len_arg <= 65535    ? 2
+                   : len_arg <= 16777215 ? 3
+                                         : 4;
     }
   }
 
@@ -4494,6 +4495,57 @@ class Field_bit_as_char final : public Field_bit {
   void sql_type(String &str) const final;
   Field_bit_as_char *clone(MEM_ROOT *mem_root) const final {
     return new (mem_root) Field_bit_as_char(*this);
+  }
+};
+
+// this is hidden field for holding DB_TRX_ID from innodb.
+class Field_sys_trx_id : public Field_num {
+ public:
+  static const int PACK_LENGTH = MAX_TRX_ID_WIDHT;
+
+  Field_sys_trx_id(uchar *ptr_arg, uint32 len_arg)
+      : Field_num(ptr_arg, len_arg, nullptr, 0, NONE, "DB_TRX_ID", 0, false,
+                  true) {}
+  Field_sys_trx_id(uint32 len_arg, bool is_nullable_arg,
+                   const char *field_name_arg, bool unsigned_arg)
+      : Field_num(nullptr, len_arg,
+                  is_nullable_arg ? &dummy_null_buffer : nullptr, 0, NONE,
+                  field_name_arg, 0, false, unsigned_arg) {}
+  enum Item_result result_type() const final { return INT_RESULT; }
+  enum_field_types type() const final { return MYSQL_SYS_TYPE_TRX_ID; }
+  enum ha_base_keytype key_type() const final {
+    return is_unsigned() ? HA_KEYTYPE_ULONG_INT : HA_KEYTYPE_LONG_INT;
+  }
+  type_conversion_status store(const char *to, size_t length,
+                               const CHARSET_INFO *charset) final;
+  type_conversion_status store(double nr) final;
+  type_conversion_status store(longlong nr, bool unsigned_val) override;
+  double val_real() const final;
+  longlong val_int() const final;
+  bool send_to_protocol(Protocol *protocol) const final;
+  String *val_str(String *, String *) const final;
+  int cmp(const uchar *, const uchar *) const final;
+  size_t make_sort_key(uchar *buff, size_t length) const final;
+  uint32 pack_length() const final { return PACK_LENGTH; }
+  void sql_type(String &str) const final;
+  uint32 max_display_length() const final {
+    return MY_INT32_NUM_DECIMAL_DIGITS;
+  }
+
+  Field_sys_trx_id *clone(MEM_ROOT *mem_root) const final {
+    assert(type() == MYSQL_SYS_TYPE_TRX_ID);
+    return new (mem_root) Field_sys_trx_id(*this);
+  }
+  uchar *pack(uchar *to, const uchar *from, size_t max_length) const final {
+    return pack_int32(to, from, max_length);
+  }
+  const uchar *unpack(uchar *to, const uchar *from,
+                      uint param_data [[maybe_unused]]) final {
+    return unpack_int32(to, from);
+  }
+
+  ulonglong get_max_int_value() const final {
+    return is_unsigned() ? 0xFFFFFFFFULL : 0x7FFFFFFFULL;
   }
 };
 

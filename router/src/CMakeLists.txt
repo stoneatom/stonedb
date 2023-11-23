@@ -40,6 +40,7 @@ ADD_SUBDIRECTORY(rest_router)
 ADD_SUBDIRECTORY(rest_routing)
 ADD_SUBDIRECTORY(router)
 ADD_SUBDIRECTORY(routing)
+ADD_SUBDIRECTORY(tianmu_secondary_server)
 
 # Directory layout after 'make install' is different.
 # Create symlinks to ssl libraries for both: build and install layouts

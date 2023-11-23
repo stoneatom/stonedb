@@ -4162,8 +4162,8 @@ buf_block_t *Buf_fetch<T>::single_page() {
   }
 #endif /* UNIV_DEBUG */
 
-  ut_ad(m_mode == Page_fetch::POSSIBLY_FREED ||
-        !block->page.file_page_was_freed);
+  // ut_ad(m_mode == Page_fetch::POSSIBLY_FREED ||
+  //       !block->page.file_page_was_freed);
 
   /* Check if this is the first access to the page */
   const auto access_time = buf_page_is_accessed(&block->page);

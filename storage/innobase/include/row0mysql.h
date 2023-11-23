@@ -56,6 +56,7 @@ this program; if not, write to the Free Software Foundation, Inc.,
 #include "my_inttypes.h"
 #include "que0types.h"
 #include "rem0types.h"
+#include "row0pread.h"
 #include "row0types.h"
 #include "sess0sess.h"
 #include "sql_cmd.h"
@@ -876,6 +877,27 @@ struct row_prebuilt_t {
                                         and clust_pcur, and we do not need
                                         to reposition the cursors. */
   void try_unlock(bool has_latches_on_recs);
+
+  // exec context for parallel processing.
+  std::shared_ptr<Parallel_reader::Ctx> m_parallel_exec_ctx{};
+
+  // is attached to parallel ctxt.
+  bool m_is_attach_ctx{false};
+
+  // using parallel index read.
+  bool m_parallel_index_read{false};
+
+  // cluster index rec.
+  bool m_parallel_requires_clust_rec{false};
+
+  // heap for parallel processing.
+  mem_heap_t *m_parallel_heap{nullptr};
+
+  // dtuple for parallel processing.
+  dtuple_t *m_parallel_tuple{nullptr};
+
+  /** Number of externally stored columns. */
+  ulint m_parallel_n_extern{ULINT_UNDEFINED};
 
  private:
   /** A helper function for init_search_tuples_types() which prepares the shape

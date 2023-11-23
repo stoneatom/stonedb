@@ -7968,6 +7968,8 @@ ulint get_innobase_type_from_mysql_type(ulint *unsigned_flag, const void *f) {
       reject such datatype in the next release. We will cope
       with it and not trigger assertion failure in 5.1 */
       break;
+    case MYSQL_SYS_TYPE_TRX_ID:
+      return DATA_SYS_TRX_ID;
     default:
       ut_error;
   }
@@ -8311,6 +8313,91 @@ static mysql_row_templ_t *build_template_field(
   return (templ);
 }
 
+/** Adds a field to a m_prebuilt struct 'template'.
+ @return the field template */
+static mysql_row_templ_t *build_template_sys_field(
+    row_prebuilt_t *prebuilt,  /*!< in/out: template */
+    dict_index_t *clust_index, /*!< in: InnoDB clustered index */
+    dict_index_t *index,       /*!< in: InnoDB index to use */
+    TABLE *table,              /*!< in: MySQL table object */
+    const Field *field,        /*!< in: field in MySQL table */
+    ulint i,                   /*!< in: field index in InnoDB table */
+    ulint v_no                 /*!< in: field index for virtual col */
+) {
+  mysql_row_templ_t *templ;
+  const dict_col_t *col;
+
+  ut_ad(clust_index->table == index->table);
+
+  templ = prebuilt->mysql_template + prebuilt->n_template++;
+  UNIV_MEM_INVALID(templ, sizeof *templ);
+
+  templ->is_virtual = false;
+  col = index->table->get_col(i);
+  assert(col);
+
+  templ->col_no = i;
+  templ->clust_rec_field_no = i;
+
+  if (index->is_clustered()) {
+    templ->rec_field_no = templ->clust_rec_field_no;
+  } else {
+    templ->rec_field_no = index->get_col_pos(i);
+  }
+
+  /* Set in set_templ_icp(). */
+  templ->icp_rec_field_no = ULINT_UNDEFINED;
+  // sys_trx_id is NOT null field. Here, we dont use the code below.
+  if (field->is_nullable()) {
+    templ->mysql_null_byte_offset = field->null_offset();
+
+    templ->mysql_null_bit_mask = (ulint)field->null_bit;
+  } else {
+    templ->mysql_null_bit_mask = 0;
+  }
+
+  templ->mysql_col_offset = (ulint)get_field_offset(table, field);
+  templ->mysql_col_len = (ulint)field->pack_length();
+
+  templ->mysql_mvidx_len = 0;
+  templ->is_multi_val = false;
+  templ->type = DATA_SYS;
+  templ->mysql_type = (ulint)field->type();
+
+  templ->mysql_length_bytes = 0;
+
+  templ->charset = dtype_get_charset_coll(col->prtype);
+  templ->mbminlen = col->get_mbminlen();
+  templ->mbmaxlen = col->get_mbmaxlen();
+  templ->is_unsigned = col->prtype & DATA_UNSIGNED;
+
+  if (!index->is_clustered() && templ->rec_field_no == ULINT_UNDEFINED) {
+    prebuilt->need_to_access_clustered = true;
+  }
+
+  /* For spatial index, we need to access cluster index. */
+  if (dict_index_is_spatial(index)) {
+    prebuilt->need_to_access_clustered = true;
+  }
+
+  if (prebuilt->mysql_prefix_len <
+      templ->mysql_col_offset + templ->mysql_col_len) {
+    prebuilt->mysql_prefix_len = templ->mysql_col_offset + templ->mysql_col_len;
+  }
+
+  if (DATA_LARGE_MTYPE(templ->type)) {
+    prebuilt->templ_contains_blob = true;
+  }
+
+  if (templ->type == DATA_POINT) {
+    /* We set this only when it's DATA_POINT, but not
+    DATA_VAR_POINT */
+    prebuilt->templ_contains_fixed_point = true;
+  }
+
+  return (templ);
+}
+
 /** Set Index Condition Push down (ICP) field number in template.
 @param[in,out]  templ           mysql column template
 @param[in]      index           index used to build the template
@@ -8401,14 +8488,15 @@ void ha_innobase::build_template(bool whole_row) {
 
   n_fields = (ulint)table->s->fields; /* number of columns */
 
-  if (!m_prebuilt->mysql_template) {
+  if (!m_prebuilt->mysql_template) {  // an extra column for trx_id.
     m_prebuilt->mysql_template = (mysql_row_templ_t *)ut::malloc_withkey(
-        UT_NEW_THIS_FILE_PSI_KEY, n_fields * sizeof(mysql_row_templ_t));
+        UT_NEW_THIS_FILE_PSI_KEY, (n_fields + 1) * sizeof(mysql_row_templ_t));
   }
 
 #if defined(UNIV_DEBUG) && !defined(UNIV_DEBUG_VALGRIND)
   /* zero-filling for compare contents for debug */
-  memset(m_prebuilt->mysql_template, 0, n_fields * sizeof(mysql_row_templ_t));
+  memset(m_prebuilt->mysql_template, 0,
+         (n_fields + 1) * sizeof(mysql_row_templ_t));
 #endif /* UNIV_DEBUG && !UNIV_DEBUG_VALGRIND */
 
   m_prebuilt->template_type =
@@ -8629,6 +8717,15 @@ void ha_innobase::build_template(bool whole_row) {
         num_v++;
       }
     }
+  }
+
+  // Here, using the 2rd colum in innodb, field_no: (2 -1[in row0sel.cc adds
+  // 1 already]), which is 'DB_TRX_ID'. Adds one in
+  Field *field = table->field[n_fields];
+  // assert(field);
+  if (field) {
+    mysql_row_templ_t *templ = build_template_sys_field(
+        m_prebuilt, clust_index, index, table, field, 1, 0);
   }
 
   if (index != clust_index && m_prebuilt->need_to_access_clustered) {
@@ -18365,7 +18462,7 @@ int ha_innobase::extra(enum ha_extra_function operation)
       m_prebuilt->no_autoinc_locking = true;
       break;
     default: /* Do nothing */
-             ;
+        ;
   }
 
   return (0);

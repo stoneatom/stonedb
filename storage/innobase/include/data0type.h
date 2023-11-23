@@ -107,6 +107,10 @@ constexpr uint32_t DATA_POINT = 15;
 /** geometry datatype of variable length POINT, used when we want to store POINT
  as BLOB internally */
 constexpr uint32_t DATA_VAR_POINT = 16;
+
+/***/
+constexpr uint32_t DATA_SYS_TRX_ID = 17;
+
 /** dtype_store_for_order_and_null_size()  requires the values are <= 63 */
 constexpr uint32_t DATA_MTYPE_MAX = 63;
 
@@ -274,6 +278,11 @@ the underling datatype of GEOMETRY(not DATA_POINT) data. */
 inline bool DATA_LARGE_MTYPE(ulint mtype) {
   return mtype == DATA_BLOB || mtype == DATA_VAR_POINT ||
          mtype == DATA_GEOMETRY;
+}
+
+/**For checking if the mtype is SYS_TRX_ID OR SYS_XXX.*/
+inline bool DATA_SYS_MTYPE(ulint mytpe) {
+  return mytpe == DATA_SYS_TRX_ID || mytpe == DATA_SYS;
 }
 
 /* For checking if data type is big length data type. */

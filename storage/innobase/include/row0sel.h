@@ -158,9 +158,9 @@ position and fetch next or fetch prev must not be tried to the cursor!
                                 cursor 'direction' should be 0.
 @return DB_SUCCESS, DB_RECORD_NOT_FOUND, DB_END_OF_INDEX, DB_DEADLOCK,
 DB_LOCK_TABLE_FULL, DB_CORRUPTION, or DB_TOO_BIG_RECORD */
-[[nodiscard]] static inline dberr_t row_search_for_mysql(
-    byte *buf, page_cur_mode_t mode, row_prebuilt_t *prebuilt, ulint match_mode,
-    ulint direction);
+dberr_t row_search_for_mysql(byte *buf, page_cur_mode_t mode,
+                             row_prebuilt_t *prebuilt, ulint match_mode,
+                             ulint direction);
 
 /** Searches for rows in the database using cursor.
 Function is for temporary tables that are not shared accross connections

@@ -75,6 +75,9 @@ constexpr const int MAX_DATETIME_FULL_WIDTH{29};
 /** YYYY-MM-DD HH:MM:SS */
 constexpr const int MAX_DATETIME_WIDTH{19};
 
+/** trxid in mysql is ulonglong */
+constexpr const int MAX_TRX_ID_WIDHT{8};
+
 /**
   MAX_TABLES and xxx_TABLE_BIT are used in optimization of table factors and
   expressions, and in join plan generation.

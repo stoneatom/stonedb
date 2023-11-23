@@ -65,6 +65,8 @@ this program; if not, write to the Free Software Foundation, Inc.,
 #include "ut0mutex.h"
 
 /* aligned_array_pointer, ut::vector */
+#include <stdbool.h>
+
 #include "ut0new.h"
 
 class THD;
@@ -141,6 +143,24 @@ struct alignas(ut::INNODB_CACHE_LINE_SIZE) log_t {
   /** The recent closed buffer.
   Protected by: locking sn not to add. */
   alignas(ut::INNODB_CACHE_LINE_SIZE) Link_buf<lsn_t> recent_closed;
+
+  /** @} */
+
+  /**************************************************/ /**
+
+   @name rapid secondary engine
+
+   *******************************************************/
+
+  /** @{ */
+
+  alignas(ut::INNODB_CACHE_LINE_SIZE) atomic_lsn_t rapid_lsn;
+
+  bool enable_rapid_lsn;
+
+  alignas(ut::INNODB_CACHE_LINE_SIZE) os_event_t *rapid_events;
+
+  size_t rapid_events_size;
 
   /** @} */
 

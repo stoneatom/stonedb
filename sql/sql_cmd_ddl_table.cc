@@ -64,7 +64,7 @@
 #include "sql/current_thd.h"
 #endif  // NDEBUG
 
-#include "../storage/tianmu/handler/ha_my_tianmu.h" // tianmu header file
+#include "../storage/tianmu/handler/ha_my_tianmu.h"  // tianmu header file
 
 Sql_cmd_ddl_table::Sql_cmd_ddl_table(Alter_info *alter_info)
     : m_alter_info(alter_info) {
@@ -403,12 +403,14 @@ bool Sql_cmd_create_table::execute(THD *thd) {
       thd->push_internal_handler(&strict_handler);
 
     int tianmu_res = 0, free_join_from_tianmu = 0, optimize_after_tianmu = 0;
-    Query_result * result_tianmu = dynamic_cast<Query_result *>(result);
+    Query_result *result_tianmu = dynamic_cast<Query_result *>(result);
+#if 0
     if (Tianmu::handler::ha_my_tianmu_query(thd, query_expression, result_tianmu, 0, tianmu_res, optimize_after_tianmu,
         free_join_from_tianmu, true) == Tianmu::handler::QueryRouteTo::TO_MYSQL)
       res = populate_table(thd, lex);
     else
       res = tianmu_res;
+#endif
 
     // Count the number of statements offloaded to a secondary storage engine.
     if (using_secondary_storage_engine() && lex->unit->is_executed())

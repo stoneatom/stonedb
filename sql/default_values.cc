@@ -132,6 +132,9 @@ static bool find_record_length(const dd::Table &table, size_t min_length,
     share->reclength += column_pack_length(*col_obj);
     share->fields++;
   }
+  // Here, due to we need an extra space to store trx_id. we add an extra
+  // length.
+  share->reclength += MAX_TRX_ID_WIDHT;
 
   // Find preamble length and add it to the total record length.
   share->null_bytes = (share->null_fields + leftover_bits + 7) / 8;
@@ -285,7 +288,8 @@ bool prepare_default_value_buffer_and_table_share(THD *thd,
   // Get the number of columns, record length etc.
   if (find_record_length(table, min_length, share)) return true;
 
-  // Adjust buffer size and allocate the default value buffer.
+  // Adjust buffer size and allocate the default value buffer. the buffer
+  // includes an extra to store trx id.
   share->rec_buff_length = ALIGN_SIZE(share->reclength + 1 + extra_length);
   if (share->reclength) {
     share->default_values = reinterpret_cast<uchar *>(

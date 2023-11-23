@@ -3464,9 +3464,9 @@ int Field_short::cmp(const uchar *a_ptr, const uchar *b_ptr) const {
   }
 
   if (is_unsigned())
-    return ((unsigned short)a < (unsigned short)b)
-               ? -1
-               : ((unsigned short)a > (unsigned short)b) ? 1 : 0;
+    return ((unsigned short)a < (unsigned short)b)   ? -1
+           : ((unsigned short)a > (unsigned short)b) ? 1
+                                                     : 0;
   return (a < b) ? -1 : (a > b) ? 1 : 0;
 }
 
@@ -3987,9 +3987,9 @@ int Field_longlong::cmp(const uchar *a_ptr, const uchar *b_ptr) const {
     b = longlongget(b_ptr);
   }
   if (is_unsigned())
-    return ((ulonglong)a < (ulonglong)b)
-               ? -1
-               : ((ulonglong)a > (ulonglong)b) ? 1 : 0;
+    return ((ulonglong)a < (ulonglong)b)   ? -1
+           : ((ulonglong)a > (ulonglong)b) ? 1
+                                           : 0;
   return (a < b) ? -1 : (a > b) ? 1 : 0;
 }
 
@@ -4341,7 +4341,7 @@ longlong Field_double::val_int() const {
   }
   return (longlong)rint(j);
 
-warn : {
+warn: {
   char buf[DOUBLE_TO_STRING_CONVERSION_BUFFER_SIZE];
   String tmp(buf, sizeof(buf), &my_charset_latin1), *str;
   str = val_str(&tmp, nullptr);
@@ -5922,8 +5922,9 @@ int Field_datetime::cmp(const uchar *a_ptr, const uchar *b_ptr) const {
     a = longlongget(a_ptr);
     b = longlongget(b_ptr);
   }
-  return ((ulonglong)a < (ulonglong)b) ? -1
-                                       : ((ulonglong)a > (ulonglong)b) ? 1 : 0;
+  return ((ulonglong)a < (ulonglong)b)   ? -1
+         : ((ulonglong)a > (ulonglong)b) ? 1
+                                         : 0;
 }
 
 size_t Field_datetime::make_sort_key(uchar *to, size_t length) const {
@@ -9112,6 +9113,202 @@ void Field_bit_as_char::sql_type(String &res) const {
   res.length(length);
 }
 
+/****************************************************************************
+ Field type Trx_id (ulonglong bytes)
+****************************************************************************/
+// Invisible system field for innodb system columns.
+type_conversion_status Field_sys_trx_id::store(const char *from, size_t len,
+                                               const CHARSET_INFO *cs) {
+  ASSERT_COLUMN_MARKED_FOR_WRITE;
+  long store_tmp;
+  longlong rnd;
+
+  const type_conversion_status error =
+      get_int(cs, from, len, &rnd, UINT_MAX32, INT_MIN32, INT_MAX32);
+  store_tmp = is_unsigned() ? (long)(ulonglong)rnd : (long)rnd;
+  if (table->s->db_low_byte_first)
+    int4store(ptr, store_tmp);
+  else
+    longstore(ptr, store_tmp);
+  return error;
+}
+
+type_conversion_status Field_sys_trx_id::store(double nr) {
+  ASSERT_COLUMN_MARKED_FOR_WRITE;
+  type_conversion_status error = TYPE_OK;
+  int32 res;
+  nr = rint(nr);
+  if (is_unsigned()) {
+    if (nr < 0) {
+      res = 0;
+      error = TYPE_WARN_OUT_OF_RANGE;
+    } else if (nr > UINT_MAX32) {
+      res = UINT_MAX32;
+      set_warning(Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE, 1);
+      error = TYPE_WARN_OUT_OF_RANGE;
+    } else
+      res = (int32)(ulong)nr;
+  } else {
+    if (nr < INT_MIN32) {
+      res = (int32)INT_MIN32;
+      error = TYPE_WARN_OUT_OF_RANGE;
+    } else if (nr > INT_MAX32) {
+      res = (int32)INT_MAX32;
+      error = TYPE_WARN_OUT_OF_RANGE;
+    } else
+      res = (int32)(longlong)nr;
+  }
+  if (error)
+    set_warning(Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE, 1);
+
+  if (table->s->db_low_byte_first)
+    int4store(ptr, res);
+  else
+    longstore(ptr, res);
+  return error;
+}
+
+/**
+  Store a Trxi in the field
+
+  @param nr            the value to store
+  @param unsigned_val  whether or not 'nr' should be interpreted as
+                       signed or unsigned. E.g., if 'nr' has all bits
+                       set it is interpreted as -1 if unsigned_val is
+                       false and ULLONG_MAX if unsigned_val is true.
+*/
+type_conversion_status Field_sys_trx_id::store(longlong nr, bool unsigned_val) {
+  ASSERT_COLUMN_MARKED_FOR_WRITE;
+  type_conversion_status error = TYPE_OK;
+  int32 res;
+
+  if (is_unsigned()) {
+    if (nr < 0 && !unsigned_val) {
+      res = 0;
+      error = TYPE_WARN_OUT_OF_RANGE;
+    } else if ((ulonglong)nr >= (1LL << 32)) {
+      res = (int32)(uint32)~0L;
+      error = TYPE_WARN_OUT_OF_RANGE;
+    } else
+      res = (int32)(uint32)nr;
+  } else {
+    if (nr < 0 && unsigned_val) {
+      nr = ((longlong)INT_MAX32) + 1;  // Generate overflow
+      error = TYPE_WARN_OUT_OF_RANGE;
+    }
+    if (nr < (longlong)INT_MIN32) {
+      res = (int32)INT_MIN32;
+      error = TYPE_WARN_OUT_OF_RANGE;
+    } else if (nr > (longlong)INT_MAX32) {
+      res = (int32)INT_MAX32;
+      error = TYPE_WARN_OUT_OF_RANGE;
+    } else
+      res = (int32)nr;
+  }
+  if (error)
+    set_warning(Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE, 1);
+
+  if (table->s->db_low_byte_first)
+    int4store(ptr, res);
+  else
+    longstore(ptr, res);
+  return error;
+}
+
+double Field_sys_trx_id::val_real() const {
+  ASSERT_COLUMN_MARKED_FOR_READ;
+  int32 j;
+  if (table->s->db_low_byte_first)
+    j = sint4korr(ptr);
+  else
+    j = longget(ptr);
+  return is_unsigned() ? (double)(uint32)j : (double)j;
+}
+
+longlong Field_sys_trx_id::val_int() const {
+  ASSERT_COLUMN_MARKED_FOR_READ;
+  int32 j;
+  if (table->s->db_low_byte_first)
+    j = sint4korr(ptr);
+  else
+    j = longget(ptr);
+  return is_unsigned() ? (longlong)(uint32)j : (longlong)j;
+}
+
+String *Field_sys_trx_id::val_str(String *val_buffer, String *) const {
+  ASSERT_COLUMN_MARKED_FOR_READ;
+  const CHARSET_INFO *cs = &my_charset_numeric;
+  size_t length;
+  uint mlength = max(field_length + 1, 12 * cs->mbmaxlen);
+  val_buffer->alloc(mlength);
+  char *to = val_buffer->ptr();
+  int32 j;
+  if (table->s->db_low_byte_first)
+    j = sint4korr(ptr);
+  else
+    j = longget(ptr);
+
+  if (is_unsigned())
+    length = cs->cset->long10_to_str(cs, to, mlength, 10, (long)(uint32)j);
+  else
+    length = cs->cset->long10_to_str(cs, to, mlength, -10, (long)j);
+  val_buffer->length(length);
+  if (zerofill) prepend_zeros(val_buffer);
+  val_buffer->set_charset(cs);
+  return val_buffer;
+}
+
+bool Field_sys_trx_id::send_to_protocol(Protocol *protocol) const {
+  ASSERT_COLUMN_MARKED_FOR_READ;
+  if (is_null()) return protocol->store_null();
+  return protocol->store_long(Field_sys_trx_id::val_int(),
+                              zerofill ? field_length : 0);
+}
+
+int Field_sys_trx_id::cmp(const uchar *a_ptr, const uchar *b_ptr) const {
+  int32 a, b;
+  if (table->s->db_low_byte_first) {
+    a = sint4korr(a_ptr);
+    b = sint4korr(b_ptr);
+  } else {
+    a = longget(a_ptr);
+    b = longget(b_ptr);
+  }
+  if (is_unsigned())
+    return ((uint32)a < (uint32)b) ? -1 : ((uint32)a > (uint32)b) ? 1 : 0;
+  return (a < b) ? -1 : (a > b) ? 1 : 0;
+}
+
+size_t Field_sys_trx_id::make_sort_key(uchar *to,
+                                       size_t length [[maybe_unused]]) const {
+  assert(length == 4);
+#ifdef WORDS_BIGENDIAN
+  if (!table->s->db_low_byte_first) {
+    if (is_unsigned())
+      to[0] = ptr[0];
+    else
+      to[0] = (char)(ptr[0] ^ 128); /* Reverse sign bit */
+    to[1] = ptr[1];
+    to[2] = ptr[2];
+    to[3] = ptr[3];
+  } else
+#endif
+  {
+    if (is_unsigned())
+      to[0] = ptr[3];
+    else
+      to[0] = (char)(ptr[3] ^ 128); /* Reverse sign bit */
+    to[1] = ptr[2];
+    to[2] = ptr[1];
+    to[3] = ptr[0];
+  }
+  return 4;
+}
+
+void Field_sys_trx_id::sql_type(String &res) const {
+  integer_sql_type(this, "trx_id", &res);
+}
+
 /*****************************************************************************
   Handling of field and Create_field
 *****************************************************************************/
@@ -9216,6 +9413,8 @@ size_t calc_pack_length(enum_field_types type, size_t length) {
       return 8; /* Don't crash if no longlong */
     case MYSQL_TYPE_NULL:
       return 0;
+    case MYSQL_SYS_TYPE_TRX_ID:
+      return MAX_TRX_ID_WIDHT;
     case MYSQL_TYPE_TINY_BLOB:
       return 1 + portable_sizeof_char_ptr;
     case MYSQL_TYPE_BLOB:

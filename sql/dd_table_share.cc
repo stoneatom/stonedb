@@ -52,6 +52,8 @@
 #include "sql/dd/dd_table.h"       // dd::FIELD_NAME_SEPARATOR_CHAR
 #include "sql/dd/dd_tablespace.h"  // dd::get_tablespace_name
 // TODO: Avoid exposing dd/impl headers in public files.
+#include "sql/dd/impl/bootstrap/bootstrap_ctx.h"
+#include "sql/dd/impl/bootstrap/bootstrapper.h"
 #include "sql/dd/impl/utils.h"  // dd::eat_str
 #include "sql/dd/properties.h"  // dd::Properties
 #include "sql/dd/string_type.h"
@@ -292,8 +294,9 @@ static bool prepare_share(THD *thd, TABLE_SHARE *share,
   if (share->keys) {
     KEY *keyinfo;
     KEY_PART_INFO *key_part;
-    uint primary_key = (uint)(
-        find_type(primary_key_name, &share->keynames, FIND_TYPE_NO_PREFIX) - 1);
+    uint primary_key = (uint)(find_type(primary_key_name, &share->keynames,
+                                        FIND_TYPE_NO_PREFIX) -
+                              1);
     longlong ha_option = handler_file->ha_table_flags();
     keyinfo = share->key_info;
     key_part = keyinfo->key_part;
@@ -1105,8 +1108,9 @@ static bool fill_column_from_dd(THD *thd, TABLE_SHARE *share,
 
 static bool fill_columns_from_dd(THD *thd, TABLE_SHARE *share,
                                  const dd::Table *tab_obj) {
-  // Allocate space for fields in TABLE_SHARE.
-  uint fields_size = ((share->fields + 1) * sizeof(Field *));
+  // Allocate space for fields in TABLE_SHARE. here, we add extra one column to
+  // store trxid. 'Field_sys_trx_id' is invisible to SE.
+  uint fields_size = ((share->fields + 1 + 1) * sizeof(Field *));
   share->field = (Field **)share->mem_root.Alloc((uint)fields_size);
   memset(share->field, 0, fields_size);
   share->vfields = 0;
@@ -1191,10 +1195,22 @@ static bool fill_columns_from_dd(THD *thd, TABLE_SHARE *share,
     }
   }
 
+  if (!thd->is_bootstrap_system_thread()) {
+    Field_sys_trx_id *sys_trx_id_field =
+        new (*THR_MALLOC) Field_sys_trx_id(rec_pos, MAX_TRX_ID_WIDHT);
+    assert(sys_trx_id_field);
+    sys_trx_id_field->set_hidden(dd::Column::enum_hidden_type::HT_HIDDEN_SE);
+
+    share->field[field_nr] = sys_trx_id_field;
+    rec_pos += share->field[field_nr]->pack_length_in_rec();
+
+    field_nr++;
+    assert(share->fields + 1 == field_nr);
+  }
+
   // Make sure the scan of the columns is consistent with other data.
   assert(share->null_bytes == (null_pos - null_flags + (null_bit_pos + 7) / 8));
   assert(share->last_null_bit_pos == null_bit_pos);
-  assert(share->fields == field_nr);
 
   return (false);
 }

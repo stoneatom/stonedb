@@ -245,6 +245,10 @@ static lsn_t log_compute_available_for_checkpoint_lsn(const log_t &log) {
   const lsn_t flushed_lsn = log.flushed_to_disk_lsn.load();
 
   lsn_t lsn = std::min(lwm_lsn, flushed_lsn);
+  if (log.enable_rapid_lsn) {
+    const lsn_t rapid_lsn = log.rapid_lsn.load();
+    lsn = std::min(lsn, rapid_lsn);
+  }
 
   /* We expect in recovery that checkpoint_lsn is within data area
   of log block. In future we could get rid of this assumption, but
