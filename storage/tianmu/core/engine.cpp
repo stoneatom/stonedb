@@ -2224,7 +2224,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
       io_params->Delimiter().find(io_params->EscapeCharacter()) != std::string::npos)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Field terminator containing the escape character not supported.");
-#if 0 
+#if 0
   if (io_params->EscapeCharacter() != 0 && io_params->StringQualifier() != 0 &&
       io_params->EscapeCharacter() == io_params->StringQualifier())
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
@@ -2434,7 +2434,32 @@ std::string Engine::DeltaStoreStat() {
          "/" + std::to_string(read_bytes) + " delta: " + std::to_string(delta_cnt) + "/" + std::to_string(delta_bytes);
 }
 
-}  // namespace core
+
+/**
+ * generate delta sync info on show engine query
+ * @param [out] buf  output stream
+ * @param filter_set table name filter, empty set means no filter
+ * @return number of queried delta tables
+ */
+size_t Engine::GetDeltaSyncStats(std::ostringstream &buf, std::unordered_set<std::string> &filter_set) {
+  std::vector<std::shared_ptr<DeltaTable>> table_list;
+  for(const auto& delta:m_table_deltas){
+    if(filter_set.empty() || filter_set.find(delta.second->FullName())!=filter_set.end()){
+      table_list.push_back(delta.second);
+    }
+  }
+  buf << table_list.size() << " table(s) matched in the delta sync-stat query:" << std::endl;
+  for(auto& table: table_list){
+    buf << "table name: " << table->FullName()
+        << ", delta table id: " << table->GetDeltaTableID()
+        << ", current load id: " << table->load_id.load()
+        << ", merge id: " << table->merge_id.load()
+        <<", current row_id: " << table->row_id.load() << std::endl;
+  }
+  return table_list.size();
+}
+
+  }  // namespace core
 }  // namespace Tianmu
 
 int tianmu_push_data_dir(const char *dir) {

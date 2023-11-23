@@ -26,9 +26,9 @@ sidebar_position: 6.42
 | RIGHT(s,n) | 返回字符串 s 的后 n 个字符 | SELECT RIGHT('stonedb',5);<br />->onedb |
 | RPAD(s1,len,s2) | 在字符串 s1 的结尾处添加字符串 s2，使字符串的长度达到 len | SELECT RPAD('stone',7,'db');<br />->stonedb |
 | RTRIM(s) | 去掉字符串 s 结尾处的空格 | SELECT RTRIM('STONEDB ');<br />->STONEDB |
-| SPACE(n) | 返回 n 个空格 | SELECT SPACE(10);<br />->        |
-| STRCMP(s1,s2) | 比较字符串 s1 和 s2，如果 s1 与 s2 相等返回 0 ，如果 s1>s2 返回 1，如果 s1<s2 返回 -1 | SELECT STRCMP('stonedb','stone');<br />->1 |
+| SPACE(n) | 返回 n 个空格 | SELECT SPACE(10);<br />-> |
 | SUBSTR(s, start, length) | 从字符串 s 的 start 位置截取长度为 length 的子字符串 | SELECT SUBSTR('STONEDB',2,3);<br />->TON |
+| STRCMP(s1,s2) | 比较字符串 s1 和 s2, 如果 s1 与 s2 相等返回 0, 如果 s1>s2 返回 1,如果 s1小于s2 返回 -1|SELECT STRCMP('stonedb','stone'); <br />-> 1|
 | SUBSTRING_INDEX(s, delimiter, number) | 返回从字符串 s 的第 number 个出现的分隔符 delimiter 之后的子串 | SELECT SUBSTRING_INDEX('stonedb','n',1);<br />->sto |
 | TRIM(s) | 去掉字符串 s 开始和结尾处的空格 | SELECT TRIM('    STONEDB    ');<br />->STONEDB |
 | UCASE(s)<br />UPPER(s) | 将字符串转换为大写 | SELECT UCASE('stonedb');<br />->STONEDB |

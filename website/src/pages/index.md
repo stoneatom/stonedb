@@ -80,7 +80,7 @@ A Real-time HTAP Database
                 - Minimal TCO, Making Data Services Affordable to Everyone
 ```
 
-```custom-roadMap 2023-03-20
+```custom-roadMap 2023-06-30
 - Roadmap
     - StoneDB_5.6_v1.0.0
         1. Support integrated hybrid row-column storage and use an in-memory computing architecture.
@@ -112,25 +112,33 @@ A Real-time HTAP Database
         3. Binlog modification
         4. The active and standby clusters automatically search for the master
         - 2023-03-20
+    - StoneDB_8.0_v1.0.0
+        - Adapt to MySQL 8.0.
+        - 2023-05-05
     - StoneDB_5.7_v1.0.4
         1. Stored procedure enhancement
         2. MySQL Event (Batch processing capability)
         3. Window functions
         4. Security functions - enhanced identity authentication, storage encryption
-        - 2023-04-30
+        - 2023-06-30
     - StoneDB_5.7_v1.0.5
         1. Performance Enhancement - Parallel Execution Capability
         2. Performance Enhancement - vector computing
         3. Multi-master, one-slave architecture
         4. Data exchange (multiple export formats)
         5. Security functions - transmission encryption, data desensitization
-        - 2023-06-30
-    - StoneDB_8.0_v1.0.0
-        - Adapt to MySQL 8.0.
-        - 2023-05-05
+        - 2023-12-30
     - StoneDB_v2.0.0
-        - Launch the brand new V2.0 architecture.
-        - 2023~
+        1. StoneDB 2.0 provides real-time online transaction support and data analysis capabilities. While supporting TP transactions, it also supports a built-in AP engine that is transparent to users, providing high performance in billion-scale data join scenarios, with a speedup of 100 to 1000 times compared to MySQL.
+        2. It supports DDL statements such as create/alter table/drop table.
+        3. It also supports commands such as insert/update/load data to update data in real-time.
+        - 2023-09-25
+    - StoneDB_v2.1.0
+        1. Support for transactions.
+        2. Support for master-slave replication.
+        3. Support for commonly used built-in functions.
+        4. Support for stored procedures, temporary tables, views, triggers, and other objects.
+        - 2023-10-31
 ```
 
 

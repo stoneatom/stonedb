@@ -16,6 +16,7 @@
 */
 
 #include <arpa/inet.h>
+#include <unordered_set>
 #include <iostream>
 
 #include <boost/algorithm/string.hpp>
@@ -2155,13 +2156,32 @@ bool tianmu_show_status([[maybe_unused]] handlerton *hton, THD *thd, stat_print_
   std::ostringstream buf(std::ostringstream::out);
 
   buf << std::endl;
+  if(stat != HA_ENGINE_STATUS) return false;
+    std::string layer_name{thd->lex->create_info.layer_name.str,thd->lex->create_info.layer_name.length };
+  // no layer specified, return histogram info
+   std::transform(layer_name.begin(),layer_name.end(),layer_name.begin(),::toupper);
 
-  if (stat == HA_ENGINE_STATUS) {
+   if(layer_name == "DELTA") {
+       std::unordered_set<std::string> table_filter_set;
+       for(auto table = thd->lex->current_select()->get_table_list();table!= nullptr;table = table->next_local){
+           table_filter_set.emplace(std::string(table->get_db_name())+"."+std::string(table->get_table_name()));
+       }
+
+       auto *eng = reinterpret_cast<core::Engine *>(tianmu_hton->data);
+
+       eng->GetDeltaSyncStats(buf, table_filter_set);
+       return pprint(thd, hton_name, uint(std::strlen(hton_name)), layer_name.c_str(), layer_name.size(),
+                     buf.str().c_str(), uint(buf.str().length()));
+   }
+   // fallback to histogram
     mm::TraceableObject::Instance()->HeapHistogram(buf);
     return pprint(thd, hton_name, uint(std::strlen(hton_name)), "Heap Histograms", uint(std::strlen("Heap Histograms")),
                   buf.str().c_str(), uint(buf.str().length()));
-  }
-  return false;
+
+
+
+
+
 }
 
 extern my_bool tianmu_bootstrap;

@@ -465,7 +465,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
   Currently there are 159 shift/reduce conflicts.
   We should not introduce new conflicts any more.
 */
-%expect 155
+%expect 158
 
 /*
    Comments for TOKENS.
@@ -1176,7 +1176,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
         NCHAR_STRING opt_component key_cache_name
         sp_opt_label BIN_NUM label_ident TEXT_STRING_filesystem ident_or_empty
         opt_constraint constraint opt_ident TEXT_STRING_sys_nonewline
-        filter_wild_db_table_string
+        filter_wild_db_table_string layer_ident
 
 %type <lex_str_ptr>
         opt_table_alias
@@ -1373,6 +1373,8 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
         definer_opt no_definer definer get_diagnostics
         alter_user_command password_expire
         group_replication
+        opt_layer_spec
+
 END_OF_INPUT
 
 %type <NONE> call sp_proc_stmts sp_proc_stmts1 sp_proc_stmt
@@ -12219,12 +12221,31 @@ show_param:
         ;
 
 show_engine_param:
-          STATUS_SYM
-          { Lex->sql_command= SQLCOM_SHOW_ENGINE_STATUS; }
+          opt_layer_spec STATUS_SYM
+           {
+           Lex->sql_command= SQLCOM_SHOW_ENGINE_STATUS;
+           }
+
         | MUTEX_SYM
           { Lex->sql_command= SQLCOM_SHOW_ENGINE_MUTEX; }
         | LOGS_SYM
           { Lex->sql_command= SQLCOM_SHOW_ENGINE_LOGS; }
+        ;
+
+opt_layer_spec:
+        /*empty*/{}
+        | layer_ident opt_table_list
+        {
+            Lex->create_info.layer_name = to_lex_cstring($1);
+            /*
+            'opt_table_list' injects the full table name automatically
+            */
+        }
+
+
+
+layer_ident:
+         ident {$$ = $1;}
         ;
 
 master_or_binary:
