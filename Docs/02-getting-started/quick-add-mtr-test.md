@@ -9,7 +9,7 @@ sidebar_position: 3.6
 
 When you contribute your code into StoneDB, test your code in the meantime.
 
-Test cases are in the path \${StoneDB-Source-DIR}/mysql-test/suite/tianmu/.
+Test cases are in the path `\${StoneDB-Source-DIR}/mysql-test/suite/tianmu/`.
 
 :::info
 `${StoneDB-Source-DIR}` is your StoneDB source code directory.
