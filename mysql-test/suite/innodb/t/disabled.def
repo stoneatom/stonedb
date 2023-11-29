@@ -9,3 +9,4 @@
 #  Do not use any TAB characters for whitespace.
 #
 ##############################################################################
+  innodb-multiple-tablespaces : bug_for_innodb_multiple_tablespaces 2023-11-27 nliver

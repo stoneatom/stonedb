@@ -18,3 +18,5 @@ ssl-big                  : Bug #18977126 MAIN.SSL-BIG FAILS WITH TIMEOUT Times o
 explain_for_connection_rqg_json  : Bug#20697533 2015-03-20 erlend Fails several times each day on all platforms
 explain_for_connection_rqg_trad : Bug#20697533 2015-03-20 erlend Fails several times each day on all platforms
 daemonize_opt : Bug#31335773 2020-05-12 Deepa Shutdown_report fails
+implicit_commit : bug_for_implicit_commit 2023-11-27 nliver
+sp_trans : bug_for_sp_trans 2023-11-27 nliver
