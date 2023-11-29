@@ -16,4 +16,6 @@
   issue581 :  bug_for_581  2023-4-7 ringsc
   load : bug_for_load 2023-4-7 ringsc
   trigger : bug_for_trigger 2023-4-7 ringsc
-  alter_table_primarykey : bug_for_alter_pk
+  alter_table_primarykey : bug_for_alter_pk 2023-11-27 who
+  issue1359 : bug_for_1359 2023-11-27 nliver
+  issue1708 : bug_for_1708 2023-11-27 nliver
