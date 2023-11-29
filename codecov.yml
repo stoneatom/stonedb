@@ -1,3 +1,10 @@
 ignore:
 - "include/boost_1_66_0"
 - "extra"
+
+coverage:
+  status:
+    patch:
+      default:
+        threshold: 0.4 #Allow the coverage to drop by threshold%, and posting a success status.
+        target: 60%
