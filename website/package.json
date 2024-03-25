@@ -35,7 +35,7 @@
     "gsap": "^3.10.4",
     "hast-util-to-text": "^3.1.1",
     "js-md5": "^0.7.3",
-    "katex": "^0.15.6",
+    "katex": "^0.16.10",
     "libpag": "^4.0.5-release.7",
     "lottie-web": "^5.9.4",
     "mathjs": "^11.2.1",
