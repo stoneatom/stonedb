@@ -1,3 +1,17 @@
+# StoneDB
+
+> **Notice: This repository is no longer maintained.**
+
+The StoneDB project has been migrated to a new repository and is now under active development as **ShannonBase**:
+
+**https://github.com/Shannon-Data/ShannonBase**
+
+All future updates, bug fixes, and new features will be made in the new repository. This repository is archived and will not receive any further maintenance.
+
+If you are interested in real-time HTAP databases, you are more than welcome to follow the new repository, try ShannonBase, and join the community. We look forward to your feedback and contributions!
+
+Thank you for your support of StoneDB.
+
 <div align="center">
 
 [![logo](Docs/stonedb_logo.png)](https://stonedb.io/)
@@ -12,9 +26,6 @@
 [![codecov](https://codecov.io/gh/stoneatom/stonedb/branch/stonedb-5.7-dev/graph/badge.svg?token=NWJYOOZ2S5)](https://codecov.io/gh/stoneatom/stonedb)
 [![Docker Pulls](https://img.shields.io/docker/pulls/stoneatom/stonedb)](https://hub.docker.com/r/stoneatom/stonedb)
 [![GitHub license](https://img.shields.io/github/license/stoneatom/stonedb)](https://github.com/stoneatom/stonedb/blob/stonedb-5.6/LICENSE)
-[![slack badge](https://img.shields.io/badge/Slack-Join%20StoneDB-blueviolet?logo=slack&amp)](https://stonedb.slack.com/join/shared_invite/zt-1ba2lpvbo-Vqq62DJcxViyxCZmp7Rimw#/shared-invite/email)
-[![WeChat badge](https://img.shields.io/badge/Wechat-join-green?logo=wechat&amp)](https://cms.stoneatom.com/assets/8f44fbdf-b987-44fb-8b8d-c65a37da9221.jpg)
-[![Twitter Follow](https://img.shields.io/twitter/follow/StoneDataBase?style=social)](https://twitter.com/intent/follow?screen_name=StoneDataBase)
 
 </div> 
 
@@ -180,10 +191,7 @@ StoneDB welcomes all kinds of contributions, such as contributing code to the co
 # Discussion
 
 The [GitHub Discussions](https://github.com/stoneatom/stonedb/discussions) is the home for most discussions and communications about the StoneDB project. We welcome your participation. Every single opinion or suggestion of yours is welcomed and valued. We anticipate StoneDB to be an open and influential project.
-# Join StoneDB Wechat Group
-You can add our little assistant's WeChat and join StoneDB's user group:
 
-<img src="Docs/stonedb_wecaht_group.png" width="50%">
 
 # Code of Conduct
 When participating in the StoneDB project, please ensure all your behavior complies with the [Code of Conduct](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CODE_OF_CONDUCT.md).
