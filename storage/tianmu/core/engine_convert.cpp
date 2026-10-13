@@ -649,6 +649,10 @@ AttributeTypeInfo Engine::GetCorrespondingATI(Field &field) {
   common::ColumnType at = GetCorrespondingType(field);
 
   if (ATI::IsNumericType(at)) {
+    if (at == common::ColumnType::BIT) {
+      DEBUG_ASSERT(dynamic_cast<Field_bit *>(&field));
+      return AttributeTypeInfo(at, !field.maybe_null(), field.field_length);
+    }
     DEBUG_ASSERT(dynamic_cast<Field_num *>(&field));
     if (at == common::ColumnType::NUM) {
       DEBUG_ASSERT(dynamic_cast<Field_new_decimal *>(&field));
