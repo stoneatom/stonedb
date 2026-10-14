@@ -61,7 +61,7 @@
     "remark-rehype": "^10.1.0",
     "styled-components": "^5.3.5",
     "unist-util-select": "^4.0.3",
-    "uuid": "^8.3.2",
+    "uuid": "^14.0.0",
     "search-insights": "^2.11.0",
     "@types/react": "^18.0.6"
   },
