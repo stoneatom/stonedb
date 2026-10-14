@@ -28,7 +28,7 @@
     "@docusaurus/utils-common": "^3.0.0",
     "@easyops-cn/docusaurus-search-local": "0.37.4",
     "@mdx-js/react": "^3.0.0",
-    "@babel/core": "^7.0.0",
+    "@babel/core": "^7.29.6",
     "antd": "^4.20.5",
     "clsx": "^1.1.1",
     "emailjs": "^4.0.0",
